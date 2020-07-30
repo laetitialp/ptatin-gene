@@ -199,7 +199,7 @@ void KDTreeCreate(int dim,KDTree *_k)
   kt->dim = dim;
   kt->visited = 0;
   kt->setup = 0;
-  kt->point =(kd_node)calloc(1, sizeof(struct _p_kd_node_t));
+  kt->point = (kd_node)calloc(1, sizeof(struct _p_kd_node_t));
   kt->cnt = 0;
   *_k = kt;
 }
@@ -249,11 +249,11 @@ void KDTreeSetPoints(KDTree k,int np)
     kd_node tmp;
     
     k->npoints = np;
-    tmp =(kd_node)realloc(k->point,k->npoints * sizeof(struct _p_kd_node_t));
+    tmp = (kd_node)realloc(k->point,k->npoints * sizeof(struct _p_kd_node_t));
     k->point = tmp;
   }
   memset(k->point,0,k->npoints * sizeof(struct _p_kd_node_t));
-  for (p=0; p<k->npoints; k++) {
+  for (p=0; p<k->npoints; p++) {
     k->point[p].index = p;
   }
   k->cnt = 0;
@@ -339,7 +339,7 @@ int ex1(void)
          test_node.x[0], test_node.x[1],
          found->index,found->x[0], found->x[1], sqrt(best_dist), kdtr_visited);
   
-  million =(kd_node) calloc(N, sizeof(struct _p_kd_node_t));
+  million = (kd_node)calloc(N, sizeof(struct _p_kd_node_t));
 
   srand(0);
   for (i = 0; i < N; i++) {
