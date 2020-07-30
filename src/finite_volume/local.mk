@@ -1,4 +1,5 @@
 libptatin3d-y.c += $(call thisdir, \
+  dmda_warp.c \
   fvda.c \
   fvda_property.c \
   fvda_compatible_velocity.c \
@@ -9,6 +10,18 @@ libptatin3d-y.c += $(call thisdir, \
   fvda_ale_utils.c \
   fvda_project.c \
   fvda_reconstruction.c \
+)
+
+ptatin-tests-y.c += $(call thisdir, \
+  fv-ex1.c \
+  fv-ex2.c \
+  fv-ex3.c \
+  fv-ex4.c \
+  fv-ex5.c \
+  fv-ex6.c \
+  fv-ex7a.c \
+  fv-ex7b.c \
+  fv-ex8.c \
 )
 
 TATIN_INC += -I$(abspath $(call thisdir,.))

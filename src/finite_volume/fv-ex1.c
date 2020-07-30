@@ -420,8 +420,6 @@ PetscErrorCode t1_usergeom(void)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode fvgeometry_dmda3d_create_from_element_partition(MPI_Comm comm,PetscInt target_decomp[],const PetscInt m[],DM *dm);
-
 const char doc[] = {
 "[FVDA test] Verifies setup of FVDA and structure and mesh geometry.\n" \
 "  -tid 0: Test FVDA setup with coordinate aligned geometry\n" \
@@ -450,37 +448,6 @@ int main(int argc,char **args)
       break;
     case 2:
       ierr = t1_usergeom();CHKERRQ(ierr);
-      break;
-    case 3:
-    {
-      DM          dm;
-      PetscInt    decomp[] = {3,1,1};
-      PetscInt    m[] = {0,0,0};
-      PetscMPIInt rank;
-      ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&rank);CHKERRQ(ierr);
-      switch (rank) {
-        case 0:
-          m[0] = 1;
-          m[1] = 2;
-          m[2] = 4;
-          break;
-        case 1:
-          m[0] = 1;
-          m[1] = 2;
-          m[2] = 4;
-          break;
-        case 2:
-          m[0] = 34;
-          m[1] = 2;
-          m[2] = 4;
-          break;
-          
-        default:
-          break;
-      }
-      ierr = fvgeometry_dmda3d_create_from_element_partition(PETSC_COMM_WORLD,decomp,m,&dm);CHKERRQ(ierr);
-      ierr = DMDestroy(&dm);CHKERRQ(ierr);
-    }
       break;
     default: SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Valid values for -tid {0,1,2}");
       break;
