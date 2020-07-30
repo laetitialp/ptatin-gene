@@ -942,9 +942,9 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
       PetscInt sub_fv_cell,macro_ijk[3],macro_fv_ijk[3],ijk[3];
       
       /* P0 */
-      printf("point %d: cell %d: xi %+1.4e,%+1.4e,%+1.4e\n",pidx,eidx,xi_p[0],xi_p[1],xi_p[2]);
+      //printf("point %d: cell %d: xi %+1.4e,%+1.4e,%+1.4e\n",pidx,eidx,xi_p[0],xi_p[1],xi_p[2]);
       ptatin_macro_point_location_sub(eidx,energy->mi_parent,energy->nsubdivision,xi_p,&sub_fv_cell);
-      printf("  fv subcell (macro local) %d \n",sub_fv_cell);
+      //printf("  fv subcell (macro local) %d \n",sub_fv_cell);
       
       ierr = _cart_convert_index_to_ijk(eidx,energy->mi_parent,macro_ijk);CHKERRQ(ierr);
       ierr = _cart_convert_index_to_ijk(sub_fv_cell,energy->nsubdivision,macro_fv_ijk);CHKERRQ(ierr);
@@ -954,7 +954,7 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
       ijk[2] = fv_ghost_offset[2] + macro_ijk[2] * energy->nsubdivision[2] + macro_fv_ijk[2];
       
       ierr = _cart_convert_ijk_to_index(ijk,fv_ghost_range,&sub_fv_cell);CHKERRQ(ierr);
-      printf("  fv subcell (local) %d \n",sub_fv_cell);
+      //printf("  fv subcell (local) %d \n",sub_fv_cell);
       
       T_mp = Tfield[sub_fv_cell];
     }
