@@ -52,6 +52,7 @@ PetscErrorCode FVDAStep_RK2SSP(FVDA fv,const PetscReal range[],PetscReal time,Pe
 PetscErrorCode FVEnforceBounds(FVDA fv,const PetscReal range[],Vec Q);
 PetscErrorCode fvda_highres_eval_F_timedep(SNES snes,Vec X,Vec F,void *data);
 
+
 /* fv_ops_ale.c */
 PetscErrorCode FVDASetup_ALE(FVDA fv);
 PetscErrorCode FVDAAccessData_ALE(FVDA fv,PetscReal **dt,Vec *Qk,Vec *coor_target);
@@ -59,6 +60,7 @@ PetscErrorCode FVDADestroy_ALE(FVDA fv);
 PetscErrorCode fvda_eval_F_forward_ale(SNES snes,Vec X,Vec F,void *data);
 PetscErrorCode fvda_eval_J_forward_ale(SNES snes,Vec X,Mat Ja,Mat Jb,void *data);
 PetscErrorCode fvda_eval_F_backward_ale(SNES snes,Vec X,Vec F,void *data);
+PetscErrorCode fvda_highres_eval_F_forward_ale(SNES snes,Vec X,Vec F,void *data);
 
 
 /* fvda_ale_utils.c */
