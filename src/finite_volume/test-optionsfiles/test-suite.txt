@@ -1,0 +1,107 @@
+
+
+[1] -------------------------------------
+# Execute [MPI ranks = 1]
+./arch-gnu-c-debug/bin/fv-ex1.app -tid 0
+
+(a) Execute post-proc script
+python3 utils/python-post-proc/ptatin-fvda-genxdmf.py -fvQ ex1_default_Q.pbvec -fvda ex1_default_fvda.json
+
+(b) Open output file "ex1_default_fvda.xmf" in paraview (use XDMF3 reader)
+Check files loads and the mesh looks sane.
+Expect to find two fields, Q, rho_cp (both will be zero).
+
+(c) Open output file "ex1_default_xcell.pvtu" in paraview.
+Check file loads and the mesh looks sane.
+
+
+[2] -------------------------------------
+# Execute [N MPI ranks]
+./arch-gnu-c-debug/bin/fv-ex1.app -tid 0 -mx 256
+
+Repeat steps from test [1] (a), (b), (c)
+
+
+[3] -------------------------------------
+Execute [MPI ranks = 96]
+./arch-gnu-c-debug/bin/fv-ex1.app -tid 1
+Verify the file "ex1_geom_xcell.pvtu" "loads and the mesh looks sane.
+
+
+[4] -------------------------------------
+Execute [MPI ranks = 96]
+./arch-gnu-c-debug/bin/fv-ex1.app -tid 2
+Verify the file "ex1_usergeom_xcell.pvtu" "loads and the mesh looks sane.
+
+
+[5] -------------------------------------
+Execute [MPI ranks = 96, 480]
+./arch-gnu-c-debug/bin/fv-ex3.app -tid 0 -ksp_monitor -ksp_view -log_view -options_left
+Expect that the code executes without error
+
+
+[6] -------------------------------------
+Execute [MPI ranks = 96]
+./arch-gnu-c-debug/bin/fv-ex3.app -tid 1 -pc_type gamg -ksp_rtol 1.0e-10 -mx 48 -bc 0 -ksp_monitor -ksp_view -log_view -options_left
+
+Expected output
+h 4.1667e-02  L1 6.6600e-03  L2 3.1962e-03
+h 4.1667e-02  H1 6.0495e-01  H1 8.5428e-01
+
+./arch-gnu-c-debug/bin/fv-ex3.app -tid 1 -pc_type gamg -ksp_rtol 1.0e-10 -mx 96 -bc 0 -ksp_monitor -ksp_view -log_view -options_left
+Expected output
+h 2.0833e-02  L1 1.6591e-03  L2 7.9713e-04
+h 2.0833e-02  H1 2.6927e-01  H1 5.9524e-01
+
+./arch-gnu-c-debug/bin/fv-ex3.app -tid 1 -pc_type gamg -ksp_rtol 1.0e-10 -mx 192 -bc 0 -ksp_monitor -ksp_view -log_view -options_left
+Expected output
+h 1.0417e-02  L1 4.1405e-04  L2 1.9917e-04
+h 1.0417e-02  H1 1.2621e-01  H1 4.1949e-01
+
+
+[7] -------------------------------------
+Repeat [6] using MPI ranks = 480
+Expected output should be identical
+
+
+[8] -------------------------------------
+Execute [MPI ranks = 96]
+./arch-gnu-c-debug/bin/fv-ex3.app -tid 2 -pc_type gamg -snes_rtol 1.0e-10 -mx {48,96,192} -bc 0 -pc_type gamg -ksp_type preonly -mg_levels_ksp_type chebyshev -mg_levels_pc_type bjacobi -mg_levels_ksp_max_it 4  -snes_linesearch_type basic -snes_mf_operator -snes_monitor -snes_view -log_view -options_left
+
+Please send me the output (stdout only) for each of the three runs mx = 48, 96, 192
+
+
+[9] -------------------------------------
+Repeat [8] using MPI ranks = 480
+
+Please send me the output (stdout only) for each of the three runs mx = 48, 96, 192
+
+
+[10] -------------------------------------
+Execute [MPI ranks = 96]
+
+./arch-gnu-c-debug/bin/fv-ex3.app -tid 2 -snes_rtol 1.0e-10 -mx {48,96,192} -bc 0 -snes_linesearch_type basic -pc_type ksp -snes_mf_operator -ksp_ksp_type preonly -ksp_pc_type gamg -ksp_mg_levels_ksp_type chebyshev -ksp_mg_levels_pc_type bjacobi -snes_monitor -snes_view -log_view -options_left
+
+Please send me the output (stdout only) for each of the three runs mx = 48, 96, 192
+
+
+[11] -------------------------------------
+Repeat [10] using MPI ranks = 480
+
+Please send me the output (stdout only) for each of the three runs mx = 48, 96, 192
+
+
+[12] -------------------------------------
+Execute [MPI ranks = 96]
+
+$PETSC_ARCH/bin/fv-ex5.app -mx 256 -fvpp_ksp_monitor -fvpp_pc_type gamg -fvpp_ksp_rtol 1.0e-10 -fvpp_ksp_type gmres -fvpp_mg_levels_ksp_max_it 2 -fvpp_ksp_view -log_view -options_left
+
+Please send me the output (stdout only)
+
+
+[13] -------------------------------------
+Same as [12], use MPI ranks = 480
+
+Please send me the output (stdout only)
+
+
