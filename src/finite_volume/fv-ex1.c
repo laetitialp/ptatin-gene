@@ -430,7 +430,6 @@ const char doc[] = {
 "      3 -> Geometry description: \"nautilis\"\n"\
 "      4 -> Geometry description: \"stealth bomber\"\n"\
 "  -tid 2: Test FVDA user defined geometry\n"\
-"  -tid 3: Test FVDA user specified partition size\n"\
 };
 int main(int argc,char **args)
 {
