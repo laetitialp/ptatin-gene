@@ -4,7 +4,11 @@ import sys as sys
 from pathlib import Path
 import json as json
 
-def xmfsplat(mx, gname, aname):
+def xmfsplat(mx, gname, aname, precision, byte_offset):
+  
+  if precision < 4 or precision > 8:
+    raise RuntimeError('XDMF can only write Floats using precision = 4 (float - single precision) or 8 (double - double precision). You provided precision = ' + str(precision))
+
   c = ''
   c += '<?xml version=\"1.0\" encoding=\"utf-8\"?>' + "\n"
   c += '<Xdmf xmlns:xi=\"http://www.w3.org/2001/XInclude\" Version=\"3.0\">' + "\n"
@@ -20,14 +24,14 @@ def xmfsplat(mx, gname, aname):
   nsize = (mx[0]+1) * (mx[1]+1) * (mx[2]+1)
   
   c += '    <Geometry Type=\"XYZ\">' + "\n"
-  c += '      <DataItem DataType=\"Float\" Dimensions=\"' + str(nsize) + ' 3\" Format=\"Binary\" Precision=\"8\" Endian=\"Big\" Seek=\"8\">' + "\n"
+  c += '      <DataItem DataType=\"Float\" Dimensions=\"' + str(nsize) + ' 3\" Format=\"Binary\" Precision=\"'+str(precision)+'\" Endian=\"Big\" Seek=\"'+str(byte_offset)+'\">' + "\n"
   c += '        ' + gname + "\n"
   c += '      </DataItem>' + "\n"
   c += '    </Geometry>' + "\n"
 
   for item in aname:
     c += '    <Attribute Name=\"' + item[1] + '\" Type=\"Scalar\" Center=\"Cell\">' + "\n"
-    c += '      <DataItem DataType=\"Float\" Dimensions=\"' + str(msize) + '\" Format=\"Binary\" Precision=\"8\" Endian=\"Big\" Seek=\"8\">' + "\n"
+    c += '      <DataItem DataType=\"Float\" Dimensions=\"' + str(msize) + '\" Format=\"Binary\" Precision=\"'+str(precision)+'\" Endian=\"Big\" Seek=\"'+str(byte_offset)+'\">' + "\n"
     c += '        ' + item[0] + "\n"
     c += '      </DataItem>' + "\n"
     c += '    </Attribute>' + "\n"
@@ -52,7 +56,30 @@ def petsc_vec_json_parse(jname):
 
   f = vec['fileName']
   path = Path(f)
-  return str(path)
+
+  precision = 8
+  try:
+    nt = jdata['PETScVec']['numberType']
+    if nt == "float16":
+      precision = 2
+    elif nt == "float32":
+      precision = 4
+    elif nt == "float64":
+      precision = 8
+    elif nt == "float128":
+      precision = 16
+    else:
+      raise RuntimeError('numberType = ' + nt + ' unsupported')
+  except:
+    pass
+
+  offset = 8
+  try:
+    offset = jdata['PETScVec']['byteOffset']
+  except:
+    pass
+
+  return str(path), int(precision), int(offset)
 
 
 def fvda_gen_xdmf(fname, field_fname, field_name):
@@ -98,7 +125,7 @@ def fvda_gen_xdmf(fname, field_fname, field_name):
     print("  ... FV solution output not found here:",os.path.split(field_fname)[0])
 
   jcoor = jdata['FVDA']['dm_geometry_coords_json']
-  coorfile = petsc_vec_json_parse(os.path.join(fvda_root,jcoor))
+  coorfile, prec, offset = petsc_vec_json_parse(os.path.join(fvda_root,jcoor))
   coorfile = os.path.split(coorfile)[1] # strip - only keep the tail
   coorfile = os.path.join(fvda_root,coorfile)
   print("<", coorfile)
@@ -107,8 +134,7 @@ def fvda_gen_xdmf(fname, field_fname, field_name):
   else:
     print("  ... not found ...")
 
-
-  blob = xmfsplat(mx, coorfile, celldata_found)
+  blob = xmfsplat(mx, coorfile, celldata_found, prec, offset)
 
   fname_out = os.path.split(fname)[1]
   fname_out = fname_out.replace(".json", ".xmf")

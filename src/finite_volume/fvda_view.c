@@ -832,7 +832,7 @@ PetscErrorCode FVDAView_JSON(FVDA fv,const char path[],const char prefix[])
     {
       char cfilename[PETSC_MAX_PATH_LEN];
       PetscSNPrintf(cfilename,PETSC_MAX_PATH_LEN-1,"%s_coords",jprefix_geom);
-      ierr =  PetscVecWriteJSON(fv->vertex_coor_geometry,0,cfilename);CHKERRQ(ierr);
+      ierr = PetscVecWriteJSON(fv->vertex_coor_geometry,0,cfilename);CHKERRQ(ierr);
     }
   }
 
@@ -1058,22 +1058,31 @@ PetscErrorCode PetscVecWriteJSON(Vec x,PetscInt format,const char suffix[])
 #endif
     
     if (format == 0) {
+      PetscInt byte_offset = 2 * sizeof(PetscInt); /* CLASSID, length of vector */
+      
       content = cJSON_CreateString("petsc-binary");  cJSON_AddItemToObject(jso_vec,"dataFormat",content);
       content = cJSON_CreateString("big");  cJSON_AddItemToObject(jso_vec,"endian",content);
+      content = cJSON_CreateInt((int)byte_offset);  cJSON_AddItemToObject(jso_vec,"byteOffset",content);
     }
     
     if (format == 1) {
-      content = cJSON_CreateString("binary-mpiio");  cJSON_AddItemToObject(jso_vec,"dataFormat",content);
+      PetscInt byte_offset = 2 * sizeof(PetscInt); /* CLASSID, length of vector */
+      
+      content = cJSON_CreateString("petsc-binary-mpiio");  cJSON_AddItemToObject(jso_vec,"dataFormat",content);
       content = cJSON_CreateString("big");  cJSON_AddItemToObject(jso_vec,"endian",content);
+      content = cJSON_CreateInt((int)byte_offset);  cJSON_AddItemToObject(jso_vec,"byteOffset",content);
     }
     
     if (format == 2) {
     }
 
     if (format == 3) {
+      PetscInt byte_offset = 2 * sizeof(PetscInt); /* CLASSID, length of vector */
+      
       content = cJSON_CreateString("gzip");  cJSON_AddItemToObject(jso_vec,"compressionLibrary",content);
       content = cJSON_CreateString("petsc-binary");  cJSON_AddItemToObject(jso_vec,"dataFormat",content);
       content = cJSON_CreateString("big");  cJSON_AddItemToObject(jso_vec,"endian",content);
+      content = cJSON_CreateInt((int)byte_offset);  cJSON_AddItemToObject(jso_vec,"byteOffset",content);
     }
 
     {
@@ -1129,7 +1138,7 @@ PetscErrorCode FVDAView_Heavy(FVDA fv,const char path[],const char suffix[])
 
       if (bs == 1) { PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s_%s",fname1,fv->cell_coeff_name[f]); }
       else {         PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s_%s_bs%D",fname1,fv->cell_coeff_name[f],b); }
-      ierr =  PetscVecWriteJSON(xn_cell,0,fname);CHKERRQ(ierr);
+      ierr = PetscVecWriteJSON(xn_cell,0,fname);CHKERRQ(ierr);
     }
   }
   
