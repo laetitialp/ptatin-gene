@@ -183,13 +183,13 @@ void kdtr_node_init(kd_node n)
   n->index = 0;
 }
 
-void KDTreeCreate(int dim,KDTree *_k)
+void KDTreeCreate(int dim,KDTree *_kt)
 {
   KDTree kt;
 
   if (dim > KDTR_MAX_DIM) {
     printf("[kdtree error] KDTree cannot be created. dim must be <= %d\n",KDTR_MAX_DIM);
-    *_k = NULL;
+    *_kt = NULL;
   }
   kt = (KDTree)malloc(sizeof(struct _p_KDTree));
   memset(kt,0,sizeof(struct _p_KDTree));
@@ -201,23 +201,23 @@ void KDTreeCreate(int dim,KDTree *_k)
   kt->setup = 0;
   kt->point = (kd_node)calloc(1, sizeof(struct _p_kd_node_t));
   kt->cnt = 0;
-  *_k = kt;
+  *_kt = kt;
 }
 
-void KDTreeDestroy(KDTree *_k)
+void KDTreeDestroy(KDTree *_kt)
 {
-  KDTree k;
+  KDTree kt;
   
-  if (!*_k) return;
-  k = *_k;
-  if (!k) return;
-  if (k->point) {
-    free(k->point);
+  if (!*_kt) return;
+  kt = *_kt;
+  if (!kt) return;
+  if (kt->point) {
+    free(kt->point);
   }
-  k->point = NULL;
-  k->root = NULL;
-  free(k);
-  *_k = NULL;
+  kt->point = NULL;
+  kt->root = NULL;
+  free(kt);
+  *_kt = NULL;
 }
 
 void KDTreeReset(KDTree kt)
@@ -228,55 +228,55 @@ void KDTreeReset(KDTree kt)
   kt->setup = 0;
 }
 
-void KDTreeView(KDTree k)
+void KDTreeView(KDTree kt)
 {
   double size;
   printf("KDTree\n");
-  printf(" npoints: %d\n",k->npoints);
-  printf(" dim:     %d\n",k->dim);
-  size = ((double)sizeof(struct _p_kd_node_t)) * ((double)k->npoints);
+  printf(" npoints: %d\n",kt->npoints);
+  printf(" dim:     %d\n",kt->dim);
+  size = ((double)sizeof(struct _p_kd_node_t)) * ((double)kt->npoints);
   printf(" memory:  %1.4e (MB)\n",size/1.0e6);
 }
 
-void KDTreeSetPoints(KDTree k,int np)
+void KDTreeSetPoints(KDTree kt,int np)
 {
   int p;
-  if (k->setup == 1) {
+  if (kt->setup == 1) {
     printf("[kdtree error] KDTree already setup. Cannot call KDTreeSetPoints() after KDTreeSetup() has been called.\n");
     return;
   }
-  if (np != k->npoints) {
+  if (np != kt->npoints) {
     kd_node tmp;
     
-    k->npoints = np;
-    tmp = (kd_node)realloc(k->point,k->npoints * sizeof(struct _p_kd_node_t));
-    k->point = tmp;
+    kt->npoints = np;
+    tmp = (kd_node)realloc(kt->point,kt->npoints * sizeof(struct _p_kd_node_t));
+    kt->point = tmp;
   }
-  memset(k->point,0,k->npoints * sizeof(struct _p_kd_node_t));
-  for (p=0; p<k->npoints; p++) {
-    k->point[p].index = p;
+  memset(kt->point,0,kt->npoints * sizeof(struct _p_kd_node_t));
+  for (p=0; p<kt->npoints; p++) {
+    kt->point[p].index = p;
   }
-  k->cnt = 0;
+  kt->cnt = 0;
 }
 
-void KDTreeGetPoints(KDTree k,int *n,kd_node *nodes)
+void KDTreeGetPoints(KDTree kt,int *n,kd_node *nodes)
 {
-  if (n) { *n = k->npoints; }
-  if (nodes) { *nodes = k->point; }
+  if (n) { *n = kt->npoints; }
+  if (nodes) { *nodes = kt->point; }
 }
 
-void KDTreeInsertPoint(KDTree k,double coor[])
+void KDTreeInsertPoint(KDTree kt,double coor[])
 {
-  if (k->setup == 1) {
+  if (kt->setup == 1) {
     printf("[kdtree error] KDTree already setup. Cannot call KDTreeInsertPoint() after KDTreeSetup() has been called.\n");
     return;
   }
-  if (k->cnt >= k->npoints) {
-    printf("[kdtree error] Cannot insert into slot %d. Max. index = %d\n",k->cnt,k->npoints);
+  if (kt->cnt >= kt->npoints) {
+    printf("[kdtree error] Cannot insert into slot %d. Max. index = %d\n",kt->cnt,kt->npoints);
     return;
   }
-  memcpy(k->point[k->cnt].x, coor, sizeof(double)*k->dim);
-  k->cnt++;
+  memcpy(kt->point[kt->cnt].x, coor, sizeof(double)*kt->dim);
+  kt->cnt++;
 }
 
 void KDTreeSetup(KDTree kt)
@@ -288,13 +288,13 @@ void KDTreeSetup(KDTree kt)
   kt->setup = 1;
 }
 
-void KDTreeFindNearest(KDTree k,double coor[],kd_node *nearest,double *sep)
+void KDTreeFindNearest(KDTree kt,double coor[],kd_node *nearest,double *sep)
 {
   struct _p_kd_node_t test_node;
   kd_node             found = NULL;
   double              best_dist = 1.0e32;
   
-  if (k->setup == 0) {
+  if (kt->setup == 0) {
     printf("[kdtree error] KDTree not setup. Must call KDTreeSetup() before KDTreeFindNearest().\n");
     *nearest = NULL;
     if (sep) { *sep = 1.0e32; }
@@ -302,11 +302,11 @@ void KDTreeFindNearest(KDTree k,double coor[],kd_node *nearest,double *sep)
   }
   
   kdtr_node_init(&test_node);
-  memcpy(test_node.x, coor, sizeof(double)*k->dim);
+  memcpy(test_node.x, coor, sizeof(double)*kt->dim);
   
   kdtr_visited = 0;
-  kdtr_nearest(k->root, &test_node, 0, k->dim, &found, &best_dist);
-  k->visited = kdtr_visited;
+  kdtr_nearest(kt->root, &test_node, 0, kt->dim, &found, &best_dist);
+  kt->visited = kdtr_visited;
   
   *nearest = found;
   if (sep) { *sep = sqrt(best_dist); }
