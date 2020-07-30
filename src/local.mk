@@ -114,4 +114,4 @@ ptatin-drivers-y.c += $(call thisdir, \
 
 TATIN_INC += -I$(abspath $(call thisdir,.))
 
-include $(call incsubdirs,externalpackages material_constants models tests)
+include $(call incsubdirs,externalpackages material_constants models tests finite_volume)
