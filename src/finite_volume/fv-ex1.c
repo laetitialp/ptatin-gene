@@ -28,9 +28,17 @@ PetscErrorCode t1_default(void)
 {
   PetscErrorCode ierr;
   PetscInt       mx = 12;
-  const PetscInt m[] = {mx,mx,mx};
+  PetscInt       m[] = {mx,mx,mx};
   FVDA           fv;
-  
+  PetscBool      found = PETSC_FALSE;
+
+  ierr = PetscOptionsGetInt(NULL,NULL,"-mx",&mx,&found);CHKERRQ(ierr);
+  if (found) {
+    m[0] = mx;
+    m[1] = mx;
+    m[2] = mx;
+  }
+
   ierr = FVDACreate(PETSC_COMM_WORLD,&fv);CHKERRQ(ierr);
   ierr = FVDASetDimension(fv,3);CHKERRQ(ierr);
   ierr = FVDASetSizes(fv,NULL,m);CHKERRQ(ierr);
@@ -48,7 +56,7 @@ PetscErrorCode t1_default(void)
   
   //ierr = FVDAView_CellGeom_local(fv);CHKERRQ(ierr);
   //ierr = FVDAView_BFaceGeom_local(fv);CHKERRQ(ierr);
-  ierr = FVDAView_FaceGeom_local(fv);CHKERRQ(ierr);
+  //ierr = FVDAView_FaceGeom_local(fv);CHKERRQ(ierr);
   
   ierr = FVDARegisterFaceProperty(fv,"v.n",1);CHKERRQ(ierr);
   
@@ -310,7 +318,7 @@ PetscErrorCode t1_geom(void)
   
   //ierr = FVDAView_CellGeom_local(fv);CHKERRQ(ierr);
   //ierr = FVDAView_BFaceGeom_local(fv);CHKERRQ(ierr);
-  ierr = FVDAView_FaceGeom_local(fv);CHKERRQ(ierr);
+  //ierr = FVDAView_FaceGeom_local(fv);CHKERRQ(ierr);
   
   ierr = FVDARegisterFaceProperty(fv,"v.n",1);CHKERRQ(ierr);
   
@@ -399,7 +407,7 @@ PetscErrorCode t1_usergeom(void)
   
   //ierr = FVDAView_CellGeom_local(fv);CHKERRQ(ierr);
   //ierr = FVDAView_BFaceGeom_local(fv);CHKERRQ(ierr);
-  ierr = FVDAView_FaceGeom_local(fv);CHKERRQ(ierr);
+  //ierr = FVDAView_FaceGeom_local(fv);CHKERRQ(ierr);
   
   ierr = FVDARegisterFaceProperty(fv,"v.n",1);CHKERRQ(ierr);
   
