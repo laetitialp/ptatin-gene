@@ -62,7 +62,7 @@ PetscErrorCode t1_default(void)
   
   ierr = FVDARegisterCellProperty(fv,"rho_cp",1);CHKERRQ(ierr);
   //ierr = FVDARegisterCellProperty(fv,"k",1);CHKERRQ(ierr);
-  //ierr = FVDARegisterCellProperty(fv,"Q",1);CHKERRQ(ierr);
+  //ierr = FVDARegisterCellProperty(fv,"H",1);CHKERRQ(ierr);
   
   ierr = FVDAFaceIterator(fv,DACELL_FACE_E,PETSC_FALSE,0.0,default_setter,NULL);CHKERRQ(ierr);
   ierr = FVDAFaceIterator(fv,DACELL_FACE_W,PETSC_FALSE,0.0,default_setter,NULL);CHKERRQ(ierr);
@@ -72,13 +72,15 @@ PetscErrorCode t1_default(void)
   ierr = FVDAFaceIterator(fv,DACELL_FACE_B,PETSC_FALSE,0.0,default_setter,NULL);CHKERRQ(ierr);
   
   //ierr = FVDAView_JSON(fv,NULL,NULL);CHKERRQ(ierr);
-  //ierr = FVDAView_JSON(fv,NULL,"stepA");CHKERRQ(ierr);
-  ierr = FVDAView_JSON(fv,"./jout","stepA");CHKERRQ(ierr);
+  //ierr = FVDAView_JSON(fv,NULL,"ex1_default");CHKERRQ(ierr);
+  ierr = FVDAView_JSON(fv,NULL,"ex1_default");CHKERRQ(ierr);
   {
     Vec Q;
-    DMCreateGlobalVector(fv->dm_fv,&Q);
-    ierr = PetscVecWriteJSON(Q,0,"thisvec");CHKERRQ(ierr);
-    ierr = FVDAView_Heavy(fv,"./jout","stepA");CHKERRQ(ierr);
+    ierr = DMCreateGlobalVector(fv->dm_fv,&Q);CHKERRQ(ierr);
+    ierr = PetscVecWriteJSON(Q,0,"ex1_default_Q");CHKERRQ(ierr);
+    ierr = FVDAView_Heavy(fv,NULL,"ex1_default");CHKERRQ(ierr);
+    ierr = FVDAView_CellData(fv,Q,PETSC_TRUE,"ex1_default_xcell");CHKERRQ(ierr);
+    ierr = VecDestroy(&Q);CHKERRQ(ierr);
   }
   
   ierr = FVDAViewStatistics(fv,PETSC_TRUE);CHKERRQ(ierr);
@@ -324,7 +326,7 @@ PetscErrorCode t1_geom(void)
   
   ierr = FVDARegisterCellProperty(fv,"rho_cp",1);CHKERRQ(ierr);
   ierr = FVDARegisterCellProperty(fv,"k",1);CHKERRQ(ierr);
-  ierr = FVDARegisterCellProperty(fv,"Q",1);CHKERRQ(ierr);
+  ierr = FVDARegisterCellProperty(fv,"H",1);CHKERRQ(ierr);
   
   ierr = FVDAFaceIterator(fv,DACELL_FACE_E,PETSC_FALSE,0.0,default_setter,NULL);CHKERRQ(ierr);
   ierr = FVDAFaceIterator(fv,DACELL_FACE_W,PETSC_FALSE,0.0,default_setter,NULL);CHKERRQ(ierr);
@@ -333,6 +335,13 @@ PetscErrorCode t1_geom(void)
   ierr = FVDAFaceIterator(fv,DACELL_FACE_F,PETSC_FALSE,0.0,default_setter,NULL);CHKERRQ(ierr);
   ierr = FVDAFaceIterator(fv,DACELL_FACE_B,PETSC_FALSE,0.0,default_setter,NULL);CHKERRQ(ierr);
   
+  {
+    Vec Q;
+    ierr = DMCreateGlobalVector(fv->dm_fv,&Q);CHKERRQ(ierr);
+    ierr = FVDAView_CellData(fv,Q,PETSC_TRUE,"ex1_geom_xcell");CHKERRQ(ierr);
+    ierr = VecDestroy(&Q);CHKERRQ(ierr);
+  }
+
   ierr = FVDAViewStatistics(fv,PETSC_FALSE);CHKERRQ(ierr);
   ierr = FVDADestroy(&fv);CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -413,7 +422,7 @@ PetscErrorCode t1_usergeom(void)
   
   ierr = FVDARegisterCellProperty(fv,"rho_cp",1);CHKERRQ(ierr);
   ierr = FVDARegisterCellProperty(fv,"k",1);CHKERRQ(ierr);
-  ierr = FVDARegisterCellProperty(fv,"Q",1);CHKERRQ(ierr);
+  ierr = FVDARegisterCellProperty(fv,"H",1);CHKERRQ(ierr);
   
   ierr = FVDAFaceIterator(fv,DACELL_FACE_E,PETSC_FALSE,0.0,default_setter,NULL);CHKERRQ(ierr);
   ierr = FVDAFaceIterator(fv,DACELL_FACE_W,PETSC_FALSE,0.0,default_setter,NULL);CHKERRQ(ierr);
@@ -422,6 +431,16 @@ PetscErrorCode t1_usergeom(void)
   ierr = FVDAFaceIterator(fv,DACELL_FACE_F,PETSC_FALSE,0.0,default_setter,NULL);CHKERRQ(ierr);
   ierr = FVDAFaceIterator(fv,DACELL_FACE_B,PETSC_FALSE,0.0,default_setter,NULL);CHKERRQ(ierr);
   
+  ierr = FVDAView_JSON(fv,NULL,"ex1_usergeom");CHKERRQ(ierr);
+  {
+    Vec Q;
+    ierr = DMCreateGlobalVector(fv->dm_fv,&Q);CHKERRQ(ierr);
+    ierr = PetscVecWriteJSON(Q,0,"ex1_usergeom_Q");CHKERRQ(ierr);
+    ierr = FVDAView_Heavy(fv,NULL,"ex1_usergeom");CHKERRQ(ierr);
+    ierr = FVDAView_CellData(fv,Q,PETSC_TRUE,"ex1_usergeom_xcell");CHKERRQ(ierr);
+    ierr = VecDestroy(&Q);CHKERRQ(ierr);
+  }
+
   ierr = FVDAViewStatistics(fv,PETSC_TRUE);CHKERRQ(ierr);
   ierr = FVDADestroy(&fv);CHKERRQ(ierr);
   ierr = DMDestroy(&dmg);CHKERRQ(ierr);

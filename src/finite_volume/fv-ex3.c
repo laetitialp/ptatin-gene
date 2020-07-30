@@ -593,12 +593,10 @@ PetscErrorCode t3_mms(void)
   
   
   //ierr = FVDAView_CellData(fv,rhs,PETSC_TRUE,"rhs");CHKERRQ(ierr);
-  ierr = FVDAView_CellData(fv,X,PETSC_TRUE,"xcell");CHKERRQ(ierr);
+  ierr = FVDAView_CellData(fv,X,PETSC_TRUE,"ex3_mms_xcell");CHKERRQ(ierr);
   
   ierr = FVDAView_JSON(fv,NULL,"ex3_mms");CHKERRQ(ierr);
   {
-    Vec Q;
-    DMCreateGlobalVector(fv->dm_fv,&Q);
     ierr = PetscVecWriteJSON(X,0,"ex3_mms_Q");CHKERRQ(ierr);
     ierr = FVDAView_Heavy(fv,NULL,"ex3_mms");CHKERRQ(ierr);
   }
@@ -788,16 +786,14 @@ PetscErrorCode t3_warp_mms(void)
     ierr = VecDestroy(&gradX);CHKERRQ(ierr);
   }
   
-  ierr = FVDAView_CellData(fv,rhs,PETSC_TRUE,"rhs");CHKERRQ(ierr);
-  ierr = FVDAView_CellData(fv,X,PETSC_TRUE,"xcell");CHKERRQ(ierr);
+  //ierr = FVDAView_CellData(fv,rhs,PETSC_TRUE,"rhs");CHKERRQ(ierr);
+  ierr = FVDAView_CellData(fv,X,PETSC_TRUE,"ex3_warp_mms_xcell");CHKERRQ(ierr);
 #endif
   
-  ierr = FVDAView_JSON(fv,"./jout","stepA");CHKERRQ(ierr);
+  ierr = FVDAView_JSON(fv,NULL,"ex3_warp_mms");CHKERRQ(ierr);
   {
-    Vec Q;
-    DMCreateGlobalVector(fv->dm_fv,&Q);
-    ierr = PetscVecWriteJSON(X,0,"thisvec");CHKERRQ(ierr);
-    ierr = FVDAView_Heavy(fv,"./jout","stepA");CHKERRQ(ierr);
+    ierr = PetscVecWriteJSON(X,0,"ex3_warp_mms_Q");CHKERRQ(ierr);
+    ierr = FVDAView_Heavy(fv,NULL,"ex3_warp_mms");CHKERRQ(ierr);
   }
 
   ierr = MatDestroy(&J);CHKERRQ(ierr);
