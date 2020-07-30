@@ -17,6 +17,7 @@ PetscErrorCode PhysCompEnergyFVSetUp(PhysCompEnergyFV energy,pTatinCtx pctx);
 PetscErrorCode PhysCompEnergyFVUpdateGeometry(PhysCompEnergyFV energy,PhysCompStokes stokes);
 PetscErrorCode PhysCompEnergyFVInterpolateMacroQ2ToSubQ1(DM dmv,Vec X,PhysCompEnergyFV energy,DM dmv_fv,Vec X_fv);
 PetscErrorCode PhysCompEnergyFVInterpolateNormalVectorToFace(PhysCompEnergyFV energy,Vec X,const char face_field_name[]);
+PetscErrorCode PhysCompEnergyFVInterpolateVectorToFace(PhysCompEnergyFV energy,Vec X,const char face_field_name[]);
 
 PetscErrorCode _cart_convert_index_to_ijk(PetscInt r,const PetscInt mp[],PetscInt rijk[]);
 PetscErrorCode _cart_convert_ijk_to_index(const PetscInt rijk[],const PetscInt mp[],PetscInt *r);
@@ -44,6 +45,9 @@ PetscErrorCode MaterialPointOrderingCreate_Cellwise(int nkeys,
 PetscErrorCode pTatinPhysCompEnergyFV_CreateGetCornersCoefficient(PhysCompEnergyFV efv,PetscInt *n,PetscInt **_c);
 PetscErrorCode pTatinPhysCompEnergyFV_CreateGetCornersFVCell(PhysCompEnergyFV efv,PetscInt *n,PetscInt **_c);
 PetscErrorCode pTatinPhysCompEnergyFV_MPProjection(PhysCompEnergyFV efv,pTatinCtx pctx);
+
+PetscErrorCode pTatinPhysCompEnergyFV_ComputeALESource(FVDA fv,Vec xk,Vec xk1,PetscReal dt,Vec S,PetscBool forward);
+PetscErrorCode pTatinPhysCompEnergyFV_ComputeALEVelocity(DM dmg,Vec x0,Vec x1,PetscReal dt,Vec v);
 
 #endif
 

@@ -153,9 +153,12 @@ PetscErrorCode PhysCompEnergyFVSetUp(PhysCompEnergyFV energy,pTatinCtx pctx)
 
   ierr = FVDASetup_TimeDep(energy->fv);CHKERRQ(ierr);
 
-  
+
+  ierr = FVDARegisterFaceProperty(energy->fv,"v",3);CHKERRQ(ierr);
+  ierr = FVDARegisterFaceProperty(energy->fv,"xDot",3);CHKERRQ(ierr);
+
   ierr = FVDARegisterFaceProperty(energy->fv,"v.n",1);CHKERRQ(ierr);
-  ierr = FVDARegisterFaceProperty(energy->fv,"v_mesh.n",1);CHKERRQ(ierr);
+  ierr = FVDARegisterFaceProperty(energy->fv,"xDot.n",1);CHKERRQ(ierr);
   ierr = FVDARegisterFaceProperty(energy->fv,"k",1);CHKERRQ(ierr);
   
   ierr = FVDARegisterCellProperty(energy->fv,"rho*cp",1);CHKERRQ(ierr);
@@ -475,6 +478,67 @@ PetscErrorCode PhysCompEnergyFVInterpolateNormalVectorToFace(PhysCompEnergyFV en
     fielddotn_face[f] = 0;
     for (d=0; d<nsd; d++) {
       fielddotn_face[f] += avg_v[d] * n_face[3*f+d];
+    }
+  }
+  
+  ierr = VecRestoreArrayRead(Xl,&_X);CHKERRQ(ierr);
+  ierr = VecDestroy(&Xl);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode PhysCompEnergyFVInterpolateVectorToFace(PhysCompEnergyFV energy,Vec X,const char face_field_name[])
+{
+  const PetscInt  nsd = 3;
+  PetscReal       *fielddotn_face;
+  PetscInt        f,cellid,i,d;
+  FVDA            fv;
+  PetscReal       elfield[3*DACELL3D_Q1_SIZE];
+  Vec             Xl;
+  const PetscReal *_X;
+  DM              dm;
+  PetscInt        dm_nel,dm_nen;
+  const PetscInt  *dm_element,*element;
+  DACellFace      cell_face_label;
+  PetscInt        fidx[DACELL3D_FACE_VERTS];
+  PetscErrorCode  ierr;
+  
+  PetscFunctionBegin;
+  fv = energy->fv;
+  dm = energy->dmv;
+  ierr = FVDAGetFacePropertyByNameArray(fv,face_field_name,&fielddotn_face);CHKERRQ(ierr);
+  
+  ierr = DMCreateLocalVector(dm,&Xl);CHKERRQ(ierr);
+  ierr = DMGlobalToLocal(dm,X,INSERT_VALUES,Xl);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(Xl,&_X);CHKERRQ(ierr);
+  
+  ierr = DMDAGetElements(dm,&dm_nel,&dm_nen,&dm_element);CHKERRQ(ierr);
+  for (f=0; f<fv->nfaces; f++) {
+    PetscReal avg_v[] = {0,0,0};
+    
+    ierr = FVDAGetValidElement(fv,f,&cellid);CHKERRQ(ierr);
+    element = (const PetscInt*)&dm_element[DACELL3D_Q1_SIZE * cellid];
+    
+    for (i=0; i<DACELL3D_VERTS; i++) {
+      for (d=0; d<nsd; d++) {
+        elfield[nsd*i+d] = _X[nsd*element[i]+d];
+      }
+    }
+    
+    cell_face_label = fv->face_type[f];
+    ierr = DACellGeometry3d_GetFaceIndices(NULL,cell_face_label,fidx);CHKERRQ(ierr);
+    
+    for (i=0; i<DACELL3D_FACE_VERTS; i++) {
+      for (d=0; d<nsd; d++) {
+        avg_v[d] += elfield[nsd*fidx[i]+d];
+      }
+    }
+    for (d=0; d<nsd; d++) {
+      avg_v[d] = avg_v[d] * 0.25; /* four vertices per face in 3D */
+    }
+    
+    for (d=0; d<nsd; d++) {
+      fielddotn_face[3*f+d] = avg_v[d];
     }
   }
   
@@ -1343,3 +1407,94 @@ PetscErrorCode pTatinPhysCompEnergyFV_MPProjection(PhysCompEnergyFV efv,pTatinCt
   
   PetscFunctionReturn(0);
 }
+
+/* ale */
+
+PetscErrorCode pTatinPhysCompEnergyFV_ComputeALESource(FVDA fv,Vec xk,Vec xk1,PetscReal dt,Vec S,PetscBool forward)
+{
+  PetscErrorCode  ierr;
+  Vec               geometry_coorl,geometry_target_coorl;
+  const PetscScalar *_geom_coor,*_geom_target_coor;
+  PetscInt          c,row,offset;
+  PetscInt          dm_nel,dm_nen;
+  const PetscInt    *dm_element,*element;
+  PetscReal         cell_coor[3*DACELL3D_VERTS],dV0,dV1;
+  
+  
+  ierr = VecZeroEntries(S);CHKERRQ(ierr);
+  ierr = VecGetOwnershipRange(S,&offset,NULL);CHKERRQ(ierr);
+  
+  ierr = DMGetLocalVector(fv->dm_geometry,&geometry_coorl);CHKERRQ(ierr);
+  ierr = DMGlobalToLocal(fv->dm_geometry,xk,INSERT_VALUES,geometry_coorl);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(geometry_coorl,&_geom_coor);CHKERRQ(ierr);
+  
+  ierr = DMGetLocalVector(fv->dm_geometry,&geometry_target_coorl);CHKERRQ(ierr);
+  ierr = DMGlobalToLocal(fv->dm_geometry,xk1,INSERT_VALUES,geometry_target_coorl);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(geometry_target_coorl,&_geom_target_coor);CHKERRQ(ierr);
+  
+  ierr = DMDAGetElements(fv->dm_geometry,&dm_nel,&dm_nen,&dm_element);CHKERRQ(ierr);
+  for (c=0; c<fv->ncells; c++) {
+    element = (const PetscInt*)&dm_element[DACELL3D_Q1_SIZE * c];
+    
+    ierr = DACellGeometry3d_GetCoordinates(element,_geom_coor,cell_coor);CHKERRQ(ierr);
+    _EvaluateCellVolume3d(cell_coor,&dV0);
+    
+    ierr = DACellGeometry3d_GetCoordinates(element,_geom_target_coor,cell_coor);CHKERRQ(ierr);
+    _EvaluateCellVolume3d(cell_coor,&dV1);
+    
+    row = offset + c;
+    /* forward divides by dV0, backward divides by dV1 */
+    if (forward) {
+      ierr = VecSetValue(S,row,((dV1-dV0)/dt)/dV0,INSERT_VALUES);CHKERRQ(ierr);
+    } else {
+      ierr = VecSetValue(S,row,((dV1-dV0)/dt)/dV1,INSERT_VALUES);CHKERRQ(ierr);
+    }
+  }
+  
+  ierr = VecRestoreArrayRead(geometry_target_coorl,&_geom_target_coor);CHKERRQ(ierr);
+  ierr = DMRestoreLocalVector(fv->dm_geometry,&geometry_target_coorl);CHKERRQ(ierr);
+  
+  ierr = VecRestoreArrayRead(geometry_coorl,&_geom_coor);CHKERRQ(ierr);
+  ierr = DMRestoreLocalVector(fv->dm_geometry,&geometry_coorl);CHKERRQ(ierr);
+  
+  ierr = VecAssemblyBegin(S);CHKERRQ(ierr);
+  ierr = VecAssemblyEnd(S);CHKERRQ(ierr);
+  
+  //printf("[source \\int_V]\n");
+  //VecView(S,PETSC_VIEWER_STDOUT_WORLD);
+  
+  PetscFunctionReturn(0);
+}
+
+/*
+ Computes
+ v = (x1 - x0)/dt
+ */
+PetscErrorCode pTatinPhysCompEnergyFV_ComputeALEVelocity(DM dmg,Vec x0,Vec x1,PetscReal dt,Vec v)
+{
+  PetscErrorCode  ierr;
+  PetscInt        k,d,len;
+  const PetscReal *_x0,*_x1;
+  PetscReal       *_v;
+  
+  ierr = VecGetLocalSize(x0,&len);CHKERRQ(ierr);
+  len = len / 3;
+  ierr = VecGetArrayRead(x0,&_x0);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(x1,&_x1);CHKERRQ(ierr);
+  ierr = VecGetArray(v,&_v);CHKERRQ(ierr);
+  for (k=0; k<len; k++) {
+    for (d=0; d<3; d++) {
+      _v[3*k+d] = (_x1[3*k+d] - _x0[3*k+d])/dt;
+    }
+  }
+  ierr = VecRestoreArray(v,&_v);CHKERRQ(ierr);
+  ierr = VecRestoreArrayRead(x1,&_x1);CHKERRQ(ierr);
+  ierr = VecRestoreArrayRead(x0,&_x0);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+
+
+
+
+
