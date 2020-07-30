@@ -39,11 +39,13 @@
 #include "ptatin_models.h"
 #include "rheology.h"
 #include "material_constants.h"
+#include "ptatin3d_energyfv.h"
 
 struct _p_pTatinCtx {
   PhysCompStokes stokes_ctx;
   PhysCompEnergy energy_ctx;
   //  PhysCompCoords coords_ctx;
+  PhysCompEnergyFV energyfv_ctx;
 
   PetscBool  restart_from_file;
   char       restart_dir[PETSC_MAX_PATH_LEN];

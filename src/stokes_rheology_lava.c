@@ -377,7 +377,7 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_LAVA(pTatinCtx user
 PetscErrorCode EvaluateRheologyNonlinearitiesMarkers_LAVA(pTatinCtx user,DM dau,PetscScalar ufield[],DM dap,PetscScalar pfield[])
 {
   PhysCompEnergy energy;
-  PetscBool found;
+  PetscBool found,found_fv;
   DM daT;
   Vec temperature,temperature_l;
   PetscScalar *LA_temperature_l;
@@ -386,6 +386,7 @@ PetscErrorCode EvaluateRheologyNonlinearitiesMarkers_LAVA(pTatinCtx user,DM dau,
   PetscFunctionBegin;
 
   ierr = pTatinContextValid_Energy(user,&found);CHKERRQ(ierr);
+  ierr = pTatinContextValid_EnergyFV(user,&found_fv);CHKERRQ(ierr);
   if (found) {
     ierr = pTatinGetContext_Energy(user,&energy);CHKERRQ(ierr);
     ierr = pTatinPhysCompGetData_Energy(user,&temperature,NULL);CHKERRQ(ierr);
@@ -402,6 +403,8 @@ PetscErrorCode EvaluateRheologyNonlinearitiesMarkers_LAVA(pTatinCtx user,DM dau,
     ierr = VecRestoreArray(temperature_l,&LA_temperature_l);CHKERRQ(ierr);
     ierr = DMRestoreLocalVector(daT,&temperature_l);CHKERRQ(ierr);
 
+  } else if (found_fv) {
+    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Requires update for FV");
   } else {
     ierr = private_EvaluateRheologyNonlinearitiesMarkers_LAVA(user,dau,ufield,dap,pfield,NULL,NULL);CHKERRQ(ierr);
   }

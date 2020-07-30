@@ -1,5 +1,6 @@
 libptatin3d-y.c += $(call thisdir, \
   dmda_warp.c \
+  kdtree.c \
   fvda.c \
   fvda_property.c \
   fvda_compatible_velocity.c \
@@ -10,6 +11,7 @@ libptatin3d-y.c += $(call thisdir, \
   fvda_ale_utils.c \
   fvda_project.c \
   fvda_reconstruction.c \
+  ptatin3d_energyfv.c \
 )
 
 ptatin-tests-y.c += $(call thisdir, \
