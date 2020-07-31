@@ -49,5 +49,7 @@ PetscErrorCode pTatinPhysCompEnergyFV_MPProjection(PhysCompEnergyFV efv,pTatinCt
 PetscErrorCode pTatinPhysCompEnergyFV_ComputeALESource(FVDA fv,Vec xk,Vec xk1,PetscReal dt,Vec S,PetscBool forward);
 PetscErrorCode pTatinPhysCompEnergyFV_ComputeALEVelocity(DM dmg,Vec x0,Vec x1,PetscReal dt,Vec v);
 
+PetscErrorCode pTatinPhysCompEnergyFV_ComputeAdvectiveTimestep(PhysCompEnergyFV energy,Vec X,PetscReal *_dt);
+
 #endif
 
