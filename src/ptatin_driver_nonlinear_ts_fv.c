@@ -21,6 +21,7 @@ static const char help[] = "Stokes solver using Q2-Pm1 mixed finite elements.\n"
 #include "dmda_element_q2p1.h"
 #include "dmda_duplicate.h"
 #include "dmda_project_coords.h"
+#include "dmda_update_coords.h"
 #include "monitors.h"
 #include "mp_advection.h"
 #include "mesh_update.h"
@@ -1000,10 +1001,10 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
   pTatinCtx         user;
   pTatinModel       model;
   PhysCompStokes    stokes;
-  PhysCompEnergy    energy = NULL;
+  //PhysCompEnergy    energy = NULL;
   PhysCompEnergyFV  energyfv = NULL;
   DM              multipys_pack,dav,dap;
-  Mat       A,B,JE;
+  Mat       A,B;
   Vec       X,F;
   IS        *is_stokes_field;
   SNES      snes;
@@ -1019,7 +1020,6 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
   AuuMultiLevelCtx mlctx;
   PetscInt         newton_its,picard_its;
   PetscBool        active_energy;
-  Vec              T = NULL,f = NULL;
   RheologyType     init_rheology_type;
   PetscBool        monitor_stages = PETSC_FALSE,write_icbc = PETSC_FALSE;
   PetscBool        activate_quasi_newton_coord_update = PETSC_FALSE;
@@ -1107,7 +1107,6 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
     //ierr = pTatinLogBasicDMDA(user,"Energy",energy->daT);CHKERRQ(ierr);
     //ierr = DMCreateGlobalVector(energy->daT,&T);CHKERRQ(ierr);
     //ierr = pTatinPhysCompAttachData_Energy(user,T,NULL);CHKERRQ(ierr);
-    T = energyfv->T; PetscObjectReference((PetscObject)T);
     ierr = pTatinCtxAttachModelData(user,"PhysCompEnergy_T",(void*)energyfv->T);CHKERRQ(ierr);
     
     //ierr = DMCreateGlobalVector(energy->daT,&f);CHKERRQ(ierr);
@@ -1115,10 +1114,6 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
     //ierr = DMCreateMatrix(energy->daT,&JE);CHKERRQ(ierr);
     //ierr = MatSetFromOptions(JE);CHKERRQ(ierr);
 
-    f = energyfv->F; PetscObjectReference((PetscObject)f);
-    JE = energyfv->J; PetscObjectReference((PetscObject)JE);
-    
-    PetscPrintf(PETSC_COMM_WORLD,"Generated energy mesh + J/T/F --> ");
     pTatinGetRangeCurrentMemoryUsage(NULL);
   }
 
@@ -1236,8 +1231,8 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
   }
 
   /* output ic */
-    if (write_icbc) {
-        ierr = pTatinModel_Output(model,user,X,"icbc");CHKERRQ(ierr);
+  if (write_icbc) {
+    ierr = pTatinModel_Output(model,user,X,"icbc");CHKERRQ(ierr);
   }
 
   PetscPrintf(PETSC_COMM_WORLD,"   [[ COMPUTING FLOW FIELD FOR STEP : %D ]]\n", 0 );
@@ -1543,12 +1538,12 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
      however to compute the ALE velocity we need to know the timestep.
      */
     PetscPrintf(PETSC_COMM_WORLD,"  timestep[adv-diff] dt_courant = %1.4e \n", timestep );
-    energy->dt   = user->dt;
+    energy->dt = user->dt;
   }
 #endif
 
   if (active_energy) {
-    ierr = pTatinPhysCompEnergyFV_Initialise(energyfv,T);CHKERRQ(ierr);
+    ierr = pTatinPhysCompEnergyFV_Initialise(energyfv,energyfv->T);CHKERRQ(ierr);
     
     energyfv->dt = user->dt;
     PetscPrintf(PETSC_COMM_WORLD,"  timestep[adv-diff] dt_courant = <UNAVAILABLE BUT NOT REQUIRED>\n");
@@ -1563,7 +1558,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
   /* TIME STEP */
   for (step=1; step <= user->nsteps; step++) {
     char      stepname[PETSC_MAX_PATH_LEN];
-    Vec       velocity,pressure;
+    Vec       velocity,pressure,q2_coor_k,fv_coor_k;
     PetscReal timestep;
 
     PetscPrintf(PETSC_COMM_WORLD,"<<----------------------------------------------------------------------------------------------->>\n");
@@ -1573,6 +1568,139 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
 
     ierr = pTatinLogBasic(user);CHKERRQ(ierr);
 
+    
+    /* update mesh coordinates then restore */
+    {
+      DM  cdm;
+      Vec tmp,q2_coor;
+
+      ierr = DMGetCoordinateDM(dav,&cdm);CHKERRQ(ierr);
+      ierr = DMGetCoordinates(dav,&q2_coor);CHKERRQ(ierr);
+      
+      ierr = VecDuplicate(q2_coor,&tmp);CHKERRQ(ierr);
+      ierr = VecCopy(q2_coor,tmp);CHKERRQ(ierr);
+      
+      ierr = DMCreateGlobalVector(cdm,&q2_coor_k);CHKERRQ(ierr);
+      ierr = pTatinModel_UpdateMeshGeometry(model,user,X);CHKERRQ(ierr);
+      
+      ierr = DMGetCoordinates(dav,&q2_coor);CHKERRQ(ierr);
+      ierr = VecCopy(q2_coor,q2_coor_k);CHKERRQ(ierr);
+      ierr = VecCopy(tmp,q2_coor);CHKERRQ(ierr);
+      ierr = DMDAUpdateGhostedCoordinates(dav);CHKERRQ(ierr);
+      
+      ierr = VecDestroy(&tmp);CHKERRQ(ierr);
+    }
+
+    
+    
+    /* solve energy equation with FV + ALE */
+
+    // [FV EXTENSION] (1) Evaluate thermal properties on material points, project onto FV cell / cell faces
+    if (active_energy) {
+      ierr = EnergyFVEvaluateCoefficients(user,0.0,energyfv,NULL,NULL);CHKERRQ(ierr);
+      
+      ierr = pTatinPhysCompEnergyFV_MPProjection(energyfv,user);CHKERRQ(ierr);
+    }
+
+    // [FV EXTENSION] (1) Interpolate Q2 velocity onto vertices of FV geometry mesh, (2) interpolate the nodal velocity onto the cell faces
+    if (active_energy) {
+      ierr = DMCompositeGetAccess(user->pack,X,&velocity,&pressure);CHKERRQ(ierr);
+      
+      // (1)
+      ierr = PhysCompEnergyFVInterpolateMacroQ2ToSubQ1(dav,velocity,energyfv,energyfv->dmv,energyfv->velocity);CHKERRQ(ierr);
+      
+      ierr = DMCompositeRestoreAccess(user->pack,X,&velocity,&pressure);CHKERRQ(ierr);
+      
+      // (2)
+      ierr = PhysCompEnergyFVInterpolateNormalVectorToFace(energyfv,energyfv->velocity,"v.n");CHKERRQ(ierr);
+      
+      ierr = PhysCompEnergyFVInterpolateVectorToFace(energyfv,energyfv->velocity,"v");CHKERRQ(ierr);
+    }
+
+    
+    // [FV EXTENSION] Compute ALE velocity
+    if (active_energy) {
+      
+      ierr = DMCreateGlobalVector(energyfv->fv->dm_geometry,&fv_coor_k);CHKERRQ(ierr);
+      
+      ierr = PhysCompEnergyFVInterpolateMacroQ2ToSubQ1(dav,q2_coor_k,energyfv,energyfv->fv->dm_geometry,fv_coor_k);CHKERRQ(ierr);
+      {
+        Vec x_target;
+        
+        ierr = FVDAAccessData_ALE(energyfv->fv,NULL,NULL,&x_target);CHKERRQ(ierr);
+        ierr = VecCopy(fv_coor_k,x_target);CHKERRQ(ierr);
+      }
+      ierr = pTatinPhysCompEnergyFV_ComputeALEVelocity(energyfv->fv->dm_geometry,energyfv->fv->vertex_coor_geometry,fv_coor_k,user->dt,energyfv->velocity);CHKERRQ(ierr); /* note we re-use storage for velocity here */
+      
+      ierr = PhysCompEnergyFVInterpolateVectorToFace(energyfv,energyfv->velocity,"xDot");CHKERRQ(ierr);
+      
+    }
+
+    // [FV EXTENSION] Make v.n define on each face compatible (e.g. ensure it satisfies \int v.n dS = \int div(v) dV = 0
+    if (active_energy) {
+      KSP ksp_pp;
+      Vec source;
+      
+      ierr = VecDuplicate(energyfv->T,&source);CHKERRQ(ierr);
+      
+      ierr = FVDAPPCompatibleVelocityCreate(energyfv->fv,&ksp_pp);CHKERRQ(ierr);
+      
+      ierr = VecZeroEntries(source);CHKERRQ(ierr); /* div(u) = 0 */
+      ierr = FVDAPostProcessCompatibleVelocity(energyfv->fv,"v","v.n",source,ksp_pp);CHKERRQ(ierr);
+
+      ierr = VecZeroEntries(source);CHKERRQ(ierr);
+      //
+      ierr = pTatinPhysCompEnergyFV_ComputeALESource(energyfv->fv,energyfv->fv->vertex_coor_geometry,fv_coor_k,energyfv->dt,source,PETSC_TRUE);CHKERRQ(ierr);
+      
+      ierr = FVDAPostProcessCompatibleVelocity(energyfv->fv,"xDot","xDot.n",source,ksp_pp);CHKERRQ(ierr);
+
+      ierr = KSPDestroy(&ksp_pp);CHKERRQ(ierr);
+      ierr = VecDestroy(&source);CHKERRQ(ierr);
+    }
+
+    // [FV EXTENSION] Combine (v - v_mesh)
+    {
+      FVDA      fv = energyfv->fv;
+      PetscInt  f,nfaces;
+      PetscReal *vdotn,*xDotdotn;
+      
+      ierr = FVDAGetFaceInfo(fv,&nfaces,NULL,NULL,NULL,NULL);CHKERRQ(ierr);
+      ierr = FVDAGetFacePropertyByNameArray(fv,"v.n",&vdotn);CHKERRQ(ierr);
+      ierr = FVDAGetFacePropertyByNameArray(fv,"xDot.n",&xDotdotn);CHKERRQ(ierr);
+      
+      for (f=0; f<nfaces; f++) {
+        vdotn[f] = vdotn[f] - xDotdotn[f];
+      }
+    }
+
+    /* solve energy equation */
+    if (active_energy) {
+      PetscReal *dt;
+      Vec       E,Ek,Ekk;
+      
+      E    = energyfv->T;
+      Ek   = energyfv->Told;
+      //ierr = FVDAAccessData_TimeDep(energyfv->fv,&dt,&Ekk);CHKERRQ(ierr);
+      ierr = FVDAAccessData_ALE(energyfv->fv,&dt,&Ekk,NULL);CHKERRQ(ierr);
+      *dt = energyfv->dt;
+      
+      /* Push current state into old state */
+      ierr = VecCopy(E,Ek);CHKERRQ(ierr);
+      ierr = VecCopy(E,Ekk);CHKERRQ(ierr);
+      
+      ierr = SNESSolve(energyfv->snes,NULL,energyfv->T);CHKERRQ(ierr);
+    }
+    {
+      char fname[PETSC_MAX_PATH_LEN];
+      PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"step%D-Tfv",step);
+      ierr = FVDAView_CellData(energyfv->fv,energyfv->T,PETSC_TRUE,fname);CHKERRQ(ierr);
+    }
+    
+    
+    
+    
+    
+    
     /* update marker time dependent terms */
     /* e.g. e_plastic^1 = e_plastic^0 + dt * [ strain_rate_inv(u^0) ] */
     /*
@@ -1580,15 +1708,29 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
      - thus this update is performed BEFORE we advect the markers
      */
     ierr = pTatin_UpdateCoefficientTemporalDependence_Stokes(user,X);CHKERRQ(ierr);
-
+    
     /* update marker positions */
     ierr = DMCompositeGetAccess(user->pack,X,&velocity,&pressure);CHKERRQ(ierr);
     ierr = MaterialPointStd_UpdateGlobalCoordinates(user->materialpoint_db,dav_hierarchy[nlevels-1],velocity,user->dt);CHKERRQ(ierr);
     ierr = DMCompositeRestoreAccess(user->pack,X,&velocity,&pressure);CHKERRQ(ierr);
 
-    /* update mesh */
-    ierr = pTatinModel_UpdateMeshGeometry(model,user,X);CHKERRQ(ierr);
 
+    
+    /* Q2: update mesh coordinates */
+    {
+      Vec q2_coor;
+      
+      ierr = DMGetCoordinates(dav,&q2_coor);CHKERRQ(ierr);
+      
+      ierr = VecCopy(q2_coor_k,q2_coor);CHKERRQ(ierr);
+      ierr = DMDAUpdateGhostedCoordinates(dav);CHKERRQ(ierr);
+    }
+    
+    /* FV: update mesh coordinates */
+    ierr = PhysCompEnergyFVUpdateGeometry(energyfv,stokes);CHKERRQ(ierr);
+    
+    
+    
     /* update mesh coordinate hierarchy */
     ierr = DMDARestrictCoordinatesHierarchy(dav_hierarchy,nlevels);CHKERRQ(ierr);
 
@@ -1621,51 +1763,17 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
 
       ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,nlevels,interpolation_eta,dav_hierarchy,volQ);CHKERRQ(ierr);
     }
-    if (active_energy) {
-      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Requires update for FV support");
-      /* copy current (undeformed) energy mesh coords, update energy mesh geometry */
-      ierr = pTatinPhysCompEnergy_Update(energy,dav,T);CHKERRQ(ierr);
-
-      /* update v-V using new mesh coords and the previous mesh coords */
-      ierr = pTatinPhysCompEnergy_UpdateALEVelocity(stokes,X,energy,energy->dt);CHKERRQ(ierr);
-
-      /* update marker props on new mesh configuration */
-      ierr = pTatinPhysCompEnergy_MPProjectionQ1(user);CHKERRQ(ierr);
-    }
-
+    
+    
+    
+    
+    
     /* Update boundary conditions */
     /* Fine level setup */
     ierr = pTatinModel_ApplyBoundaryCondition(model,user);CHKERRQ(ierr);
     /* Coarse grid setup: Configure boundary conditions */
     ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,dav_hierarchy,model,user);CHKERRQ(ierr);
 
-    /* solve energy equation */
-    //
-    if (active_energy) {
-      SNES snesT;
-
-      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Requires update for FV support");
-      //ierr = VecZeroEntries(T);CHKERRQ(ierr);
-      ierr = SNESCreate(PETSC_COMM_WORLD,&snesT);CHKERRQ(ierr);
-      ierr = SNESSetOptionsPrefix(snesT,"T_");CHKERRQ(ierr);
-      ierr = SNESSetFunction(snesT,f,    SNES_FormFunctionEnergy,(void*)user);CHKERRQ(ierr);
-      ierr = SNESSetJacobian(snesT,JE,JE,SNES_FormJacobianEnergy,(void*)user);CHKERRQ(ierr);
-      ierr = SNESSetType(snesT,SNESKSPONLY);
-      ierr = SNESSetFromOptions(snesT);CHKERRQ(ierr);
-
-      PetscPrintf(PETSC_COMM_WORLD,"   [[ COMPUTING THERMAL FIELD FOR STEP : %D ]]\n", step );
-
-      /* insert boundary conditions into solution vector */
-      ierr = BCListInsert(energy->T_bclist,T);CHKERRQ(ierr);
-
-      PetscTime(&time[0]);
-      ierr = SNESSolve(snesT,NULL,T);CHKERRQ(ierr);
-      PetscTime(&time[1]);
-      ierr = pTatinLogBasicSNES(user,"Energy",snesT);CHKERRQ(ierr);
-      ierr = pTatinLogBasicCPUtime(user,"Energy",time[1]-time[0]);CHKERRQ(ierr);
-      ierr = SNESDestroy(&snesT);CHKERRQ(ierr);
-    }
-    //
 
     /* solve stokes */
     /* a) configure stokes opertors */
@@ -1753,22 +1861,37 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
     if (active_energy) {
       PetscReal timestep;
 
-      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Requires update for FV support");
-      ierr = pTatinPhysCompEnergy_ComputeTimestep(energy,T,&timestep);CHKERRQ(ierr);
+      {
+        
+        ierr = DMCompositeGetAccess(user->pack,X,&velocity,&pressure);CHKERRQ(ierr);
+        
+        // (1)
+        ierr = PhysCompEnergyFVInterpolateMacroQ2ToSubQ1(dav,velocity,energyfv,energyfv->dmv,energyfv->velocity);CHKERRQ(ierr);
+        
+        ierr = pTatinPhysCompEnergyFV_ComputeAdvectiveTimestep(energyfv,energyfv->velocity,&timestep);CHKERRQ(ierr);
+        PetscPrintf(PETSC_COMM_WORLD,"  PhysCompEnergyFV_ComputeAdvectiveTimestep[%D] dt_courant = %1.4e \n", step,timestep );
+        
+        ierr = DMCompositeRestoreAccess(user->pack,X,&velocity,&pressure);CHKERRQ(ierr);
+      }
+      
       ierr = pTatin_SetTimestep(user,"AdvDiffCourant",timestep);CHKERRQ(ierr);
       PetscPrintf(PETSC_COMM_WORLD,"  timestep_advdiff[%D] dt_courant = %1.4e \n", step,user->dt );
-      energy->dt   = user->dt;
+      
+      energyfv->dt   = user->dt;
     }
 
     /* update time */
     user->step++;
     user->time = user->time + user->dt;
     if (active_energy) {
-      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Requires update for FV support");
-      energy->time = user->time;
+      energyfv->time = user->time;
     }
 
     /* tidy up */
+    if (active_energy) {
+      ierr = VecDestroy(&fv_coor_k);CHKERRQ(ierr);
+      ierr = VecDestroy(&q2_coor_k);CHKERRQ(ierr);
+    }
     for (k=0; k<nlevels; k++) {
       ierr = MatDestroy(&operatorA11[k]);CHKERRQ(ierr);
       ierr = MatDestroy(&operatorB11[k]);CHKERRQ(ierr);
@@ -1797,12 +1920,6 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
   ierr = ISDestroy(&is_stokes_field[1]);CHKERRQ(ierr);
   ierr = PetscFree(is_stokes_field);CHKERRQ(ierr);
 
-  if (active_energy) {
-    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Requires update for FV support");
-    ierr = VecDestroy(&T);CHKERRQ(ierr);
-    ierr = VecDestroy(&f);CHKERRQ(ierr);
-    ierr = MatDestroy(&JE);CHKERRQ(ierr);
-  }
   ierr = VecDestroy(&X);CHKERRQ(ierr);
   ierr = VecDestroy(&F);CHKERRQ(ierr);
   ierr = pTatin3dDestroyContext(&user);
