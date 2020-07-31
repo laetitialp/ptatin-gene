@@ -1620,27 +1620,31 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
     
     // [FV EXTENSION] Compute ALE velocity
     if (active_energy) {
+      DM  dm_fv_geometry;
+      Vec fv_vertex_coor_geometry;
       
-      ierr = DMCreateGlobalVector(energyfv->fv->dm_geometry,&fv_coor_k);CHKERRQ(ierr);
+      ierr = FVDAGetGeometryDM(energyfv->fv,&dm_fv_geometry);CHKERRQ(ierr);
+      ierr = FVDAGetGeometryCoordinates(energyfv->fv,&fv_vertex_coor_geometry);CHKERRQ(ierr);
+      ierr = DMCreateGlobalVector(dm_fv_geometry,&fv_coor_k);CHKERRQ(ierr);
       
-      ierr = PhysCompEnergyFVInterpolateMacroQ2ToSubQ1(dav,q2_coor_k,energyfv,energyfv->fv->dm_geometry,fv_coor_k);CHKERRQ(ierr);
+      ierr = PhysCompEnergyFVInterpolateMacroQ2ToSubQ1(dav,q2_coor_k,energyfv,dm_fv_geometry,fv_coor_k);CHKERRQ(ierr);
       {
         Vec x_target;
         
         ierr = FVDAAccessData_ALE(energyfv->fv,NULL,NULL,&x_target);CHKERRQ(ierr);
         ierr = VecCopy(fv_coor_k,x_target);CHKERRQ(ierr);
       }
-      ierr = pTatinPhysCompEnergyFV_ComputeALEVelocity(energyfv->fv->dm_geometry,energyfv->fv->vertex_coor_geometry,fv_coor_k,user->dt,energyfv->velocity);CHKERRQ(ierr); /* note we re-use storage for velocity here */
+      ierr = pTatinPhysCompEnergyFV_ComputeALEVelocity(dm_fv_geometry,fv_vertex_coor_geometry,fv_coor_k,user->dt,energyfv->velocity);CHKERRQ(ierr); /* note we re-use storage for velocity here */
       
       ierr = PhysCompEnergyFVInterpolateVectorToFace(energyfv,energyfv->velocity,"xDot");CHKERRQ(ierr);
-      
     }
 
     // [FV EXTENSION] Make v.n define on each face compatible (e.g. ensure it satisfies \int v.n dS = \int div(v) dV = 0
     if (active_energy) {
       KSP ksp_pp;
-      Vec source;
+      Vec source,fv_vertex_coor_geometry;
       
+      ierr = FVDAGetGeometryCoordinates(energyfv->fv,&fv_vertex_coor_geometry);CHKERRQ(ierr);
       ierr = VecDuplicate(energyfv->T,&source);CHKERRQ(ierr);
       
       ierr = FVDAPPCompatibleVelocityCreate(energyfv->fv,&ksp_pp);CHKERRQ(ierr);
@@ -1650,7 +1654,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
 
       ierr = VecZeroEntries(source);CHKERRQ(ierr);
       //
-      ierr = pTatinPhysCompEnergyFV_ComputeALESource(energyfv->fv,energyfv->fv->vertex_coor_geometry,fv_coor_k,energyfv->dt,source,PETSC_TRUE);CHKERRQ(ierr);
+      ierr = pTatinPhysCompEnergyFV_ComputeALESource(energyfv->fv,fv_vertex_coor_geometry,fv_coor_k,energyfv->dt,source,PETSC_TRUE);CHKERRQ(ierr);
       
       ierr = FVDAPostProcessCompatibleVelocity(energyfv->fv,"xDot","xDot.n",source,ksp_pp);CHKERRQ(ierr);
 

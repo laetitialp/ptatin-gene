@@ -4,6 +4,7 @@
 #include <petscdmda.h>
 #include <fvda_impl.h>
 #include <fvda.h>
+#include <fvda_utils.h>
 
 
 PetscErrorCode eval_F_central_local(FVDA fv,const PetscReal domain_geom_coor[],const PetscReal X[],PetscReal F[]);
@@ -35,6 +36,7 @@ PetscErrorCode FVDASetup_ALE(FVDA fv)
   ierr = DMCreateGlobalVector(fv->dm_fv,&ctx->Q_k);CHKERRQ(ierr);
   ierr = DMCreateGlobalVector(fv->dm_geometry,&ctx->vertex_coor_geometry_target);CHKERRQ(ierr);
   fv->ctx = (void*)ctx;
+  fv->ctx_destroy = FVDADestroy_ALE;
   PetscFunctionReturn(0);
 }
 

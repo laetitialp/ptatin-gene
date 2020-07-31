@@ -135,6 +135,8 @@ PetscErrorCode FVDACreate(MPI_Comm comm,FVDA *_fv)
   ierr = PetscCalloc1(1,&fv->face_coeff_size);CHKERRQ(ierr);
   fv->cell_coeff_size[0] = 0;
   fv->face_coeff_size[0] = 0;
+  fv->ctx = NULL;
+  fv->ctx_destroy = NULL;
   
   fv->setup = PETSC_FALSE;
   *_fv = fv;
@@ -191,6 +193,10 @@ PetscErrorCode FVDADestroy(FVDA *_fv)
 
   ierr = PetscFree(fv->boundary_flux);CHKERRQ(ierr);
   ierr = PetscFree(fv->boundary_value);CHKERRQ(ierr);
+  
+  if (fv->ctx_destroy) {
+    ierr = fv->ctx_destroy(fv);CHKERRQ(ierr);
+  }
   
   ierr = PetscFree(fv);CHKERRQ(ierr);
   *_fv = NULL;
@@ -445,6 +451,20 @@ PetscErrorCode FVDASetGeometryDM(FVDA fv,DM dm)
     ierr = PetscObjectReference((PetscObject)dm);CHKERRQ(ierr);
     fv->dm_geometry = dm;
   }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode FVDAGetGeometryDM(FVDA fv,DM *dm)
+{
+  PetscFunctionBegin;
+  if (dm) *dm = fv->dm_geometry;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode FVDAGetGeometryCoordinates(FVDA fv,Vec *c)
+{
+  PetscFunctionBegin;
+  if (c) *c = fv->vertex_coor_geometry;
   PetscFunctionReturn(0);
 }
 

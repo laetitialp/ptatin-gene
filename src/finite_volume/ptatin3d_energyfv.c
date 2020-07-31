@@ -8,6 +8,7 @@
 
 #include <ptatin3d_energyfv.h>
 #include <ptatin3d_energyfv_impl.h>
+#include <finite_volume/fvda_impl.h>
 #include <finite_volume/fvda.h>
 #include <finite_volume/fvda_utils.h>
 #include <finite_volume/fvda_private.h>

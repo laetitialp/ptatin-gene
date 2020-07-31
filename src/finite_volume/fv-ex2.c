@@ -2,6 +2,7 @@
 #include <petsc.h>
 #include <petscdm.h>
 #include <petscdmda.h>
+#include <fvda_impl.h>
 #include <fvda.h>
 #include <fvda_utils.h>
 

@@ -5,62 +5,7 @@
 #include <petsc.h>
 #include <petscdm.h>
 #include <petscdmda.h>
-
-//#define FVDA_DEBUG
-
-#define DACELL1D_Q1_SIZE    2
-
-#define DACELL2D_Q1_SIZE    4
-#define DACELL2D_VERTS      4
-#define DACELL2D_FACE_VERTS 2
-#define DACELL2D_NFACES     4
-
-#define DACELL3D_Q1_SIZE    8
-#define DACELL3D_VERTS      8
-#define DACELL3D_FACE_VERTS 4
-#define DACELL3D_NFACES     6
-
-#define E_MINUS_OFF_RANK -2
-#define CELL_GHOST       -1
-#define CELL_OFF_RANK    -2
-
-/*
- Do not ever change the order of the entries in this enum.
- The result returned from
- DACellGeometry2d_GetFaceIndices()
- and
- DACellGeometry2d_GetFaceIndices()
- implicitly assume the order in the enum.
-*/
-typedef enum {
-  DACELL_FACE_W=0,
-  DACELL_FACE_E,
-  DACELL_FACE_S,
-  DACELL_FACE_N,
-  DACELL_FACE_B,
-  DACELL_FACE_F
-} DACellFace;
-
-typedef enum {
-  DAFACE_BOUNDARY=0,
-  DAFACE_INTERIOR,
-  DAFACE_SUB_DOMAIN_BOUNDARY
-} DACellFaceLocation;
-
-typedef enum {
-  FVFLUX_UN_INITIALIZED=0,
-  FVFLUX_IN_FLUX,
-  FVFLUX_OUT_FLUX,
-  FVFLUX_DIRICHLET_CONSTRAINT,
-  FVFLUX_NEUMANN_CONSTRAINT,
-  FVFLUX_NATIVE
-} FVFluxType;
-
-typedef enum {
-  FVDA_HYPERBOLIC=0,
-  FVDA_ELLIPTIC,
-  FVDA_PARABOLIC
-} FVDAPDEType;
+#include <fvda.h>
 
 
 
@@ -105,7 +50,8 @@ struct _p_FVDA {
   FVDAPDEType equation_type;
   PetscInt    numerical_flux;
   PetscInt    reconstruction;
-  void        *ctx;
+  void           *ctx;
+  PetscErrorCode (*ctx_destroy)(FVDA);
 };
 
 

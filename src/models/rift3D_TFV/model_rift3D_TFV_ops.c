@@ -388,7 +388,7 @@ PetscErrorCode FVDABCMethod_ERFC3DFunctionXYZ(FVDA fv,
   PetscScalar value;
   
   for (f=0; f<nfaces; f++) {
-    PetscBool set = DMDAVecTraverse3d_ERFC3DFunctionXYZ((PetscScalar*)&coor[fv->dim*f],&value,ctx);
+    PetscBool set = DMDAVecTraverse3d_ERFC3DFunctionXYZ((PetscScalar*)&coor[3*f],&value,ctx);
     flux[f] = FVFLUX_DIRICHLET_CONSTRAINT;
     bcvalue[f] = value;
   }

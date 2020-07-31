@@ -44,6 +44,7 @@
 #include "ptatin3d_energy.h"
 #include "ptatin3d_energyfv.h"
 #include "ptatin3d_energyfv_impl.h"
+#include "fvda_impl.h"
 
 #include "MPntStd_def.h"
 #include "MPntPStokes_def.h"
