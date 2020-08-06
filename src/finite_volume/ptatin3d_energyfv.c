@@ -215,11 +215,16 @@ PetscErrorCode PhysCompEnergyFVSetUp(PhysCompEnergyFV energy,pTatinCtx pctx)
   ierr = SNESSetApplicationContext(energy->snes,(void*)energy->fv);CHKERRQ(ierr);
   //ierr = SNESSetApplicationContext(energy->snes,(void*)energy);CHKERRQ(ierr);
   
-  //ierr = SNESSetFunction(energy->snes,energy->F,fvda_eval_F_timedep,NULL);CHKERRQ(ierr);
-  //ierr = SNESSetFunction(energy->snes,energy->F,fvda_highres_eval_F_timedep,NULL);CHKERRQ(ierr);
+  //ierr = SNESSetFunction(energy->snes,energy->F,          fvda_eval_F_timedep,NULL);CHKERRQ(ierr);
+  //ierr = SNESSetFunction(energy->snes,energy->F,          fvda_highres_eval_F_timedep,NULL);CHKERRQ(ierr);
   //ierr = SNESSetJacobian(energy->snes,energy->J,energy->J,fvda_eval_J_timedep,NULL);CHKERRQ(ierr);
 
-  ierr = SNESSetFunction(energy->snes,energy->F,fvda_highres_eval_F_forward_ale,NULL);CHKERRQ(ierr);
+  // Low-resolution ALE (note both advection and diffusion use low order implementations)
+  //ierr = SNESSetFunction(energy->snes,energy->F,          fvda_eval_F_forward_ale,NULL);CHKERRQ(ierr);
+  //ierr = SNESSetJacobian(energy->snes,energy->J,energy->J,fvda_eval_J_forward_ale,NULL);CHKERRQ(ierr);
+
+  // High-resolution ALE
+  ierr = SNESSetFunction(energy->snes,energy->F,          fvda_highres_eval_F_forward_ale,NULL);CHKERRQ(ierr);
   ierr = SNESSetJacobian(energy->snes,energy->J,energy->J,fvda_eval_J_forward_ale,NULL);CHKERRQ(ierr);
 
   
