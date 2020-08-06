@@ -647,7 +647,7 @@ PetscErrorCode _ijk_get_ownership_ranges_3d(MPI_Comm comm,const PetscInt mp[],co
 PetscErrorCode fvgeometry_dmda3d_create_from_element_partition(MPI_Comm comm,PetscInt target_decomp[],const PetscInt m[],DM *dm)
 {
   PetscErrorCode ierr;
-  PetscMPIInt    commsize,commsize2,commrank;
+  PetscMPIInt    commsize,commsize2;
   PetscInt       i,*ni,*nj,*nk,M[]={0,0,0};
   PetscInt       *target_mi,*target_mj,*target_mk;
   
@@ -692,30 +692,37 @@ PetscErrorCode fvgeometry_dmda3d_create_from_element_partition(MPI_Comm comm,Pet
     ierr = DMDAGetElements(*dm,&nel,&nen,&e);CHKERRQ(ierr);
   }
   
-  ierr = MPI_Comm_rank(comm,&commrank);CHKERRQ(ierr);
-  
-  PetscPrintf(comm,"  M %D x %D x %D\n",M[0]-1,M[1]-1,M[2]-1);
-  PetscPrintf(comm,"  N %D x %D x %D\n",M[0],M[1],M[2]);
-  
-  PetscSynchronizedPrintf(comm,"  [rank %d]\n",(int)commrank);
-  PetscSynchronizedPrintf(comm,"    mx,my,mz  %D x %D x %D (local)[input]\n",m[0],m[1],m[2]);
+
+#if 0
   {
-    PetscInt       mi[]={0,0,0};
-    ierr = DMDAGetElementsSizes(*dm,&mi[0],&mi[1],&mi[2]);CHKERRQ(ierr);
-    PetscSynchronizedPrintf(comm,"    mx,my,mz  %D x %D x %D (local)[output]\n",mi[0],mi[1],mi[2]);
+    PetscMPIInt    commsize,commsize2,commrank;
+
+    ierr = MPI_Comm_rank(comm,&commrank);CHKERRQ(ierr);
+    
+    PetscPrintf(comm,"  M %D x %D x %D\n",M[0]-1,M[1]-1,M[2]-1);
+    PetscPrintf(comm,"  N %D x %D x %D\n",M[0],M[1],M[2]);
+    
+    PetscSynchronizedPrintf(comm,"  [rank %d]\n",(int)commrank);
+    PetscSynchronizedPrintf(comm,"    mx,my,mz  %D x %D x %D (local)[input]\n",m[0],m[1],m[2]);
+    {
+      PetscInt       mi[]={0,0,0};
+      ierr = DMDAGetElementsSizes(*dm,&mi[0],&mi[1],&mi[2]);CHKERRQ(ierr);
+      PetscSynchronizedPrintf(comm,"    mx,my,mz  %D x %D x %D (local)[output]\n",mi[0],mi[1],mi[2]);
+    }
+    
+    for (i=0; i<target_decomp[0]; i++) {
+      PetscSynchronizedPrintf(comm,"      <i-dir %D> ni %D (local)\n",i,ni[i]);
+    }
+    for (i=0; i<target_decomp[1]; i++) {
+      PetscSynchronizedPrintf(comm,"      <j-dir %D> nj %D (local)\n",i,nj[i]);
+    }
+    for (i=0; i<target_decomp[2]; i++) {
+      PetscSynchronizedPrintf(comm,"      <k-dir %D> nk %D (local)\n",i,nk[i]);
+    }
+    
+    PetscSynchronizedFlush(comm,PETSC_STDOUT);
   }
-  
-  for (i=0; i<target_decomp[0]; i++) {
-    PetscSynchronizedPrintf(comm,"      <i-dir %D> ni %D (local)\n",i,ni[i]);
-  }
-  for (i=0; i<target_decomp[1]; i++) {
-    PetscSynchronizedPrintf(comm,"      <j-dir %D> nj %D (local)\n",i,nj[i]);
-  }
-  for (i=0; i<target_decomp[2]; i++) {
-    PetscSynchronizedPrintf(comm,"      <k-dir %D> nk %D (local)\n",i,nk[i]);
-  }
-  
-  PetscSynchronizedFlush(comm,PETSC_STDOUT);
+#endif
   
   ierr = PetscFree(target_mi);CHKERRQ(ierr);
   ierr = PetscFree(target_mj);CHKERRQ(ierr);
@@ -769,7 +776,7 @@ PetscErrorCode pTatinPhysCompActivate_EnergyFV(pTatinCtx user,PetscBool load)
     }
     
     ierr = PhysCompEnergyFVUpdateGeometry(energy,user->stokes_ctx);CHKERRQ(ierr);
-    ierr = FVDAView_CellData(energy->fv,energy->T,PETSC_TRUE,"xcell");CHKERRQ(ierr);
+    //ierr = FVDAView_CellData(energy->fv,energy->T,PETSC_TRUE,"xcell");CHKERRQ(ierr);
     user->energyfv_ctx = energy;
   }
   PetscFunctionReturn(0);
@@ -1300,7 +1307,7 @@ PetscErrorCode pTatinPhysCompEnergyFV_MPProjection_FVP0DG(PhysCompEnergyFV efv,p
   PetscTime(&t0);
   ierr = MaterialPointOrderingCreate_Cellwise((int)nfecells,npoints,point,offset,order);CHKERRQ(ierr);
   PetscTime(&t1);
-  printf("[MaterialPointOrderingCreate_Cellwise] time %1.2e (sec)\n",t1-t0);
+  PetscPrintf(efv->fv->comm,"[MaterialPointOrderingCreate_Cellwise] time %1.2e (sec)\n",t1-t0);
   
   nsubfv = efv->nsubdivision[0] * efv->nsubdivision[1] * efv->nsubdivision[2];
   ierr = PetscCalloc1(nsubfv*3,&subfv_coor);CHKERRQ(ierr);
@@ -1393,11 +1400,11 @@ PetscErrorCode pTatinPhysCompEnergyFV_MPProjection_FVP0DG(PhysCompEnergyFV efv,p
     
   }
   PetscTime(&t1);
-  printf("[kdtree][fill points] time %1.2e (sec)\n",cumtime[0]);
-  printf("[kdtree][setup] time %1.2e (sec)\n",cumtime[1]);
-  printf("[kdtree][get nearest] time %1.2e (sec)\n",cumtime[2]);
-  printf("[kdtree][assign props] time %1.2e (sec)\n",cumtime[3]);
-  printf("[FindNearest & Assign] time %1.2e (sec)\n",t1-t0);
+  PetscPrintf(efv->fv->comm,"[kdtree][fill points] time %1.2e (sec)\n",cumtime[0]);
+  PetscPrintf(efv->fv->comm,"[kdtree][setup] time %1.2e (sec)\n",cumtime[1]);
+  PetscPrintf(efv->fv->comm,"[kdtree][get nearest] time %1.2e (sec)\n",cumtime[2]);
+  PetscPrintf(efv->fv->comm,"[kdtree][assign props] time %1.2e (sec)\n",cumtime[3]);
+  PetscPrintf(efv->fv->comm,"[FindNearest & Assign] time %1.2e (sec)\n",t1-t0);
 
   KDTreeDestroy(&kdtree);
   ierr = VecRestoreArrayRead(fv_local_x,&_fv_local_x);CHKERRQ(ierr);
@@ -1471,9 +1478,6 @@ PetscErrorCode pTatinPhysCompEnergyFV_ComputeALESource(FVDA fv,Vec xk,Vec xk1,Pe
   
   ierr = VecAssemblyBegin(S);CHKERRQ(ierr);
   ierr = VecAssemblyEnd(S);CHKERRQ(ierr);
-  
-  //printf("[source \\int_V]\n");
-  //VecView(S,PETSC_VIEWER_STDOUT_WORLD);
   
   PetscFunctionReturn(0);
 }
