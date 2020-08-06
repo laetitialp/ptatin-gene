@@ -552,6 +552,164 @@ PetscErrorCode FVDAView_FaceGeom_local(FVDA fv)
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode FVDAView_FaceData_local(FVDA fv,const char prefix[])
+{
+  PetscErrorCode  ierr;
+  FILE            *fp = NULL;
+  char            name[PETSC_MAX_PATH_LEN];
+  PetscMPIInt     rank;
+  Vec             coorl;
+  const PetscReal *_coorl;
+  PetscInt        dm_nel,dm_nen;
+  const PetscInt  *dm_element;
+  PetscInt        Nv,Nf,i,c,f,p;
+  int             npoints,ncells,offset;
+  
+  
+  PetscFunctionBegin;
+  ierr = MPI_Comm_rank(fv->comm,&rank);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"%s-r%d.vtu",prefix,(int)rank);CHKERRQ(ierr);
+  if ((fp = fopen (name,"w")) == NULL)  {
+    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open new VTU file %s",name);
+  }
+  
+  ierr = DMDAGetElements(fv->dm_geometry,&dm_nel,&dm_nen,&dm_element);CHKERRQ(ierr);
+  ierr = DMCreateLocalVector(fv->dm_geometry,&coorl);CHKERRQ(ierr);
+  ierr = VecGetSize(coorl,&Nv);CHKERRQ(ierr);
+  Nv = Nv / 3;
+  ierr = DMGlobalToLocal(fv->dm_geometry,fv->vertex_coor_geometry,INSERT_VALUES,coorl);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(coorl,&_coorl);CHKERRQ(ierr);
+  
+  Nf = fv->nfaces;
+  
+  /* insert face */
+  npoints = (int)Nv;
+  ncells = (int)Nf;
+  
+  fprintf(fp,"<?xml version=\"1.0\"?>\n");
+#ifdef WORDSIZE_BIGENDIAN
+  fprintf(fp,"<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"BigEndian\">\n");
+#else
+  fprintf(fp,"<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n");
+#endif
+  
+  fprintf(fp,"<UnstructuredGrid>\n");
+  fprintf(fp,"  <Piece NumberOfPoints=\"%d\" NumberOfCells=\"%d\">\n",npoints,ncells);
+  
+  fprintf(fp,"    <Points>\n");
+  fprintf(fp,"      <DataArray type=\"Float64\" NumberOfComponents=\"3\" format=\"ascii\">\n");
+  for (i=0; i<Nv; i++) {
+    fprintf(fp,"%+1.6e %+1.6e %+1.6e ",_coorl[3*i],_coorl[3*i+1],_coorl[3*i+2]);
+  }
+  fprintf(fp,"\n");
+  fprintf(fp,"      </DataArray>\n");
+  fprintf(fp,"    </Points>\n");
+  
+  fprintf(fp,"    <PointData>\n");
+  fprintf(fp,"    </PointData>\n");
+  
+  fprintf(fp,"    <CellData>\n");
+  /* type */
+  fprintf(fp,"      <DataArray type=\"Int32\" Name=\"DACellFace\" format=\"ascii\">\n");
+  for (f=0; f<Nf; f++) {
+    fprintf(fp,"%d ",(int)fv->face_type[f]);
+  }
+  fprintf(fp,"\n");
+  fprintf(fp,"      </DataArray>\n");
+  /* location */
+  fprintf(fp,"      <DataArray type=\"Int32\" Name=\"DACellFaceLocation\" format=\"ascii\">\n");
+  for (f=0; f<Nf; f++) {
+    fprintf(fp,"%d ",(int)fv->face_location[f]);
+  }
+  fprintf(fp,"\n");
+  fprintf(fp,"      </DataArray>\n");
+  /* normal */
+  fprintf(fp,"      <DataArray type=\"Float64\" NumberOfComponents=\"3\" Name=\"normal\" format=\"ascii\">\n");
+  for (f=0; f<Nf; f++) {
+    fprintf(fp,"%+1.6e %+1.6e %+1.6e ",fv->face_normal[fv->dim*f+0],fv->face_normal[fv->dim*f+1],fv->face_normal[fv->dim*f+2]);
+  }
+  fprintf(fp,"\n");
+  fprintf(fp,"      </DataArray>\n");
+  
+  for (p=0; p<fv->ncoeff_face; p++) {
+    PetscInt b,bs;
+    
+    ierr = FVDAFacePropertyGetInfo(fv,fv->face_coeff_name[p],NULL,NULL,&bs);CHKERRQ(ierr);
+    if (bs == 1) {
+      fprintf(fp,"      <DataArray Name=\"%s\" type=\"Float64\" NumberOfComponents=\"1\" format=\"ascii\">\n",fv->face_coeff_name[p]);
+      for (i=0; i<Nf; i++) {
+        fprintf(fp,"%+1.6e ",fv->face_coefficient[p][i]);
+      }
+      fprintf(fp,"\n");
+      fprintf(fp,"      </DataArray>\n");
+    } else {
+      for (b=0; b<bs; b++) {
+        fprintf(fp,"      <DataArray Name=\"%s_%d\" type=\"Float64\" NumberOfComponents=\"1\" format=\"ascii\">\n",fv->face_coeff_name[p],b);
+        for (i=0; i<Nf; i++) {
+          fprintf(fp,"%+1.6e ",fv->face_coefficient[p][bs*i+b]);
+        }
+        fprintf(fp,"\n");
+        fprintf(fp,"      </DataArray>\n");
+      }
+    }
+  }
+
+  
+  fprintf(fp,"    </CellData>\n");
+  
+  fprintf(fp,"    <Cells>\n");
+  /* connectivity */
+  fprintf(fp,"      <DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n");
+  for (f=0; f<Nf; f++) {
+    PetscInt map[4];
+    int      facevmap[4];
+    
+    ierr = DACellGeometry3d_GetFaceIndices(fv->dm_geometry,fv->face_type[f],map);CHKERRQ(ierr);
+    c = fv->face_element_map[2 * f + 0];
+    if (c == E_MINUS_OFF_RANK) {
+      c = fv->face_element_map[2 * f + 1];
+    }
+    
+    facevmap[0] = (int)dm_element[8*c+map[0]];
+    facevmap[1] = (int)dm_element[8*c+map[1]];
+    facevmap[2] = (int)dm_element[8*c+map[2]];
+    facevmap[3] = (int)dm_element[8*c+map[3]];
+    
+    fprintf(fp,"%d %d %d %d ",facevmap[0],facevmap[1],facevmap[2],facevmap[3]);
+  }
+  fprintf(fp,"\n");
+  fprintf(fp,"      </DataArray>\n");
+  
+  /* offsets */
+  fprintf(fp,"      <DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n");
+  offset = 0;
+  for (c=0; c<Nf; c++) {
+    offset += 4;
+    fprintf(fp,"%d ",offset);
+  }
+  fprintf(fp,"\n");
+  fprintf(fp,"      </DataArray>\n");
+  
+  /* types */
+  fprintf(fp,"      <DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">\n");
+  for (c=0; c<Nf; c++) {
+    fprintf(fp,"%d ",9); /* VTK_QUAD */
+  }
+  fprintf(fp,"\n");
+  fprintf(fp,"      </DataArray>\n");
+  fprintf(fp,"    </Cells>\n");
+  
+  fprintf(fp,"  </Piece>\n");
+  fprintf(fp,"</UnstructuredGrid>\n");
+  fprintf(fp,"</VTKFile>\n");
+  fclose(fp);
+  
+  ierr = VecRestoreArrayRead(coorl,&_coorl);CHKERRQ(ierr);
+  ierr = VecDestroy(&coorl);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode FVDAView_CellData_local(FVDA fv,Vec field,PetscBool view_cell_prop,const char prefix[])
 {
   PetscErrorCode  ierr;

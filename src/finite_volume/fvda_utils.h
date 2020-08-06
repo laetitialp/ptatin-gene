@@ -34,6 +34,7 @@ PetscErrorCode FVDAViewStatistics(FVDA fv,PetscBool collective);
 PetscErrorCode FVDAView_CellGeom_local(FVDA fv);
 PetscErrorCode FVDAView_BFaceGeom_local(FVDA fv);
 PetscErrorCode FVDAView_FaceGeom_local(FVDA fv);
+PetscErrorCode FVDAView_FaceData_local(FVDA fv,const char prefix[]);
 PetscErrorCode FVDAView_CellData_local(FVDA fv,Vec field,PetscBool view_cell_prop,const char prefix[]);
 PetscErrorCode FVDAView_CellData(FVDA fv,Vec field,PetscBool view_cell_prop,const char prefix[]);
 PetscErrorCode FVDAView_JSON(FVDA fv,const char path[],const char prefix[]);
