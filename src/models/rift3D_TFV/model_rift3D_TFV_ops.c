@@ -832,14 +832,22 @@ static PetscErrorCode ModelOutput_Rift3D_T(pTatinCtx c,Vec X,const char prefix[]
   ierr = pTatinContextValid_EnergyFV(c,&active_energy);CHKERRQ(ierr);
   if (active_energy) {
     PhysCompEnergyFV energy;
-    char             fname[PETSC_MAX_PATH_LEN];
+    char             root[PETSC_MAX_PATH_LEN],pvoutputdir[PETSC_MAX_PATH_LEN],fname[PETSC_MAX_PATH_LEN];
+    
+    ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s",c->outputpath);CHKERRQ(ierr);
+    ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%D",root,c->step);CHKERRQ(ierr);
+    //ierr = pTatinTestDirectory(pvoutputdir,'w',&found);CHKERRQ(ierr);
+    //if (!found) { ierr = pTatinCreateDirectory(pvoutputdir);CHKERRQ(ierr); }
+
     
     ierr = pTatinGetContext_EnergyFV(c,&energy);CHKERRQ(ierr);
-    PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/%s-Tfv",c->outputpath,prefix);
+    PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/%s-Tfv",pvoutputdir,prefix);
     ierr = FVDAView_CellData(energy->fv,energy->T,PETSC_TRUE,fname);CHKERRQ(ierr);
     
+    /*
     PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/%s-Tfv_face",c->outputpath,prefix);
     ierr = FVDAView_FaceData_local(energy->fv,fname);CHKERRQ(ierr);
+    */
   }
   
   PetscFunctionReturn(0);
