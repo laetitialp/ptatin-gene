@@ -461,6 +461,13 @@ PetscErrorCode FVDAGetGeometryDM(FVDA fv,DM *dm)
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode FVDAGetDM(FVDA fv,DM *dm)
+{
+  PetscFunctionBegin;
+  if (dm) *dm = fv->dm_fv;
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode FVDAGetGeometryCoordinates(FVDA fv,Vec *c)
 {
   PetscFunctionBegin;

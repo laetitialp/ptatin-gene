@@ -81,6 +81,7 @@ PetscErrorCode FVDACreate3d(MPI_Comm comm,PetscInt Mi[],FVDA *_fv);
 PetscErrorCode FVDACreateFromDMDA(DM vertex_layout,FVDA *_fv);
 PetscErrorCode FVDASetGeometryDM(FVDA fv,DM dm);
 PetscErrorCode FVDAGetGeometryDM(FVDA fv,DM *dm);
+PetscErrorCode FVDAGetDM(FVDA fv,DM *dm);
 PetscErrorCode FVDAGetGeometryCoordinates(FVDA fv,Vec *c);
 PetscErrorCode FVDAUpdateGeometry(FVDA fv);
 PetscErrorCode FVDASetProblemType(FVDA fv,PetscBool Qdot,FVDAPDEType equation_type,PetscInt numerical_flux,PetscInt reconstruction);
