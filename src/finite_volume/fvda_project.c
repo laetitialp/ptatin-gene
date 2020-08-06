@@ -54,7 +54,7 @@ PetscErrorCode FVDACellPropertyProjectToFace_HarmonicMean(FVDA fv,const char cel
     c_p = fv->face_fv_map[2*f+1];
     if (c_p >= 0) {
       avg = 1.0/_field[c_m] + 1.0/_field[c_p];
-      avg = 0.5 / avg;
+      avg = 2.0 / avg;
     } else {
       avg = _field[c_m];
     }
