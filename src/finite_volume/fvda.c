@@ -3588,6 +3588,127 @@ PetscErrorCode eval_F_upwind_hr_local(FVDA fv,const PetscReal domain_geom_coor[]
   PetscFunctionReturn(0);
 }
 
+
+//
+// Based on eval_F_upwind_hr_local_MPI()
+//
+PetscErrorCode eval_F_upwind_hr_bound_local(FVDA fv,const PetscReal range[],const PetscReal domain_geom_coor[],const PetscReal fv_coor[],const PetscReal X[],PetscReal F[])
+{
+  PetscErrorCode  ierr;
+  PetscInt        f,c_m,c_p,fb;
+  const PetscReal *vdotn;
+  PetscReal       v_n,X_m,X_p,flux,Xhr,flux_hr;
+  DM              dm;
+  PetscReal       dS;
+  PetscInt        dm_nel,dm_nen,cellid;
+  const PetscInt  *dm_element,*element;
+  PetscReal       cell_coor[3*DACELL3D_VERTS];
+  PetscInt        n_neigh,neigh[27];
+  PetscReal       coeff[3];
+  
+  PetscFunctionBegin;
+  dm = fv->dm_fv;
+  
+  ierr = DMDAGetElements(fv->dm_geometry,&dm_nel,&dm_nen,&dm_element);CHKERRQ(ierr);
+  
+  ierr = FVDAGetFacePropertyByNameArrayRead(fv,"v.n",&vdotn);CHKERRQ(ierr);
+  
+  /* interior face loop */
+  for (f=0; f<fv->nfaces; f++) {
+    if (fv->face_location[f] == DAFACE_BOUNDARY) continue;
+    
+    ierr = FVDAGetValidElement(fv,f,&cellid);CHKERRQ(ierr);
+    element = (const PetscInt*)&dm_element[DACELL3D_Q1_SIZE * cellid];
+    ierr = DACellGeometry3d_GetCoordinates(element,domain_geom_coor,cell_coor);CHKERRQ(ierr);
+    _EvaluateFaceArea3d(fv->face_type[f],cell_coor,&dS);
+    
+    v_n = vdotn[f];
+    
+    c_m = fv->face_fv_map[2*f+0];
+    X_m = X[c_m];
+    
+    c_p = fv->face_fv_map[2*f+1];
+    X_p = X[c_p];
+    
+    flux_hr = 0;
+    if (v_n > 0.0 && fv->face_element_map[2*f+0] >= 0) { /* outflow */
+      
+      flux = v_n * X_m;
+      
+      ierr = FVDAGetReconstructionStencil_AtCell(fv,c_m,&n_neigh,neigh);CHKERRQ(ierr);
+      ierr = setup_coeff(fv,c_m,n_neigh,(const PetscInt*)neigh,fv_coor,X,coeff);CHKERRQ(ierr);
+      ierr = FVDAReconstructP1Evaluate(fv,&fv->face_centroid[3*f],c_m,(const PetscReal*)&fv_coor[3*c_m],X,coeff,&Xhr);CHKERRQ(ierr);
+      
+      flux_hr = v_n * Xhr;
+      if (Xhr < range[0] || Xhr > range[1]) {
+        flux_hr = flux;
+      }
+      
+      F[c_m] += flux_hr * dS; // cell[-]
+      F[c_p] -= flux_hr * dS; // cell[+]
+    } else {
+      // do nothing
+    }
+  }
+  
+  for (fb=0; fb<fv->nfaces_boundary; fb++) {
+    PetscInt   f = fv->face_idx_boundary[fb];
+    FVFluxType bctype;
+    PetscReal  bcvalue;
+    
+    ierr = FVDAGetValidElement(fv,f,&cellid);CHKERRQ(ierr);
+    element = (const PetscInt*)&dm_element[DACELL3D_Q1_SIZE * cellid];
+    ierr = DACellGeometry3d_GetCoordinates(element,domain_geom_coor,cell_coor);CHKERRQ(ierr);
+    _EvaluateFaceArea3d(fv->face_type[f],cell_coor,&dS);
+    
+    bctype = fv->boundary_flux[fb];
+    bcvalue = fv->boundary_value[fb];
+    
+    v_n = vdotn[f];
+    c_m = fv->face_fv_map[2*f+0];
+    X_m = X[c_m];
+    flux = v_n * X_m;
+    
+    
+    if (v_n > 0.0) { /* outflow */
+      ierr = FVDAGetReconstructionStencil_AtCell(fv,c_m,&n_neigh,neigh);CHKERRQ(ierr);
+      ierr = setup_coeff(fv,c_m,n_neigh,(const PetscInt*)neigh,fv_coor,X,coeff);CHKERRQ(ierr);
+      ierr = FVDAReconstructP1Evaluate(fv,&fv->face_centroid[3*f],c_m,(const PetscReal*)&fv_coor[3*c_m],X,coeff,&Xhr);CHKERRQ(ierr);
+      
+      flux_hr = v_n * Xhr;
+      if (Xhr < range[0] || Xhr > range[1]) {
+        flux_hr = flux;
+      }
+      
+      F[c_m] += flux_hr * dS; // cell[-]
+    } else { /* inflow */
+      switch (bctype) {
+          /* Weak imposition of Dirichlet */
+        case FVFLUX_DIRICHLET_CONSTRAINT:
+        {
+          PetscReal X_bc;
+          
+          X_bc  = bcvalue;
+          X_p   = 2.0 * X_bc - X_m;
+          flux  = v_n * X_p;
+          F[c_m] += flux * dS;
+        }
+          break;
+        case FVFLUX_NEUMANN_CONSTRAINT:
+        {
+          PetscReal iflux = bcvalue;
+          
+          F[c_m] += iflux * dS;
+        }
+          break;
+        default:
+          break;
+      }
+    }
+  }
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode eval_F_diffusion_7point_hr_local(FVDA fv,const PetscReal domain_geom_coor[],const PetscReal fv_coor[],const PetscReal X[],PetscReal F[])
 {
   PetscErrorCode  ierr;
