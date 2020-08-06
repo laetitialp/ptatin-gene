@@ -1102,7 +1102,12 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
   }
   
   if (active_energy) {
+    DM dmfv;
+    
     ierr = pTatinGetContext_EnergyFV(user,&energyfv);CHKERRQ(ierr);
+
+    ierr = FVDAGetDM(energyfv->fv,&dmfv);CHKERRQ(ierr);
+    ierr = pTatinLogBasicDMDA(user,"EnergyFV",dmfv);CHKERRQ(ierr);
 
     //ierr = pTatinLogBasicDMDA(user,"Energy",energy->daT);CHKERRQ(ierr);
     //ierr = DMCreateGlobalVector(energy->daT,&T);CHKERRQ(ierr);
@@ -1127,8 +1132,10 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
     PetscPrintf(PETSC_COMM_WORLD,"********* <FV SUPPORT NOTE> IS THIS REQUIRED?? pTatinPhysCompEnergy_MPProjectionQ1 ****************\n");
     
     ierr = EnergyFVEvaluateCoefficients(user,0.0,energyfv,NULL,NULL);CHKERRQ(ierr);
-    //ierr = pTatinPhysCompEnergy_MPProjectionQ1(user);CHKERRQ(ierr);
+    
     ierr = pTatinPhysCompEnergyFV_MPProjection(energyfv,user);CHKERRQ(ierr);
+    
+    ierr = FVDACellPropertyProjectToFace_HarmonicMean(energyfv->fv,"k","k");CHKERRQ(ierr);
   }
   DataBucketView(PetscObjectComm((PetscObject)multipys_pack), materialpoint_db,"MaterialPoints StokesCoefficients",DATABUCKET_VIEW_STDOUT);
 
@@ -1448,6 +1455,11 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
   if (newton_its>0) {
     SNES snes_newton;
 
+    /* Define operators */
+    ierr = pTatin3dCreateStokesOperators(stokes,is_stokes_field,
+                                         nlevels,dav_hierarchy,interpolation_v,u_bclist,volQ,level_type,
+                                         &A,operatorA11,&B,operatorB11);CHKERRQ(ierr);
+
     ierr = SNESCreate(PETSC_COMM_WORLD,&snes_newton);CHKERRQ(ierr);
     //ierr = SNESSetApplicationContext(snes_newton,(void*)user);CHKERRQ(ierr);
     ierr = SNESSetOptionsPrefix(snes_newton,"n_");CHKERRQ(ierr);
@@ -1457,7 +1469,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
       ierr = SNESSetFunction(snes_newton,F,FormFunction_Stokes_QuasiNewtonX,user);CHKERRQ(ierr);
     }
     // Force mffd
-    ierr = SNESSetJacobian(snes_newton,B,B,FormJacobian_StokesMGAuu,user);CHKERRQ(ierr);
+    ierr = SNESSetJacobian(snes_newton,A,B,FormJacobian_StokesMGAuu,user);CHKERRQ(ierr);
 
     //ierr = SNESStokesPCSetOptions_A(snes_newton);CHKERRQ(ierr);
     ierr = SNESSetFromOptions(snes_newton);CHKERRQ(ierr);
@@ -1492,6 +1504,13 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
       ierr = pTatinModel_Output(model,user,X,"newton_stage");CHKERRQ(ierr);
     }
 
+    /* tidy up assembled operators */
+    for (k=0; k<nlevels; k++) {
+      ierr = MatDestroy(&operatorA11[k]);CHKERRQ(ierr);
+      ierr = MatDestroy(&operatorB11[k]);CHKERRQ(ierr);
+    }
+    ierr = MatDestroy(&A);CHKERRQ(ierr);
+    ierr = MatDestroy(&B);CHKERRQ(ierr);
     ierr = SNESDestroyMGCtx(snes_newton);CHKERRQ(ierr);
     ierr = SNESDestroy(&snes_newton);CHKERRQ(ierr);
   }
@@ -1600,10 +1619,13 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
       ierr = EnergyFVEvaluateCoefficients(user,0.0,energyfv,NULL,NULL);CHKERRQ(ierr);
       
       ierr = pTatinPhysCompEnergyFV_MPProjection(energyfv,user);CHKERRQ(ierr);
+      
+      ierr = FVDACellPropertyProjectToFace_HarmonicMean(energyfv->fv,"k","k");CHKERRQ(ierr);
     }
 
     // [FV EXTENSION] (1) Interpolate Q2 velocity onto vertices of FV geometry mesh, (2) interpolate the nodal velocity onto the cell faces
     if (active_energy) {
+      PetscTime(&time[0]);
       ierr = DMCompositeGetAccess(user->pack,X,&velocity,&pressure);CHKERRQ(ierr);
       
       // (1)
@@ -1615,6 +1637,8 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
       ierr = PhysCompEnergyFVInterpolateNormalVectorToFace(energyfv,energyfv->velocity,"v.n");CHKERRQ(ierr);
       
       ierr = PhysCompEnergyFVInterpolateVectorToFace(energyfv,energyfv->velocity,"v");CHKERRQ(ierr);
+      PetscTime(&time[1]);
+      ierr = pTatinLogBasicCPUtime(user,"EnergyFV-InterpV",time[1]-time[0]);CHKERRQ(ierr);
     }
 
     
@@ -1623,6 +1647,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
       DM  dm_fv_geometry;
       Vec fv_vertex_coor_geometry;
       
+      PetscTime(&time[0]);
       ierr = FVDAGetGeometryDM(energyfv->fv,&dm_fv_geometry);CHKERRQ(ierr);
       ierr = FVDAGetGeometryCoordinates(energyfv->fv,&fv_vertex_coor_geometry);CHKERRQ(ierr);
       ierr = DMCreateGlobalVector(dm_fv_geometry,&fv_coor_k);CHKERRQ(ierr);
@@ -1637,6 +1662,8 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
       ierr = pTatinPhysCompEnergyFV_ComputeALEVelocity(dm_fv_geometry,fv_vertex_coor_geometry,fv_coor_k,user->dt,energyfv->velocity);CHKERRQ(ierr); /* note we re-use storage for velocity here */
       
       ierr = PhysCompEnergyFVInterpolateVectorToFace(energyfv,energyfv->velocity,"xDot");CHKERRQ(ierr);
+      PetscTime(&time[1]);
+      ierr = pTatinLogBasicCPUtime(user,"EnergyFV-ALE-ComputeV",time[1]-time[0]);CHKERRQ(ierr);
     }
 
     // [FV EXTENSION] Make v.n define on each face compatible (e.g. ensure it satisfies \int v.n dS = \int div(v) dV = 0
@@ -1649,14 +1676,18 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
       
       ierr = FVDAPPCompatibleVelocityCreate(energyfv->fv,&ksp_pp);CHKERRQ(ierr);
       
+      PetscTime(&time[0]);
       ierr = VecZeroEntries(source);CHKERRQ(ierr); /* div(u) = 0 */
       ierr = FVDAPostProcessCompatibleVelocity(energyfv->fv,"v","v.n",source,ksp_pp);CHKERRQ(ierr);
+      PetscTime(&time[1]);
+      ierr = pTatinLogBasicCPUtime(user,"EnergyFV-PostProc-v",time[1]-time[0]);CHKERRQ(ierr);
 
+      PetscTime(&time[0]);
       ierr = VecZeroEntries(source);CHKERRQ(ierr);
-      //
       ierr = pTatinPhysCompEnergyFV_ComputeALESource(energyfv->fv,fv_vertex_coor_geometry,fv_coor_k,energyfv->dt,source,PETSC_TRUE);CHKERRQ(ierr);
-      
       ierr = FVDAPostProcessCompatibleVelocity(energyfv->fv,"xDot","xDot.n",source,ksp_pp);CHKERRQ(ierr);
+      PetscTime(&time[1]);
+      ierr = pTatinLogBasicCPUtime(user,"EnergyFV-PostProc-xDot",time[1]-time[0]);CHKERRQ(ierr);
 
       ierr = KSPDestroy(&ksp_pp);CHKERRQ(ierr);
       ierr = VecDestroy(&source);CHKERRQ(ierr);
@@ -1692,18 +1723,26 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
       ierr = VecCopy(E,Ek);CHKERRQ(ierr);
       ierr = VecCopy(E,Ekk);CHKERRQ(ierr);
       
-      ierr = SNESSolve(energyfv->snes,NULL,energyfv->T);CHKERRQ(ierr);
+      /* Three choices */
+      {
+        const PetscReal range[] = {0.0,1.0e32};
+        
+        //ierr = EnergyFV_RK1(energyfv->snes,range,energyfv->time,energyfv->dt,energyfv->Told,energyfv->T);CHKERRQ(ierr);
+        
+        // high-order no limiting (negative temperature)
+        //ierr = EnergyFV_RK2SSP(energyfv->snes,NULL,energyfv->time,energyfv->dt,energyfv->Told,energyfv->T);CHKERRQ(ierr);
+        
+        //ierr = EnergyFV_RK2SSP(energyfv->snes,range,energyfv->time,energyfv->dt,energyfv->Told,energyfv->T);CHKERRQ(ierr);
+        
+        PetscTime(&time[0]);
+        ierr = SNESSolve(energyfv->snes,NULL,energyfv->T);CHKERRQ(ierr);
+        PetscTime(&time[1]);
+        
+        ierr = pTatinLogBasicSNES(user,"EnergyFV",energyfv->snes);CHKERRQ(ierr);
+        ierr = pTatinLogBasicCPUtime(user,"EnergyFV-Solve",time[1]-time[0]);CHKERRQ(ierr);
+      }
+      
     }
-    {
-      char fname[PETSC_MAX_PATH_LEN];
-      PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"step%D-Tfv",step);
-      ierr = FVDAView_CellData(energyfv->fv,energyfv->T,PETSC_TRUE,fname);CHKERRQ(ierr);
-    }
-    
-    
-    
-    
-    
     
     /* update marker time dependent terms */
     /* e.g. e_plastic^1 = e_plastic^0 + dt * [ strain_rate_inv(u^0) ] */
