@@ -117,7 +117,7 @@ static PetscErrorCode ModelInitialize_Rift3D_T(pTatinCtx c,void *ctx)
   /* box geometry, m */
   data->Lx =  12.0e5;
   data->Ly =  0.0e5;
-  data->Lz =  6.0e5;
+  data->Lz =  6.0e5/64.0; // <DAM FV TESTING: Scale z length to make model ~2D>
   //data->Ox =  -6.0e5;
   data->Ox =  0.0e5;
   data->Oy =  -1.5e5;
@@ -562,17 +562,24 @@ static PetscErrorCode ModelApplyBoundaryCondition_Rift3D_T(pTatinCtx user,void *
     ierr = pTatinGetContext_EnergyFV(user,&energy);CHKERRQ(ierr);
     if (data->use_semi_eulerian_mesh) {
 
-
       ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_S,PETSC_FALSE,0.0,iterator_initial_thermal_field,(void*)coeffs);CHKERRQ(ierr);
       
       val_T = data->Ttop;
       ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_N,PETSC_FALSE,0.0,FVDABCMethod_SetDirichlet,(void*)&val_T);CHKERRQ(ierr);
+
+      
+      ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_E,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
+      ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_W,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
+      ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_F,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
+      ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_B,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
+
     } else {
       val_T = data->Tbottom;
       ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_S,PETSC_FALSE,0.0,FVDABCMethod_SetDirichlet,(void*)&val_T);CHKERRQ(ierr);
       
       val_T = data->Ttop;
       ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_N,PETSC_FALSE,0.0,FVDABCMethod_SetDirichlet,(void*)&val_T);CHKERRQ(ierr);
+      
       
       ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_E,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
       ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_W,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
@@ -830,6 +837,9 @@ static PetscErrorCode ModelOutput_Rift3D_T(pTatinCtx c,Vec X,const char prefix[]
     ierr = pTatinGetContext_EnergyFV(c,&energy);CHKERRQ(ierr);
     PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/%s-Tfv",c->outputpath,prefix);
     ierr = FVDAView_CellData(energy->fv,energy->T,PETSC_TRUE,fname);CHKERRQ(ierr);
+    
+    PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/%s-Tfv_face",c->outputpath,prefix);
+    ierr = FVDAView_FaceData_local(energy->fv,fname);CHKERRQ(ierr);
   }
   
   PetscFunctionReturn(0);
@@ -904,6 +914,37 @@ static PetscErrorCode ModelApplyInitialStokesVariableMarkers_Rift3D_T(pTatinCtx 
     }
   }
   PetscFunctionReturn(0);
+}
+
+PetscBool iterator_plume_thermal_field(PetscScalar coor[],PetscScalar *val,void *ctx)
+{
+  PetscBool         impose = PETSC_FALSE;
+  const PetscScalar origin[] = {9.0, -1.0, 0.0};
+  PetscScalar       r;
+  
+  r = (coor[0] - origin[0])*(coor[0] - origin[0]) + (coor[1] - origin[1])*(coor[1] - origin[1]);
+  r = PetscSqrtReal(r);
+  if (r < 0.25) {
+    impose = PETSC_TRUE;
+    *val = 1500.0;
+  }
+  return impose;
+}
+
+PetscBool iterator_plume_thermal_field_2(PetscScalar coor[],PetscScalar *val,void *ctx)
+{
+  PetscBool         impose = PETSC_FALSE, set;
+  const PetscScalar origin[] = {7.0, -0.7, 0.0};
+  PetscScalar       r;
+  
+  set = DMDAVecTraverse3d_ERFC3DFunctionXYZ(coor,val,ctx);
+  r = (coor[0] - origin[0])*(coor[0] - origin[0]) + (coor[1] - origin[1])*(coor[1] - origin[1]);
+  r = PetscSqrtReal(r);
+  if (r < 0.25) {
+    impose = PETSC_TRUE;
+    *val  += 450.0;
+  }
+  return impose;
 }
 
 static PetscErrorCode ModelApplyInitialCondition_Rift3D_T(pTatinCtx c,Vec X,void *ctx)
@@ -1009,6 +1050,10 @@ static PetscErrorCode ModelApplyInitialCondition_Rift3D_T(pTatinCtx c,Vec X,void
     ierr = ModelRift3D_T_GetDescription_InitialThermalField(data,coeffs,&iterator_initial_thermal_field);CHKERRQ(ierr);
 
     ierr = FVDAVecTraverse(energy->fv,energy->T,0.0,0,iterator_initial_thermal_field,(void*)coeffs);CHKERRQ(ierr);
+    
+    // <DAM FV TESTING: Insert a cylinderical hot region centered at x = 9, y = -1.0>
+    //ierr = FVDAVecTraverse(energy->fv,energy->T,0.0,0,iterator_plume_thermal_field,NULL);CHKERRQ(ierr);
+    //ierr = FVDAVecTraverse(energy->fv,energy->T,0.0,0,iterator_plume_thermal_field_2,(void*)coeffs);CHKERRQ(ierr);
   }
   
   PetscFunctionReturn(0);
