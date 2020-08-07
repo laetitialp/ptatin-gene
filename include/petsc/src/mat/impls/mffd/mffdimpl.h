@@ -1,5 +1,5 @@
 /*
-This file has been copied from the PETSc 3.10 source tree (git commit d245c76cbd564eb268fb9086f7a891b164dc731f)
+This file has been copied from the PETSc 3.13.3 source tree
   $PETSC_DIR/src/mat/impls/mffd/mffdimpl.h
 */
 /*
@@ -54,10 +54,10 @@ struct _p_MatMFFD {
   PetscErrorCode (*funci)(void*,PetscInt,Vec,PetscScalar*); /* Evaluates func_[i]() */
   PetscErrorCode (*funcisetbase)(void*,Vec);                /* Sets base for future evaluations of func_[i]() */
 
-  PetscScalar vscale,vshift;   /* diagonal scale and shift by scalars */
-  Vec         dlscale,drscale; /* diagonal scale */
-  Vec         dshift,dshiftw;  /* shift by vectors */
-  void        *ctx;            /* this is used by MatCreateSNESMF() to store the SNES object */
+  void           *ctx;            /* this is used by MatCreateSNESMF() to store the SNES object */
+#if defined(PETSC_USE_COMPLEX)
+  PetscBool      usecomplex;      /* use Lyness complex number trick to compute the matrix-vector product */
+#endif
 };
 
 PETSC_EXTERN PetscFunctionList MatMFFDList;
