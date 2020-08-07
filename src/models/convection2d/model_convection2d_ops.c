@@ -443,7 +443,7 @@ PetscErrorCode ModelApplyInitialSolution_Thermal_Convection2d(pTatinCtx c,Vec X,
   ierr = VecZeroEntries(velocity);CHKERRQ(ierr);
   ierr = VecZeroEntries(pressure);CHKERRQ(ierr);
 
-  ierr = DMDAGetBoundingBox(dau,MeshMin,MeshMax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(dau,MeshMin,MeshMax);CHKERRQ(ierr);
   domain_height = MeshMax[1] - MeshMin[1];
 
   HPctx.surface_pressure = 0.0;

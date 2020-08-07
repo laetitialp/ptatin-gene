@@ -418,7 +418,7 @@ PetscErrorCode ModelApplyInitialSolution_Riftrh(pTatinCtx c,Vec X,void *ctx)
     ierr = VecZeroEntries(velocity);CHKERRQ(ierr);
     vxl = -data->vx_up;
     vxr =  data->vx_up;
-    ierr = DMDAGetBoundingBox(dau,MeshMin,MeshMax);CHKERRQ(ierr);
+    ierr = DMGetBoundingBox(dau,MeshMin,MeshMax);CHKERRQ(ierr);
     height = MeshMax[1] - MeshMin[1];
     length = MeshMax[0] - MeshMin[0];
     vybottom = 2.*data->vx_up * height / length;
@@ -500,7 +500,7 @@ PetscErrorCode ModelRiftrh_DefineBCList(BCList bclist,DM dav,pTatinCtx user,Mode
   if (vbc_type == 2) {
     vxl = -data->vx_up;
     vxr = data->vx_up;
-    ierr = DMDAGetBoundingBox(dau,MeshMin,MeshMax);CHKERRQ(ierr);
+    ierr = DMGetBoundingBox(dau,MeshMin,MeshMax);CHKERRQ(ierr);
     height = MeshMax[1] - MeshMin[1];
     length = MeshMax[0] - MeshMin[0];
     vybottom = 2.*data->vx_up * height / length;

@@ -225,7 +225,7 @@ PetscErrorCode ModelApplyInitialMeshGeometry_iPLUS(pTatinCtx c,void *ctx)
   }
 
   /* refine? */
-  ierr = DMDAGetBoundingBox(dav,Gmin,Gmax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(dav,Gmin,Gmax);CHKERRQ(ierr);
   Lx = (Gmax[0] - Gmin[0]);
   /* Ly = (Gmax[1] - Gmin[1]); */
   Lz = (Gmax[2] - Gmin[2]);

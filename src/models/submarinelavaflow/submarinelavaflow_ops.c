@@ -423,8 +423,8 @@ PetscErrorCode SubmarineLavaFlow_ApplyInflow(pTatinCtx c,SubmarineLavaFlowCtx *d
   ierr = MPI_Comm_rank(comm,&rank);CHKERRQ(ierr);
   ierr = DMDAGetInfo(dav,0,&M,&N,&P,&pI,&pJ,&pK,0,0,0,0,0,0);CHKERRQ(ierr);
 
-  ierr = DMDAGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
-  ierr = DMDAGetLocalBoundingBox(dav,lmin,lmax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
+  ierr = DMGetLocalBoundingBox(dav,lmin,lmax);CHKERRQ(ierr);
 
   /* insert at every time step */
 #if 0

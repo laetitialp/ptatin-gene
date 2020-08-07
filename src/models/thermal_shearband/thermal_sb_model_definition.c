@@ -244,7 +244,7 @@ PetscErrorCode ThermalSB_VelocityBC(BCList bclist,DM dav,pTatinCtx ptatinctx,The
      vy = vx Ly/Lx on the top face
    */
 
-  ierr = DMDAGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
   Lx = gmax[0] - gmin[0];
   Ly = gmax[1] - gmin[1];
 
@@ -422,7 +422,7 @@ PetscErrorCode ModelApplyInitialSolution_ThermalSB(pTatinCtx ptatinctx,Vec X,voi
   /* velocity intial condition - background strain */
   ierr = VecZeroEntries(velocity);CHKERRQ(ierr);
 
-  ierr = DMDAGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
   Lx = gmax[0] - gmin[0];
   Ly = gmax[1] - gmin[1];
 
@@ -491,7 +491,7 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_ThermalSB(pTatinCtx c,void *ctx
   stokes_pack = stokes->stokes_pack;
   ierr = DMCompositeGetEntries(stokes_pack,&dav,&dap);CHKERRQ(ierr);
 
-  ierr = DMDAGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
 
   ierr = pTatinGetMaterialPoints(c,&materialpoint_db,NULL);CHKERRQ(ierr);
   DataBucketGetSizes(materialpoint_db,&n_mpoints,0,0);
@@ -563,7 +563,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_ThermalSB(pTatinCtx c,Vec X,void *ct
 
   ierr = UpdateMeshGeometry_FullLagrangian(dav,velocity,step);CHKERRQ(ierr);
 
-  ierr = DMDAGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
   ierr = DMDASetUniformCoordinates1D(dav,0,gmin[0],gmax[0]);CHKERRQ(ierr);
   ierr = DMDASetUniformCoordinates1D(dav,1,gmin[1],gmax[1]);CHKERRQ(ierr);
   ierr = DMDASetUniformCoordinates1D(dav,2,gmin[2],gmax[2]);CHKERRQ(ierr);

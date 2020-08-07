@@ -196,7 +196,7 @@ PetscErrorCode DirichletBC_ApplyStrainRateExx(BCList bclist,DM dav,PetscReal exx
 
   PetscFunctionBegin;
 
-  ierr = DMDAGetBoundingBox(dav,MeshMin,MeshMax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(dav,MeshMin,MeshMax);CHKERRQ(ierr);
 
   Lx = (MeshMax[0] - MeshMin[0]);
   value = 0.5 * exx_bc * (Lx);
@@ -229,7 +229,7 @@ PetscErrorCode DirichletBC_ApplyStrainRateExy(BCList bclist,DM dav,PetscReal exy
 
   PetscFunctionBegin;
 
-  ierr = DMDAGetBoundingBox(dav,MeshMin,MeshMax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(dav,MeshMin,MeshMax);CHKERRQ(ierr);
   origin[0] = 0.5*(MeshMax[0] + MeshMin[0]);
   origin[1] = 0.5*(MeshMax[1] + MeshMin[1]);
   origin[2] = 0.5*(MeshMax[2] + MeshMin[2]);
@@ -268,7 +268,7 @@ PetscErrorCode DirichletBC_ApplyConstantAreaSection_ExtensionX_ShorteningY(BCLis
 
   PetscFunctionBegin;
 
-  ierr = DMDAGetBoundingBox(dav,MeshMin,MeshMax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(dav,MeshMin,MeshMax);CHKERRQ(ierr);
   origin[0] = 0.5*(MeshMax[0] + MeshMin[0]);
   origin[1] = 0.5*(MeshMax[1] + MeshMin[1]);
   origin[2] = 0.5*(MeshMax[2] + MeshMin[2]);
@@ -310,7 +310,7 @@ PetscErrorCode DirichletBC_ApplyConstantAreaSection_ExtensionX_ShorteningZ(BCLis
 
   PetscFunctionBegin;
 
-  ierr = DMDAGetBoundingBox(dav,MeshMin,MeshMax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(dav,MeshMin,MeshMax);CHKERRQ(ierr);
   origin[0] = 0.5*(MeshMax[0] + MeshMin[0]);
   origin[1] = 0.5*(MeshMax[1] + MeshMin[1]);
   origin[2] = 0.5*(MeshMax[2] + MeshMin[2]);
@@ -378,7 +378,7 @@ PetscErrorCode DirichletBC_ApplyConstantVolumeDomain_ExtensionXFractionShortenin
 
   PetscFunctionBegin;
 
-  ierr = DMDAGetBoundingBox(dav,MeshMin,MeshMax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(dav,MeshMin,MeshMax);CHKERRQ(ierr);
   origin[0] = 0.5*(MeshMax[0] + MeshMin[0]);
   origin[1] = 0.5*(MeshMax[1] + MeshMin[1]);
   origin[2] = 0.5*(MeshMax[2] + MeshMin[2]);
@@ -452,7 +452,7 @@ PetscReal DirichletBC_DefineExx(StrainRateBCCtx *ctx,PetscReal Exx,DM dav)
   ctx->beta  = 0.0;
   ctx->gamma = 0.0;
 
-  ierr = DMDAGetBoundingBox(dav,MeshMin,MeshMax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(dav,MeshMin,MeshMax);CHKERRQ(ierr);
   ctx->Ox[0] = 0.5*(MeshMax[0] + MeshMin[0]);
   ctx->Ox[1] = 0.5*(MeshMax[1] + MeshMin[1]);
   ctx->Ox[2] = 0.5*(MeshMax[2] + MeshMin[2]);
@@ -471,7 +471,7 @@ PetscReal DirichletBC_DefineEyy(StrainRateBCCtx *ctx,PetscReal Eyy,DM dav)
   ctx->beta  = Eyy;
   ctx->gamma = 0.0;
 
-  ierr = DMDAGetBoundingBox(dav,MeshMin,MeshMax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(dav,MeshMin,MeshMax);CHKERRQ(ierr);
   ctx->Ox[0] = 0.5*(MeshMax[0] + MeshMin[0]);
   ctx->Ox[1] = 0.5*(MeshMax[1] + MeshMin[1]);
   ctx->Ox[2] = 0.5*(MeshMax[2] + MeshMin[2]);
@@ -490,7 +490,7 @@ PetscReal DirichletBC_DefineEzz(StrainRateBCCtx *ctx,PetscReal Ezz,DM dav)
   ctx->beta  = 0.0;
   ctx->gamma = Ezz;
 
-  ierr = DMDAGetBoundingBox(dav,MeshMin,MeshMax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(dav,MeshMin,MeshMax);CHKERRQ(ierr);
   ctx->Ox[0] = 0.5*(MeshMax[0] + MeshMin[0]);
   ctx->Ox[1] = 0.5*(MeshMax[1] + MeshMin[1]);
   ctx->Ox[2] = 0.5*(MeshMax[2] + MeshMin[2]);
@@ -560,7 +560,7 @@ PetscErrorCode DirichletBC_ApplyStrainRateExz(BCList bclist,DM dav,PetscReal exz
 
   PetscFunctionBegin;
 
-  ierr = DMDAGetBoundingBox(dav,MeshMin,MeshMax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(dav,MeshMin,MeshMax);CHKERRQ(ierr);
   ctx.Ox[0] = 0.5*(MeshMax[0] + MeshMin[0]);
   ctx.Ox[1] = 0.5*(MeshMax[1] + MeshMin[1]);
   ctx.Ox[2] = 0.5*(MeshMax[2] + MeshMin[2]);
@@ -605,7 +605,7 @@ PetscErrorCode DirichletBC_ApplyStrainRateExz_b(BCList bclist,DM dav,PetscReal e
 
   PetscFunctionBegin;
 
-  ierr = DMDAGetBoundingBox(dav,MeshMin,MeshMax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(dav,MeshMin,MeshMax);CHKERRQ(ierr);
   ctx.Ox[0] = 0.5*(MeshMax[0] + MeshMin[0]);
   ctx.Ox[1] = 0.5*(MeshMax[1] + MeshMin[1]);
   ctx.Ox[2] = 0.5*(MeshMax[2] + MeshMin[2]);
@@ -647,7 +647,7 @@ PetscErrorCode DirichletBC_ApplyStrainRateExz_c(BCList bclist,DM dav,PetscReal e
 
   PetscFunctionBegin;
 
-  ierr = DMDAGetBoundingBox(dav,MeshMin,MeshMax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(dav,MeshMin,MeshMax);CHKERRQ(ierr);
   ctx.Ox[0] = 0.5*(MeshMax[0] + MeshMin[0]);
   ctx.Ox[1] = 0.5*(MeshMax[1] + MeshMin[1]);
   ctx.Ox[2] = 0.5*(MeshMax[2] + MeshMin[2]);
@@ -676,7 +676,7 @@ PetscErrorCode DirichletBC_ApplyConstantAreaSection_ExtensionX_ShorteningZ(BCLis
 
   PetscFunctionBegin;
 
-  ierr = DMDAGetBoundingBox(dav,MeshMin,MeshMax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(dav,MeshMin,MeshMax);CHKERRQ(ierr);
   ctx.Ox[0] = 0.5*(MeshMax[0] + MeshMin[0]);
   ctx.Ox[1] = 0.5*(MeshMax[1] + MeshMin[1]);
   ctx.Ox[2] = 0.5*(MeshMax[2] + MeshMin[2]);
@@ -707,7 +707,7 @@ PetscErrorCode DirichletBC_ApplyConstantVolumeDomain_ExtensionXFractionShortenin
 
   PetscFunctionBegin;
 
-  ierr = DMDAGetBoundingBox(dav,MeshMin,MeshMax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(dav,MeshMin,MeshMax);CHKERRQ(ierr);
   ctx.Ox[0] = 0.5*(MeshMax[0] + MeshMin[0]);
   ctx.Ox[1] = 0.5*(MeshMax[1] + MeshMin[1]);
   ctx.Ox[2] = 0.5*(MeshMax[2] + MeshMin[2]);

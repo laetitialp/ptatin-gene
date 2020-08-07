@@ -201,7 +201,7 @@ PetscErrorCode UpdateMeshGeometry_FullLagrangianWithVerticalSurfaceRemesh(DM dav
 
 
     ierr = DMDAGetInfo(dav,0,&M,&N,&P,0,0,0,0,0,0,0,0,0);CHKERRQ(ierr);
-    ierr = DMDAGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
+    ierr = DMGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
     dx = (gmax[0]-gmin[0])/( (PetscReal)((M-1)) );
 
     /* resample bottom nodes so they are equi-distance in x */
@@ -259,7 +259,7 @@ PetscErrorCode UpdateMeshGeometry_DecoupledHorizontalVerticalMeshMovement(DM dav
 
 
     ierr = DMDAGetInfo(dav,0,&M,&N,&P,0,0,0,0,0,0,0,0,0);CHKERRQ(ierr);
-    ierr = DMDAGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
+    ierr = DMGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
     dx = (gmax[0]-gmin[0])/( (PetscReal)((M-1)) );
     dz = (gmax[2]-gmin[2])/( (PetscReal)((P-1)) );
 
@@ -692,7 +692,7 @@ PetscErrorCode UpdateMeshGeometry_ApplyDiffusionJMAX(DM dav,PetscReal diffusivit
 
   ierr = DMDAGetInfo(daH,0,&NI,&NJ,&NK,0,0,0, 0,0,0,0,0,0);CHKERRQ(ierr);
   ierr = DMDAGetCorners(daH,&si,&sj,&sk,&ni,&nj,&nk);CHKERRQ(ierr);
-  ierr = DMDAGetBoundingBox(daH,MeshMin,MeshMax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(daH,MeshMin,MeshMax);CHKERRQ(ierr);
 
   ds = (MeshMax[0] - MeshMin[0])/((PetscReal)(NI-1));
   ds = PetscMin(ds, (MeshMax[2] - MeshMin[2])/((PetscReal)(NK-1)));

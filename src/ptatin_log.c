@@ -314,7 +314,7 @@ PetscErrorCode pTatinLogBasicDMDA(pTatinCtx ctx,const char dmname[],DM dm)
   coords = NULL;
   ierr = DMGetCoordinates(dm,&coords);CHKERRQ(ierr);
   if (coords) {
-    ierr = DMDAGetBoundingBox(dm,min,max);CHKERRQ(ierr);
+    ierr = DMGetBoundingBox(dm,min,max);CHKERRQ(ierr);
     PetscViewerASCIIPrintf(ctx->log,"    span [ %1.4e , %1.4e ] x [ %1.4e , %1.4e ] x [ %1.4e , %1.4e ]\n", min[0],max[0],min[1],max[1],min[2],max[2]);
   }
   PetscViewerASCIIPrintf(ctx->log,"    processor decomp [ %1.4d x %1.4d x %1.4d ]\n", m,n,p);

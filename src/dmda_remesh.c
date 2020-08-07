@@ -789,7 +789,7 @@ PetscErrorCode DMDACoordinateRefinementTransferFunction_OrthogonalFaces(DM da,Pe
   ierr = PetscObjectGetComm((PetscObject)da,&comm);CHKERRQ(ierr);
   ierr = DMDAGetInfo(da,0,&M,&N,&P,0,0,0,0,0,0,0,0,0);CHKERRQ(ierr);
   ierr = DMDAGetCorners(da,&si,&sj,&sk,&nx,&ny,&nz);CHKERRQ(ierr);
-  ierr = DMDAGetBoundingBox(da,gmin,gmax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(da,gmin,gmax);CHKERRQ(ierr);
 
   if (xnatural[0] < 0.0) SETERRQ1(comm,PETSC_ERR_USER,"xnatural[0] must be >= 0.0 (%1.4e)",xnatural[0]);
   if (xnatural[npoints-1] > 1.0) SETERRQ1(comm,PETSC_ERR_USER,"mesh_xmax > xnatural[last] must be < 1.0 (%1.4e)",xnatural[npoints-1]);
@@ -873,7 +873,7 @@ PetscErrorCode DMDACoordinateRefinementTransferFunction_PreserveFaceGeometry(DM 
   ierr = PetscObjectGetComm((PetscObject)da,&comm);CHKERRQ(ierr);
   ierr = DMDAGetInfo(da,0,&M,&N,&P,0,0,0,0,0,0,0,0,0);CHKERRQ(ierr);
   ierr = DMDAGetCorners(da,&si,&sj,&sk,&nx,&ny,&nz);CHKERRQ(ierr);
-  ierr = DMDAGetBoundingBox(da,gmin,gmax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(da,gmin,gmax);CHKERRQ(ierr);
 
   if (xnatural[0] < 0.0) SETERRQ1(comm,PETSC_ERR_USER,"xnatural[0] must be >= 0.0 (%1.4e)",xnatural[0]);
   if (xnatural[npoints-1] > 1.0) SETERRQ1(comm,PETSC_ERR_USER,"mesh_xmax > xnatural[last] must be < 1.0 (%1.4e)",xnatural[npoints-1]);
@@ -1062,7 +1062,7 @@ PetscErrorCode _DMDACoordinateRefinementTransferFunction(DM da,PetscInt dir,Pets
   ierr = PetscObjectGetComm((PetscObject)da,&comm);CHKERRQ(ierr);
   ierr = DMDAGetInfo(da,0,&M,&N,&P,0,0,0,0,0,0,0,0,0);CHKERRQ(ierr);
   ierr = DMDAGetCorners(da,&si,&sj,&sk,&nx,&ny,&nz);CHKERRQ(ierr);
-  ierr = DMDAGetBoundingBox(da,gmin,gmax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(da,gmin,gmax);CHKERRQ(ierr);
 
   switch (dir) {
     case 0:

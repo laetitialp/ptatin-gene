@@ -488,7 +488,7 @@ PetscErrorCode ModelApplyInitialCondition_Delamination(pTatinCtx c,Vec X,void *c
    */
   ierr = VecZeroEntries(pressure);CHKERRQ(ierr);
 
-  ierr = DMDAGetBoundingBox(dau,MeshMin,MeshMax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(dau,MeshMin,MeshMax);CHKERRQ(ierr);
   domain_height = MeshMax[1] - MeshMin[1];
 
   HPctx.surface_pressure = 0.0;

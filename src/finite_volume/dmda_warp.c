@@ -31,7 +31,7 @@ PetscErrorCode DMDAWarpCoordinates_SinJMax(DM da,PetscReal amp,PetscReal omega[]
     if (flg) { omega[1] = tmp; }
   }
   
-  ierr = DMDAGetBoundingBox(da,Gmin,Gmax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(da,Gmin,Gmax);CHKERRQ(ierr);
   ierr = DMDASetUniformCoordinates(da,-1.0,1.0,-1.0,1.0,-1.0,1.0);CHKERRQ(ierr);
   
   ierr = DMDAGetInfo(da,NULL,NULL,&MY,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL);CHKERRQ(ierr);
@@ -111,7 +111,7 @@ PetscErrorCode DMDAWarpCoordinates_ExpJMax(DM da,PetscReal amp,PetscReal lambda[
     if (flg) { lambda[1] = tmp; }
   }
   
-  ierr = DMDAGetBoundingBox(da,Gmin,Gmax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(da,Gmin,Gmax);CHKERRQ(ierr);
   ierr = DMDASetUniformCoordinates(da,-1.0,1.0,-1.0,1.0,-1.0,1.0);CHKERRQ(ierr);
   
   ierr = DMDAGetInfo(da,NULL,NULL,&MY,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL);CHKERRQ(ierr);

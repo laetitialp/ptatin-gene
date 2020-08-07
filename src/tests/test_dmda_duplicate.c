@@ -59,7 +59,7 @@ PetscErrorCode DMDAPerturbCoordinates(DM da,PetscScalar perturb)
   ierr = PetscOptionsGetScalar(NULL,NULL,"-perturb",&perturb,&flg);CHKERRQ(ierr);
 
   /* get average cell sizes */
-  ierr = DMDAGetBoundingBox(da,gmin,gmax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(da,gmin,gmax);CHKERRQ(ierr);
   ierr = DMDAGetInfo(da,0,&M,&N,&P,0,0,0, 0,0,0,0,0,0);CHKERRQ(ierr);
   avgdx = (gmax[0]-gmin[0])/( (PetscReal)(M-1) );
   avgdy = (gmax[1]-gmin[1])/( (PetscReal)(N-1) );
@@ -127,7 +127,7 @@ PetscErrorCode test_DMDADuplicateLayout(PetscInt nx,PetscInt ny,PetscInt nz)
 
 
   /* get average cell sizes */
-  ierr = DMDAGetBoundingBox(da,gmin,gmax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(da,gmin,gmax);CHKERRQ(ierr);
   ierr = DMDAGetInfo(da,0,&M,&N,&P,0,0,0, 0,0,0,0,0,0);CHKERRQ(ierr);
   avgdx = (gmax[0]-gmin[0])/( (PetscReal)(M-1) );
   avgdy = (gmax[1]-gmin[1])/( (PetscReal)(N-1) );

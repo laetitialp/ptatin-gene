@@ -108,7 +108,7 @@ PetscErrorCode test_dmda_checkpoint_pack(void)
 
   ierr = DMView( da, PETSC_VIEWER_STDOUT_WORLD );CHKERRQ(ierr);
 
-  ierr = DMDAGetBoundingBox(da,gmin,gmax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(da,gmin,gmax);CHKERRQ(ierr);
   PetscPrintf( PETSC_COMM_WORLD, "gmin-x = %1.5e \n", gmin[0] );
   PetscPrintf( PETSC_COMM_WORLD, "gmin-y = %1.5e \n", gmin[1] );
   PetscPrintf( PETSC_COMM_WORLD, "gmin-z = %1.5e \n", gmin[2] );
@@ -142,7 +142,7 @@ PetscErrorCode test_dmda_checkpoint_load( void )
 
   ierr = DMView( da, PETSC_VIEWER_STDOUT_WORLD );CHKERRQ(ierr);
 
-  ierr = DMDAGetBoundingBox(da,gmin,gmax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(da,gmin,gmax);CHKERRQ(ierr);
   PetscPrintf( PETSC_COMM_WORLD, "(r) gmin-x = %1.5e \n", gmin[0] );
   PetscPrintf( PETSC_COMM_WORLD, "(r) gmin-y = %1.5e \n", gmin[1] );
   PetscPrintf( PETSC_COMM_WORLD, "(r) gmin-z = %1.5e \n", gmin[2] );

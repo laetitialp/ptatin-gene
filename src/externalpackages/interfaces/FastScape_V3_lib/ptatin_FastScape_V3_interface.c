@@ -120,7 +120,7 @@ PetscErrorCode _ptatin3d_ApplyLandscapeEvolutionModel_FastScape_V3(
   ierr = DMCompositeGetEntries(stokes_pack,&dav,&dap);CHKERRQ(ierr);
 
   ierr = DMDAGetSizeElementQ2(dav,&mx,&my,&mz);CHKERRQ(ierr);
-  ierr = DMDAGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
 
   /* scatter parallel surface onto rank 0 */
   ierr = DMDAGatherIKRedundantSurfaceDMDA(dav,&dm_spmsurf0);CHKERRQ(ierr);

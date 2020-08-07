@@ -76,7 +76,7 @@ PetscErrorCode MeshDeformation_GaussianBump_YMAX(DM da,PetscReal gbump_amp,Petsc
   ierr = PetscOptionsGetReal(NULL,NULL,"-gbump_zorigin",&zshift,&flg);CHKERRQ(ierr);
 
 
-  ierr = DMDAGetBoundingBox(da,Gmin,Gmax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(da,Gmin,Gmax);CHKERRQ(ierr);
   ierr = DMDASetUniformCoordinates(da,-1.0,1.0, -1.0,1.0, -1.0,1.0);CHKERRQ(ierr);
 
   ierr = DMDAGetInfo(da,0,0,&MY,0, 0,0,0, 0,0,0,0,0,0);CHKERRQ(ierr);
@@ -151,7 +151,7 @@ PetscErrorCode MeshDeformation_Sinusodial_ZMAX(DM da)
   ierr = PetscOptionsGetReal(NULL,NULL,"-theta",&theta,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetReal(NULL,NULL,"-phi",&phi,NULL);CHKERRQ(ierr);
 
-  ierr = DMDAGetBoundingBox(da,MeshMin,MeshMax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(da,MeshMin,MeshMax);CHKERRQ(ierr);
 
 
   ierr = DMDAGetInfo(da,0,0,0,&MZ, 0,0,0, 0,0,0,0,0,0);CHKERRQ(ierr);
@@ -198,7 +198,7 @@ PetscErrorCode MeshDeformation_ShearXY(DM da)
 
 
   //ierr = DMDASetUniformCoordinates(da,-1.0,1.0, -1.0,1.0, -1.0,1.0);CHKERRQ(ierr);
-  ierr = DMDAGetBoundingBox(da,MeshMin,MeshMax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(da,MeshMin,MeshMax);CHKERRQ(ierr);
   //Lx = (MeshMax[0] - MeshMin[0]);
   Ly = (MeshMax[1] - MeshMin[1]);
   theta = atan( y_displacement / Ly );
@@ -322,7 +322,7 @@ PetscErrorCode DMDASetGraduatedCoordinates1D(DM da,PetscInt dir,PetscInt side,Pe
   ierr = DMDAGetInfo(da,0,&M,&N,&P, 0,0,0, 0,0,0,0,0,0);CHKERRQ(ierr);
   ierr = DMDAGetCorners(da,&si,&sj,&sk,&nx,&ny,&nz);CHKERRQ(ierr);
 
-  ierr = DMDAGetBoundingBox(da,MeshMin,MeshMax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(da,MeshMin,MeshMax);CHKERRQ(ierr);
   Lx[0] = (MeshMax[0] - MeshMin[0]);
   Lx[1] = (MeshMax[1] - MeshMin[1]);
   Lx[2] = (MeshMax[2] - MeshMin[2]);

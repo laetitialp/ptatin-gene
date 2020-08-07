@@ -226,7 +226,7 @@ PetscErrorCode _ptatin3d_ApplyLandscapeEvolutionModel_SPMA(pTatinCtx pctx,Vec X)
   ierr = MPI_Comm_rank(PetscObjectComm((PetscObject)dau),&rank);CHKERRQ(ierr);
   spm_rank = nproc - 1;
 
-  ierr= DMDAGetBoundingBox(dau,min,max);CHKERRQ(ierr);
+  ierr= DMGetBoundingBox(dau,min,max);CHKERRQ(ierr);
   Lx = (double)( max[0] - min[0] );
   Lz = (double)( max[2] - min[2] );
 

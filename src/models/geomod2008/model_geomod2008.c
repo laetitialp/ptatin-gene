@@ -417,7 +417,7 @@ PetscErrorCode GeomMod2008ApplyFrictionalBoundarySkin(ModelCtxGeoMod2008 data,DM
 
   /* compute dx */
   ierr = DMDAGetInfo(dav,0,&M,&N,&P,0,0,0,0,0,0,0,0,0);CHKERRQ(ierr);
-  ierr = DMDAGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
   dx = (gmax[0]-gmin[0])/((PetscReal)((M-1)/2));
   dy = (gmax[1]-gmin[1])/((PetscReal)((N-1)/2));
   dz = (gmax[2]-gmin[2])/((PetscReal)((P-1)/2));
@@ -822,7 +822,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_GeoMod2008(pTatinCtx c,Vec X,void *c
 
     ierr = DMCompositeRestoreAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
 
-    ierr = DMDAGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
+    ierr = DMGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
     ierr = DMDASetUniformCoordinates(dav,0.0,gmax[0],0.0,data->Ly,0.0,gmax[2]);CHKERRQ(ierr);
     ierr = DMDAUpdateGhostedCoordinates(dav);CHKERRQ(ierr);
   } else {

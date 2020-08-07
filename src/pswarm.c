@@ -834,7 +834,7 @@ PetscErrorCode PSwarmSetUpCoords_FillBox(PSwarm ps)
   dx[1] = (xmax[1]-xmin[1])/((PetscReal)Nxp[1]-1);
   dx[2] = (xmax[2]-xmin[2])/((PetscReal)Nxp[2]-1);
 
-  /*ierr = DMDAGetLocalBoundingBox(dmv,damin,damax);CHKERRQ(ierr);*/
+  /*ierr = DMGetLocalBoundingBox(dmv,damin,damax);CHKERRQ(ierr);*/
   ierr = DMDAComputeQ2ElementBoundingBox(dmv,elmin,elmax);CHKERRQ(ierr);
   ierr = DMDAComputeQ2LocalBoundingBox(dmv,damin,damax);CHKERRQ(ierr);
   damin[0] -= elmin[0] * 1.0e-6;

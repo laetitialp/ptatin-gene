@@ -301,7 +301,7 @@ PetscErrorCode BoundaryCondition_MultilayerFolding(DM dav,BCList bclist,pTatinCt
         ierr = DirichletBC_ApplyDirectStrainRate(bclist,dav,ezz,2);CHKERRQ(ierr);
 
         /* move base down to accomodate pure thickening */
-        ierr = DMDAGetBoundingBox(dav,Min,Max);CHKERRQ(ierr);
+        ierr = DMGetBoundingBox(dav,Min,Max);CHKERRQ(ierr);
         Ly = Max[1]-Min[1];
 
         vyB = 0.5 * (data->exx + data->ezz)*Ly;
@@ -1235,7 +1235,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_MultilayerFolding(pTatinCtx c,Vec X,
     //ierr = pTatin3d_ModelOutput_VelocityPressure_Stokes(c,X,"before");CHKERRQ(ierr);
 
     /* clean up base */
-    ierr = DMDAGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
+    ierr = DMGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
     span_xz[0].x = gmin[0];    span_xz[0].y = gmin[1];    span_xz[0].z = gmin[2];
     span_xz[1].x = gmin[0];    span_xz[1].y = gmin[1];    span_xz[1].z = gmax[2];
     span_xz[2].x = gmax[0];    span_xz[2].y = gmin[1];    span_xz[2].z = gmax[2];
@@ -1257,7 +1257,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_MultilayerFolding(pTatinCtx c,Vec X,
 
     ierr = DMDAGetInfo(dav,0,0,&JMAX,0,0,0,0,0,0,0,0,0,0);CHKERRQ(ierr);
 
-    ierr = DMDAGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
+    ierr = DMGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
     span_xz[0].x = gmin[0];    span_xz[0].y = gmin[1];    span_xz[0].z = gmin[2];
     span_xz[1].x = gmin[0];    span_xz[1].y = gmin[1];    span_xz[1].z = gmax[2];
     span_xz[2].x = gmax[0];    span_xz[2].y = gmin[1];    span_xz[2].z = gmax[2];
@@ -1308,7 +1308,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_MultilayerFolding(pTatinCtx c,Vec X,
       PetscPrintf(PETSC_COMM_WORLD,"[[%s]] Activating basal layer remeshing\n", PETSC_FUNCTION_NAME);
 
       /* clean up base */
-      ierr = DMDAGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
+      ierr = DMGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
       span_xz[0].x = gmin[0];    span_xz[0].y = gmin[1];    span_xz[0].z = gmin[2];
       span_xz[1].x = gmin[0];    span_xz[1].y = gmin[1];    span_xz[1].z = gmax[2];
       span_xz[2].x = gmax[0];    span_xz[2].y = gmin[1];    span_xz[2].z = gmax[2];
@@ -1335,7 +1335,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_MultilayerFolding(pTatinCtx c,Vec X,
 
     ierr = DMDAGetInfo(dav,0,0,&JMAX,0,0,0,0,0,0,0,0,0,0);CHKERRQ(ierr);
 
-    ierr = DMDAGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
+    ierr = DMGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
     span_xz[0].x = gmin[0];    span_xz[0].y = gmin[1];    span_xz[0].z = gmin[2];
     span_xz[1].x = gmin[0];    span_xz[1].y = gmin[1];    span_xz[1].z = gmax[2];
     span_xz[2].x = gmax[0];    span_xz[2].y = gmin[1];    span_xz[2].z = gmax[2];
@@ -1396,7 +1396,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_MultilayerFolding(pTatinCtx c,Vec X,
       /* [A] create mesh advection velocity field in x-z */
       ierr = DMCreateGlobalVector(dav,&mesh_velocity);CHKERRQ(ierr);
 
-      ierr = DMDAGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
+      ierr = DMGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
       Lx = gmax[0] - gmin[0];
       Lz = gmax[2] - gmin[2];
 
@@ -1483,7 +1483,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_MultilayerFolding(pTatinCtx c,Vec X,
       /* [A] create mesh advection velocity field in x-z */
       ierr = DMCreateGlobalVector(dav,&mesh_velocity);CHKERRQ(ierr);
 
-      ierr = DMDAGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
+      ierr = DMGetBoundingBox(dav,gmin,gmax);CHKERRQ(ierr);
       Lx = gmax[0] - gmin[0];   Ox = gmin[0];
       Lz = gmax[2] - gmin[2];   Oz = gmin[2];
 

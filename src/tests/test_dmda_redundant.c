@@ -60,7 +60,7 @@ PetscErrorCode DMDAPerturbCoordinates(DM da,PetscScalar perturbA)
   ierr = PetscOptionsGetScalar(NULL,NULL,"-perturb",&perturb,&flg);CHKERRQ(ierr);
 
   /* get average cell sizes */
-  ierr = DMDAGetBoundingBox(da,gmin,gmax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(da,gmin,gmax);CHKERRQ(ierr);
   ierr = DMDAGetInfo(da,0,&M,&N,&P,0,0,0, 0,0,0,0,0,0);CHKERRQ(ierr);
   avgdx = (gmax[0]-gmin[0])/( (PetscReal)(M-1) );
   avgdy = (gmax[1]-gmin[1])/( (PetscReal)(N-1) );
@@ -120,7 +120,7 @@ PetscErrorCode test_DMDACreate3dRedundant(PetscInt nx,PetscInt ny,PetscInt nz)
   ierr = DMDASetUniformCoordinates(da, x0,x1, y0,y1, z0,z1);CHKERRQ(ierr);
 
   /* get average cell sizes */
-  ierr = DMDAGetBoundingBox(da,gmin,gmax);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(da,gmin,gmax);CHKERRQ(ierr);
   ierr = DMDAGetInfo(da,0,&M,&N,&P,0,0,0, 0,0,0,0,0,0);CHKERRQ(ierr);
   avgdx = (gmax[0]-gmin[0])/( (PetscReal)(M-1) );
   avgdy = (gmax[1]-gmin[1])/( (PetscReal)(N-1) );
