@@ -878,14 +878,72 @@ PetscErrorCode FVDAPPCompatibleVelocityCreate(FVDA fv,KSP *ksp)
   ierr = DMCreateMatrix(fv->dm_fv,&A);CHKERRQ(ierr);
   
   ierr = KSPCreate(PetscObjectComm((PetscObject)fv->dm_fv),ksp);CHKERRQ(ierr);
-  ierr = KSPSetDM(*ksp,fv->dm_fv);CHKERRQ(ierr);
-  ierr = KSPSetDMActive(*ksp,PETSC_FALSE);CHKERRQ(ierr);
+  //ierr = KSPSetDM(*ksp,fv->dm_fv);CHKERRQ(ierr);
+  //ierr = KSPSetDMActive(*ksp,PETSC_FALSE);CHKERRQ(ierr);
   ierr = KSPSetOptionsPrefix(*ksp,"fvpp_");CHKERRQ(ierr);
   ierr = KSPSetTolerances(*ksp,1.0e-10,1.0e-20,PETSC_DEFAULT,PETSC_DEFAULT);CHKERRQ(ierr);
   ierr = KSPSetFromOptions(*ksp);CHKERRQ(ierr);
   ierr = KSPSetOperators(*ksp,A,A);CHKERRQ(ierr); /* we set A here so that KSP owns A */
   ierr = MatDestroy(&A);CHKERRQ(ierr);
 
+  /*
+  {
+    DM dmc;
+    Mat interp;
+    
+    ierr = DMDASetInterpolationType(fv->dm_fv, DMDA_Q0);CHKERRQ(ierr);
+    ierr = DMDACreate3d(fv->comm,
+                        DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,
+                        DMDA_STENCIL_BOX,
+                        fv->Mi[0]/2,fv->Mi[1]/2,fv->Mi[2]/2,
+                        1,1,1,
+                        1,
+                        1,
+                        NULL,NULL,NULL,&dmc);CHKERRQ(ierr);
+    ierr = DMSetUp(dmc);CHKERRQ(ierr);
+    ierr = DMDASetInterpolationType(dmc, DMDA_Q0);CHKERRQ(ierr);
+    
+    PC pc;
+    
+    DMCreateInterpolation(dmc,fv->dm_fv,&interp,NULL);
+    KSPGetPC(ksp,&pc);
+    PCSetType(pc,PCMG);
+    PCMGSetLevels(pc,2,NULL);
+    PCMGSetInterpolation(pc,1,interp);
+  }
+  */
+  {
+    PC        pc;
+    PetscBool ismg;
+    DM        dm,*dml;
+    Mat       interp;
+    PetscInt  nlevels,k;
+    
+    ierr = KSPGetPC(*ksp,&pc);CHKERRQ(ierr);
+    ierr = PetscObjectTypeCompare((PetscObject)pc,PCMG,&ismg);CHKERRQ(ierr);
+    if (ismg) {
+      ierr = DMClone(fv->dm_fv,&dm);CHKERRQ(ierr);
+      ierr = DMDASetInterpolationType(dm,DMDA_Q0);CHKERRQ(ierr);
+      ierr = PCMGGetLevels(pc,&nlevels);CHKERRQ(ierr);
+      ierr = PetscCalloc1(nlevels,&dml);CHKERRQ(ierr);
+      dml[0] = dm;
+      for (k=1; k<nlevels; k++) {
+        ierr = DMCoarsen(dml[k-1],fv->comm,&dml[k]);CHKERRQ(ierr);
+        ierr = DMDASetInterpolationType(dml[k],DMDA_Q0);CHKERRQ(ierr);
+      }
+      for (k=1; k<nlevels; k++) {
+        ierr = DMCreateInterpolation(dml[k],dml[k-1],&interp,NULL);CHKERRQ(ierr);
+        ierr = PCMGSetInterpolation(pc,nlevels-k,interp);CHKERRQ(ierr);
+        ierr = MatDestroy(&interp);CHKERRQ(ierr);
+      }
+      ierr = PCMGSetGalerkin(pc,PC_MG_GALERKIN_BOTH);CHKERRQ(ierr);
+      for (k=0; k<nlevels; k++) {
+        ierr = DMDestroy(&dml[k]);CHKERRQ(ierr);
+      }
+      ierr = PetscFree(dml);CHKERRQ(ierr);
+    }
+  }
+  
   PetscFunctionReturn(0);
 }
 
