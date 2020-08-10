@@ -19,9 +19,6 @@ PetscErrorCode PhysCompEnergyFVInterpolateMacroQ2ToSubQ1(DM dmv,Vec X,PhysCompEn
 PetscErrorCode PhysCompEnergyFVInterpolateNormalVectorToFace(PhysCompEnergyFV energy,Vec X,const char face_field_name[]);
 PetscErrorCode PhysCompEnergyFVInterpolateVectorToFace(PhysCompEnergyFV energy,Vec X,const char face_field_name[]);
 
-PetscErrorCode _cart_convert_index_to_ijk(PetscInt r,const PetscInt mp[],PetscInt rijk[]);
-PetscErrorCode _cart_convert_ijk_to_index(const PetscInt rijk[],const PetscInt mp[],PetscInt *r);
-
 PetscErrorCode pTatinPhysCompActivate_EnergyFV(pTatinCtx user,PetscBool load);
 PetscErrorCode pTatinGetContext_EnergyFV(pTatinCtx ctx,PhysCompEnergyFV *e);
 PetscErrorCode pTatinContextValid_EnergyFV(pTatinCtx ctx,PetscBool *exists);

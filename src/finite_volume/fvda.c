@@ -1245,7 +1245,9 @@ PetscErrorCode cart_convert_2d(PetscInt r,const PetscInt mp[],PetscInt rij[])
   PetscFunctionBegin;
   rij[1] = r/mp[0];
   rij[0] = r - rij[1] * mp[0];
+#if defined(PETSC_USE_DEBUG)
   if (r != rij[0] + rij[1]*mp[0]) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"cart_convert_2d() conversion failed");
+#endif
   PetscFunctionReturn(0);
 }
 
@@ -1257,7 +1259,33 @@ PetscErrorCode cart_convert_3d(PetscInt r,const PetscInt mp[],PetscInt rijk[])
   rij = r - rijk[2] * mp[0] * mp[1];
   rijk[1] = rij/mp[0];
   rijk[0] = rij - rijk[1] * mp[0];
+#if defined(PETSC_USE_DEBUG)
   if (r != rijk[0] + rijk[1]*mp[0] + rijk[2]*mp[0]*mp[1]) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"cart_convert_3d() conversion failed");
+#endif
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode _cart_convert_index_to_ijk(PetscInt r,const PetscInt mp[],PetscInt rijk[])
+{
+  PetscInt rij;
+  PetscFunctionBegin;
+  rijk[2] = r / (mp[0] * mp[1]);
+  rij = r - rijk[2] * mp[0] * mp[1];
+  rijk[1] = rij/mp[0];
+  rijk[0] = rij - rijk[1] * mp[0];
+#if defined(PETSC_USE_DEBUG)
+  if (r != rijk[0] + rijk[1]*mp[0] + rijk[2]*mp[0]*mp[1]) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"_cart_convert_index_to_ijk() conversion failed");
+#endif
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode _cart_convert_ijk_to_index(const PetscInt rijk[],const PetscInt mp[],PetscInt *r)
+{
+  PetscFunctionBegin;
+  *r = rijk[0] + rijk[1]*mp[0] + rijk[2]*mp[0]*mp[1];
+#if defined(PETSC_USE_DEBUG)
+  if (*r != rijk[0] + rijk[1]*mp[0] + rijk[2]*mp[0]*mp[1]) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"_cart_convert_ijk_to_index() conversion failed");
+#endif
   PetscFunctionReturn(0);
 }
 
@@ -4049,34 +4077,31 @@ PetscErrorCode eval_F_diffusion_7point_hr_local_store_MPI(FVDA fv,const PetscRea
   PetscFunctionBegin;
   dm = fv->dm_fv;
   
-  ierr = PetscMalloc1(fv->ncells*3,&coeff);CHKERRQ(ierr);
-  /*
-  for (c=0; c<fv->ncells; c++) {
-    ierr = FVDAGetReconstructionStencil_AtCell(fv,c,&n_neigh,neigh);CHKERRQ(ierr);
-    ierr = setup_coeff(fv,c,n_neigh,(const PetscInt*)neigh,fv_coor,X,_coeff);CHKERRQ(ierr);
-    coeff[3*c+0] = _coeff[0];
-    coeff[3*c+1] = _coeff[1];
-    coeff[3*c+2] = _coeff[2];
-  }
-  */
-  for (f=0; f<fv->nfaces; f++) {
-    if (fv->face_element_map[2*f+0] >= 0) {
-      PetscInt cl = fv->face_element_map[2*f+0];
-      c = fv->face_fv_map[2*f+0];
+  ierr = PetscCalloc1(fv->ncells*3,&coeff);CHKERRQ(ierr);
+  {
+    PetscInt e,fv_start[3],fv_range[3],fv_start_local[3],fv_ghost_offset[3],fv_ghost_range[3];
+    
+    ierr = DMDAGetCorners(fv->dm_fv,&fv_start[0],&fv_start[1],&fv_start[2],&fv_range[0],&fv_range[1],&fv_range[2]);CHKERRQ(ierr);
+    ierr = DMDAGetGhostCorners(fv->dm_fv,&fv_start_local[0],&fv_start_local[1],&fv_start_local[2],&fv_ghost_range[0],&fv_ghost_range[1],&fv_ghost_range[2]);CHKERRQ(ierr);
+    fv_ghost_offset[0] = fv_start[0] - fv_start_local[0];
+    fv_ghost_offset[1] = fv_start[1] - fv_start_local[1];
+    fv_ghost_offset[2] = fv_start[2] - fv_start_local[2];
+
+    for (e=0; e<fv->ncells; e++) {
+      PetscInt cijk[3];
+      
+      ierr = _cart_convert_index_to_ijk(e,(const PetscInt*)fv_range,cijk);CHKERRQ(ierr);
+      cijk[0] += fv_ghost_offset[0];
+      cijk[1] += fv_ghost_offset[1];
+      cijk[2] += fv_ghost_offset[2];
+      
+      ierr = _cart_convert_ijk_to_index((const PetscInt*)cijk,(const PetscInt*)fv_ghost_range,&c);CHKERRQ(ierr);
+
       ierr = FVDAGetReconstructionStencil_AtCell(fv,c,&n_neigh,neigh);CHKERRQ(ierr);
       ierr = setup_coeff(fv,c,n_neigh,(const PetscInt*)neigh,fv_coor,X,_coeff);CHKERRQ(ierr);
-      coeff[3*cl+0] = _coeff[0];
-      coeff[3*cl+1] = _coeff[1];
-      coeff[3*cl+2] = _coeff[2];
-    }
-    if (fv->face_element_map[2*f+1] >= 0) {
-      PetscInt cl = fv->face_element_map[2*f+1];
-      c = fv->face_fv_map[2*f+1];
-      ierr = FVDAGetReconstructionStencil_AtCell(fv,c,&n_neigh,neigh);CHKERRQ(ierr);
-      ierr = setup_coeff(fv,c,n_neigh,(const PetscInt*)neigh,fv_coor,X,_coeff);CHKERRQ(ierr);
-      coeff[3*cl+0] = _coeff[0];
-      coeff[3*cl+1] = _coeff[1];
-      coeff[3*cl+2] = _coeff[2];
+      coeff[3*c+0] = _coeff[0];
+      coeff[3*c+1] = _coeff[1];
+      coeff[3*c+2] = _coeff[2];
     }
   }
   

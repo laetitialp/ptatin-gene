@@ -734,26 +734,6 @@ PetscErrorCode fvgeometry_dmda3d_create_from_element_partition(MPI_Comm comm,Pet
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode _cart_convert_index_to_ijk(PetscInt r,const PetscInt mp[],PetscInt rijk[])
-{
-  PetscInt rij;
-  PetscFunctionBegin;
-  rijk[2] = r / (mp[0] * mp[1]);
-  rij = r - rijk[2] * mp[0] * mp[1];
-  rijk[1] = rij/mp[0];
-  rijk[0] = rij - rijk[1] * mp[0];
-  if (r != rijk[0] + rijk[1]*mp[0] + rijk[2]*mp[0]*mp[1]) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"_cart_convert_index_to_ijk() conversion failed");
-  PetscFunctionReturn(0);
-}
-
-PetscErrorCode _cart_convert_ijk_to_index(const PetscInt rijk[],const PetscInt mp[],PetscInt *r)
-{
-  PetscFunctionBegin;
-  *r = rijk[0] + rijk[1]*mp[0] + rijk[2]*mp[0]*mp[1];
-  if (*r != rijk[0] + rijk[1]*mp[0] + rijk[2]*mp[0]*mp[1]) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"_cart_convert_ijk_to_index() conversion failed");
-  PetscFunctionReturn(0);
-}
-
 /* ptatin-PhysCompEnergyFV functionality */
 PetscErrorCode pTatinPhysCompActivate_EnergyFV(pTatinCtx user,PetscBool load)
 {

@@ -122,4 +122,7 @@ PetscErrorCode FVDAVecTraverse(FVDA fv,Vec X,PetscReal time,PetscInt dof,
                                PetscBool user_setter(PetscScalar*,PetscScalar*,void*),
                                void *data);
 
+PetscErrorCode _cart_convert_index_to_ijk(PetscInt r,const PetscInt mp[],PetscInt rijk[]);
+PetscErrorCode _cart_convert_ijk_to_index(const PetscInt rijk[],const PetscInt mp[],PetscInt *r);
+
 #endif
