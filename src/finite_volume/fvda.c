@@ -4099,9 +4099,9 @@ PetscErrorCode eval_F_diffusion_7point_hr_local_store_MPI(FVDA fv,const PetscRea
 
       ierr = FVDAGetReconstructionStencil_AtCell(fv,c,&n_neigh,neigh);CHKERRQ(ierr);
       ierr = setup_coeff(fv,c,n_neigh,(const PetscInt*)neigh,fv_coor,X,_coeff);CHKERRQ(ierr);
-      coeff[3*c+0] = _coeff[0];
-      coeff[3*c+1] = _coeff[1];
-      coeff[3*c+2] = _coeff[2];
+      coeff[3*e+0] = _coeff[0];
+      coeff[3*e+1] = _coeff[1];
+      coeff[3*e+2] = _coeff[2];
     }
   }
   
