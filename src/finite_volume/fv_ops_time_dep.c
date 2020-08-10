@@ -431,7 +431,7 @@ PetscErrorCode fvda_highres_eval_F_timedep(SNES snes,Vec X,Vec F,void *data)
   ierr = VecRestoreArray(Fl,&_F);CHKERRQ(ierr);
   ierr = VecRestoreArrayRead(Xl,&_X);CHKERRQ(ierr);
   
-  ierr = DMLocalToGlobal(dm,Fl,INSERT_VALUES,F);CHKERRQ(ierr);
+  ierr = DMLocalToGlobal(dm,Fl,ADD_VALUES,F);CHKERRQ(ierr);
   
   ierr = DMRestoreLocalVector(dm,&Fl);CHKERRQ(ierr);
   ierr = DMRestoreLocalVector(dm,&Xl);CHKERRQ(ierr);
