@@ -1516,7 +1516,9 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
   }
 
   /* dump */
-  ierr = pTatinModel_Output(model,user,X,"step000000");CHKERRQ(ierr);
+  if (write_icbc) {
+    ierr = pTatinModel_Output(model,user,X,"step000000");CHKERRQ(ierr);
+  }
 
   /* compute timestep */
   user->dt = 1.0e32;
@@ -1884,7 +1886,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
     //ierr = pTatinLogPetscLog(user,"Stokes");CHKERRQ(ierr);
 
     /* output */
-    if ( (step%user->output_frequency == 0) || (step == 1) ) {
+    if (step%user->output_frequency == 0) {
       PetscSNPrintf(stepname,PETSC_MAX_PATH_LEN-1,"step%1.6D",step);
       ierr = pTatinModel_Output(model,user,X,stepname);CHKERRQ(ierr);
     }
@@ -1990,7 +1992,6 @@ int main(int argc,char **argv)
   if (experimental_driver) {
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"-nonlinear_driver_v1 only");
   } else if (experimental_driver1) {
-    PetscPrintf(PETSC_COMM_WORLD,"[[Using \"pTatin3d_nonlinear_viscous_forward_model_driver_v1\"]]\n");
     ierr = pTatin3d_nonlinear_viscous_forward_model_driver_v1(argc,argv);CHKERRQ(ierr);
   } else {
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"-nonlinear_driver_v1 only");
