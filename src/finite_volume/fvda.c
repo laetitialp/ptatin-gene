@@ -4115,10 +4115,14 @@ PetscErrorCode eval_F_diffusion_7point_hr_local_store_MPI(FVDA fv,const PetscRea
     }
     flux = k_face * (X_p - X_m) / dsn;
     
-    
-    F[c_m] += flux * dS; // cell[-]
-    F[c_p] -= flux * dS; // cell[+]
-
+    if (fv->face_element_map[2*f+0] >= 0) {
+      F[c_m] += 0.5*flux * dS; // cell[-]
+      F[c_p] -= 0.5*flux * dS; // cell[+]
+    }
+    if (fv->face_element_map[2*f+1] >= 0) {
+      F[c_m] += 0.5*flux * dS; // cell[-]
+      F[c_p] -= 0.5*flux * dS; // cell[+]
+    }
     
 #if 0
     grad_m[0] = coeff[3*c_m+0];
