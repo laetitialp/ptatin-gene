@@ -61,7 +61,7 @@ libptatin3d-y.c += $(call thisdir, \
   stokes_operators_mf.c \
   stokes_operators.c \
   stokes_operators_tensor.c \
-  stokes_operators_avx.c \
+  stokes_operators_avx.c stokes_operators_avx512.c \
   stokes_operators_subrepart.c \
   quadrature.c \
   phase_map.c \

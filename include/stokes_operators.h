@@ -118,6 +118,15 @@ PetscErrorCode QuadratureAction_A11_AVX(const QPntVolCoefStokes *gausspt[],
              PetscScalar du[3][3][Q2_NODES_PER_EL_3D][NEV],
              PetscScalar dv[3][3][Q2_NODES_PER_EL_3D][NEV]);
 
+#if defined(__AVX512F__)
+PetscErrorCode MFStokesWrapper_A11_AVX5(MatA11MF mf,Quadrature volQ,DM dau,PetscScalar ufield[],PetscScalar Yu[]);
+PetscErrorCode MFStokesWrapper_A_AVX5(Quadrature volQ,
+                                     DM dau,PetscScalar ufield[],
+                                     DM dap,PetscScalar pfield[],
+                                     PetscScalar Yu[],
+                                     PetscScalar Yp[]);
+PetscErrorCode MFStokesWrapper_A12_AVX5(Quadrature volQ,DM dau,DM dap,PetscScalar pfield[],PetscScalar Yu[]);
+#endif
 
 typedef struct _p_MFA11CUDA *MFA11CUDA;
 
