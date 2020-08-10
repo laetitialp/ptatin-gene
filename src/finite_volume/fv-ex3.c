@@ -755,9 +755,50 @@ PetscErrorCode t3_warp_mms(void)
   
   ierr = SNESSetFunction(snes,F,eval_F_hr,NULL);CHKERRQ(ierr);
   ierr = SNESSetJacobian(snes,J,J,eval_J,NULL);CHKERRQ(ierr);
+  //ierr = SNESSetJacobian(snes,J,J,SNESComputeJacobianDefaultColor,NULL);CHKERRQ(ierr);
   
   ierr = SNESSetFromOptions(snes);CHKERRQ(ierr);
 
+  {
+    KSP       ksp;
+    PC        pc;
+    PetscBool ismg;
+    DM        dm,*dml;
+    Mat       interp;
+    PetscInt  nlevels,k;
+    
+    ierr = SNESGetKSP(snes,&ksp);CHKERRQ(ierr);
+    ierr = KSPGetPC(ksp,&pc);CHKERRQ(ierr);
+    ierr = PetscObjectTypeCompare((PetscObject)pc,PCMG,&ismg);CHKERRQ(ierr);
+    if (ismg) {
+      ierr = DMClone(fv->dm_fv,&dm);CHKERRQ(ierr);
+      ierr = DMDASetInterpolationType(dm,DMDA_Q0);CHKERRQ(ierr);
+      ierr = PCMGGetLevels(pc,&nlevels);CHKERRQ(ierr);
+      ierr = PetscCalloc1(nlevels,&dml);CHKERRQ(ierr);
+      dml[0] = dm;
+      for (k=1; k<nlevels; k++) {
+        ierr = DMCoarsen(dml[k-1],fv->comm,&dml[k]);CHKERRQ(ierr);
+        ierr = DMDASetInterpolationType(dml[k],DMDA_Q0);CHKERRQ(ierr);
+      }
+      for (k=1; k<nlevels; k++) {
+        ierr = DMCreateInterpolation(dml[k],dml[k-1],&interp,NULL);CHKERRQ(ierr);
+        ierr = PCMGSetInterpolation(pc,nlevels-k,interp);CHKERRQ(ierr);
+        ierr = MatDestroy(&interp);CHKERRQ(ierr);
+      }
+      for (k=0; k<1; k++) {
+        KSP smth;
+        ierr = PCMGGetSmoother(pc,k,&smth);CHKERRQ(ierr);
+        ierr = KSPSetDM(smth,dml[nlevels-1-k]);CHKERRQ(ierr);
+        ierr = KSPSetDMActive(smth,PETSC_FALSE);CHKERRQ(ierr);
+      }
+      ierr = PCMGSetGalerkin(pc,PC_MG_GALERKIN_BOTH);CHKERRQ(ierr);
+      for (k=0; k<nlevels; k++) {
+        ierr = DMDestroy(&dml[k]);CHKERRQ(ierr);
+      }
+      ierr = PetscFree(dml);CHKERRQ(ierr);
+    }
+  }
+ 
   /*
   ierr = set_field(fv,2,X);CHKERRQ(ierr);
   ierr = FVDAView_CellData(fv,X,PETSC_TRUE,"xcell");CHKERRQ(ierr);
@@ -828,12 +869,14 @@ PetscErrorCode t3_warp_mms(void)
  -snes_monitor -tid 2 -ksp_converged_reason -snes_viewx -mx 64 -snes_linesearch_type basic -pc_type ksp -snes_mf_operator -ksp_ksp_type preonly  -ksp_pc_type gamg -log_view -ksp_mg_levels_ksp_type chebyshev -ksp_mg_levels_pc_type ilu
  
 */
+extern PetscErrorCode PCCreate_DMDARepart(PC pc);
 int main(int argc,char **args)
 {
   PetscErrorCode ierr;
   PetscInt       tid = 0;
   
   ierr = PetscInitialize(&argc,&args,(char*)0,NULL);if (ierr) return ierr;
+  ierr = PCRegister("dmdarepart",PCCreate_DMDARepart);CHKERRQ(ierr);
   ierr = PetscOptionsGetInt(NULL,NULL,"-tid",&tid,NULL);CHKERRQ(ierr);
   switch (tid) {
     case 0:
