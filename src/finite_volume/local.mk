@@ -12,6 +12,7 @@ libptatin3d-y.c += $(call thisdir, \
   fvda_project.c \
   fvda_reconstruction.c \
   ptatin3d_energyfv.c \
+  fvda_dimap.c \
 )
 
 ptatin-tests-y.c += $(call thisdir, \
@@ -24,6 +25,7 @@ ptatin-tests-y.c += $(call thisdir, \
   fv-ex7a.c \
   fv-ex7b.c \
   fv-ex8.c \
+  fv-ex9.c \
 )
 
 TATIN_INC += -I$(abspath $(call thisdir,.))
