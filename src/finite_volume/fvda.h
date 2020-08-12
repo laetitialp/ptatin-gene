@@ -64,6 +64,12 @@ typedef enum {
   FVDA_PARABOLIC
 } FVDAPDEType;
 
+typedef enum {
+  FVPRIMITIVE_CELL=0,
+  FVPRIMITIVE_FACE,
+  FVPRIMITIVE_VERTEX
+} FVPrimitiveType;
+
 typedef struct _p_FVDA *FVDA;
 typedef struct _p_FVALE *FVALE;
 typedef struct _p_FVTD *FVTD;
