@@ -3,7 +3,23 @@
 #define __fvda_utils_h__
 
 /* fvda_property.c */
-PetscErrorCode FVDAGetCellPropertyInfo(FVDA fv,PetscInt *len,const char ***name);
+typedef enum {
+  FVARRAY_DATA_SELF=0,
+  FVARRAY_DATA_USER,
+  FVARRAY_DATA_VEC
+} FVArrayDataType;
+
+typedef struct _p_FVArray *FVArray;
+struct _p_FVArray {
+  PetscInt        len,bs;
+  PetscReal       *v;
+  FVArrayDataType dtype;
+  DM              dm;
+  FVDA            fv;
+  FVPrimitiveType type;
+  void            *auxdata;
+};
+
 PetscErrorCode FVDARegisterCellProperty(FVDA fv,const char name[],PetscInt blocksize);
 PetscErrorCode FVDAGetCellPropertyArray(FVDA fv,PetscInt index,PetscReal *data[]);
 PetscErrorCode FVDAGetCellPropertyArrayRead(FVDA fv,PetscInt index,const PetscReal *data[]);
@@ -19,6 +35,17 @@ PetscErrorCode FVDAGetFacePropertyByNameArrayRead(FVDA fv,const char name[],cons
 PetscErrorCode FVDAGetFacePropertyByNameArray(FVDA fv,const char name[],PetscReal *data[]);
 PetscErrorCode FVDAFacePropertyGetInfo(FVDA fv,const char name[],PetscInt *index,PetscInt *len,PetscInt *bs);
 
+PetscErrorCode FVArrayCreate(FVArray *a);
+PetscErrorCode FVArrayDestroy(FVArray *a);
+PetscErrorCode FVArrayCreateFromFVDAFaceProperty(FVDA fv,const char name[],FVArray *a);
+PetscErrorCode FVArrayCreateFVDAFaceSpace(FVDA fv,PetscInt bs,FVArray *a);
+PetscErrorCode FVArrayCreateFromFVDACellProperty(FVDA fv,const char name[],FVArray *a);
+PetscErrorCode FVArrayCreateFVDACellSpace(FVDA fv,PetscInt bs,FVArray *a);
+PetscErrorCode FVArraySetDM(FVArray a,DM dm);
+PetscErrorCode FVArraySetFVDA(FVArray a,FVDA fv);
+PetscErrorCode FVArrayCreateFromData(FVPrimitiveType t,PetscInt n,PetscInt b,const PetscReal x[],FVArray *a);
+PetscErrorCode FVArrayZeroEntries(FVArray a);
+PetscErrorCode FVArrayCreateFromVec(FVPrimitiveType t,Vec x,FVArray *a);
 
 /* fvda_compatible_velocity.c */
 PetscErrorCode FVDAPostProcessCompatibleVelocity(FVDA fv,const char name_v[],const char name_v_dot_n[],Vec source,KSP _ksp);
@@ -76,10 +103,20 @@ PetscErrorCode FVDACellPropertyProjectToFace_GeneralizedMean(FVDA fv,const char 
 PetscErrorCode FVDAFieldSetUpProjectToVertex_Q1(FVDA fv,DM *dmf,Vec *field);
 PetscErrorCode FVDAFieldProjectToVertex_Q1(FVDA fv,Vec fv_field,DM dmf,Vec field);
 PetscErrorCode FVDAGradientProject(FVDA fv,Vec Q,Vec gradQ);
+PetscErrorCode FVDAGradientProjectViaReconstruction(FVDA fv,FVArray Q,FVArray gradQ);
 PetscErrorCode FVDAFieldProjectReconstructionToVertex_Q1(FVDA fv,Vec fv_field,PetscReal min,PetscReal max,DM dmf,Vec field);
 
 
 /* fvda_reconstruction.c */
+typedef struct _p_FVReconstructionCell FVReconstructionCell;
+struct _p_FVReconstructionCell {
+  PetscInt  target_cell;
+  PetscReal target_x[3];
+  PetscReal target_Q;
+  PetscReal coeff[3];
+  PetscInt  n_neigh,neigh[125]; /* sufficient for a 5x5x5 patch, at most we need 3x3x3 */
+};
+
 PetscErrorCode setup_coeff(FVDA fv,PetscInt target,PetscInt nneigh,const PetscInt neigh[],const PetscReal cell_x[],const PetscReal Q[],PetscReal coeff[]);
 PetscErrorCode FVDAReconstructP1Evaluate(FVDA fv,
                                          PetscReal x[],
@@ -89,6 +126,11 @@ PetscErrorCode FVDAReconstructP1Evaluate(FVDA fv,
                                          PetscReal Q_hr[]);
 PetscErrorCode FVDAGetReconstructionStencil_AtCell(FVDA fv,PetscInt cijk,PetscInt *nn,PetscInt neigh[]);
 
+PetscErrorCode FVReconstructionP1Create(FVReconstructionCell *cell,
+                                        FVDA fv,PetscInt local_fv_cell_index,
+                                        const PetscReal _fv_coor[],const PetscReal _fv_field[]);
+
+PetscErrorCode FVReconstructionP1Interpolate(FVReconstructionCell *cell,const PetscReal x[],PetscReal ival[]);
 
 /* fvda_bc_utils.c */
 PetscErrorCode FVDABCMethod_SetNatural(FVDA fv,
@@ -138,5 +180,35 @@ PetscErrorCode FVDABCMethod_SetNeumannWithVector(FVDA fv,
 /* dmda_warp.c */
 PetscErrorCode DMDAWarpCoordinates_SinJMax(DM da,PetscReal amp,PetscReal omega[]);
 PetscErrorCode DMDAWarpCoordinates_ExpJMax(DM da,PetscReal amp,PetscReal lambda[]);
+
+/* fvda_dimap.c */
+/* Dense Integer Map object */
+/* Note - the type DMap is part of the C11 standard */
+typedef struct _p_DIMap *DIMap;
+struct _p_DIMap {
+  PetscInt  input_range[2];
+  PetscBool negative_output_allowed; /* error if negative val found */
+  PetscBool negative_input_ignored; /* return same value */
+  PetscInt  *idx;
+  PetscInt  len;
+  PetscInt  range[2];
+};
+
+/* Dense integer map options */
+typedef enum {
+  DIMAP_IGNORE_NEGATIVE_INPUT  = 0,
+  DIMAP_IGNORE_NEGATIVE_OUTPUT = 1,
+  DIMAP_OPTION_MAX             = 2,
+} DIMapOption;
+
+PetscErrorCode DIMapCreate(DIMap *map);
+PetscErrorCode DIMapDestroy(DIMap *map);
+PetscErrorCode DIMapSetOptions(DIMap map,DIMapOption op,PetscBool val);
+PetscErrorCode DIMapGetEntries(DIMap map,const PetscInt *idx[]);
+PetscErrorCode DIMapCreate_FVDACell_RankLocalToLocal(FVDA fv,DIMap *map);
+PetscErrorCode DIMapCreate_FVDACell_LocalToRankLocal(FVDA fv,DIMap *map);
+PetscErrorCode DIMapApply(DIMap map,PetscInt i,PetscInt *j);
+PetscErrorCode DIMapApplyN(DIMap map,PetscInt N,PetscInt i[],PetscInt j[]);
+#define DIMAP_APPLY(map,i,j) (j) = (map)->idx[(i)];
 
 #endif
