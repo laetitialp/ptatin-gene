@@ -16,6 +16,9 @@ PetscErrorCode eval_J_diffusion_7point_local(FVDA fv,const PetscReal domain_geom
 PetscErrorCode eval_F_upwind_hr_local(FVDA fv,const PetscReal domain_geom_coor[],const PetscReal fv_coor[],const PetscReal X[],PetscReal F[]);
 PetscErrorCode eval_F_diffusion_7point_hr_local_store_MPI(FVDA fv,const PetscReal domain_geom_coor[],const PetscReal fv_coor[],const PetscReal X[],PetscReal F[]);
 
+static PetscErrorCode FVDADestroy_TimeDep(FVDA fv);
+
+
 PetscErrorCode FVDASetup_TimeDep(FVDA fv)
 {
   PetscErrorCode ierr;
@@ -54,7 +57,7 @@ PetscErrorCode FVDAAccessData_TimeDep(FVDA fv,PetscReal **dt,Vec *Qk)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode FVDADestroy_TimeDep(FVDA fv)
+static PetscErrorCode FVDADestroy_TimeDep(FVDA fv)
 {
   PetscErrorCode ierr;
   FVTD           ctx = NULL;

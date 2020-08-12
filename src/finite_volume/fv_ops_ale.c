@@ -20,6 +20,9 @@ PetscErrorCode eval_J_diffusion_7point_local(FVDA fv,const PetscReal domain_geom
 
 PetscErrorCode eval_F_upwind_hr_bound_local(FVDA fv,const PetscReal range[],const PetscReal domain_geom_coor[],const PetscReal fv_coor[],const PetscReal X[],PetscReal F[]);
 
+static PetscErrorCode FVDADestroy_ALE(FVDA fv);
+
+
 PetscErrorCode FVDASetup_ALE(FVDA fv)
 {
   PetscErrorCode ierr;
@@ -62,7 +65,7 @@ PetscErrorCode FVDAAccessData_ALE(FVDA fv,PetscReal **dt,Vec *Qk,Vec *coor_targe
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode FVDADestroy_ALE(FVDA fv)
+static PetscErrorCode FVDADestroy_ALE(FVDA fv)
 {
   PetscErrorCode ierr;
   FVALE          ctx = NULL;
