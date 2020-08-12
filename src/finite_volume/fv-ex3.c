@@ -572,7 +572,6 @@ PetscErrorCode t3_mms(void)
   ierr = EvaluateDiscretizationErrors(fv,0.0,X,&h,error);CHKERRQ(ierr);
   PetscPrintf(PETSC_COMM_WORLD,"h %1.4e  L1 %1.4e  L2 %1.4e\n",h,error[0],error[1]);
   
-  
   {
     Vec gradX;
     PetscInt Xm,XM;
@@ -581,17 +580,83 @@ PetscErrorCode t3_mms(void)
     ierr = VecGetLocalSize(X,&Xm);CHKERRQ(ierr);
     ierr = VecCreate(fv->comm,&gradX);CHKERRQ(ierr);
     ierr = VecSetSizes(gradX,Xm*3,XM*3);CHKERRQ(ierr);
+    ierr = VecSetBlockSize(gradX,3);CHKERRQ(ierr);
     ierr = VecSetFromOptions(gradX);CHKERRQ(ierr);
     ierr = VecSetUp(gradX);CHKERRQ(ierr);
     
     ierr = FVDAGradientProject(fv,X,gradX);CHKERRQ(ierr);
     ierr = EvaluateDiscretizationGradientErrors(fv,0.0,gradX,&h,error);CHKERRQ(ierr);
     PetscPrintf(PETSC_COMM_WORLD,"h %1.4e  H1 %1.4e  H1 %1.4e\n",h,error[0],error[1]);
-    
+
+    /*
+    {
+      Vec gX;
+      
+      ierr = DMCreateGlobalVector(dm,&gX);CHKERRQ(ierr);
+      
+      ierr = VecStrideGather(gradX,0,gX,INSERT_VALUES);CHKERRQ(ierr);
+      ierr = FVDAView_CellData(fv,gX,PETSC_TRUE,"ex3_mms_dx");CHKERRQ(ierr);
+      ierr = VecStrideGather(gradX,1,gX,INSERT_VALUES);CHKERRQ(ierr);
+      ierr = FVDAView_CellData(fv,gX,PETSC_TRUE,"ex3_mms_dy");CHKERRQ(ierr);
+      ierr = VecStrideGather(gradX,2,gX,INSERT_VALUES);CHKERRQ(ierr);
+      ierr = FVDAView_CellData(fv,gX,PETSC_TRUE,"ex3_mms_dz");CHKERRQ(ierr);
+      ierr = VecDestroy(&gX);CHKERRQ(ierr);
+    }
+    */
     ierr = VecDestroy(&gradX);CHKERRQ(ierr);
   }
   
-  
+  {
+    Vec             gradX;
+    PetscInt        Xm,XM;
+    FVArray         Xa,gradXa;
+    const PetscReal *_X;
+    const PetscReal *_gradX;
+    
+    ierr = VecGetSize(X,&XM);CHKERRQ(ierr);
+    ierr = VecGetLocalSize(X,&Xm);CHKERRQ(ierr);
+    ierr = VecCreate(fv->comm,&gradX);CHKERRQ(ierr);
+    ierr = VecSetSizes(gradX,Xm*3,XM*3);CHKERRQ(ierr);
+    ierr = VecSetBlockSize(gradX,3);CHKERRQ(ierr);
+    ierr = VecSetFromOptions(gradX);CHKERRQ(ierr);
+    ierr = VecSetUp(gradX);CHKERRQ(ierr);
+    
+    ierr = VecGetArrayRead(X,&_X);CHKERRQ(ierr);
+    ierr = VecGetArrayRead(gradX,&_gradX);CHKERRQ(ierr);
+    
+    ierr = FVArrayCreateFromData(FVPRIMITIVE_CELL,Xm,1,_X,&Xa);CHKERRQ(ierr);
+    ierr = FVArrayCreateFromData(FVPRIMITIVE_CELL,Xm,3,_gradX,&gradXa);CHKERRQ(ierr);
+    
+    ierr = FVDAGradientProjectViaReconstruction(fv,Xa,gradXa);CHKERRQ(ierr);
+    
+    ierr = FVArrayDestroy(&gradXa);CHKERRQ(ierr);
+    ierr = FVArrayDestroy(&Xa);CHKERRQ(ierr);
+    
+    ierr = VecRestoreArrayRead(gradX,&_gradX);CHKERRQ(ierr);
+    ierr = VecRestoreArrayRead(X,&_X);CHKERRQ(ierr);
+    
+    /*
+    {
+      Vec gX;
+      
+      ierr = DMCreateGlobalVector(dm,&gX);CHKERRQ(ierr);
+      
+      ierr = VecStrideGather(gradX,0,gX,INSERT_VALUES);CHKERRQ(ierr);
+      ierr = FVDAView_CellData(fv,gX,PETSC_TRUE,"ex3_mms_rdx");CHKERRQ(ierr);
+      ierr = VecStrideGather(gradX,1,gX,INSERT_VALUES);CHKERRQ(ierr);
+      ierr = FVDAView_CellData(fv,gX,PETSC_TRUE,"ex3_mms_rdy");CHKERRQ(ierr);
+      ierr = VecStrideGather(gradX,2,gX,INSERT_VALUES);CHKERRQ(ierr);
+      ierr = FVDAView_CellData(fv,gX,PETSC_TRUE,"ex3_mms_rdz");CHKERRQ(ierr);
+      ierr = VecDestroy(&gX);CHKERRQ(ierr);
+    }
+    */
+    
+    ierr = EvaluateDiscretizationGradientErrors(fv,0.0,gradX,&h,error);CHKERRQ(ierr);
+    PetscPrintf(PETSC_COMM_WORLD,"h %1.4e  H1 %1.4e  H1 %1.4e [recon]\n",h,error[0],error[1]);
+    
+    ierr = VecDestroy(&gradX);CHKERRQ(ierr);
+  }
+
   
   //ierr = FVDAView_CellData(fv,rhs,PETSC_TRUE,"rhs");CHKERRQ(ierr);
   ierr = FVDAView_CellData(fv,X,PETSC_TRUE,"ex3_mms_xcell");CHKERRQ(ierr);
@@ -827,7 +892,34 @@ PetscErrorCode t3_warp_mms(void)
     
     ierr = VecDestroy(&gradX);CHKERRQ(ierr);
   }
+
+  {
+    Vec             gradX;
+    PetscInt        Xm,XM;
+    FVArray         Xa,gradXa;
+    
+    ierr = VecGetSize(X,&XM);CHKERRQ(ierr);
+    ierr = VecGetLocalSize(X,&Xm);CHKERRQ(ierr);
+    ierr = VecCreate(fv->comm,&gradX);CHKERRQ(ierr);
+    ierr = VecSetSizes(gradX,Xm*3,XM*3);CHKERRQ(ierr);
+    ierr = VecSetBlockSize(gradX,3);CHKERRQ(ierr);
+    ierr = VecSetFromOptions(gradX);CHKERRQ(ierr);
+    ierr = VecSetUp(gradX);CHKERRQ(ierr);
   
+    ierr = FVArrayCreateFromVec(FVPRIMITIVE_CELL,X,&Xa);CHKERRQ(ierr);
+    ierr = FVArrayCreateFromVec(FVPRIMITIVE_CELL,gradX,&gradXa);CHKERRQ(ierr);
+    
+    ierr = FVDAGradientProjectViaReconstruction(fv,Xa,gradXa);CHKERRQ(ierr);
+    
+    ierr = FVArrayDestroy(&gradXa);CHKERRQ(ierr);
+    ierr = FVArrayDestroy(&Xa);CHKERRQ(ierr);
+    
+    ierr = EvaluateDiscretizationGradientErrors(fv,0.0,gradX,&h,error);CHKERRQ(ierr);
+    PetscPrintf(PETSC_COMM_WORLD,"h %1.4e  H1 %1.4e  H1 %1.4e [recon]\n",h,error[0],error[1]);
+
+    ierr = VecDestroy(&gradX);CHKERRQ(ierr);
+  }
+
   //ierr = FVDAView_CellData(fv,rhs,PETSC_TRUE,"rhs");CHKERRQ(ierr);
   ierr = FVDAView_CellData(fv,X,PETSC_TRUE,"ex3_warp_mms_xcell");CHKERRQ(ierr);
 #endif
