@@ -4,15 +4,8 @@
 #include <petscdmda.h>
 #include <fvda_impl.h>
 #include <fvda.h>
+#include <fvda_utils.h>
 
-
-PetscErrorCode FVDAGetCellPropertyInfo(FVDA fv,PetscInt *len,const char ***name)
-{
-  PetscFunctionBegin;
-  if (len) { *len = fv->ncoeff_cell; }
-  if (name) { *name = (const char**)fv->cell_coeff_name; }
-  PetscFunctionReturn(0);
-}
 
 PetscErrorCode FVDARegisterCellProperty(FVDA fv,const char name[],PetscInt blocksize)
 {
@@ -246,3 +239,171 @@ PetscErrorCode FVDAGetFacePropertyByNameArray(FVDA fv,const char name[],PetscRea
   *data = (PetscReal*)fv->face_coefficient[index];
   PetscFunctionReturn(0);
 }
+
+PetscErrorCode FVArrayCreate(FVArray *a)
+{
+  FVArray        ar;
+  PetscErrorCode ierr;
+  
+  PetscFunctionBegin;
+  ierr = PetscMalloc(sizeof(struct _p_FVArray),&ar);CHKERRQ(ierr);
+  ierr = PetscMemzero(ar,sizeof(struct _p_FVArray));CHKERRQ(ierr);
+  ar->dtype = FVARRAY_DATA_SELF;
+  *a = ar;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode FVArrayDestroy(FVArray *a)
+{
+  FVArray        ar;
+  PetscErrorCode ierr;
+  
+  PetscFunctionBegin;
+  if (!a) PetscFunctionReturn(0);
+  ar = *a;
+  if (!ar) PetscFunctionReturn(0);
+  switch (ar->dtype) {
+    case FVARRAY_DATA_SELF:
+      ierr = PetscFree(ar->v);CHKERRQ(ierr);
+      break;
+    case FVARRAY_DATA_USER:
+      break;
+    case FVARRAY_DATA_VEC:
+    {
+      Vec x = (Vec)ar->auxdata;
+      if (!x) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"FVArrayData type derived from Vec, but Vec is NULL");
+      ierr = VecRestoreArray(x,&ar->v);CHKERRQ(ierr);
+    }
+      break;
+  }
+  /* no ref count on FVDA(fv) */
+  /* did not incremenet ref count on DM(dm) */
+  ierr = PetscFree(ar);CHKERRQ(ierr);
+  *a = NULL;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode FVArrayCreateFromFVDAFaceProperty(FVDA fv,const char name[],FVArray *a)
+{
+  PetscErrorCode ierr;
+  
+  PetscFunctionBegin;
+  ierr = FVArrayCreate(a);CHKERRQ(ierr);
+  (*a)->len = fv->nfaces;
+  (*a)->bs = 1;
+  (*a)->dtype = FVARRAY_DATA_USER;
+  ierr = FVDAGetFacePropertyByNameArray(fv,name,&(*a)->v);CHKERRQ(ierr);
+  (*a)->dm = fv->dm_fv;
+  (*a)->fv = fv;
+  (*a)->type = FVPRIMITIVE_FACE;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode FVArrayCreateFVDAFaceSpace(FVDA fv,PetscInt bs,FVArray *a)
+{
+  PetscErrorCode ierr;
+  
+  PetscFunctionBegin;
+  ierr = FVArrayCreate(a);CHKERRQ(ierr);
+  (*a)->len = fv->nfaces * bs;
+  (*a)->bs = bs;
+  (*a)->dtype = FVARRAY_DATA_SELF;
+  ierr = PetscCalloc1((*a)->len*(*a)->bs,&(*a)->v);CHKERRQ(ierr);
+  (*a)->dm = fv->dm_fv;
+  (*a)->fv = fv;
+  (*a)->type = FVPRIMITIVE_FACE;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode FVArrayCreateFromFVDACellProperty(FVDA fv,const char name[],FVArray *a)
+{
+  PetscErrorCode ierr;
+  
+  PetscFunctionBegin;
+  ierr = FVArrayCreate(a);CHKERRQ(ierr);
+  (*a)->len = fv->ncells;
+  (*a)->bs = 1;
+  (*a)->dtype = FVARRAY_DATA_USER;
+  ierr = FVDAGetCellPropertyByNameArray(fv,name,&(*a)->v);CHKERRQ(ierr);
+  (*a)->dm = fv->dm_fv;
+  (*a)->fv = fv;
+  (*a)->type = FVPRIMITIVE_CELL;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode FVArrayCreateFVDACellSpace(FVDA fv,PetscInt bs,FVArray *a)
+{
+  PetscErrorCode ierr;
+  
+  PetscFunctionBegin;
+  ierr = FVArrayCreate(a);CHKERRQ(ierr);
+  (*a)->len = fv->ncells * bs;
+  (*a)->bs = bs;
+  (*a)->dtype = FVARRAY_DATA_SELF;
+  ierr = PetscCalloc1((*a)->len*(*a)->bs,&(*a)->v);CHKERRQ(ierr);
+  (*a)->dm = fv->dm_fv;
+  (*a)->fv = fv;
+  (*a)->type = FVPRIMITIVE_CELL;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode FVArraySetDM(FVArray a,DM dm)
+{
+  PetscFunctionBegin;
+  a->dm = dm;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode FVArraySetFVDA(FVArray a,FVDA fv)
+{
+  PetscFunctionBegin;
+  a->fv = fv;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode FVArrayCreateFromData(FVPrimitiveType t,PetscInt n,PetscInt b,const PetscReal x[],FVArray *a)
+{
+  PetscErrorCode ierr;
+  
+  PetscFunctionBegin;
+  ierr = FVArrayCreate(a);CHKERRQ(ierr);
+  (*a)->len = n * b;
+  (*a)->bs = b;
+  (*a)->dtype = FVARRAY_DATA_USER;
+  (*a)->v = (PetscReal*)x;
+  (*a)->dm = NULL;
+  (*a)->fv = NULL;
+  (*a)->type = t;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode FVArrayZeroEntries(FVArray a)
+{
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  ierr = PetscMemzero(a->v,sizeof(PetscReal)*a->len);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode FVArrayCreateFromVec(FVPrimitiveType t,Vec x,FVArray *a)
+{
+  PetscErrorCode ierr;
+  PetscInt       m,bs;
+  PetscReal      *_x;
+  
+  PetscFunctionBegin;
+  ierr = VecGetLocalSize(x,&m);CHKERRQ(ierr);
+  ierr = VecGetBlockSize(x,&bs);CHKERRQ(ierr);
+  ierr = VecGetArray(x,&_x);CHKERRQ(ierr);
+  ierr = FVArrayCreate(a);CHKERRQ(ierr);
+  (*a)->len = m;
+  (*a)->bs = bs;
+  (*a)->dtype = FVARRAY_DATA_VEC;
+  (*a)->v = (PetscReal*)_x;
+  (*a)->dm = NULL;
+  (*a)->fv = NULL;
+  (*a)->type = t;
+  (*a)->auxdata = (void*)x;
+  PetscFunctionReturn(0);
+}
+
