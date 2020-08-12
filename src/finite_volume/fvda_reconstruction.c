@@ -134,7 +134,7 @@ PetscErrorCode FVDAReconstructP1Evaluate(FVDA fv,
           + coeff[2] * (x[2] - cell_target_x[2])
           + Q[target];
   
-  //
+  /*
   {
     PetscInt       s[3],w[3],cij;
     CellTuple      cell,cellglobal;
@@ -152,7 +152,7 @@ PetscErrorCode FVDAReconstructP1Evaluate(FVDA fv,
     cellglobal.k = cell.k + s[2];
     //printf("cell global %d %d %d (%+1.4e,%+1.4e,%+1.4e): recon %+1.12e\n",cellglobal.i,cellglobal.j,cellglobal.k,cell_target_x[0],cell_target_x[1],cell_target_x[2],Q_hr[0]);
   }
-  //
+  */
   PetscFunctionReturn(0);
 }
 
@@ -216,7 +216,6 @@ PetscErrorCode FVDAGetReconstructionStencil_AtCell(FVDA fv,PetscInt cijk,PetscIn
         if (t[0] >= s[0]+w[0]) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"stencil range");
         if (t[1] >= s[1]+w[1]) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"stencil range");
         if (t[2] >= s[2]+w[2]) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"stencil range");
-
         
         neigh[*nn] = (cell.i + ii) + (cell.j + jj) * w[0] + (cell.k + kk) * w[0] * w[1];
         if (neigh[*nn] >= w[0]*w[1]*w[2]) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Stencil index out-of-bounds of local fv space");
@@ -230,6 +229,48 @@ PetscErrorCode FVDAGetReconstructionStencil_AtCell(FVDA fv,PetscInt cijk,PetscIn
 
   if (*nn < 4) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Stencil for reconstruction is not sufficiently large");
   
+#ifdef __FVRECON_STENCIL_WIDTH_5__
+  /* note that this truncates along sub-domain boundaries */
+  if (*nn != 27) {
+    PetscInt count = 0;
+
+    
+    for (ii=-2; ii<=2; ii++) {
+      for (jj=-2; jj<=2; jj++) {
+        for (kk=-2; kk<=2; kk++) {
+          PetscInt t[3];
+          
+          t[0] = cell.i + ii + s[0];
+          t[1] = cell.j + jj + s[1];
+          t[2] = cell.k + kk + s[2];
+          
+          if (t[0] < 0) continue;
+          if (t[1] < 0) continue;
+          if (t[2] < 0) continue;
+          
+          if (t[0] >= fv->Mi[0]) continue;
+          if (t[1] >= fv->Mi[1]) continue;
+          if (t[2] >= fv->Mi[2]) continue;
+          
+          if (t[0] < s[0]) continue;
+          if (t[1] < s[1]) continue;
+          if (t[2] < s[2]) continue;
+          
+          if (t[0] >= s[0]+w[0]) continue;
+          if (t[1] >= s[1]+w[1]) continue;
+          if (t[2] >= s[2]+w[2]) continue;
+          
+          
+          neigh[count] = (cell.i + ii) + (cell.j + jj) * w[0] + (cell.k + kk) * w[0] * w[1];
+          count++;
+          if (count == 27*5) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Stencil to large");
+          
+        }
+      }
+    }
+    *nn = count;
+  }
+#endif
   
 #if 0
   *nn = 0;
@@ -268,6 +309,33 @@ PetscErrorCode FVDAGetReconstructionStencil_AtCell(FVDA fv,PetscInt cijk,PetscIn
   }
 #endif
   
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode FVReconstructionP1Create(FVReconstructionCell *cell,
+                                        FVDA fv,PetscInt local_fv_cell_index,
+                                        const PetscReal _fv_coor[],const PetscReal _fv_field[])
+{
+  PetscErrorCode    ierr;
+  
+  cell->target_cell = local_fv_cell_index;
+  cell->target_Q = _fv_field[local_fv_cell_index];
+  ierr = PetscMemcpy(cell->target_x,&_fv_coor[3*local_fv_cell_index],3*sizeof(PetscReal));CHKERRQ(ierr);
+  
+  ierr = FVDAGetReconstructionStencil_AtCell(fv,local_fv_cell_index,&cell->n_neigh,cell->neigh);CHKERRQ(ierr);
+  
+  ierr = setup_coeff(fv,local_fv_cell_index,cell->n_neigh,(const PetscInt*)cell->neigh,
+                     _fv_coor,_fv_field,cell->coeff);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode FVReconstructionP1Interpolate(FVReconstructionCell *cell,const PetscReal x[],PetscReal ival[])
+{
+  ival[0] = cell->coeff[0] * (x[0] - cell->target_x[0])
+          + cell->coeff[1] * (x[1] - cell->target_x[1])
+          + cell->coeff[2] * (x[2] - cell->target_x[2])
+          + cell->target_Q;
   PetscFunctionReturn(0);
 }
 
