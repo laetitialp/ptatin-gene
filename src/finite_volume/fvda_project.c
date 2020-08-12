@@ -534,6 +534,238 @@ PetscErrorCode FVDAGradientProject(FVDA fv,Vec Q,Vec gradQ)
   PetscFunctionReturn(0);
 }
 
+/*
+ On each face, perform a reconstruction
+*/
+PetscErrorCode FVDAGradientProjectViaReconstruction(FVDA fv,FVArray Q,FVArray gradQ)
+{
+  PetscErrorCode  ierr;
+  PetscReal       cell_coor[3 * DACELL3D_Q1_SIZE];
+  Vec             coorl,Qg,Ql,gradg,grad[3],fv_coorl;
+  const PetscReal *_geom_coor,*_Q,*_fv_coor;
+  PetscInt        c,f,dm_nel,dm_nen;
+  const PetscInt  *dm_element,*element;
+  PetscReal       dS,dV;
+  PetscInt        c_m,c_p,cellid;
+  PetscReal       *_gradQ,*normal,*_grad[3];
+  PetscReal       *coeff,_coeff[3];
+  PetscInt        n_neigh,neigh[27*5];
+  
+  PetscFunctionBegin;
+  if (Q->type != FVPRIMITIVE_CELL) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Q must be type FVPRIMITIVE_CELL");
+  if (gradQ->type != FVPRIMITIVE_CELL) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Q must be type FVPRIMITIVE_CELL");
+
+  ierr = FVArrayZeroEntries(gradQ);CHKERRQ(ierr);
+  _gradQ = gradQ->v;
+  
+  ierr = DMDAGetElements(fv->dm_geometry,&dm_nel,&dm_nen,&dm_element);CHKERRQ(ierr);
+  ierr = DMCreateLocalVector(fv->dm_geometry,&coorl);CHKERRQ(ierr);
+  ierr = DMGlobalToLocal(fv->dm_geometry,fv->vertex_coor_geometry,INSERT_VALUES,coorl);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(coorl,&_geom_coor);CHKERRQ(ierr);
+  
+  ierr = DMGetCoordinatesLocal(fv->dm_fv,&fv_coorl);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(fv_coorl,&_fv_coor);CHKERRQ(ierr);
+
+  /* VecCreateMPIWithArray() will work with COMM_SELF, but the code is more logical as written */
+  {
+    PetscMPIInt commsize;
+    ierr = MPI_Comm_size(fv->comm,&commsize);CHKERRQ(ierr);
+    if (commsize == 1) {
+      ierr = VecCreateSeqWithArray(fv->comm,Q->bs,Q->len,(const PetscScalar*)Q->v,&Qg);CHKERRQ(ierr);
+    } else {
+      ierr = VecCreateMPIWithArray(fv->comm,Q->bs,Q->len,PETSC_DECIDE,(const PetscScalar*)Q->v,&Qg);CHKERRQ(ierr);
+    }
+  }
+  
+  ierr = DMGetLocalVector(fv->dm_fv,&Ql);CHKERRQ(ierr);
+  ierr = DMGlobalToLocal(fv->dm_fv,Qg,INSERT_VALUES,Ql);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(Ql,&_Q);CHKERRQ(ierr);
+
+  ierr = DMCreateGlobalVector(fv->dm_fv,&gradg);CHKERRQ(ierr);
+  ierr = DMCreateLocalVector(fv->dm_fv,&grad[0]);CHKERRQ(ierr);
+  ierr = DMCreateLocalVector(fv->dm_fv,&grad[1]);CHKERRQ(ierr);
+  ierr = DMCreateLocalVector(fv->dm_fv,&grad[2]);CHKERRQ(ierr);
+
+  ierr = PetscCalloc1(fv->ncells*3,&coeff);CHKERRQ(ierr);
+  {
+    PetscInt e,fv_start[3],fv_range[3],fv_start_local[3],fv_ghost_offset[3],fv_ghost_range[3];
+    
+    ierr = DMDAGetCorners(fv->dm_fv,&fv_start[0],&fv_start[1],&fv_start[2],&fv_range[0],&fv_range[1],&fv_range[2]);CHKERRQ(ierr);
+    ierr = DMDAGetGhostCorners(fv->dm_fv,&fv_start_local[0],&fv_start_local[1],&fv_start_local[2],&fv_ghost_range[0],&fv_ghost_range[1],&fv_ghost_range[2]);CHKERRQ(ierr);
+    fv_ghost_offset[0] = fv_start[0] - fv_start_local[0];
+    fv_ghost_offset[1] = fv_start[1] - fv_start_local[1];
+    fv_ghost_offset[2] = fv_start[2] - fv_start_local[2];
+    
+    for (e=0; e<fv->ncells; e++) {
+      PetscInt cijk[3];
+      
+      ierr = _cart_convert_index_to_ijk(e,(const PetscInt*)fv_range,cijk);CHKERRQ(ierr);
+      cijk[0] += fv_ghost_offset[0];
+      cijk[1] += fv_ghost_offset[1];
+      cijk[2] += fv_ghost_offset[2];
+      
+      ierr = _cart_convert_ijk_to_index((const PetscInt*)cijk,(const PetscInt*)fv_ghost_range,&c);CHKERRQ(ierr);
+      
+      ierr = FVDAGetReconstructionStencil_AtCell(fv,c,&n_neigh,neigh);CHKERRQ(ierr);
+      ierr = setup_coeff(fv,c,n_neigh,(const PetscInt*)neigh,_fv_coor,_Q,_coeff);CHKERRQ(ierr);
+      coeff[3*e+0] = _coeff[0];
+      coeff[3*e+1] = _coeff[1];
+      coeff[3*e+2] = _coeff[2];
+    }
+  }
+  
+  /* interior faces - average */
+  /* exterior faces - evaluate */
+
+  ierr = VecGetArray(grad[0],&_grad[0]);CHKERRQ(ierr);
+  ierr = VecGetArray(grad[1],&_grad[1]);CHKERRQ(ierr);
+  ierr = VecGetArray(grad[2],&_grad[2]);CHKERRQ(ierr);
+  
+  for (f=0; f<fv->nfaces; f++) {
+    PetscReal val,Qhr;
+    
+    c_m = fv->face_fv_map[2*f+0];
+    c_p = fv->face_fv_map[2*f+1];
+
+    ierr = FVDAGetValidElement(fv,f,&cellid);CHKERRQ(ierr);
+    element = (const PetscInt*)&dm_element[DACELL3D_Q1_SIZE * cellid];
+    ierr = DACellGeometry3d_GetCoordinates(element,_geom_coor,cell_coor);CHKERRQ(ierr);
+    _EvaluateFaceArea3d(fv->face_type[f],cell_coor,&dS);
+
+    normal = &fv->face_normal[3*f];
+    
+    if (fv->face_location[f] == DAFACE_BOUNDARY) {
+      PetscInt cl = fv->face_element_map[2*f+0];
+
+      ierr = FVDAReconstructP1Evaluate(fv,&fv->face_centroid[3*f],c_m,&_fv_coor[3*c_m],_Q,&coeff[3*cl],&Qhr);CHKERRQ(ierr);
+
+      // cell[-]
+      for (PetscInt d=0; d<3; d++) {
+        val = Qhr * normal[d] * dS;
+        //ierr = VecSetValue(grad[d],c_m,val,ADD_VALUES);CHKERRQ(ierr);
+        _grad[d][c_m] += val;
+      }
+      
+    } else {
+      PetscInt cl_m = fv->face_element_map[2*f+0];
+      PetscInt cl_p = fv->face_element_map[2*f+1];
+      
+      if (cl_m >= 0) {
+        ierr = FVDAReconstructP1Evaluate(fv,&fv->face_centroid[3*f],c_m,&_fv_coor[3*c_m],_Q,&coeff[3*cl_m],&Qhr);CHKERRQ(ierr);
+        
+        // cell[-]
+        for (PetscInt d=0; d<3; d++) {
+          val = 0.5 * Qhr * normal[d] * dS;
+          //ierr = VecSetValue(grad[d],c_m,val,ADD_VALUES);CHKERRQ(ierr);
+          _grad[d][c_m] += val;
+        }
+        
+        // cell[+]
+        for (PetscInt d=0; d<3; d++) {
+          val = -0.5 * Qhr * normal[d] * dS;
+          //ierr = VecSetValue(grad[d],c_p,val,ADD_VALUES);CHKERRQ(ierr);
+          _grad[d][c_p] += val;
+        }
+      }
+      
+      if (cl_p >= 0) {
+        ierr = FVDAReconstructP1Evaluate(fv,&fv->face_centroid[3*f],c_p,&_fv_coor[3*c_p],_Q,&coeff[3*cl_p],&Qhr);CHKERRQ(ierr);
+
+        // cell[-]
+        for (PetscInt d=0; d<3; d++) {
+          val = 0.5 * Qhr * normal[d] * dS;
+          //ierr = VecSetValue(grad[d],c_m,val,ADD_VALUES);CHKERRQ(ierr);
+          _grad[d][c_m] += val;
+        }
+
+        // cell[+]
+        for (PetscInt d=0; d<3; d++) {
+          val = -0.5 * Qhr * normal[d] * dS;
+          //ierr = VecSetValue(grad[d],c_p,val,ADD_VALUES);CHKERRQ(ierr);
+          _grad[d][c_p] += val;
+        }
+      }
+    }
+  }
+  /*
+  for (PetscInt d=0; d<3; d++) {
+    ierr = VecAssemblyBegin(grad[d]);CHKERRQ(ierr);
+    ierr = VecAssemblyEnd(grad[d]);CHKERRQ(ierr);
+  }
+  */
+  ierr = VecRestoreArray(grad[0],&_grad[0]);CHKERRQ(ierr);
+  ierr = VecRestoreArray(grad[1],&_grad[1]);CHKERRQ(ierr);
+  ierr = VecRestoreArray(grad[2],&_grad[2]);CHKERRQ(ierr);
+  
+/*
+  // slow variant which stupidly recomputes the cell volume 3x times //
+  for (PetscInt d=0; d<3; d++) {
+    const PetscReal *_g;
+    
+    ierr = VecZeroEntries(gradg);CHKERRQ(ierr);
+    ierr = DMLocalToGlobal(fv->dm_fv,grad[d],ADD_VALUES,gradg);CHKERRQ(ierr);
+    ierr = VecGetArrayRead(gradg,&_g);CHKERRQ(ierr);
+    
+    // normalize //
+    for (c=0; c<fv->ncells; c++) {
+      element = (const PetscInt*)&dm_element[DACELL3D_Q1_SIZE * c];
+      ierr = DACellGeometry3d_GetCoordinates(element,_geom_coor,cell_coor);CHKERRQ(ierr);
+      _EvaluateCellVolume3d(cell_coor,&dV);
+      
+      _gradQ[3 * c + d] = _g[c] / dV;
+    }
+
+    ierr = VecRestoreArrayRead(gradg,&_g);CHKERRQ(ierr);
+  }
+*/
+
+  {
+    
+    /* insert 1/volume into gradQ storage */
+    for (c=0; c<fv->ncells; c++) {
+      element = (const PetscInt*)&dm_element[DACELL3D_Q1_SIZE * c];
+      ierr = DACellGeometry3d_GetCoordinates(element,_geom_coor,cell_coor);CHKERRQ(ierr);
+      _EvaluateCellVolume3d(cell_coor,&dV);
+      
+      for (PetscInt d=0; d<3; d++) {
+        _gradQ[3 * c + d] = 1.0 / dV;
+      }
+    }
+    
+    for (PetscInt d=0; d<3; d++) {
+      const PetscReal *_g;
+      
+      ierr = VecZeroEntries(gradg);CHKERRQ(ierr);
+      ierr = DMLocalToGlobal(fv->dm_fv,grad[d],ADD_VALUES,gradg);CHKERRQ(ierr);
+      ierr = VecGetArrayRead(gradg,&_g);CHKERRQ(ierr);
+      
+      /* scale 1/|v| by gradQ estimate */
+      for (c=0; c<fv->ncells; c++) {
+        _gradQ[3 * c + d] *= _g[c];
+      }
+      
+      ierr = VecRestoreArrayRead(gradg,&_g);CHKERRQ(ierr);
+    }
+    
+  }
+  
+  
+  ierr = PetscFree(coeff);CHKERRQ(ierr);
+  ierr = VecRestoreArrayRead(Ql,&_Q);CHKERRQ(ierr);
+  ierr = DMRestoreLocalVector(fv->dm_fv,&Ql);CHKERRQ(ierr);
+  ierr = VecRestoreArrayRead(coorl,&_geom_coor);CHKERRQ(ierr);
+  ierr = VecRestoreArrayRead(fv_coorl,&_fv_coor);CHKERRQ(ierr);
+  ierr = VecDestroy(&coorl);CHKERRQ(ierr);
+  ierr = VecDestroy(&Qg);CHKERRQ(ierr);
+
+  for (PetscInt d=0; d<3; d++) {
+    ierr = VecDestroy(&grad[d]);CHKERRQ(ierr);
+  }
+  ierr = VecDestroy(&gradg);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode FVDAFieldProjectReconstructionToVertex_Q1(FVDA fv,Vec fv_field,PetscReal min,PetscReal max,DM dmf,Vec field)
 {
   PetscErrorCode    ierr;
