@@ -6,6 +6,8 @@
 #include <fvda.h>
 #include <fvda_utils.h>
 
+PetscBool operator_fvspace = PETSC_TRUE;
+PetscBool view = PETSC_FALSE;
 
 PetscErrorCode bcset_west(FVDA fv,
                           DACellFace face,
@@ -66,14 +68,23 @@ PetscErrorCode t3(void)
 {
   PetscErrorCode ierr;
   PetscInt       mx = 64+1;
-  const PetscInt m[] = {mx,mx,mx};
+  PetscInt       m[] = {mx,mx,mx};
   FVDA           fv;
   Vec            X,F;
   Mat            J;
   DM             dm;
   SNES           snes;
+  PetscBool      found = PETSC_FALSE;
   
-  
+  ierr = PetscOptionsGetInt(NULL,NULL,"-mx",&mx,&found);CHKERRQ(ierr);
+  if (found) {
+    m[0] = mx;
+    m[1] = mx;
+    m[2] = mx;
+  }
+  ierr = PetscOptionsGetInt(NULL,NULL,"-my",&m[1],NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetInt(NULL,NULL,"-mz",&m[2],NULL);CHKERRQ(ierr);
+
   ierr = FVDACreate(PETSC_COMM_WORLD,&fv);CHKERRQ(ierr);
   ierr = FVDASetDimension(fv,3);CHKERRQ(ierr);
   ierr = FVDASetSizes(fv,NULL,m);CHKERRQ(ierr);
@@ -115,9 +126,11 @@ PetscErrorCode t3(void)
   
   dm = fv->dm_fv;
 
-  ierr = DMCreateMatrix(dm,&J);CHKERRQ(ierr);
-  ierr = MatAssemblyBegin(J,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  ierr = MatAssemblyEnd(J,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  if (operator_fvspace) {
+    ierr = DMCreateMatrix(dm,&J);CHKERRQ(ierr);
+  } else {
+    ierr = FVDACreateMatrix(fv,DMDA_STENCIL_STAR,&J);CHKERRQ(ierr);
+  }
   
   ierr = DMCreateGlobalVector(dm,&X);CHKERRQ(ierr);
   ierr = DMCreateGlobalVector(dm,&F);CHKERRQ(ierr);
@@ -132,7 +145,7 @@ PetscErrorCode t3(void)
   ierr = SNESSetJacobian(snes,J,J,eval_J,NULL);CHKERRQ(ierr);
   
   ierr = SNESSetFromOptions(snes);CHKERRQ(ierr);
-  
+  ierr = SNESFVDAConfigureGalerkinMG(snes,fv);CHKERRQ(ierr);
   //
   //ierr = SNESComputeJacobian(snes,X,J,J);CHKERRQ(ierr);
   //MatView(J,PETSC_VIEWER_STDOUT_WORLD);
@@ -145,7 +158,7 @@ PetscErrorCode t3(void)
   
   ierr = SNESSolve(snes,NULL,X);CHKERRQ(ierr);
   
-  {
+  if (view) {
     PetscViewer viewer;
     char        fname[256];
     
@@ -156,7 +169,6 @@ PetscErrorCode t3(void)
     ierr = PetscViewerFileSetName(viewer,fname);CHKERRQ(ierr);
     ierr = VecView(X,viewer);CHKERRQ(ierr);
     ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
-    
     
     ierr = FVDAView_CellData(fv,X,PETSC_TRUE,"xcell");CHKERRQ(ierr);
     
@@ -547,9 +559,11 @@ PetscErrorCode t3_mms(void)
   
   dm = fv->dm_fv;
   
-  ierr = DMCreateMatrix(dm,&J);CHKERRQ(ierr);
-  ierr = MatAssemblyBegin(J,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  ierr = MatAssemblyEnd(J,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  if (operator_fvspace) {
+    ierr = DMCreateMatrix(dm,&J);CHKERRQ(ierr);
+  } else {
+    ierr = FVDACreateMatrix(fv,DMDA_STENCIL_STAR,&J);CHKERRQ(ierr);
+  }
   
   ierr = DMCreateGlobalVector(dm,&X);CHKERRQ(ierr);
   ierr = DMCreateGlobalVector(dm,&F);CHKERRQ(ierr);
@@ -566,6 +580,7 @@ PetscErrorCode t3_mms(void)
   ierr = SNESSetJacobian(snes,J,J,eval_J,NULL);CHKERRQ(ierr);
   
   ierr = SNESSetFromOptions(snes);CHKERRQ(ierr);
+  ierr = SNESFVDAConfigureGalerkinMG(snes,fv);CHKERRQ(ierr);
   
   ierr = SNESSolve(snes,rhs,X);CHKERRQ(ierr);
   
@@ -591,15 +606,15 @@ PetscErrorCode t3_mms(void)
     ierr = VecDestroy(&gradX);CHKERRQ(ierr);
   }
   
-  
-  
-  //ierr = FVDAView_CellData(fv,rhs,PETSC_TRUE,"rhs");CHKERRQ(ierr);
-  ierr = FVDAView_CellData(fv,X,PETSC_TRUE,"ex3_mms_xcell");CHKERRQ(ierr);
-  
-  ierr = FVDAView_JSON(fv,NULL,"ex3_mms");CHKERRQ(ierr);
-  {
-    ierr = PetscVecWriteJSON(X,0,"ex3_mms_Q");CHKERRQ(ierr);
-    ierr = FVDAView_Heavy(fv,NULL,"ex3_mms");CHKERRQ(ierr);
+  if (view) {
+    //ierr = FVDAView_CellData(fv,rhs,PETSC_TRUE,"rhs");CHKERRQ(ierr);
+    ierr = FVDAView_CellData(fv,X,PETSC_TRUE,"ex3_mms_xcell");CHKERRQ(ierr);
+    
+    ierr = FVDAView_JSON(fv,NULL,"ex3_mms");CHKERRQ(ierr);
+    {
+      ierr = PetscVecWriteJSON(X,0,"ex3_mms_Q");CHKERRQ(ierr);
+      ierr = FVDAView_Heavy(fv,NULL,"ex3_mms");CHKERRQ(ierr);
+    }
   }
 
   ierr = MatDestroy(&J);CHKERRQ(ierr);
@@ -738,9 +753,11 @@ PetscErrorCode t3_warp_mms(void)
   
   dm = fv->dm_fv;
   
-  ierr = DMCreateMatrix(dm,&J);CHKERRQ(ierr);
-  ierr = MatAssemblyBegin(J,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  ierr = MatAssemblyEnd(J,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  if (operator_fvspace) {
+    ierr = DMCreateMatrix(dm,&J);CHKERRQ(ierr);
+  } else {
+    ierr = FVDACreateMatrix(fv,DMDA_STENCIL_STAR,&J);CHKERRQ(ierr);
+  }
   
   ierr = DMCreateGlobalVector(dm,&X);CHKERRQ(ierr);
   ierr = DMCreateGlobalVector(dm,&F);CHKERRQ(ierr);
@@ -758,53 +775,14 @@ PetscErrorCode t3_warp_mms(void)
   //ierr = SNESSetJacobian(snes,J,J,SNESComputeJacobianDefaultColor,NULL);CHKERRQ(ierr);
   
   ierr = SNESSetFromOptions(snes);CHKERRQ(ierr);
+  ierr = SNESFVDAConfigureGalerkinMG(snes,fv);CHKERRQ(ierr);
 
-  {
-    KSP       ksp;
-    PC        pc;
-    PetscBool ismg;
-    DM        dm,*dml;
-    Mat       interp;
-    PetscInt  nlevels,k;
-    
-    ierr = SNESGetKSP(snes,&ksp);CHKERRQ(ierr);
-    ierr = KSPGetPC(ksp,&pc);CHKERRQ(ierr);
-    ierr = PetscObjectTypeCompare((PetscObject)pc,PCMG,&ismg);CHKERRQ(ierr);
-    if (ismg) {
-      ierr = DMClone(fv->dm_fv,&dm);CHKERRQ(ierr);
-      ierr = DMDASetInterpolationType(dm,DMDA_Q0);CHKERRQ(ierr);
-      ierr = PCMGGetLevels(pc,&nlevels);CHKERRQ(ierr);
-      ierr = PetscCalloc1(nlevels,&dml);CHKERRQ(ierr);
-      dml[0] = dm;
-      for (k=1; k<nlevels; k++) {
-        ierr = DMCoarsen(dml[k-1],fv->comm,&dml[k]);CHKERRQ(ierr);
-        ierr = DMDASetInterpolationType(dml[k],DMDA_Q0);CHKERRQ(ierr);
-      }
-      for (k=1; k<nlevels; k++) {
-        ierr = DMCreateInterpolation(dml[k],dml[k-1],&interp,NULL);CHKERRQ(ierr);
-        ierr = PCMGSetInterpolation(pc,nlevels-k,interp);CHKERRQ(ierr);
-        ierr = MatDestroy(&interp);CHKERRQ(ierr);
-      }
-      for (k=0; k<1; k++) {
-        KSP smth;
-        ierr = PCMGGetSmoother(pc,k,&smth);CHKERRQ(ierr);
-        ierr = KSPSetDM(smth,dml[nlevels-1-k]);CHKERRQ(ierr);
-        ierr = KSPSetDMActive(smth,PETSC_FALSE);CHKERRQ(ierr);
-      }
-      ierr = PCMGSetGalerkin(pc,PC_MG_GALERKIN_BOTH);CHKERRQ(ierr);
-      for (k=0; k<nlevels; k++) {
-        ierr = DMDestroy(&dml[k]);CHKERRQ(ierr);
-      }
-      ierr = PetscFree(dml);CHKERRQ(ierr);
-    }
-  }
- 
   /*
   ierr = set_field(fv,2,X);CHKERRQ(ierr);
   ierr = FVDAView_CellData(fv,X,PETSC_TRUE,"xcell");CHKERRQ(ierr);
   ierr = SNESComputeFunction(snes,X,F);CHKERRQ(ierr);
   */
-#if 1
+
   ierr = SNESSolve(snes,rhs,X);CHKERRQ(ierr);
   
   ierr = EvaluateDiscretizationErrors(fv,0.0,X,&h,error);CHKERRQ(ierr);
@@ -827,15 +805,16 @@ PetscErrorCode t3_warp_mms(void)
     
     ierr = VecDestroy(&gradX);CHKERRQ(ierr);
   }
-  
-  //ierr = FVDAView_CellData(fv,rhs,PETSC_TRUE,"rhs");CHKERRQ(ierr);
-  ierr = FVDAView_CellData(fv,X,PETSC_TRUE,"ex3_warp_mms_xcell");CHKERRQ(ierr);
-#endif
-  
-  ierr = FVDAView_JSON(fv,NULL,"ex3_warp_mms");CHKERRQ(ierr);
-  {
-    ierr = PetscVecWriteJSON(X,0,"ex3_warp_mms_Q");CHKERRQ(ierr);
-    ierr = FVDAView_Heavy(fv,NULL,"ex3_warp_mms");CHKERRQ(ierr);
+
+  if (view) {
+    //ierr = FVDAView_CellData(fv,rhs,PETSC_TRUE,"rhs");CHKERRQ(ierr);
+    ierr = FVDAView_CellData(fv,X,PETSC_TRUE,"ex3_warp_mms_xcell");CHKERRQ(ierr);
+    
+    ierr = FVDAView_JSON(fv,NULL,"ex3_warp_mms");CHKERRQ(ierr);
+    {
+      ierr = PetscVecWriteJSON(X,0,"ex3_warp_mms_Q");CHKERRQ(ierr);
+      ierr = FVDAView_Heavy(fv,NULL,"ex3_warp_mms");CHKERRQ(ierr);
+    }
   }
 
   ierr = MatDestroy(&J);CHKERRQ(ierr);
@@ -878,6 +857,8 @@ int main(int argc,char **args)
   ierr = PetscInitialize(&argc,&args,(char*)0,NULL);if (ierr) return ierr;
   ierr = PCRegister("dmdarepart",PCCreate_DMDARepart);CHKERRQ(ierr);
   ierr = PetscOptionsGetInt(NULL,NULL,"-tid",&tid,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,NULL,"-operator_fvspace",&operator_fvspace,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,NULL,"-view",&view,NULL);CHKERRQ(ierr);
   switch (tid) {
     case 0:
       ierr = t3();CHKERRQ(ierr);
