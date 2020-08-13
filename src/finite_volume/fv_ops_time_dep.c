@@ -97,7 +97,8 @@ PetscErrorCode fvda_eval_F_timedep(SNES snes,Vec X,Vec F,void *data)
   ctx = (FVTD)fv->ctx;
   if (!ctx) SETERRQ(PetscObjectComm((PetscObject)fv->dm_fv),PETSC_ERR_USER,"FVDA has a NULL context. Must call FVDASetup_TimeDep() first");
   ierr = SNESGetDM(snes,&dm);CHKERRQ(ierr);
-  
+  dm = fv->dm_fv;
+
   ierr = DMGetLocalVector(dm,&Xl);CHKERRQ(ierr);
   ierr = DMGlobalToLocal(dm,X,INSERT_VALUES,Xl);CHKERRQ(ierr);
   ierr = VecGetArrayRead(Xl,&_X);CHKERRQ(ierr);
@@ -186,7 +187,8 @@ PetscErrorCode fvda_eval_J_timedep(SNES snes,Vec X,Mat Ja,Mat Jb,void *data)
   ctx = (FVTD)fv->ctx;
   if (!ctx) SETERRQ(PetscObjectComm((PetscObject)fv->dm_fv),PETSC_ERR_USER,"FVDA has a NULL context. Must call FVDASetup_TimeDep() first");
   ierr = SNESGetDM(snes,&dm);CHKERRQ(ierr);
-  
+  dm = fv->dm_fv;
+
   ierr = DMGetLocalVector(dm,&Xl);CHKERRQ(ierr);
   ierr = DMGlobalToLocal(dm,X,INSERT_VALUES,Xl);CHKERRQ(ierr);
   ierr = VecGetArrayRead(Xl,&_X);CHKERRQ(ierr);
@@ -392,6 +394,7 @@ PetscErrorCode fvda_highres_eval_F_timedep(SNES snes,Vec X,Vec F,void *data)
   ctx = (FVTD)fv->ctx;
   if (!ctx) SETERRQ(PetscObjectComm((PetscObject)fv->dm_fv),PETSC_ERR_USER,"FVDA has a NULL context. Must call FVDASetup_TimeDep() first");
   ierr = SNESGetDM(snes,&dm);CHKERRQ(ierr);
+  dm = fv->dm_fv;
   
   ierr = DMGetLocalVector(dm,&Xl);CHKERRQ(ierr);
   ierr = DMGlobalToLocal(dm,X,INSERT_VALUES,Xl);CHKERRQ(ierr);

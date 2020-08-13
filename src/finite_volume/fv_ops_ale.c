@@ -106,6 +106,7 @@ PetscErrorCode fvda_eval_F_forward_ale(SNES snes,Vec X,Vec F,void *data)
   ctx = (FVALE)fv->ctx;
   if (!ctx) SETERRQ(PetscObjectComm((PetscObject)fv->dm_fv),PETSC_ERR_USER,"FVDA has a NULL context. Must call FVDASetup_ALE() first");
   ierr = SNESGetDM(snes,&dm);CHKERRQ(ierr);
+  dm = fv->dm_fv;
   
   ierr = DMGetLocalVector(dm,&Xl);CHKERRQ(ierr);
   ierr = DMGlobalToLocal(dm,X,INSERT_VALUES,Xl);CHKERRQ(ierr);
@@ -207,6 +208,7 @@ PetscErrorCode fvda_eval_J_forward_ale(SNES snes,Vec X,Mat Ja,Mat Jb,void *data)
   ctx = (FVALE)fv->ctx;
   if (!ctx) SETERRQ(PetscObjectComm((PetscObject)fv->dm_fv),PETSC_ERR_USER,"FVDA has a NULL context. Must call FVDASetup_ALE() first");
   ierr = SNESGetDM(snes,&dm);CHKERRQ(ierr);
+  dm = fv->dm_fv;
   
   ierr = DMGetLocalVector(dm,&Xl);CHKERRQ(ierr);
   ierr = DMGlobalToLocal(dm,X,INSERT_VALUES,Xl);CHKERRQ(ierr);
@@ -315,7 +317,8 @@ PetscErrorCode fvda_eval_F_backward_ale(SNES snes,Vec X,Vec F,void *data)
   ctx = (FVALE)fv->ctx;
   if (!ctx) SETERRQ(PetscObjectComm((PetscObject)fv->dm_fv),PETSC_ERR_USER,"FVDA has a NULL context. Must call FVDASetup_ALE() first");
   ierr = SNESGetDM(snes,&dm);CHKERRQ(ierr);
-  
+  dm = fv->dm_fv;
+
   ierr = DMGetLocalVector(dm,&Xl);CHKERRQ(ierr);
   ierr = DMGlobalToLocal(dm,X,INSERT_VALUES,Xl);CHKERRQ(ierr);
   ierr = VecGetArrayRead(Xl,&_X);CHKERRQ(ierr);
@@ -418,7 +421,8 @@ PetscErrorCode fvda_highres_eval_F_forward_ale(SNES snes,Vec X,Vec F,void *data)
   ctx = (FVALE)fv->ctx;
   if (!ctx) SETERRQ(PetscObjectComm((PetscObject)fv->dm_fv),PETSC_ERR_USER,"FVDA has a NULL context. Must call FVDASetup_ALE() first");
   ierr = SNESGetDM(snes,&dm);CHKERRQ(ierr);
-  
+  dm = fv->dm_fv;
+
   ierr = DMGetLocalVector(dm,&Xl);CHKERRQ(ierr);
   ierr = DMGlobalToLocal(dm,X,INSERT_VALUES,Xl);CHKERRQ(ierr);
   ierr = VecGetArrayRead(Xl,&_X);CHKERRQ(ierr);
@@ -542,7 +546,8 @@ PetscErrorCode fvda_highres_eval_L_forward_ale(SNES snes,const PetscReal range[]
   ctx = (FVALE)fv->ctx;
   if (!ctx) SETERRQ(PetscObjectComm((PetscObject)fv->dm_fv),PETSC_ERR_USER,"FVDA has a NULL context. Must call FVDASetup_ALE() first");
   ierr = SNESGetDM(snes,&dm);CHKERRQ(ierr);
-  
+  dm = fv->dm_fv;
+
   ierr = DMGetLocalVector(dm,&Xl);CHKERRQ(ierr);
   ierr = DMGlobalToLocal(dm,X,INSERT_VALUES,Xl);CHKERRQ(ierr);
   ierr = VecGetArrayRead(Xl,&_X);CHKERRQ(ierr);
