@@ -18,7 +18,7 @@ libptatin3d-y.c += $(call thisdir, \
 ptatin-tests-y.c += $(call thisdir, \
   fv-ex1.c \
   fv-ex2.c \
-  fv-ex3.c \
+  fv-ex3.c fv-ex3-fas.c \
   fv-ex4.c \
   fv-ex5.c \
   fv-ex6.c \

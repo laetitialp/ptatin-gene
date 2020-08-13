@@ -72,7 +72,6 @@ PetscErrorCode FVDAView_Heavy(FVDA fv,const char path[],const char suffix[]);
 /* fv_ops_time_dep.c */
 PetscErrorCode FVDASetup_TimeDep(FVDA fv);
 PetscErrorCode FVDAAccessData_TimeDep(FVDA fv,PetscReal **dt,Vec *Qk);
-PetscErrorCode FVDADestroy_TimeDep(FVDA fv);
 PetscErrorCode fvda_eval_F_timedep(SNES snes,Vec X,Vec F,void *data);
 PetscErrorCode fvda_eval_J_timedep(SNES snes,Vec X,Mat Ja,Mat Jb,void *data);
 PetscErrorCode FVDAStep_FEuler(FVDA fv,PetscReal time,PetscReal dt,Vec X,Vec X_new);
@@ -84,7 +83,6 @@ PetscErrorCode fvda_highres_eval_F_timedep(SNES snes,Vec X,Vec F,void *data);
 /* fv_ops_ale.c */
 PetscErrorCode FVDASetup_ALE(FVDA fv);
 PetscErrorCode FVDAAccessData_ALE(FVDA fv,PetscReal **dt,Vec *Qk,Vec *coor_target);
-PetscErrorCode FVDADestroy_ALE(FVDA fv);
 PetscErrorCode fvda_eval_F_forward_ale(SNES snes,Vec X,Vec F,void *data);
 PetscErrorCode fvda_eval_J_forward_ale(SNES snes,Vec X,Mat Ja,Mat Jb,void *data);
 PetscErrorCode fvda_eval_F_backward_ale(SNES snes,Vec X,Vec F,void *data);

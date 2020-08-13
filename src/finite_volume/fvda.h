@@ -7,6 +7,7 @@
 #include <petscmat.h>
 #include <petscdm.h>
 #include <petscdmda.h>
+#include <petscsnes.h>
 
 //#define FVDA_DEBUG
 
@@ -75,9 +76,6 @@ typedef struct _p_FVALE *FVALE;
 typedef struct _p_FVTD *FVTD;
 
 
-PetscErrorCode DMGlobalToLocal(DM dm,Vec g,InsertMode mode,Vec l);
-PetscErrorCode DMLocalToGlobal(DM dm,Vec l,InsertMode mode,Vec g);
-
 PetscErrorCode FVDACreate(MPI_Comm comm,FVDA *_fv);
 PetscErrorCode FVDASetDimension(FVDA fv,PetscInt dim);
 PetscErrorCode FVDASetSizes(FVDA fv,const PetscInt mi[],const PetscInt Mi[]);
@@ -130,5 +128,8 @@ PetscErrorCode FVDAVecTraverse(FVDA fv,Vec X,PetscReal time,PetscInt dof,
 
 PetscErrorCode _cart_convert_index_to_ijk(PetscInt r,const PetscInt mp[],PetscInt rijk[]);
 PetscErrorCode _cart_convert_ijk_to_index(const PetscInt rijk[],const PetscInt mp[],PetscInt *r);
+
+PetscErrorCode FVDACreateMatrix(FVDA fv,DMDAStencilType type,Mat *A);
+PetscErrorCode SNESFVDAConfigureGalerkinMG(SNES snes,FVDA fv);
 
 #endif

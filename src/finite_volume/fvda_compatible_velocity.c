@@ -868,14 +868,34 @@ PetscErrorCode FVDAPostProcessCompatibleVelocity(FVDA fv,const char name_v[],con
   PetscFunctionReturn(0);
 }
 
+#include <petsc/private/dmdaimpl.h>
 PetscErrorCode FVDAPPCompatibleVelocityCreate(FVDA fv,KSP *ksp)
 {
   PetscErrorCode ierr;
   Mat            A;
-  
+  PetscBool      use_fv_space = PETSC_FALSE;
   
   PetscFunctionBegin;
-  ierr = DMCreateMatrix(fv->dm_fv,&A);CHKERRQ(ierr);
+  /* 
+   Creating the operator with the FV DMDA over allocates the matrix.
+   FV space uses stencil type BOX, post-proc only requires stencil type STAR.
+   This changes nnz from 27 to 7, which results in ~ >2x faster solve times with MG.
+  */
+  ierr = PetscOptionsGetBool(NULL,NULL,"-fvpp_operator_fvspace",&use_fv_space,NULL);CHKERRQ(ierr);
+  if (use_fv_space) {
+    ierr = DMCreateMatrix(fv->dm_fv,&A);CHKERRQ(ierr);
+  } else {
+    //DM              dm;
+    DM_DA           *da = (DM_DA*)fv->dm_fv->data;
+    DMDAStencilType stype = da->stencil_type;
+    
+    da->stencil_type = DMDA_STENCIL_STAR;
+    //ierr = DMClone(fv->dm_fv,&dm);CHKERRQ(ierr);
+    //ierr = DMCreateMatrix(dm,&A);CHKERRQ(ierr);
+    ierr = DMCreateMatrix(fv->dm_fv,&A);CHKERRQ(ierr);
+    da->stencil_type = stype;
+    //ierr = DMDestroy(&dm);CHKERRQ(ierr);
+  }
   
   ierr = KSPCreate(PetscObjectComm((PetscObject)fv->dm_fv),ksp);CHKERRQ(ierr);
   //ierr = KSPSetDM(*ksp,fv->dm_fv);CHKERRQ(ierr);

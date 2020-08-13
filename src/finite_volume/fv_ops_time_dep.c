@@ -16,6 +16,9 @@ PetscErrorCode eval_J_diffusion_7point_local(FVDA fv,const PetscReal domain_geom
 PetscErrorCode eval_F_upwind_hr_local(FVDA fv,const PetscReal domain_geom_coor[],const PetscReal fv_coor[],const PetscReal X[],PetscReal F[]);
 PetscErrorCode eval_F_diffusion_7point_hr_local_store_MPI(FVDA fv,const PetscReal domain_geom_coor[],const PetscReal fv_coor[],const PetscReal X[],PetscReal F[]);
 
+static PetscErrorCode FVDADestroy_TimeDep(FVDA fv);
+
+
 PetscErrorCode FVDASetup_TimeDep(FVDA fv)
 {
   PetscErrorCode ierr;
@@ -54,7 +57,7 @@ PetscErrorCode FVDAAccessData_TimeDep(FVDA fv,PetscReal **dt,Vec *Qk)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode FVDADestroy_TimeDep(FVDA fv)
+static PetscErrorCode FVDADestroy_TimeDep(FVDA fv)
 {
   PetscErrorCode ierr;
   FVTD           ctx = NULL;
@@ -94,7 +97,8 @@ PetscErrorCode fvda_eval_F_timedep(SNES snes,Vec X,Vec F,void *data)
   ctx = (FVTD)fv->ctx;
   if (!ctx) SETERRQ(PetscObjectComm((PetscObject)fv->dm_fv),PETSC_ERR_USER,"FVDA has a NULL context. Must call FVDASetup_TimeDep() first");
   ierr = SNESGetDM(snes,&dm);CHKERRQ(ierr);
-  
+  dm = fv->dm_fv;
+
   ierr = DMGetLocalVector(dm,&Xl);CHKERRQ(ierr);
   ierr = DMGlobalToLocal(dm,X,INSERT_VALUES,Xl);CHKERRQ(ierr);
   ierr = VecGetArrayRead(Xl,&_X);CHKERRQ(ierr);
@@ -183,7 +187,8 @@ PetscErrorCode fvda_eval_J_timedep(SNES snes,Vec X,Mat Ja,Mat Jb,void *data)
   ctx = (FVTD)fv->ctx;
   if (!ctx) SETERRQ(PetscObjectComm((PetscObject)fv->dm_fv),PETSC_ERR_USER,"FVDA has a NULL context. Must call FVDASetup_TimeDep() first");
   ierr = SNESGetDM(snes,&dm);CHKERRQ(ierr);
-  
+  dm = fv->dm_fv;
+
   ierr = DMGetLocalVector(dm,&Xl);CHKERRQ(ierr);
   ierr = DMGlobalToLocal(dm,X,INSERT_VALUES,Xl);CHKERRQ(ierr);
   ierr = VecGetArrayRead(Xl,&_X);CHKERRQ(ierr);
@@ -389,6 +394,7 @@ PetscErrorCode fvda_highres_eval_F_timedep(SNES snes,Vec X,Vec F,void *data)
   ctx = (FVTD)fv->ctx;
   if (!ctx) SETERRQ(PetscObjectComm((PetscObject)fv->dm_fv),PETSC_ERR_USER,"FVDA has a NULL context. Must call FVDASetup_TimeDep() first");
   ierr = SNESGetDM(snes,&dm);CHKERRQ(ierr);
+  dm = fv->dm_fv;
   
   ierr = DMGetLocalVector(dm,&Xl);CHKERRQ(ierr);
   ierr = DMGlobalToLocal(dm,X,INSERT_VALUES,Xl);CHKERRQ(ierr);

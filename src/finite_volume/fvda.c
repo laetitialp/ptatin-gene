@@ -2,6 +2,7 @@
 #include <petsc.h>
 #include <petscdm.h>
 #include <petscdmda.h>
+#include <petsc/private/dmdaimpl.h>
 #include <fvda_impl.h>
 #include <fvda.h>
 #include <fvda_private.h>
@@ -21,24 +22,6 @@ static PetscErrorCode private_FVDASetUpLocalFVIndices3d(FVDA fv,DM dmfv);
 static PetscErrorCode private_FVDASetUpBoundaryLabels(FVDA fv);
 static PetscErrorCode private_FVDAUpdateGeometry3d(FVDA fv);
 
-
-PetscErrorCode DMGlobalToLocal(DM dm,Vec g,InsertMode mode,Vec l)
-{
-  PetscErrorCode ierr;
-  PetscFunctionBegin;
-  ierr = DMGlobalToLocalBegin(dm,g,mode,l);CHKERRQ(ierr);
-  ierr = DMGlobalToLocalEnd(dm,g,mode,l);CHKERRQ(ierr);
-  return(0);
-}
-
-PetscErrorCode DMLocalToGlobal(DM dm,Vec l,InsertMode mode,Vec g)
-{
-  PetscErrorCode ierr;
-  PetscFunctionBegin;
-  ierr = DMLocalToGlobalBegin(dm,l,mode,g);CHKERRQ(ierr);
-  ierr = DMLocalToGlobalEnd(dm,l,mode,g);CHKERRQ(ierr);
-  return(0);
-}
 
 PetscErrorCode FVDACreateFromDMDA(DM vertex_layout,FVDA *_fv)
 {
@@ -2757,7 +2740,8 @@ PetscErrorCode eval_F(SNES snes,Vec X,Vec F,void *data)
   PetscFunctionBegin;
   ierr = SNESGetApplicationContext(snes,(void*)&fv);CHKERRQ(ierr);
   ierr = SNESGetDM(snes,&dm);CHKERRQ(ierr);
-  
+  dm = fv->dm_fv;
+
   ierr = DMGetLocalVector(dm,&Xl);CHKERRQ(ierr);
   ierr = DMGlobalToLocal(dm,X,INSERT_VALUES,Xl);CHKERRQ(ierr);
   ierr = VecGetArrayRead(Xl,&_X);CHKERRQ(ierr);
@@ -3086,6 +3070,7 @@ PetscErrorCode eval_J(SNES snes,Vec X,Mat Ja,Mat Jb,void *data)
   
   ierr = SNESGetApplicationContext(snes,(void*)&fv);CHKERRQ(ierr);
   ierr = SNESGetDM(snes,&dm);CHKERRQ(ierr);
+  dm = fv->dm_fv;
   
   ierr = DMGetLocalVector(dm,&Xl);CHKERRQ(ierr);
   ierr = DMGlobalToLocal(dm,X,INSERT_VALUES,Xl);CHKERRQ(ierr);
@@ -4294,6 +4279,7 @@ PetscErrorCode eval_F_hr(SNES snes,Vec X,Vec F,void *data)
   PetscFunctionBegin;
   ierr = SNESGetApplicationContext(snes,(void*)&fv);CHKERRQ(ierr);
   ierr = SNESGetDM(snes,&dm);CHKERRQ(ierr);
+  dm = fv->dm_fv;
   
   ierr = DMGetLocalVector(dm,&Xl);CHKERRQ(ierr);
   ierr = DMGlobalToLocal(dm,X,INSERT_VALUES,Xl);CHKERRQ(ierr);
@@ -4383,5 +4369,74 @@ PetscErrorCode FVDAVecTraverse(FVDA fv,Vec X,PetscReal time,PetscInt dof,
   ierr = VecRestoreArrayRead(cellcoor,&_cellcoor);CHKERRQ(ierr);
   ierr = VecRestoreArray(X,&_X);CHKERRQ(ierr);
 
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode FVDACreateMatrix(FVDA fv,DMDAStencilType type,Mat *A)
+{
+  //DM            dm;
+  DM_DA           *da = (DM_DA*)fv->dm_fv->data;
+  DMDAStencilType stype = da->stencil_type;
+  PetscErrorCode  ierr;
+  
+  PetscFunctionBegin;
+  da->stencil_type = type;
+  //ierr = DMClone(fv->dm_fv,&dm);CHKERRQ(ierr);
+  //ierr = DMCreateMatrix(dm,A);CHKERRQ(ierr);
+  ierr = DMCreateMatrix(fv->dm_fv,A);CHKERRQ(ierr);
+  da->stencil_type = stype;
+  //ierr = DMDestroy(&dm);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+/*
+ If snes->ksp->pc is type PCMG, configure the levels such
+ that they have an appropriate DM. The appropriate DM is one
+ consistent with fv->dm_fv without coordinates.
+ It is important to not have coordinates attached as PETSc
+ does not implement injection of coordinates for P0 interpolation,
+ or for the case when the number of cells is even.
+*/
+PetscErrorCode SNESFVDAConfigureGalerkinMG(SNES snes,FVDA fv)
+{
+  KSP       ksp;
+  PC        pc;
+  PetscBool ismg;
+  DM        dm,*dml;
+  Mat       interp;
+  PetscInt  nlevels,k;
+  PetscErrorCode  ierr;
+  
+  PetscFunctionBegin;
+  ierr = SNESGetKSP(snes,&ksp);CHKERRQ(ierr);
+  ierr = KSPGetPC(ksp,&pc);CHKERRQ(ierr);
+  ierr = PetscObjectTypeCompare((PetscObject)pc,PCMG,&ismg);CHKERRQ(ierr);
+  if (ismg) {
+    ierr = DMClone(fv->dm_fv,&dm);CHKERRQ(ierr);
+    ierr = DMDASetInterpolationType(dm,DMDA_Q0);CHKERRQ(ierr);
+    ierr = PCMGGetLevels(pc,&nlevels);CHKERRQ(ierr);
+    ierr = PetscCalloc1(nlevels,&dml);CHKERRQ(ierr);
+    dml[0] = dm;
+    for (k=1; k<nlevels; k++) {
+      ierr = DMCoarsen(dml[k-1],fv->comm,&dml[k]);CHKERRQ(ierr);
+      ierr = DMDASetInterpolationType(dml[k],DMDA_Q0);CHKERRQ(ierr);
+    }
+    for (k=1; k<nlevels; k++) {
+      ierr = DMCreateInterpolation(dml[k],dml[k-1],&interp,NULL);CHKERRQ(ierr);
+      ierr = PCMGSetInterpolation(pc,nlevels-k,interp);CHKERRQ(ierr);
+      ierr = MatDestroy(&interp);CHKERRQ(ierr);
+    }
+    for (k=0; k<1; k++) {
+      KSP smth;
+      ierr = PCMGGetSmoother(pc,k,&smth);CHKERRQ(ierr);
+      ierr = KSPSetDM(smth,dml[nlevels-1-k]);CHKERRQ(ierr);
+      ierr = KSPSetDMActive(smth,PETSC_FALSE);CHKERRQ(ierr);
+    }
+    ierr = PCMGSetGalerkin(pc,PC_MG_GALERKIN_BOTH);CHKERRQ(ierr);
+    for (k=0; k<nlevels; k++) {
+      ierr = DMDestroy(&dml[k]);CHKERRQ(ierr);
+    }
+    ierr = PetscFree(dml);CHKERRQ(ierr);
+  }
   PetscFunctionReturn(0);
 }

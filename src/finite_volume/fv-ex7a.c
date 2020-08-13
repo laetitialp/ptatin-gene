@@ -526,7 +526,6 @@ PetscErrorCode t7_forward(void)
   ierr = VecDestroy(&F);CHKERRQ(ierr);
   ierr = VecDestroy(&X);CHKERRQ(ierr);
   ierr = SNESDestroy(&snes);CHKERRQ(ierr);
-  ierr = FVDADestroy_ALE(fv);CHKERRQ(ierr);
   ierr = FVDADestroy(&fv);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -762,7 +761,6 @@ PetscErrorCode t7_backward(void)
   ierr = VecDestroy(&F);CHKERRQ(ierr);
   ierr = VecDestroy(&X);CHKERRQ(ierr);
   ierr = SNESDestroy(&snes);CHKERRQ(ierr);
-  ierr = FVDADestroy_ALE(fv);CHKERRQ(ierr);
   ierr = FVDADestroy(&fv);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
