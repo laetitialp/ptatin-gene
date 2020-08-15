@@ -1378,6 +1378,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
       ierr = pTatinPhysCompEnergyFV_ComputeALEVelocity(dm_fv_geometry,fv_vertex_coor_geometry,fv_coor_k,user->dt,energyfv->velocity);CHKERRQ(ierr); /* note we re-use storage for velocity here */
       
       ierr = PhysCompEnergyFVInterpolateVectorToFace(energyfv,energyfv->velocity,"xDot");CHKERRQ(ierr);
+      //ierr = PhysCompEnergyFVInterpolateNormalVectorToFace(energyfv,energyfv->velocity,"xDot.n");CHKERRQ(ierr);
       PetscTime(&time[1]);
       ierr = pTatinLogBasicCPUtime(user,"EnergyFV-ALE-ComputeV",time[1]-time[0]);CHKERRQ(ierr);
     }
@@ -1486,7 +1487,14 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
     }
     
     /* FV: update mesh coordinates */
-    ierr = PhysCompEnergyFVUpdateGeometry(energyfv,stokes);CHKERRQ(ierr);
+    if (active_energy) {
+      Vec fv_vertex_coor_geometry;
+      
+      ierr = FVDAGetGeometryCoordinates(energyfv->fv,&fv_vertex_coor_geometry);CHKERRQ(ierr);
+      ierr = VecCopy(fv_coor_k,fv_vertex_coor_geometry);CHKERRQ(ierr);
+      
+      ierr = PhysCompEnergyFVUpdateGeometry(energyfv,stokes);CHKERRQ(ierr);
+    }
     
     
     
