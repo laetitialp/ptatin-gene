@@ -757,7 +757,7 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
   PetscLogDouble t0,t1;
   
   DM             cda;
-  Vec            gcoords;
+  Vec            gcoords,fv_coor_local;
   PetscReal      *LA_gcoords;
   PetscInt       nel,nen_u,nen_p,eidx,k;
   const PetscInt *elnidx_u;
@@ -794,7 +794,9 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
   
   int            viscous_type,plastic_type,softening_type,density_type;
   long int       npoints_yielded,npoints_yielded_g;
-  
+  const PetscReal      *_fv_coor;
+  FVReconstructionCell rcell;
+
   
   PetscFunctionBegin;
   
@@ -870,6 +872,8 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
   fv_ghost_offset[1] = fv_start[1] - fv_start_local[1];
   fv_ghost_offset[2] = fv_start[2] - fv_start_local[2];
   
+  ierr = DMGetCoordinatesLocal(energy->fv->dm_fv,&fv_coor_local);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(fv_coor_local,&_fv_coor);CHKERRQ(ierr);
   
   /* marker loop */
   min_eta = 1.0e100;
@@ -958,6 +962,9 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
       //printf("  fv subcell (local) %d \n",sub_fv_cell);
       
       T_mp = Tfield[sub_fv_cell];
+      
+      ierr = FVReconstructionP1Create(&rcell,energy->fv,sub_fv_cell,_fv_coor,Tfield);CHKERRQ(ierr);
+      ierr = FVReconstructionP1Interpolate(&rcell,mpprop_std->coor,&T_mp);CHKERRQ(ierr);
     }
     
     /* get viscosity on marker */
@@ -1304,14 +1311,15 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
   DataFieldRestoreAccess(PField_pls);
   
   ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
-  
+  ierr = VecRestoreArrayRead(fv_coor_local,&_fv_coor);CHKERRQ(ierr);
+
   ierr = MPI_Allreduce(&min_eta,&min_eta_g,1, MPI_DOUBLE, MPI_MIN, PETSC_COMM_WORLD);CHKERRQ(ierr);
   ierr = MPI_Allreduce(&max_eta,&max_eta_g,1, MPI_DOUBLE, MPI_MAX, PETSC_COMM_WORLD);CHKERRQ(ierr);
   ierr = MPI_Allreduce(&npoints_yielded,&npoints_yielded_g,1, MPI_LONG, MPI_SUM, PETSC_COMM_WORLD);CHKERRQ(ierr);
   
   PetscTime(&t1);
   
-  PetscPrintf(PETSC_COMM_WORLD,"Update non-linearities (VPSTD) [mpoint]: (min,max)_eta %1.2e,%1.2e; log10(max/min) %1.2e; npoints_yielded %ld; cpu time %1.2e (sec)\n",
+  PetscPrintf(PETSC_COMM_WORLD,"Update non-linearities (VPSTD-FV) [mpoint]: (min,max)_eta %1.2e,%1.2e; log10(max/min) %1.2e; npoints_yielded %ld; cpu time %1.2e (sec)\n",
               min_eta_g, max_eta_g, log10(max_eta_g/min_eta_g), npoints_yielded_g, t1-t0 );
   
   PetscFunctionReturn(0);
