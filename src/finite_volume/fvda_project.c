@@ -871,3 +871,198 @@ PetscErrorCode FVDAFieldProjectReconstructionToVertex_Q1(FVDA fv,Vec fv_field,Pe
   PetscFunctionReturn(0);
 }
 
+
+static PetscErrorCode FVProjectSetUp_Natural(FVProject proj)
+{
+  PetscErrorCode ierr;
+  proj->dmf = proj->fv->dm_fv;
+  ierr = PetscObjectReference((PetscObject)proj->fv->dm_fv);CHKERRQ(ierr);
+  proj->gf = proj->q;
+  ierr = PetscObjectReference((PetscObject)proj->q);CHKERRQ(ierr);
+  ierr = DMCreateLocalVector(proj->dmf,&proj->lf);CHKERRQ(ierr);
+  proj->bs = 1;
+  ierr = DMGlobalToLocal(proj->dmf,proj->gf,INSERT_VALUES,proj->lf);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(proj->lf,&proj->_lf);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode FVProjectSetUp_P0(FVProject proj)
+{
+  PetscErrorCode ierr;
+  ierr = FVDAFieldSetUpProjectToVertex_Q1(proj->fv,&proj->dmf,&proj->gf);CHKERRQ(ierr);
+  ierr = DMCreateLocalVector(proj->dmf,&proj->lf);CHKERRQ(ierr);
+  proj->bs = 1;
+  ierr = FVDAFieldProjectToVertex_Q1(proj->fv,proj->q,proj->dmf,proj->gf);CHKERRQ(ierr);
+  ierr = DMGlobalToLocal(proj->dmf,proj->gf,INSERT_VALUES,proj->lf);CHKERRQ(ierr);
+  ierr = DMDAGetElements(proj->dmf,&proj->nel,&proj->nen,&proj->e);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(proj->lf,&proj->_lf);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode FVProjectSetUp_PointwiseP1(FVProject proj)
+{
+  PetscErrorCode ierr;
+  ierr = FVDAFieldSetUpProjectToVertex_Q1(proj->fv,&proj->dmf,&proj->gf);CHKERRQ(ierr);
+  ierr = DMCreateLocalVector(proj->dmf,&proj->lf);CHKERRQ(ierr);
+  proj->bs = 1;
+  ierr = FVDAFieldProjectReconstructionToVertex_Q1(proj->fv,proj->q,proj->range[0],proj->range[1],proj->dmf,proj->gf);CHKERRQ(ierr);
+  ierr = DMGlobalToLocal(proj->dmf,proj->gf,INSERT_VALUES,proj->lf);CHKERRQ(ierr);
+  ierr = DMDAGetElements(proj->dmf,&proj->nel,&proj->nen,&proj->e);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(proj->lf,&proj->_lf);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode FVProjectSetUp_L2P1(FVProject proj)
+{
+  //PetscErrorCode ierr;
+  
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode FVProjectCreate(FVDA fv,PetscInt type,Vec Q,FVProject *proj)
+{
+  PetscErrorCode ierr;
+  FVProject      p;
+  
+  PetscFunctionBegin;
+  ierr = PetscMalloc(sizeof(struct _p_FVProject),&p);CHKERRQ(ierr);
+  ierr = PetscMemzero(p,sizeof(struct _p_FVProject));CHKERRQ(ierr);
+  p->fv = fv;
+  p->type = type;
+  p->q = Q;
+  ierr = PetscObjectReference((PetscObject)Q);CHKERRQ(ierr);
+  p->range[0] = PETSC_MIN_REAL;
+  p->range[1] = PETSC_MAX_REAL;
+  p->issetup = PETSC_FALSE;
+  switch (type) {
+    case -1:
+      p->setup = FVProjectSetUp_Natural;
+      break;
+
+    case 0:
+      p->setup = FVProjectSetUp_P0;
+      break;
+      
+    case 1:
+      p->setup = FVProjectSetUp_PointwiseP1;
+      break;
+      
+    case 2:
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"L2 projection not supported");
+      p->setup = FVProjectSetUp_L2P1;
+      break;
+
+    case 3: /* gradients */
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Gradient projection not supported");
+      break;
+    default:
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Unknown projection requested");
+      break;
+  }
+  *proj = p;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode FVProjectSetBounds(FVProject proj,const PetscReal r[])
+{
+  PetscFunctionBegin;
+  proj->range[0] = r[0];
+  proj->range[1] = r[1];
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode FVProjectDestroyGlobalSpace(FVProject proj)
+{
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  if (!proj->issetup) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Must call FVProjectSetup() before FVProjectDestroyGlobalSpace().");
+  if (proj->gf) {
+    ierr = VecDestroy(&proj->gf);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode FVProjectSetup(FVProject proj)
+{
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  if (proj->issetup) PetscFunctionReturn(0);
+  if (proj->setup) {
+    ierr = proj->setup(proj);CHKERRQ(ierr);
+  } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"FVProject has no setup() method");
+
+  proj->issetup = PETSC_TRUE;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode FVProjectDestroy(FVProject *proj)
+{
+  PetscErrorCode ierr;
+  FVProject      p;
+  
+  PetscFunctionBegin;
+  if (!proj) PetscFunctionReturn(0);
+  p = *proj;
+  if (!p) PetscFunctionReturn(0);
+  if (p->issetup) {
+    ierr = VecRestoreArrayRead(p->lf,&p->_lf);CHKERRQ(ierr);
+  }
+  if (p->e) {
+    ierr = DMDARestoreElements(p->dmf,&p->nel,&p->nen,&p->e);CHKERRQ(ierr);
+  }
+  ierr = DMDestroy(&p->dmf);CHKERRQ(ierr);
+  ierr = VecDestroy(&p->gf);CHKERRQ(ierr);
+  ierr = VecDestroy(&p->lf);CHKERRQ(ierr);
+  ierr = VecDestroy(&p->q);CHKERRQ(ierr);
+  ierr = PetscFree(p);CHKERRQ(ierr);
+  *proj = NULL;
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode FVProjectEvaluate_P0(FVProject proj,PetscInt cell,PetscReal val[])
+{
+  PetscInt       b;
+  PetscErrorCode ierr;
+  
+  PetscFunctionBegin;
+  ierr = PetscMemzero(val,sizeof(PetscReal)*proj->bs);CHKERRQ(ierr);
+  for (b=0; b<proj->bs; b++) {
+    val[b] = proj->_lf[proj->bs*cell+b];
+  }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode FVProjectEvaluate_Q1(FVProject proj,PetscInt cell,const PetscReal xi[],PetscReal val[])
+{
+  PetscReal      N[8];
+  PetscInt       i,b;
+  PetscErrorCode ierr;
+  
+  PetscFunctionBegin;
+  EvaluateBasis_Q1_3D(xi,N);
+  ierr = PetscMemzero(val,sizeof(PetscReal)*proj->bs);CHKERRQ(ierr);
+  for (i=0; i<8; i++) {
+    const PetscInt *element = &proj->e[8*cell];
+    for (b=0; b<proj->bs; b++) {
+      val[b] += N[i] * proj->_lf[proj->bs*element[i]+b];
+    }
+  }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode FVProjectEvaluate(FVProject proj,PetscInt cell,const PetscReal xi[],PetscReal val[])
+{
+  PetscErrorCode ierr;
+  
+  PetscFunctionBegin;
+  if (!proj->issetup) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Must call FVProjectSetup() before FVProjectEvaluate()");
+  if (proj->type == -1) {
+    ierr = FVProjectEvaluate_P0(proj,cell,val);CHKERRQ(ierr);
+  } else {
+    ierr = FVProjectEvaluate_Q1(proj,cell,xi,val);CHKERRQ(ierr);
+  }
+  
+  PetscFunctionReturn(0);
+}
+
+

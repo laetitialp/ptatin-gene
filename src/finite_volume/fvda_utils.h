@@ -104,6 +104,29 @@ PetscErrorCode FVDAGradientProject(FVDA fv,Vec Q,Vec gradQ);
 PetscErrorCode FVDAGradientProjectViaReconstruction(FVDA fv,FVArray Q,FVArray gradQ);
 PetscErrorCode FVDAFieldProjectReconstructionToVertex_Q1(FVDA fv,Vec fv_field,PetscReal min,PetscReal max,DM dmf,Vec field);
 
+typedef struct _p_FVProject *FVProject;
+struct _p_FVProject {
+  FVDA      fv;
+  Vec       q;
+  PetscReal range[2];
+  PetscInt  type;
+  DM              dmf;
+  Vec             gf,lf;
+  const PetscReal *_lf;
+  PetscInt        bs;
+  PetscErrorCode  (*setup)(FVProject);
+  //PetscErrorCode (*eval)(FVProject,PetscInt cell,const PetscReal*,PetscReal*);
+  PetscBool       issetup;
+  PetscInt        nel,nen;
+  const PetscInt  *e;
+};
+
+PetscErrorCode FVProjectCreate(FVDA fv,PetscInt type,Vec Q,FVProject *proj);
+PetscErrorCode FVProjectSetBounds(FVProject proj,const PetscReal r[]);
+PetscErrorCode FVProjectDestroyGlobalSpace(FVProject proj);
+PetscErrorCode FVProjectSetup(FVProject proj);
+PetscErrorCode FVProjectDestroy(FVProject *proj);
+PetscErrorCode FVProjectEvaluate(FVProject proj,PetscInt cell,const PetscReal xi[],PetscReal val[]);
 
 /* fvda_reconstruction.c */
 typedef struct _p_FVReconstructionCell FVReconstructionCell;
