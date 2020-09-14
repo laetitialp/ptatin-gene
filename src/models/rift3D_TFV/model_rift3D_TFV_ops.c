@@ -118,7 +118,7 @@ static PetscErrorCode ModelInitialize_Rift3D_T(pTatinCtx c,void *ctx)
   /* box geometry, m */
   data->Lx =  12.0e5;
   data->Ly =  0.0e5;
-  data->Lz =  6.0e5/64.0; // <DAM FV TESTING: Scale z length to make model ~2D>
+  data->Lz =  6.0e5;
   //data->Ox =  -6.0e5;
   data->Ox =  0.0e5;
   data->Oy =  -1.5e5;
