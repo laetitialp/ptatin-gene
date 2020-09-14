@@ -722,7 +722,7 @@ PetscErrorCode FVDAView_CellData_local(FVDA fv,Vec field,PetscBool view_cell_pro
   const PetscInt  *dm_element;
   PetscInt        Nv,i,c,p;
   int             npoints,ncells,offset;
-
+  const char      *field_name;
   
   PetscFunctionBegin;
   ierr = MPI_Comm_rank(fv->comm,&rank);CHKERRQ(ierr);
@@ -769,7 +769,9 @@ PetscErrorCode FVDAView_CellData_local(FVDA fv,Vec field,PetscBool view_cell_pro
   
   fprintf(fp,"    <CellData>\n");
   
-  fprintf(fp,"      <DataArray Name=\"Q\" type=\"Float64\" NumberOfComponents=\"1\" format=\"ascii\">\n");
+  ierr = PetscObjectGetName((PetscObject)field,&field_name);CHKERRQ(ierr);
+  if (field_name) fprintf(fp,"      <DataArray Name=\"%s\" type=\"Float64\" NumberOfComponents=\"1\" format=\"ascii\">\n",field_name);
+  else fprintf(fp,"      <DataArray Name=\"Q\" type=\"Float64\" NumberOfComponents=\"1\" format=\"ascii\">\n");
   for (i=0; i<dm_nel; i++) {
     fprintf(fp,"%+1.6e ",_field[i]);
   }
@@ -861,6 +863,7 @@ PetscErrorCode FVDAView_CellData(FVDA fv,Vec field,PetscBool view_cell_prop,cons
   char           pvtu_fname[PETSC_MAX_PATH_LEN];
   FILE           *vtk_fp = NULL;
   PetscInt       p;
+  const char     *field_name;
   
   
   PetscFunctionBegin;
@@ -890,8 +893,12 @@ PetscErrorCode FVDAView_CellData(FVDA fv,Vec field,PetscBool view_cell_prop,cons
   if (vtk_fp) fprintf(vtk_fp,"      <PDataArray Name=\"Points\" NumberOfComponents=\"3\" type=\"Float64\"/>\n");
   if (vtk_fp) fprintf(vtk_fp,"    </PPoints>\n");
   
+  ierr = PetscObjectGetName((PetscObject)field,&field_name);CHKERRQ(ierr);
   if (vtk_fp) fprintf(vtk_fp,"    <PCellData>\n");
-  if (vtk_fp) fprintf(vtk_fp,"      <PDataArray Name=\"Q\" NumberOfComponents=\"1\" type=\"Float64\"/>\n");
+  if (vtk_fp) {
+    if (field_name) fprintf(vtk_fp,"      <PDataArray Name=\"%s\" NumberOfComponents=\"1\" type=\"Float64\"/>\n",field_name);
+    else fprintf(vtk_fp,"      <PDataArray Name=\"Q\" NumberOfComponents=\"1\" type=\"Float64\"/>\n");
+  }
   if (view_cell_prop && vtk_fp) {
     for (p=0; p<fv->ncoeff_cell; p++) {
       PetscInt b,bs;

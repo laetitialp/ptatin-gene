@@ -199,6 +199,7 @@ PetscErrorCode PhysCompEnergyFVSetUp(PhysCompEnergyFV energy,pTatinCtx pctx)
   }
   
   ierr = DMCreateGlobalVector(energy->fv->dm_fv,&energy->T);CHKERRQ(ierr);
+  ierr = PetscObjectSetName((PetscObject)energy->T,"T");CHKERRQ(ierr);
   ierr = DMCreateGlobalVector(energy->fv->dm_fv,&energy->Told);CHKERRQ(ierr);
   ierr = DMCreateGlobalVector(energy->fv->dm_fv,&energy->F);CHKERRQ(ierr);
   /*ierr = DMCreateMatrix(energy->fv->dm_fv,&energy->J);CHKERRQ(ierr);*/
