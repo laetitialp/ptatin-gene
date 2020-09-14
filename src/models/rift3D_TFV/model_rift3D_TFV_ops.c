@@ -54,6 +54,7 @@
 #include "ptatin3d_stokes.h"
 #include "ptatin3d_energy.h"
 #include "geometry_object.h"
+#include "output_paraview.h"
 #include <material_constants_energy.h>
 #include <ptatin3d_energyfv.h>
 #include <ptatin3d_energyfv_impl.h>
@@ -785,7 +786,8 @@ static PetscErrorCode ModelOutput_Rift3D_T(pTatinCtx c,Vec X,const char prefix[]
   PetscBool        active_energy;
   DataBucket       materialpoint_db;
   PetscErrorCode   ierr;
-
+  static PetscBool been_here = PETSC_FALSE;
+  
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
 
@@ -843,12 +845,31 @@ static PetscErrorCode ModelOutput_Rift3D_T(pTatinCtx c,Vec X,const char prefix[]
     ierr = pTatinGetContext_EnergyFV(c,&energy);CHKERRQ(ierr);
     PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/%s-Tfv",pvoutputdir,prefix);
     ierr = FVDAView_CellData(energy->fv,energy->T,PETSC_TRUE,fname);CHKERRQ(ierr);
+    // PVD
+    {
+      char pvdfilename[PETSC_MAX_PATH_LEN],vtkfilename[PETSC_MAX_PATH_LEN];
+      char stepprefix[PETSC_MAX_PATH_LEN];
+      
+      PetscSNPrintf(pvdfilename,PETSC_MAX_PATH_LEN-1,"%s/timeseries_Tfv.pvd",root);
+      if (prefix) { PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "%s-Tfv.pvtu",prefix);
+      } else {      PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "Tfv.pvtu");           }
+      
+      PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%D",c->step);
+      //ierr = ParaviewPVDOpenAppend(PETSC_FALSE,c->step,pvdfilename,c->time, vtkfilename, stepprefix);CHKERRQ(ierr);
+      if (!been_here) { /* new file */
+        ierr = ParaviewPVDOpen(pvdfilename);CHKERRQ(ierr);
+        ierr = ParaviewPVDAppend(pvdfilename,c->time,vtkfilename,stepprefix);CHKERRQ(ierr);
+      } else {
+        ierr = ParaviewPVDAppend(pvdfilename,c->time,vtkfilename,stepprefix);CHKERRQ(ierr);
+      }
+    }
     
     /*
     PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/%s-Tfv_face",c->outputpath,prefix);
     ierr = FVDAView_FaceData_local(energy->fv,fname);CHKERRQ(ierr);
     */
   }
+  been_here = PETSC_TRUE;
   
   PetscFunctionReturn(0);
 }
