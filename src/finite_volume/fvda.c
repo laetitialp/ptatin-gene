@@ -3513,30 +3513,68 @@ PetscErrorCode eval_F_upwind_hr_local_MPI(FVDA fv,const PetscReal domain_geom_co
     X_p = X[c_p];
     
     flux_hr = 0;
-    if (v_n > 0.0 && fv->face_element_map[2*f+0] >= 0) { /* outflow */
+    
+    if (fv->face_location[f] == DAFACE_SUB_DOMAIN_BOUNDARY) {
+
+      if (v_n > 0.0 ) { /* outflow: use -ve side to compute flux */
+        
+        if (fv->face_element_map[2*f+0] >= 0) {
+          
+          ierr = FVDAGetReconstructionStencil_AtCell(fv,c_m,&n_neigh,neigh);CHKERRQ(ierr);
+          ierr = setup_coeff(fv,c_m,n_neigh,(const PetscInt*)neigh,fv_coor,X,coeff);CHKERRQ(ierr);
+          ierr = FVDAReconstructP1Evaluate(fv,&fv->face_centroid[3*f],c_m,(const PetscReal*)&fv_coor[3*c_m],X,coeff,&Xhr);CHKERRQ(ierr);
+          
+          flux_hr = v_n * Xhr;
+          
+          F[c_m] += flux_hr * dS; // cell[-]
+          F[c_p] -= flux_hr * dS; // cell[+]
+        
+        } else  if (fv->face_element_map[2*f+1] >= 0) {
+          
+          /* cannot process the high order flux for the + side - neigbour rank will take care of that */
+          
+        } else {
+          SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"v.n > 0 sub-domain boundary not valid");
+        }
+        
+      } else { /* inflow: use +ve side to compute flux */
+        if (fv->face_element_map[2*f+0] >= 0) {
+
+          /* cannot process the high order flux for the - side - neigbour rank will take care of that */
+
+        } else  if (fv->face_element_map[2*f+1] >= 0) {
+
+          ierr = FVDAGetReconstructionStencil_AtCell(fv,c_p,&n_neigh,neigh);CHKERRQ(ierr);
+          ierr = setup_coeff(fv,c_p,n_neigh,(const PetscInt*)neigh,fv_coor,X,coeff);CHKERRQ(ierr);
+          ierr = FVDAReconstructP1Evaluate(fv,&fv->face_centroid[3*f],c_p,(const PetscReal*)&fv_coor[3*c_p],X,coeff,&Xhr);CHKERRQ(ierr);
+          
+          flux_hr = v_n * Xhr;
+          
+          F[c_m] += flux_hr * dS; // cell[-]
+          F[c_p] -= flux_hr * dS; // cell[+]
+
+        } else {
+          SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"v.n <= 0 sub-domain boundary not valid");
+        }
+        
+      }
       
-      flux = v_n * X_m;
-      
-      ierr = FVDAGetReconstructionStencil_AtCell(fv,c_m,&n_neigh,neigh);CHKERRQ(ierr);
-      ierr = setup_coeff(fv,c_m,n_neigh,(const PetscInt*)neigh,fv_coor,X,coeff);CHKERRQ(ierr);
-      ierr = FVDAReconstructP1Evaluate(fv,&fv->face_centroid[3*f],c_m,(const PetscReal*)&fv_coor[3*c_m],X,coeff,&Xhr);CHKERRQ(ierr);
+    } else { /* interior */
+
+      if (v_n > 0.0) { /* outflow */
+        ierr = FVDAGetReconstructionStencil_AtCell(fv,c_m,&n_neigh,neigh);CHKERRQ(ierr);
+        ierr = setup_coeff(fv,c_m,n_neigh,(const PetscInt*)neigh,fv_coor,X,coeff);CHKERRQ(ierr);
+        ierr = FVDAReconstructP1Evaluate(fv,&fv->face_centroid[3*f],c_m,(const PetscReal*)&fv_coor[3*c_m],X,coeff,&Xhr);CHKERRQ(ierr);
+      } else {
+        ierr = FVDAGetReconstructionStencil_AtCell(fv,c_p,&n_neigh,neigh);CHKERRQ(ierr);
+        ierr = setup_coeff(fv,c_p,n_neigh,(const PetscInt*)neigh,fv_coor,X,coeff);CHKERRQ(ierr);
+        ierr = FVDAReconstructP1Evaluate(fv,&fv->face_centroid[3*f],c_p,(const PetscReal*)&fv_coor[3*c_p],X,coeff,&Xhr);CHKERRQ(ierr);
+      }
       
       flux_hr = v_n * Xhr;
       
       F[c_m] += flux_hr * dS; // cell[-]
       F[c_p] -= flux_hr * dS; // cell[+]
-    } else {
-      /*
-      if (fv->face_element_map[2*f+1] >= 0) {
-        flux = v_n * X_m;
-        
-        ierr = FVDAGetReconstructionStencil_AtCell(fv,c_p,&n_neigh,neigh);CHKERRQ(ierr);
-        ierr = setup_coeff(fv,c_p,n_neigh,(const PetscInt*)neigh,fv_coor,X,coeff);CHKERRQ(ierr);
-        ierr = FVDAReconstructP1Evaluate(fv,&fv->face_centroid[3*f],c_p,(const PetscReal*)&fv_coor[3*c_p],X,coeff,&Xhr);CHKERRQ(ierr);
-        
-        flux_hr = v_n * Xhr;
-      }
-      */
     }
   }
   
@@ -3632,7 +3670,8 @@ PetscErrorCode eval_F_upwind_hr_bound_local(FVDA fv,const PetscReal range[],cons
   ierr = DMDAGetElements(fv->dm_geometry,&dm_nel,&dm_nen,&dm_element);CHKERRQ(ierr);
   
   ierr = FVDAGetFacePropertyByNameArrayRead(fv,"v.n",&vdotn);CHKERRQ(ierr);
-  
+
+#if 0
   /* interior face loop */
   for (f=0; f<fv->nfaces; f++) {
     if (fv->face_location[f] == DAFACE_BOUNDARY) continue;
@@ -3670,6 +3709,105 @@ PetscErrorCode eval_F_upwind_hr_bound_local(FVDA fv,const PetscReal range[],cons
       // do nothing
     }
   }
+#endif
+  
+  /* interior face loop */
+  for (f=0; f<fv->nfaces; f++) {
+    if (fv->face_location[f] == DAFACE_BOUNDARY) continue;
+    
+    ierr = FVDAGetValidElement(fv,f,&cellid);CHKERRQ(ierr);
+    element = (const PetscInt*)&dm_element[DACELL3D_Q1_SIZE * cellid];
+    ierr = DACellGeometry3d_GetCoordinates(element,domain_geom_coor,cell_coor);CHKERRQ(ierr);
+    _EvaluateFaceArea3d(fv->face_type[f],cell_coor,&dS);
+    
+    v_n = vdotn[f];
+    
+    c_m = fv->face_fv_map[2*f+0];
+    X_m = X[c_m];
+    
+    c_p = fv->face_fv_map[2*f+1];
+    X_p = X[c_p];
+    
+    flux = 0;
+    flux_hr = 0;
+    
+    if (fv->face_location[f] == DAFACE_SUB_DOMAIN_BOUNDARY) {
+      
+      if (v_n > 0.0 ) { /* outflow: use -ve side to compute flux */
+        
+        if (fv->face_element_map[2*f+0] >= 0) {
+          
+          ierr = FVDAGetReconstructionStencil_AtCell(fv,c_m,&n_neigh,neigh);CHKERRQ(ierr);
+          ierr = setup_coeff(fv,c_m,n_neigh,(const PetscInt*)neigh,fv_coor,X,coeff);CHKERRQ(ierr);
+          ierr = FVDAReconstructP1Evaluate(fv,&fv->face_centroid[3*f],c_m,(const PetscReal*)&fv_coor[3*c_m],X,coeff,&Xhr);CHKERRQ(ierr);
+          
+          flux = v_n * X_m;
+          flux_hr = v_n * Xhr;
+          if (Xhr < range[0] || Xhr > range[1]) {
+            flux_hr = flux;
+          }
+          
+          F[c_m] += flux_hr * dS; // cell[-]
+          F[c_p] -= flux_hr * dS; // cell[+]
+          
+        } else  if (fv->face_element_map[2*f+1] >= 0) {
+          
+          /* cannot process the high order flux for the + side - neigbour rank will take care of that */
+          
+        } else {
+          SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"v.n > 0 sub-domain boundary not valid");
+        }
+        
+      } else { /* inflow: use +ve side to compute flux */
+        if (fv->face_element_map[2*f+0] >= 0) {
+          
+          /* cannot process the high order flux for the - side - neigbour rank will take care of that */
+          
+        } else  if (fv->face_element_map[2*f+1] >= 0) {
+          
+          ierr = FVDAGetReconstructionStencil_AtCell(fv,c_p,&n_neigh,neigh);CHKERRQ(ierr);
+          ierr = setup_coeff(fv,c_p,n_neigh,(const PetscInt*)neigh,fv_coor,X,coeff);CHKERRQ(ierr);
+          ierr = FVDAReconstructP1Evaluate(fv,&fv->face_centroid[3*f],c_p,(const PetscReal*)&fv_coor[3*c_p],X,coeff,&Xhr);CHKERRQ(ierr);
+          
+          flux = v_n * X_p;
+          flux_hr = v_n * Xhr;
+          if (Xhr < range[0] || Xhr > range[1]) {
+            flux_hr = flux;
+          }
+          
+          F[c_m] += flux_hr * dS; // cell[-]
+          F[c_p] -= flux_hr * dS; // cell[+]
+          
+        } else {
+          SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"v.n <= 0 sub-domain boundary not valid");
+        }
+        
+      }
+      
+    } else { /* interior */
+      
+      if (v_n > 0.0) { /* outflow */
+        ierr = FVDAGetReconstructionStencil_AtCell(fv,c_m,&n_neigh,neigh);CHKERRQ(ierr);
+        ierr = setup_coeff(fv,c_m,n_neigh,(const PetscInt*)neigh,fv_coor,X,coeff);CHKERRQ(ierr);
+        ierr = FVDAReconstructP1Evaluate(fv,&fv->face_centroid[3*f],c_m,(const PetscReal*)&fv_coor[3*c_m],X,coeff,&Xhr);CHKERRQ(ierr);
+        flux = v_n * X_m;
+      } else {
+        ierr = FVDAGetReconstructionStencil_AtCell(fv,c_p,&n_neigh,neigh);CHKERRQ(ierr);
+        ierr = setup_coeff(fv,c_p,n_neigh,(const PetscInt*)neigh,fv_coor,X,coeff);CHKERRQ(ierr);
+        ierr = FVDAReconstructP1Evaluate(fv,&fv->face_centroid[3*f],c_p,(const PetscReal*)&fv_coor[3*c_p],X,coeff,&Xhr);CHKERRQ(ierr);
+        flux = v_n * X_p;
+      }
+      
+      flux_hr = v_n * Xhr;
+      if (Xhr < range[0] || Xhr > range[1]) {
+        flux_hr = flux;
+      }
+      
+      F[c_m] += flux_hr * dS; // cell[-]
+      F[c_p] -= flux_hr * dS; // cell[+]
+    }
+  }
+
   
   for (fb=0; fb<fv->nfaces_boundary; fb++) {
     PetscInt   f = fv->face_idx_boundary[fb];
