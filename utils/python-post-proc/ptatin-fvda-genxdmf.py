@@ -4,7 +4,7 @@ import sys as sys
 from pathlib import Path
 import json as json
 
-def xmfsplat(mx, gname, aname):
+def xmfsplat(mx, gname, aname, use_relative_path):
   c = ''
   c += '<?xml version=\"1.0\" encoding=\"utf-8\"?>' + "\n"
   c += '<Xdmf xmlns:xi=\"http://www.w3.org/2001/XInclude\" Version=\"3.0\">' + "\n"
@@ -21,14 +21,23 @@ def xmfsplat(mx, gname, aname):
   
   c += '    <Geometry Type=\"XYZ\">' + "\n"
   c += '      <DataItem DataType=\"Float\" Dimensions=\"' + str(nsize) + ' 3\" Format=\"Binary\" Precision=\"8\" Endian=\"Big\" Seek=\"8\">' + "\n"
-  c += '        ' + gname + "\n"
+
+  filename = gname
+  if use_relative_path == True:
+    filename = os.path.split(gname)[1] # strip - only keep the tail
+  
+  c += '        ' + filename + "\n"
   c += '      </DataItem>' + "\n"
   c += '    </Geometry>' + "\n"
 
   for item in aname:
     c += '    <Attribute Name=\"' + item[1] + '\" Type=\"Scalar\" Center=\"Cell\">' + "\n"
     c += '      <DataItem DataType=\"Float\" Dimensions=\"' + str(msize) + '\" Format=\"Binary\" Precision=\"8\" Endian=\"Big\" Seek=\"8\">' + "\n"
-    c += '        ' + item[0] + "\n"
+    
+    filename = item[0]
+    if use_relative_path == True:
+      filename = os.path.split(item[0])[1] # strip - only keep the tail
+    c += '        ' + filename + "\n"
     c += '      </DataItem>' + "\n"
     c += '    </Attribute>' + "\n"
 
@@ -107,8 +116,15 @@ def fvda_gen_xdmf(fname, field_fname, field_name):
   else:
     print("  ... not found ...")
 
+  use_relative_path = True
+  if fvda_root not in coorfile:
+    use_relative_path = False
+  for item in celldata_found:
+    if fvda_root not in item[0]:
+      use_relative_path = False
+  print('[note] Using relative paths to reference data files:',use_relative_path)
 
-  blob = xmfsplat(mx, coorfile, celldata_found)
+  blob = xmfsplat(mx, coorfile, celldata_found, use_relative_path)
 
   fname_out = os.path.split(fname)[1]
   fname_out = fname_out.replace(".json", ".xmf")
