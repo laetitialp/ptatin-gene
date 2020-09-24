@@ -832,6 +832,7 @@ static PetscErrorCode ModelOutput_Rift3D_T(pTatinCtx c,Vec X,const char prefix[]
   }
 
   ierr = pTatinContextValid_EnergyFV(c,&active_energy);CHKERRQ(ierr);
+#if 1
   if (active_energy) {
     PhysCompEnergyFV energy;
     char             root[PETSC_MAX_PATH_LEN],pvoutputdir[PETSC_MAX_PATH_LEN],fname[PETSC_MAX_PATH_LEN];
@@ -869,6 +870,62 @@ static PetscErrorCode ModelOutput_Rift3D_T(pTatinCtx c,Vec X,const char prefix[]
     ierr = FVDAView_FaceData_local(energy->fv,fname);CHKERRQ(ierr);
     */
   }
+#endif
+
+#if 0
+  if (active_energy) {
+    PhysCompEnergyFV energy;
+    char             root[PETSC_MAX_PATH_LEN],pvoutputdir[PETSC_MAX_PATH_LEN],fname[PETSC_MAX_PATH_LEN];
+    
+    ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s",c->outputpath);CHKERRQ(ierr);
+    ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%D",root,c->step);CHKERRQ(ierr);
+    
+    
+    ierr = pTatinGetContext_EnergyFV(c,&energy);CHKERRQ(ierr);
+    if (prefix) { PetscSNPrintf(fname, PETSC_MAX_PATH_LEN-1,"%s_T_fv",prefix);
+    } else {      PetscSNPrintf(fname, PETSC_MAX_PATH_LEN-1,"T_fv",prefix);    }
+
+    ierr = FVDAOutputParaView(energy->fv,energy->T,PETSC_TRUE,pvoutputdir,fname);CHKERRQ(ierr);
+    
+    // PVD
+    {
+      char pvdfilename[PETSC_MAX_PATH_LEN],vtkfilename[PETSC_MAX_PATH_LEN];
+      char stepprefix[PETSC_MAX_PATH_LEN];
+      
+      PetscSNPrintf(pvdfilename,PETSC_MAX_PATH_LEN-1,"%s/timeseries_T_fv.pvd",root);
+      if (prefix) { PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "%s_T_fv.pvts",prefix);
+      } else {      PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "T_fv.pvts");           }
+      
+      PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%D",c->step);
+      //ierr = ParaviewPVDOpenAppend(PETSC_FALSE,c->step,pvdfilename,c->time, vtkfilename, stepprefix);CHKERRQ(ierr);
+      if (!been_here) { /* new file */
+        ierr = ParaviewPVDOpen(pvdfilename);CHKERRQ(ierr);
+        ierr = ParaviewPVDAppend(pvdfilename,c->time,vtkfilename,stepprefix);CHKERRQ(ierr);
+      } else {
+        ierr = ParaviewPVDAppend(pvdfilename,c->time,vtkfilename,stepprefix);CHKERRQ(ierr);
+      }
+    }
+  }
+#endif
+  
+#if 0
+  if (active_energy) {
+    PhysCompEnergyFV energy;
+    char             root[PETSC_MAX_PATH_LEN],pvoutputdir[PETSC_MAX_PATH_LEN],fname[PETSC_MAX_PATH_LEN];
+    
+    ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s",c->outputpath);CHKERRQ(ierr);
+    ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%D",root,c->step);CHKERRQ(ierr);
+    
+    
+    ierr = pTatinGetContext_EnergyFV(c,&energy);CHKERRQ(ierr);
+    PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s_energy",prefix);
+    ierr = FVDAView_JSON(energy->fv,pvoutputdir,fname);CHKERRQ(ierr); /* write meta data abour fv mesh, its DMDA and the coords */
+    ierr = FVDAView_Heavy(energy->fv,pvoutputdir,fname);CHKERRQ(ierr);  /* write cell fields */
+    PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/%s_energy_T",pvoutputdir,prefix);
+    ierr = PetscVecWriteJSON(energy->T,0,fname);CHKERRQ(ierr); /* write cell temperature */
+  }
+#endif
+
   been_here = PETSC_TRUE;
   
   PetscFunctionReturn(0);
