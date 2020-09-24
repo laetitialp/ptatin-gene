@@ -67,7 +67,7 @@ PetscErrorCode FVDAView_CellData(FVDA fv,Vec field,PetscBool view_cell_prop,cons
 PetscErrorCode FVDAView_JSON(FVDA fv,const char path[],const char prefix[]);
 PetscErrorCode PetscVecWriteJSON(Vec x,PetscInt format,const char suffix[]);
 PetscErrorCode FVDAView_Heavy(FVDA fv,const char path[],const char suffix[]);
-
+PetscErrorCode FVDAOutputParaView(FVDA fv,Vec field,PetscBool view_cell_prop,const char path[],const char prefix[]);
 
 /* fv_ops_time_dep.c */
 PetscErrorCode FVDASetup_TimeDep(FVDA fv);

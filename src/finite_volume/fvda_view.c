@@ -1303,3 +1303,305 @@ PetscErrorCode FVDAView_Heavy(FVDA fv,const char path[],const char suffix[])
   
   PetscFunctionReturn(0);
 }
+
+#include <output_paraview.h>
+
+static PetscErrorCode _FVDAOutputParaView_VTS_binary(FVDA fv,Vec field,PetscBool view_cell_prop,const char name[])
+{
+  PetscErrorCode ierr;
+  FILE           *vtk_fp = NULL;
+  PetscInt       gei[3],gi[3],ri[3],ei[3],i,j,k,cf;
+  int            offset,bytes;
+  DM             da;
+  Vec            geometry_coorl;
+  const PetscScalar *_geom_coor;
+  const PetscScalar *_field;
+  const char        *field_name;
+  
+  
+  PetscFunctionBegin;
+  if ((vtk_fp = fopen(name,"w")) == NULL)  {
+    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Cannot open file %s",name);
+  }
+
+  da = fv->dm_geometry;
+  ierr = DMDAGetElementsCorners(da,&gei[0],&gei[1],&gei[2]);CHKERRQ(ierr);
+  ierr = DMDAGetGhostCorners(da,&gi[0],&gi[1],&gi[2],&ri[0],&ri[1],&ri[2]);CHKERRQ(ierr);
+  ei[0] = gei[0] - gi[0];
+  ei[1] = gei[1] - gi[1];
+  ei[2] = gei[2] - gi[2];
+  
+  ierr = DMGetLocalVector(fv->dm_geometry,&geometry_coorl);CHKERRQ(ierr);
+  ierr = DMGlobalToLocal(fv->dm_geometry,fv->vertex_coor_geometry,INSERT_VALUES,geometry_coorl);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(geometry_coorl,&_geom_coor);CHKERRQ(ierr);
+  
+  /* VTS HEADER - OPEN */
+#ifdef WORDSIZE_BIGENDIAN
+  fprintf(vtk_fp, "<VTKFile type=\"StructuredGrid\" version=\"0.1\" byte_order=\"BigEndian\">\n");
+#else
+  fprintf(vtk_fp, "<VTKFile type=\"StructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n");
+#endif
+  
+  PetscFPrintf(PETSC_COMM_SELF,vtk_fp, "  <StructuredGrid WholeExtent=\"%D %D %D %D %D %D\">\n",gei[0],gei[0]+fv->mi[0], gei[1],gei[1]+fv->mi[1], gei[2],gei[2]+fv->mi[2]);
+  PetscFPrintf(PETSC_COMM_SELF,vtk_fp, "    <Piece Extent=\"%D %D %D %D %D %D\">\n",gei[0],gei[0]+fv->mi[0], gei[1],gei[1]+fv->mi[1], gei[2],gei[2]+fv->mi[2]);
+  
+  offset = 0;
+  
+  /* VTS COORD DATA */
+  fprintf(vtk_fp, "    <Points>\n");
+  
+  fprintf(vtk_fp, "      <DataArray Name=\"coords\" type=\"Float64\" NumberOfComponents=\"3\" format=\"appended\" offset=\"%d\" />\n",offset);
+  offset += sizeof(int) + sizeof(double)*3*(fv->mi[0]+1)*(fv->mi[1]+1)*(fv->mi[2]+1);
+  
+  fprintf(vtk_fp, "    </Points>\n");
+  
+  /* VTS CELL DATA */
+  fprintf(vtk_fp, "    <CellData>\n");
+  
+  ierr = PetscObjectGetName((PetscObject)field,&field_name);CHKERRQ(ierr);
+  if (field_name) {
+    fprintf(vtk_fp, "      <DataArray Name=\"%s\" type=\"Float64\" NumberOfComponents=\"1\" format=\"appended\" offset=\"%d\" />\n",field_name,offset);
+  } else {
+    fprintf(vtk_fp, "      <DataArray Name=\"Q\" type=\"Float64\" NumberOfComponents=\"1\" format=\"appended\" offset=\"%d\" />\n",offset);
+  }
+  offset += sizeof(int) + sizeof(double)*1*(fv->mi[0])*(fv->mi[1])*(fv->mi[2]);
+  
+  if (view_cell_prop) {
+    for (cf=0; cf<fv->ncoeff_cell; cf++) {
+      PetscInt b,bs;
+      
+      ierr = FVDACellPropertyGetInfo(fv,fv->cell_coeff_name[cf],NULL,NULL,&bs);CHKERRQ(ierr);
+      if (bs == 1) {
+        fprintf(vtk_fp,"      <DataArray Name=\"%s\" NumberOfComponents=\"1\" type=\"Float64\" format=\"appended\" offset=\"%d\"/>\n",fv->cell_coeff_name[cf],offset);
+        offset += sizeof(int) + sizeof(double)*1*(fv->mi[0])*(fv->mi[1])*(fv->mi[2]);
+
+      } else {
+        for (b=0; b<bs; b++) {
+          fprintf(vtk_fp,"      <DataArray Name=\"%s_%d\" NumberOfComponents=\"1\" type=\"Float64\" format=\"appended\" offset=\"%d\"/>\n",fv->cell_coeff_name[cf],b,offset);
+          offset += sizeof(int) + sizeof(double)*1*(fv->mi[0])*(fv->mi[1])*(fv->mi[2]);
+        }
+      }
+    }
+  }
+
+  fprintf(vtk_fp, "    </CellData>\n");
+  
+  /* VTS NODAL DATA */
+  fprintf( vtk_fp, "    <PointData>\n");
+  fprintf(vtk_fp, "    </PointData>\n");
+  
+  /* VTS HEADER - CLOSE */
+  fprintf(vtk_fp, "    </Piece>\n");
+  fprintf(vtk_fp, "  </StructuredGrid>\n");
+  fprintf(vtk_fp, "  <AppendedData encoding=\"raw\">\n");
+  
+  /* write tag */
+  fprintf(vtk_fp, "_");
+  
+  /* write node coords */
+  bytes = sizeof(double)*3*(fv->mi[0]+1)*(fv->mi[1]+1)*(fv->mi[2]+1);
+  fwrite(&bytes,sizeof(int),1,vtk_fp);
+  
+  for (k=ei[2]; k<fv->mi[2]+1; k++) {
+    for (j=ei[1]; j<fv->mi[1]+1; j++) {
+      for (i=ei[0]; i<fv->mi[0]+1; i++) {
+        double pos[3];
+        PetscInt ijk[3],idx;
+        
+        ijk[0] = i; ijk[1] = j; ijk[2] = k;
+        _cart_convert_ijk_to_index(ijk,ri,&idx);
+        
+        pos[0] = _geom_coor[3*idx+0];
+        pos[1] = _geom_coor[3*idx+1];
+        pos[2] = _geom_coor[3*idx+2];
+        fwrite(pos,sizeof(double),3,vtk_fp);
+      }
+    }
+  }
+  
+  /* field */
+  ierr = VecGetArrayRead(field,&_field);CHKERRQ(ierr);
+  bytes = sizeof(double)*1*(fv->mi[0])*(fv->mi[1])*(fv->mi[2]);
+  fwrite(&bytes,sizeof(int),1,vtk_fp);
+  {
+    double *buffer = (double*)_field;
+    fwrite(buffer,sizeof(double),fv->mi[0]*fv->mi[1]*fv->mi[2],vtk_fp);
+  }
+  ierr = VecRestoreArrayRead(field,&_field);CHKERRQ(ierr);
+
+  if (view_cell_prop) {
+    for (cf=0; cf<fv->ncoeff_cell; cf++) {
+      PetscInt b,bs;
+      
+      ierr = FVDACellPropertyGetInfo(fv,fv->cell_coeff_name[cf],NULL,NULL,&bs);CHKERRQ(ierr);
+      if (bs == 1) {
+        bytes = sizeof(double)*1*(fv->mi[0])*(fv->mi[1])*(fv->mi[2]);
+        fwrite(&bytes,sizeof(int),1,vtk_fp);
+        {
+          double *buffer = (double*)fv->cell_coefficient[cf];
+          fwrite(buffer,sizeof(double),fv->mi[0]*fv->mi[1]*fv->mi[2],vtk_fp);
+        }
+      } else {
+        double *buffer = (double*)fv->cell_coefficient[cf];
+        for (b=0; b<bs; b++) {
+          bytes = sizeof(double)*1*(fv->mi[0])*(fv->mi[1])*(fv->mi[2]);
+          fwrite(&bytes,sizeof(int),1,vtk_fp);
+
+          for (k=0; k<fv->mi[0]*fv->mi[1]*fv->mi[2]; k++) {
+            double val = buffer[bs*k+b];
+            fwrite(&val,sizeof(double),1,vtk_fp);
+          }
+        }
+      }
+    }
+  }
+
+  fprintf(vtk_fp, "\n  </AppendedData>\n");
+  fprintf(vtk_fp, "</VTKFile>\n");
+  
+  ierr = VecRestoreArrayRead(geometry_coorl,&_geom_coor);CHKERRQ(ierr);
+  ierr = DMRestoreLocalVector(fv->dm_geometry,&geometry_coorl);CHKERRQ(ierr);
+
+  fclose(vtk_fp);
+  
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode _FVDAOutputParaView_PVTS(FVDA fv,Vec field,PetscBool view_cell_prop,const char prefix[],const char name[])
+{
+  PetscErrorCode ierr;
+  FILE           *vtk_fp = NULL;
+  PetscInt       p,M,N,P,swidth;
+  PetscMPIInt    size,rank;
+  const char     *field_name;
+  DM             da;
+  
+  
+  PetscFunctionBegin;
+  da = fv->dm_geometry;
+  ierr = MPI_Comm_rank(fv->comm,&rank);CHKERRQ(ierr);
+  vtk_fp = NULL;
+  if (rank == 0) {
+    if ((vtk_fp = fopen (name, "w")) == NULL)  {
+      SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name);
+    }
+  }
+  
+  /* VTS HEADER - OPEN */
+  if(vtk_fp) fprintf(vtk_fp, "<?xml version=\"1.0\"?>\n");
+  
+#ifdef WORDSIZE_BIGENDIAN
+  if(vtk_fp) fprintf(vtk_fp, "<VTKFile type=\"PStructuredGrid\" version=\"0.1\" byte_order=\"BigEndian\">\n");
+#else
+  if(vtk_fp) fprintf(vtk_fp, "<VTKFile type=\"PStructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n");
+#endif
+  
+  ierr = DMDAGetInfo( da,NULL,&M,&N,&P,NULL,NULL,NULL,NULL,&swidth,NULL,NULL,NULL,NULL);CHKERRQ(ierr);
+  if(vtk_fp) PetscFPrintf(PETSC_COMM_SELF,vtk_fp, "  <PStructuredGrid GhostLevel=\"%D\" WholeExtent=\"%D %D %D %D %D %D\">\n",swidth,0,M-1,0,N-1,0,P-1); /* note overlap = 1 for Q1 */
+  
+  /* VTS COORD DATA */
+  if(vtk_fp) fprintf(vtk_fp, "    <PPoints>\n");
+  if(vtk_fp) fprintf(vtk_fp, "      <PDataArray type=\"Float64\" Name=\"Points\" NumberOfComponents=\"3\"/>\n");
+  if(vtk_fp) fprintf(vtk_fp, "    </PPoints>\n");
+  
+  /* VTS CELL DATA */
+  ierr = PetscObjectGetName((PetscObject)field,&field_name);CHKERRQ(ierr);
+  if (vtk_fp) fprintf(vtk_fp,"    <PCellData>\n");
+  if (vtk_fp) {
+    if (field_name) fprintf(vtk_fp,"      <PDataArray Name=\"%s\" NumberOfComponents=\"1\" type=\"Float64\"/>\n",field_name);
+    else fprintf(vtk_fp,"      <PDataArray Name=\"Q\" NumberOfComponents=\"1\" type=\"Float64\"/>\n");
+  }
+  if (view_cell_prop && vtk_fp) {
+    for (p=0; p<fv->ncoeff_cell; p++) {
+      PetscInt b,bs;
+      
+      ierr = FVDACellPropertyGetInfo(fv,fv->cell_coeff_name[p],NULL,NULL,&bs);CHKERRQ(ierr);
+      if (bs == 1) {
+        fprintf(vtk_fp,"      <PDataArray Name=\"%s\" NumberOfComponents=\"1\" type=\"Float64\"/>\n",fv->cell_coeff_name[p]);
+      } else {
+        for (b=0; b<bs; b++) {
+          fprintf(vtk_fp,"      <PDataArray Name=\"%s_%d\" NumberOfComponents=\"1\" type=\"Float64\"/>\n",fv->cell_coeff_name[p],b);
+        }
+      }
+    }
+  }
+  if (vtk_fp) fprintf(vtk_fp,"    </PCellData>\n");
+
+  /* VTS NODAL DATA */
+  if(vtk_fp) fprintf(vtk_fp, "    <PPointData>\n");
+  if(vtk_fp) fprintf(vtk_fp, "    </PPointData>\n");
+  
+  /* write out the parallel information */
+  //ierr = DAQ1PieceExtendForGhostLevelZero(vtk_fp,2,da,prefix);CHKERRQ(ierr);
+  
+  ierr = MPI_Comm_size(fv->comm,&size);CHKERRQ(ierr);
+  if (vtk_fp) {
+    PetscInt mr[3],r,rijk[3],ri;
+    char     vtu_fname[PETSC_MAX_PATH_LEN];
+    
+    ierr = DMDAGetInfo(da,NULL,NULL,NULL,NULL,&mr[0],&mr[1],&mr[2],NULL,NULL,NULL,NULL,NULL,NULL);CHKERRQ(ierr);
+
+    for (r=0; r<size; r++) {
+      PetscInt s[]={0,0,0},e[]={0,0,0};
+      
+      _cart_convert_index_to_ijk(r,mr,rijk);
+      
+      for (ri=0; ri<=rijk[0]; ri++) {
+        e[0] += fv->cell_ownership_i[ri];
+      }
+      s[0] = e[0] - fv->cell_ownership_i[rijk[0]];
+      
+      for (ri=0; ri<=rijk[1]; ri++) {
+        e[1] += fv->cell_ownership_j[ri];
+      }
+      s[1] = e[1] - fv->cell_ownership_j[rijk[1]];
+
+      for (ri=0; ri<=rijk[2]; ri++) {
+        e[2] += fv->cell_ownership_k[ri];
+      }
+      s[2] = e[2] - fv->cell_ownership_k[rijk[2]];
+      
+      ierr = PetscSNPrintf(vtu_fname,PETSC_MAX_PATH_LEN-1,"%s-subdomain%1.5d.vts",prefix,(int)r);CHKERRQ(ierr);
+      fprintf(vtk_fp,"    <Piece Extent=\"%d %d %d %d %d %d\" Source=\"%s\"/>\n",s[0],e[0],s[1],e[1],s[2],e[2],vtu_fname);
+    }
+  }
+   
+  /* VTS HEADER - CLOSE */
+  if(vtk_fp) fprintf( vtk_fp, "  </PStructuredGrid>\n");
+  if(vtk_fp) fprintf( vtk_fp, "</VTKFile>\n");
+  
+  if(vtk_fp) fclose(vtk_fp);
+  
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode FVDAOutputParaView(FVDA fv,Vec field,PetscBool view_cell_prop,const char path[],const char prefix[])
+{
+  char           *vtkfilename,*filename;
+  PetscErrorCode ierr;
+  
+  PetscFunctionBegin;
+  ierr = pTatinGenerateParallelVTKName(prefix,"vts",&vtkfilename);CHKERRQ(ierr);
+  if (path) {
+    if (asprintf(&filename,"%s/%s",path,vtkfilename) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+  } else {
+    if (asprintf(&filename,"./%s",vtkfilename) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+  }
+  
+  ierr = _FVDAOutputParaView_VTS_binary(fv,field,view_cell_prop,filename);CHKERRQ(ierr);
+  
+  free(filename);
+  free(vtkfilename);
+  
+  ierr = pTatinGenerateVTKName(prefix,"pvts",&vtkfilename);CHKERRQ(ierr);
+  if (path) {
+    if (asprintf(&filename,"%s/%s",path,vtkfilename) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+  } else {
+    if (asprintf(&filename,"./%s",vtkfilename) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+  }
+  ierr = _FVDAOutputParaView_PVTS(fv,field,view_cell_prop,prefix,filename);CHKERRQ(ierr);
+  free(filename);
+  free(vtkfilename);
+  
+  PetscFunctionReturn(0);
+}
