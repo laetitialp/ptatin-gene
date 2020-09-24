@@ -171,7 +171,7 @@ PetscErrorCode ModelInitialize_Rift3D_T(pTatinCtx c,void *ctx)
 
   MaterialConstantsSetValues_MaterialType(materialconstants,2,VISCOUS_FRANKK,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_BOUSSINESQ);
   MaterialConstantsSetValues_ViscosityFK(materialconstants,2,1.0e30,0.018);
-  MaterialConstantsSetValues_DensityBoussinesq(materialconstants,2,3300,2.e-5,3.e-12);
+  MaterialConstantsSetValues_DensityBoussinesq(materialconstants,2,3300,2.e-5*16.0,3.e-12); /* <plume tests> */
   MaterialConstantsSetValues_DensityConst(materialconstants,2,3300);
   MaterialConstantsSetValues_PlasticDP(materialconstants,2,0.6,0.1,2.e7,2.e7,2.e7,3.e8);
   MaterialConstantsSetValues_PlasticMises(materialconstants,2,3.e8,3.e8);
@@ -183,7 +183,7 @@ PetscErrorCode ModelInitialize_Rift3D_T(pTatinCtx c,void *ctx)
 
   MaterialConstantsSetValues_MaterialType(materialconstants,3,VISCOUS_FRANKK,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_BOUSSINESQ);
   MaterialConstantsSetValues_ViscosityFK(materialconstants,3,1.0e30,0.018);
-  MaterialConstantsSetValues_DensityBoussinesq(materialconstants,3,3300,2.e-5,3.e-12);
+  MaterialConstantsSetValues_DensityBoussinesq(materialconstants,3,3300,2.e-5*16.0,3.e-12); /* <plume tests> */
   MaterialConstantsSetValues_DensityConst(materialconstants,3,3300);
   MaterialConstantsSetValues_PlasticDP(materialconstants,3,0.6,0.1,2.e7,2.e7,2.e7,3.e8);
   MaterialConstantsSetValues_PlasticMises(materialconstants,3,3.e8,3.e8);
@@ -201,7 +201,7 @@ PetscErrorCode ModelInitialize_Rift3D_T(pTatinCtx c,void *ctx)
 
     DataBucketGetDataFieldByName(materialconstants,EnergyConductivityConst_classname,&PField_k);
     DataFieldGetEntries(PField_k,(void**)&data_k);
-    EnergyConductivityConstSetField_k0(&data_k[regionidx],1.0e-6);
+    EnergyConductivityConstSetField_k0(&data_k[regionidx],1.0e-6/3.0); /* <plume tests> */
 
     DataBucketGetDataFieldByName(materialconstants,EnergySourceConst_classname,&PField_Q);
     DataFieldGetEntries(PField_Q,(void**)&data_Q);
@@ -866,6 +866,26 @@ PetscErrorCode ModelApplyInitialStokesVariableMarkers_Rift3D_T(pTatinCtx user,Ve
   PetscFunctionReturn(0);
 }
 
+static PetscBool iterator_plume_thermal_field_2(PetscScalar coor[],PetscScalar *val,void *ctx)
+{
+  PetscBool         impose = PETSC_FALSE, set;
+  const PetscScalar origin[] = {7.0, -1.0, 4.0};
+  PetscScalar       r,dl;
+  
+  set = DMDAVecTraverse3d_ERFC3DFunctionXYZ(coor,val,ctx);
+  { PetscInt d;
+    r = 0.0;
+    for (d=0; d<3; d++) { dl = coor[d] - origin[d]; r += dl*dl; }
+  }
+  r = PetscSqrtReal(r);
+  if (r < 0.25) {
+    impose = PETSC_TRUE;
+    /**val  += 450.0;*/ /* shift background gradient by constant */
+    *val = 1600.0; /* impose constant value */
+  }
+  return impose;
+}
+
 PetscErrorCode ModelApplyInitialCondition_Rift3D_T(pTatinCtx c,Vec X,void *ctx)
 {
   ModelRift3D_TCtx                             *data = (ModelRift3D_TCtx*)ctx;
@@ -958,6 +978,8 @@ PetscErrorCode ModelApplyInitialCondition_Rift3D_T(pTatinCtx c,Vec X,void *ctx)
 
     ierr = ModelRift3D_T_GetDescription_InitialThermalField(data,coeffs,&iterator_initial_thermal_field);CHKERRQ(ierr);
     ierr = DMDAVecTraverse3d(daT,temperature,0,iterator_initial_thermal_field,(void*)coeffs);CHKERRQ(ierr);
+    
+    ierr = DMDAVecTraverse3d(daT,temperature,0,iterator_plume_thermal_field_2,(void*)coeffs);CHKERRQ(ierr); /* <plume tests> */
   }
 
   PetscFunctionReturn(0);
