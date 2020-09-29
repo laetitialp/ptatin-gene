@@ -5,8 +5,8 @@
 pTatin3D (https://bitbucket.org/ptatin/ptatin3d.git) is a software package 
 designed for studying long time-scale processes relevant to geodynamics. 
 
-In Total project FR00045642, support is added to solve the thermal transport 
-problem via Finite Volumes.
+In TOTAL project FR00045642, support was added to solve the thermal transport 
+problem using an embedded / nested finite volume method.
 
 Source code: https://bitbucket.org/dmay/ptatin-total-dev.git
 
