@@ -11,13 +11,21 @@ static PetscErrorCode FVSetDirichletFromNeighbour(FVDA fv,Vec T,DACellFace face)
   PetscInt       f,len,s,e;
   const PetscInt *indices;
   PetscInt       cell;
+  Vec            Tl;
+  DM             dm;
   PetscScalar    *LA_T;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
   // Get rank-local T values
-  ierr = VecGetArray(T,&LA_T);CHKERRQ(ierr);
-  
+  dm = fv->dm_fv;
+
+  ierr = DMGetLocalVector(dm,&Tl);CHKERRQ(ierr);
+  ierr = DMGlobalToLocal(dm,T,INSERT_VALUES,Tl);CHKERRQ(ierr);
+  ierr = VecGetArray(Tl,&LA_T);CHKERRQ(ierr);
+
+  //ierr = VecGetArray(T,&LA_T);CHKERRQ(ierr);
+  // Get boundary cells faces indices
   ierr = FVDAGetBoundaryFaceIndicesRead(fv,face,&len,&indices);CHKERRQ(ierr);
   ierr = FVDAGetBoundaryFaceIndicesOwnershipRange(fv,face,&s,&e);CHKERRQ(ierr);
 
@@ -27,16 +35,21 @@ static PetscErrorCode FVSetDirichletFromNeighbour(FVDA fv,Vec T,DACellFace face)
 	if (face == DACELL_FACE_W){
       fv->boundary_value[s + f] = LA_T[cell];
       fv->boundary_flux[s + f] = FVFLUX_DIRICHLET_CONSTRAINT;
-	  PetscPrintf(PETSC_COMM_SELF,"fid=indices[%d]=%d, cell[%d]=face_element_map[%d]=%d \n",f,indices[f],f,2*fvid + 0,cell);
+	  //PetscPrintf(PETSC_COMM_SELF,"fid=indices[%d]=%d, cell[%d]=face_element_map[%d]=%d \n",f,indices[f],f,2*fvid + 0,cell);
     } else {
       fv->boundary_value[s + f] = 0.3;
       fv->boundary_flux[s + f] = FVFLUX_DIRICHLET_CONSTRAINT;
     }
 	/* This may not be required in solved problems since the BC insertions are embeded inside the matrix operations */
-    ierr = VecSetValue(T,cell,fv->boundary_value[s + f],INSERT_VALUES);CHKERRQ(ierr);
+    //ierr = VecSetValue(T,cell,fv->boundary_value[s + f],INSERT_VALUES);CHKERRQ(ierr);
+	ierr = VecSetValue(Tl,cell,fv->boundary_value[s + f],INSERT_VALUES);CHKERRQ(ierr);
   }
-  
-  ierr = VecRestoreArray(T,&LA_T);CHKERRQ(ierr);
+  ierr = DMLocalToGlobal(dm,Tl,INSERT_VALUES,T);CHKERRQ(ierr);
+  ierr = VecAssemblyBegin(Tl);CHKERRQ(ierr);
+  ierr = VecAssemblyEnd(Tl);CHKERRQ(ierr);  
+  ierr = VecRestoreArray(Tl,&LA_T);CHKERRQ(ierr);
+  ierr = DMRestoreLocalVector(dm,&Tl);CHKERRQ(ierr);
+
   PetscFunctionReturn(0);
 }
 
@@ -60,10 +73,18 @@ static PetscErrorCode PrintBoundaryValues(FVDA fv,Vec T,DACellFace face)
     cell = fv->face_element_map[2*fvid + 0];
 	PetscPrintf(PETSC_COMM_SELF,"LA_T[%d] = %f, BC_val[%d] = %f \n",cell,LA_T[cell],s+f,fv->boundary_value[s + f]);
   }
-  
+
   ierr = VecRestoreArrayRead(T,&LA_T);CHKERRQ(ierr);
   PetscFunctionReturn(0);
-	
+}
+
+PetscBool iterator_initial_thermal_field(PetscScalar coor[],PetscScalar *val,void *ctx)
+{
+  PetscBool impose=PETSC_TRUE;
+  
+  *val = coor[2]*2.0;
+
+  return impose;
 }
 
 PetscErrorCode t10a(void)
@@ -85,7 +106,7 @@ PetscErrorCode t10a(void)
   
   {
     Vec gcoor;
-    
+	
     ierr = DMDASetUniformCoordinates(fv->dm_geometry,-1.0,1.0,-1.0,1.0,-1.0,1.0);CHKERRQ(ierr);
     ierr = DMGetCoordinates(fv->dm_geometry,&gcoor);CHKERRQ(ierr);
     ierr = VecCopy(gcoor,fv->vertex_coor_geometry);CHKERRQ(ierr);
@@ -104,18 +125,20 @@ PetscErrorCode t10a(void)
       k[f] = 1.0;
     }
   }
-
+  
   dm = fv->dm_fv;
   ierr = DMCreateGlobalVector(dm,&T);CHKERRQ(ierr);
-  ierr = VecSet(T,1.0);CHKERRQ(ierr);
+  ierr = FVDAVecTraverse(fv,T,0.0,0,iterator_initial_thermal_field,NULL);CHKERRQ(ierr);
+  //ierr = VecSet(T,1.0);CHKERRQ(ierr);
 
   const DACellFace flist[] = { DACELL_FACE_W, DACELL_FACE_E, DACELL_FACE_S, DACELL_FACE_N, DACELL_FACE_B, DACELL_FACE_F };
   PetscInt l;
   for (l=0; l<sizeof(flist)/sizeof(DACellFace); l++) {
     ierr = FVSetDirichletFromNeighbour(fv,T,flist[l]);CHKERRQ(ierr);
-	ierr = PrintBoundaryValues(fv,T,flist[l]);CHKERRQ(ierr);
+	//ierr = PrintBoundaryValues(fv,T,flist[l]);CHKERRQ(ierr);
   }
-  
+  VecAssemblyBegin(T);
+  VecAssemblyEnd(T); 
   {
     PetscViewer viewer;
     char        fname[256];
@@ -128,7 +151,7 @@ PetscErrorCode t10a(void)
     ierr = VecView(T,viewer);CHKERRQ(ierr);
     ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
   }
-  
+
   ierr = VecDestroy(&T);CHKERRQ(ierr);
   ierr = FVDADestroy(&fv);CHKERRQ(ierr);
   PetscFunctionReturn(0);
