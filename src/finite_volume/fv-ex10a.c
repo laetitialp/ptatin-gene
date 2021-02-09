@@ -8,97 +8,111 @@
 
 static PetscErrorCode FVSetDirichletFromNeighbour(FVDA fv,Vec T,DACellFace face)
 {
+
   PetscInt       f,len,s,e;
   const PetscInt *indices;
-  PetscInt       cell;
-  Vec            Tl;
+  PetscInt       cell,nfaces;
   DM             dm;
-  PetscScalar    *LA_T;
+  PetscScalar    *_T;
   PetscErrorCode ierr;
-
+  PetscMPIInt    commrank;
+  
   PetscFunctionBegin;
+  ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&commrank);CHKERRQ(ierr);
   // Get rank-local T values
   dm = fv->dm_fv;
 
-  ierr = DMGetLocalVector(dm,&Tl);CHKERRQ(ierr);
-  ierr = DMGlobalToLocal(dm,T,INSERT_VALUES,Tl);CHKERRQ(ierr);
-  ierr = VecGetArray(Tl,&LA_T);CHKERRQ(ierr);
-
-  //ierr = VecGetArray(T,&LA_T);CHKERRQ(ierr);
+  ierr = VecGetArray(T,&_T);CHKERRQ(ierr);
   // Get boundary cells faces indices
   ierr = FVDAGetBoundaryFaceIndicesRead(fv,face,&len,&indices);CHKERRQ(ierr);
   ierr = FVDAGetBoundaryFaceIndicesOwnershipRange(fv,face,&s,&e);CHKERRQ(ierr);
-
   for (f=0; f<len; f++) {
     PetscInt fvid = indices[f];
     cell = fv->face_element_map[2*fvid + 0];
-	if (face == DACELL_FACE_W){
-      fv->boundary_value[s + f] = LA_T[cell];
-      fv->boundary_flux[s + f] = FVFLUX_DIRICHLET_CONSTRAINT;
-	  //PetscPrintf(PETSC_COMM_SELF,"fid=indices[%d]=%d, cell[%d]=face_element_map[%d]=%d \n",f,indices[f],f,2*fvid + 0,cell);
-    } else {
-      fv->boundary_value[s + f] = 0.3;
-      fv->boundary_flux[s + f] = FVFLUX_DIRICHLET_CONSTRAINT;
-    }
-	/* This may not be required in solved problems since the BC insertions are embeded inside the matrix operations */
-    //ierr = VecSetValue(T,cell,fv->boundary_value[s + f],INSERT_VALUES);CHKERRQ(ierr);
-	ierr = VecSetValue(Tl,cell,fv->boundary_value[s + f],INSERT_VALUES);CHKERRQ(ierr);
+    //if (commrank == 0) {
+      //printf("rank[%d]: face[%d] -> fid %d: cell[%d,%d]\n",commrank,f,fvid,fv->face_element_map[2*fvid + 0],fv->face_element_map[2*fvid + 1]);
+    //}
+    fv->boundary_value[s + f] = _T[cell];
+    fv->boundary_flux[s + f] = FVFLUX_DIRICHLET_CONSTRAINT;
+	//printf("T[%d] = %f\n",cell,_T[cell]);
+	//printf("s=%d; f=%d; s+f=%d \n",s,f,s+f);
+	//PetscPrintf(PETSC_COMM_SELF,"fid=indices[%d]=%d, cell[%d]=face_element_map[%d]=%d \n",f,indices[f],f,2*fvid + 0,cell);
   }
-  ierr = DMLocalToGlobal(dm,Tl,INSERT_VALUES,T);CHKERRQ(ierr);
-  ierr = VecAssemblyBegin(Tl);CHKERRQ(ierr);
-  ierr = VecAssemblyEnd(Tl);CHKERRQ(ierr);  
-  ierr = VecRestoreArray(Tl,&LA_T);CHKERRQ(ierr);
-  ierr = DMRestoreLocalVector(dm,&Tl);CHKERRQ(ierr);
+
+  ierr = VecRestoreArray(T,&_T);CHKERRQ(ierr);
+  // Reset the values in T
+  ierr = VecZeroEntries(T);CHKERRQ(ierr);
+  /* loop over faces, query BC object, push bc T back into T Vec */
+  ierr = VecGetArray(T,&_T);CHKERRQ(ierr);
+  for (f=0; f<len; f++) {
+    PetscReal tmp_value = fv->boundary_value[s+f];
+	PetscInt fvid = indices[f];
+    cell = fv->face_element_map[2*fvid + 0];
+	//printf("s=%d; f=%d; s+f=%d \n",s,f,s+f);
+    _T[cell] = tmp_value;
+	//printf("T[%d] = %f; tmp_value = %f \n",cell,_T[cell],tmp_value);
+  }
+  
+  ierr = VecRestoreArray(T,&_T);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
 
+
 static PetscErrorCode FVSetDirichletFromNeighbourVdotN(FVDA fv,Vec T,DACellFace face)
 {
-  PetscInt       f,len,s,e;
-  const PetscInt *indices;
+  
+  PetscInt        f,len,s,e;
+  const PetscInt  *indices;
+  PetscInt        cell,nfaces;
+  DM              dm;
+  PetscScalar     *_T;
   const PetscReal *vdotn;
-  PetscInt       cell;
-  Vec            Tl;
-  DM             dm;
-  PetscScalar    *LA_T;
-  PetscErrorCode ierr;
-
+  PetscErrorCode  ierr;
+  PetscMPIInt     commrank;
+  
   PetscFunctionBegin;
+  ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&commrank);CHKERRQ(ierr);
   // Get rank-local T values
   dm = fv->dm_fv;
-
-  ierr = DMGetLocalVector(dm,&Tl);CHKERRQ(ierr);
-  ierr = DMGlobalToLocal(dm,T,INSERT_VALUES,Tl);CHKERRQ(ierr);
-  ierr = VecGetArray(Tl,&LA_T);CHKERRQ(ierr);
-
-  //ierr = VecGetArray(T,&LA_T);CHKERRQ(ierr);
+  
+  ierr = FVDAGetFacePropertyByNameArrayRead(fv,"v.n",&vdotn);CHKERRQ(ierr);
+  ierr = VecGetArray(T,&_T);CHKERRQ(ierr);
   // Get boundary cells faces indices
   ierr = FVDAGetBoundaryFaceIndicesRead(fv,face,&len,&indices);CHKERRQ(ierr);
   ierr = FVDAGetBoundaryFaceIndicesOwnershipRange(fv,face,&s,&e);CHKERRQ(ierr);
-
-  ierr = FVDAGetFacePropertyByNameArrayRead(fv,"v.n",&vdotn);CHKERRQ(ierr);
-  
   for (f=0; f<len; f++) {
     PetscInt fvid = indices[f];
     cell = fv->face_element_map[2*fvid + 0];
+    //if (commrank == 0) {
+      //printf("rank[%d]: face[%d] -> fid %d: cell[%d,%d]\n",commrank,f,fvid,fv->face_element_map[2*fvid + 0],fv->face_element_map[2*fvid + 1]);
+    //}
 	if (vdotn[fvid] < 0.0){
-      fv->boundary_value[s + f] = LA_T[cell];
+      fv->boundary_value[s + f] = _T[cell];
       fv->boundary_flux[s + f] = FVFLUX_DIRICHLET_CONSTRAINT;
+	  //printf("T[%d] = %f\n",cell,_T[cell]);
+	  //printf("s=%d; f=%d; s+f=%d \n",s,f,s+f);
 	  //PetscPrintf(PETSC_COMM_SELF,"fid=indices[%d]=%d, cell[%d]=face_element_map[%d]=%d \n",f,indices[f],f,2*fvid + 0,cell);
-    } else {
-      fv->boundary_value[s + f] = 0.3;
-      fv->boundary_flux[s + f] = FVFLUX_DIRICHLET_CONSTRAINT;
     }
-	/* This may not be required in solved problems since the BC insertions are embeded inside the matrix operations */
-    //ierr = VecSetValue(T,cell,fv->boundary_value[s + f],INSERT_VALUES);CHKERRQ(ierr);
-	ierr = VecSetValue(Tl,cell,fv->boundary_value[s + f],INSERT_VALUES);CHKERRQ(ierr);
   }
-  ierr = DMLocalToGlobal(dm,Tl,INSERT_VALUES,T);CHKERRQ(ierr);
-  ierr = VecAssemblyBegin(Tl);CHKERRQ(ierr);
-  ierr = VecAssemblyEnd(Tl);CHKERRQ(ierr);  
-  ierr = VecRestoreArray(Tl,&LA_T);CHKERRQ(ierr);
-  ierr = DMRestoreLocalVector(dm,&Tl);CHKERRQ(ierr);
+
+  ierr = VecRestoreArray(T,&_T);CHKERRQ(ierr);
+  // Reset the values in T
+  ierr = VecZeroEntries(T);CHKERRQ(ierr);
+  /* loop over faces, query BC object, push bc T back into T Vec */
+  ierr = VecGetArray(T,&_T);CHKERRQ(ierr);
+  for (f=0; f<len; f++) {
+    PetscReal tmp_value = fv->boundary_value[s+f];
+	PetscInt fvid = indices[f];
+    cell = fv->face_element_map[2*fvid + 0];
+	//printf("s=%d; f=%d; s+f=%d \n",s,f,s+f);
+	if (vdotn[fvid] < 0.0){
+      _T[cell] = tmp_value;
+	  //printf("T[%d] = %f; tmp_value = %f \n",cell,_T[cell],tmp_value);
+    }
+  }
+  
+  ierr = VecRestoreArray(T,&_T);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -114,7 +128,7 @@ static PetscErrorCode PrintBoundaryValues(FVDA fv,Vec T,DACellFace face)
   PetscFunctionBegin;
   // Get rank-local T values
   ierr = VecGetArrayRead(T,&LA_T);CHKERRQ(ierr);
-  
+
   ierr = FVDAGetBoundaryFaceIndicesRead(fv,face,&len,&indices);CHKERRQ(ierr);
   ierr = FVDAGetBoundaryFaceIndicesOwnershipRange(fv,face,&s,&e);CHKERRQ(ierr);
   
@@ -128,6 +142,26 @@ static PetscErrorCode PrintBoundaryValues(FVDA fv,Vec T,DACellFace face)
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode PrintValues(FVDA fv)
+{
+  PetscInt       nfaces,f;
+  PetscMPIInt    commrank;
+  PetscErrorCode ierr;
+  
+  PetscFunctionBegin;
+  ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&commrank);CHKERRQ(ierr);
+  printf("Function [[PrintValues]]\n");
+  
+  ierr = FVDAGetFaceInfo(fv,&nfaces,NULL,NULL,NULL,NULL);CHKERRQ(ierr);
+  //if (commrank == 0) {
+    for (f=0; f<nfaces; f++) {
+      printf("rank[%d]: face[%d]: cell[%d,%d]\n",commrank,f,fv->face_element_map[2*f+0],fv->face_element_map[2*f+1]);
+    }
+  //}
+  PetscFunctionReturn(0);
+}
+
+
 PetscBool iterator_initial_thermal_field(PetscScalar coor[],PetscScalar *val,void *ctx)
 {
   PetscBool impose=PETSC_TRUE;
@@ -140,7 +174,7 @@ PetscBool iterator_initial_thermal_field(PetscScalar coor[],PetscScalar *val,voi
 PetscErrorCode t10a(void)
 {
   PetscErrorCode ierr;
-  PetscInt       mx = 8; //32*2+1;//65;
+  PetscInt       mx = 4;
   const PetscInt m[] = {mx,mx,mx};
   FVDA           fv;
   Vec            T;
@@ -194,23 +228,20 @@ PetscErrorCode t10a(void)
   
   dm = fv->dm_fv;
   ierr = DMCreateGlobalVector(dm,&T);CHKERRQ(ierr);
-  ierr = FVDAVecTraverse(fv,T,0.0,0,iterator_initial_thermal_field,NULL);CHKERRQ(ierr);
-  //ierr = VecSet(T,1.0);CHKERRQ(ierr);
-
   const DACellFace flist[] = { DACELL_FACE_W, DACELL_FACE_E, DACELL_FACE_S, DACELL_FACE_N, DACELL_FACE_B, DACELL_FACE_F };
   PetscInt l;
   for (l=0; l<sizeof(flist)/sizeof(DACellFace); l++) {
+	
+	ierr = VecSet(T,0.0);CHKERRQ(ierr);
+    ierr = FVDAVecTraverse(fv,T,0.0,0,iterator_initial_thermal_field,NULL);CHKERRQ(ierr);
+	
     //ierr = FVSetDirichletFromNeighbour(fv,T,flist[l]);CHKERRQ(ierr);
 	ierr = FVSetDirichletFromNeighbourVdotN(fv,T,flist[l]);CHKERRQ(ierr);
 	//ierr = PrintBoundaryValues(fv,T,flist[l]);CHKERRQ(ierr);
-  }
-  VecAssemblyBegin(T);
-  VecAssemblyEnd(T); 
-  {
-    PetscViewer viewer;
+	PetscViewer viewer;
     char        fname[256];
     
-    sprintf(fname,"T.vts");
+    sprintf(fname,"Tvn%d.vts",l);
     ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
     ierr = PetscViewerSetType(viewer,PETSCVIEWERVTK);CHKERRQ(ierr);
     ierr = PetscViewerFileSetMode(viewer,FILE_MODE_WRITE);CHKERRQ(ierr);
@@ -218,7 +249,7 @@ PetscErrorCode t10a(void)
     ierr = VecView(T,viewer);CHKERRQ(ierr);
     ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
   }
-
+  
   ierr = VecDestroy(&T);CHKERRQ(ierr);
   ierr = FVDADestroy(&fv);CHKERRQ(ierr);
   PetscFunctionReturn(0);
