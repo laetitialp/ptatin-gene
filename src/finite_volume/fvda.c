@@ -692,7 +692,6 @@ PetscErrorCode FVDAFaceIterator(FVDA fv,DACellFace face,PetscBool require_normal
   for (f=0; f<len; f++) {
     PetscInt fid = indices[f];
     cell[f] = fv->face_element_map[2*fid + 0];
-	PetscPrintf(PETSC_COMM_SELF,"fid=indices[%d]=%d, cell[%d]=face_element_map[%d]=%d \n",f,indices[f],f,2*fid + 0,cell[f]);
     if (cell[f] < 0) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_SUP,"Boundary facet [%D -> %D] is missing cell-. A boundary facet should always have a cell- living on the sub-domain",f,fid);
   }
   
