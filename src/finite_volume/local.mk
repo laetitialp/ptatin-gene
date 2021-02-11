@@ -26,7 +26,7 @@ ptatin-tests-y.c += $(call thisdir, \
   fv-ex7b.c \
   fv-ex8.c \
   fv-ex9.c \
-  fv-ex10a.c \
+  fv-ex10.c \
 )
 
 TATIN_INC += -I$(abspath $(call thisdir,.))
