@@ -81,7 +81,8 @@ PetscErrorCode pTatin3d_material_points_check_ic(int argc,char **argv)
 
   ierr = DMCreateGlobalVector(multipys_pack,&X);CHKERRQ(ierr);
   ierr = VecDuplicate(X,&F);CHKERRQ(ierr);
-
+  ierr = pTatinPhysCompAttachData_Stokes(user,X);CHKERRQ(ierr);
+  
   ierr = pTatin3dCreateMaterialPoints(user,dav);CHKERRQ(ierr);
 
   /* mesh geometry */
