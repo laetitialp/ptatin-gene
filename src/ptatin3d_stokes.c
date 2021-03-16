@@ -1172,6 +1172,17 @@ PetscErrorCode PhysCompStokesGetSurfaceQuadratureAllCellData(PhysCompStokes stok
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode PhysCompStokesUpdateSurfaceQuadrature(PhysCompStokes stokes)
+{
+  PetscErrorCode ierr;
+  PetscInt edge;
+  for (edge=0; edge<HEX_EDGES; edge++) {
+    SurfaceQuadrature surfQ = stokes->surfQ[edge];
+    ierr = SurfaceQuadratureGeometrySetUpStokes(surfQ,stokes->dav);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode Stokes_KSPConvergenceTest_ScaledResiduals(KSP ksp,PetscInt it,PetscReal rnorm,KSPConvergedReason *reason,void *data)
 {
   PetscErrorCode  ierr;
