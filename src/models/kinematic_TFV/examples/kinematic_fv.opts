@@ -1,0 +1,232 @@
+# -------------------------------------------------------------------------------
+# Executable: ${PETSC_ARCH}/bin/ptatin_driver_nonlinear_ts_fv.app
+# pTatin model name: kinematic_TFVFV
+#
+# Notes
+#   * Uses gmres/bjacobi/ilu to solve the advection diffusion equation.
+#   -ptatin_energyfv_nsub <int>,<int>,<int>
+#     Controls the sub-division of each Q2 element in each i,j,k direction.
+#   -lattice_layout_Nx <int> -lattice_layout_Ny <int> -lattice_layout_Nz <int>
+#     Contols the number of points initially located in each Q2 element in
+#     each i,j,k direction.
+# -------------------------------------------------------------------------------
+-ptatin_model kinematic_TFV
+#### Domain Boundaries ####
+-model_kinematic_TFV_Lx 1.3e6
+-model_kinematic_TFV_Ly 0.0
+-model_kinematic_TFV_Lz 1.3e6
+-model_kinematic_TFV_Ox 0.0
+-model_kinematic_TFV_Oy -2.5e5
+-model_kinematic_TFV_Oz 0.0
+#######################
+-lattice_layout_Nx 2
+-lattice_layout_Ny 2
+-lattice_layout_Nz 2
+-model_kinematic_TFV_use_semi_eulerian
+-mx 8 #512 
+-my 8 #64
+-mz 8 #256
+#-mp_popctrl_np_lower 5
+##########################
+###### Velocity BCs #######
+#-model_kinematic_TFV_PoleCoords 500.0e3,2000.0e3
+#-model_kinematic_TFV_FreeslipCoords 750.0e3,1250.0e3
+-model_kinematic_TFV_v_ang -0.15
+######### Output #########
+-nsteps 2
+-output_frequency 1
+-model_kinematic_TFV_output_markers
+######## Geometry #######
+-model_kinematic_TFV_PhaseFromMap
+-map_file /mnt/c/pTatin3D/ptatin-total-dev/src/models/kinematic_TFV/examples/Cratons_phasemap_145Ma_HR2.pmap 
+-extrude_dir 1
+####### Rheology ########
+###### Phase 0, Layer 0, From phasemap 0 ######
+-model_kinematic_TFV_preexpA_0 6.3e-6
+-model_kinematic_TFV_Ascale_0 1.0e6
+-model_kinematic_TFV_entalpy_0 156.0e3
+-model_kinematic_TFV_Vmol_0 0.0
+-model_kinematic_TFV_nexp_0 2.4
+-model_kinematic_TFV_phi_0 30.0
+-model_kinematic_TFV_phi_inf_0 5.0
+-model_kinematic_TFV_Co_0 2.0e7
+-model_kinematic_TFV_Co_inf_0 2.e7
+-model_kinematic_TFV_alpha_0 2.e-5
+-model_kinematic_TFV_beta_0 0.0
+-model_kinematic_TFV_rho_0 2700.0
+###### Phase 1, Layer 0, From phasemap 1 ######
+-model_kinematic_TFV_preexpA_1 6.3e-6
+-model_kinematic_TFV_Ascale_1 1.0e6 
+-model_kinematic_TFV_entalpy_1 156.0e3
+-model_kinematic_TFV_Vmol_1 0.0
+-model_kinematic_TFV_nexp_1 2.4
+-model_kinematic_TFV_phi_1 30.0
+-model_kinematic_TFV_phi_inf_1 5.0
+-model_kinematic_TFV_Co_1 2.0e7
+-model_kinematic_TFV_Co_inf_1 2.0e7
+-model_kinematic_TFV_alpha_1 2.0e-5
+-model_kinematic_TFV_beta_1 0.0
+-model_kinematic_TFV_rho_1 2700.0
+###### Phase 2, Layer 0, From phasemap 2 ######
+-model_kinematic_TFV_preexpA_2 6.3e-5
+-model_kinematic_TFV_Ascale_2 1.0e6
+-model_kinematic_TFV_entalpy_2 156.0e3
+-model_kinematic_TFV_Vmol_2 0.0
+-model_kinematic_TFV_nexp_2 2.4
+-model_kinematic_TFV_phi_2 30.0
+-model_kinematic_TFV_phi_inf_2 5.0
+-model_kinematic_TFV_Co_2 2.0e7
+-model_kinematic_TFV_Co_inf_2 2.0e7
+-model_kinematic_TFV_alpha_2 2.0e-5
+-model_kinematic_TFV_beta_2 0.0
+-model_kinematic_TFV_rho_2 2700.0
+###### Phase 3, Layer 1, From phasemap 0 ######
+-model_kinematic_TFV_preexpA_3 13.4637
+-model_kinematic_TFV_Ascale_3 1.0e6
+-model_kinematic_TFV_entalpy_3 345.0e3
+-model_kinematic_TFV_Vmol_3 3.8e-5
+-model_kinematic_TFV_nexp_3 3
+-model_kinematic_TFV_phi_3 30.0
+-model_kinematic_TFV_phi_inf_3 5.0
+-model_kinematic_TFV_Co_3 2.0e7
+-model_kinematic_TFV_Co_inf_3 2.0e7
+-model_kinematic_TFV_alpha_3 2.0e-5
+-model_kinematic_TFV_beta_3 0.0
+-model_kinematic_TFV_rho_3 2850.0
+###### Phase 4, Layer 1, From phasemap 1 ######
+-model_kinematic_TFV_preexpA_4 13.4637
+-model_kinematic_TFV_Ascale_4 1.0e6
+-model_kinematic_TFV_entalpy_4 345.0e3
+-model_kinematic_TFV_Vmol_4 3.8e-5
+-model_kinematic_TFV_nexp_4 3
+-model_kinematic_TFV_phi_4 30.0
+-model_kinematic_TFV_phi_inf_4 5.0
+-model_kinematic_TFV_Co_4 2.0e7
+-model_kinematic_TFV_Co_inf_4 2.0e7
+-model_kinematic_TFV_alpha_4 2.0e-5
+-model_kinematic_TFV_beta_4 0.0
+-model_kinematic_TFV_rho_4 2850.0
+###### Phase 5, Layer 1, From phasemap 2 ######
+-model_kinematic_TFV_preexpA_5 13.4637
+-model_kinematic_TFV_Ascale_5 1.0e6
+-model_kinematic_TFV_entalpy_5 345.0e3
+-model_kinematic_TFV_Vmol_5 3.8e-5
+-model_kinematic_TFV_nexp_5 3
+-model_kinematic_TFV_phi_5 30.0
+-model_kinematic_TFV_phi_inf_5 5.0
+-model_kinematic_TFV_Co_5 2.0e7
+-model_kinematic_TFV_Co_inf_5 2.0e7
+-model_kinematic_TFV_alpha_5 2.0e-5
+-model_kinematic_TFV_beta_5 0.0
+-model_kinematic_TFV_rho_5 2850.0
+###### Phase 6, Layer 2, From phasemap 0 ######
+-model_kinematic_TFV_preexpA_6 1.1e5
+-model_kinematic_TFV_Ascale_6 1.0e6
+-model_kinematic_TFV_entalpy_6 530.0e3
+-model_kinematic_TFV_Vmol_6 18.0e-6
+-model_kinematic_TFV_nexp_6 3.5
+-model_kinematic_TFV_phi_6 30.0
+-model_kinematic_TFV_phi_inf_6 5.0
+-model_kinematic_TFV_Co_6 2.0e7
+-model_kinematic_TFV_Co_inf_6 2.0e7
+-model_kinematic_TFV_alpha_6 2.0e-5
+-model_kinematic_TFV_beta_6 3.0e-12
+-model_kinematic_TFV_rho_6 3300.0
+###### Phase 7, Layer 2, From phasemap 1 ######
+-model_kinematic_TFV_preexpA_7 1.1e5
+-model_kinematic_TFV_Ascale_7 1.0e6
+-model_kinematic_TFV_entalpy_7 530.0e3
+-model_kinematic_TFV_Vmol_7 18.0e-6
+-model_kinematic_TFV_nexp_7 3.5
+-model_kinematic_TFV_phi_7 30.0
+-model_kinematic_TFV_phi_inf_7 5.0
+-model_kinematic_TFV_Co_7 2.0e7
+-model_kinematic_TFV_Co_inf_7 2.0e7
+-model_kinematic_TFV_alpha_7 2.0e-5
+-model_kinematic_TFV_beta_7 3.0e-12
+-model_kinematic_TFV_rho_7 3300.0
+########################
+#### SOLVER OPTIONS ####
+########################
+#-a11_op avx
+-A11_operator_type 0,1,1
+-activate_energyfv true
+-dau_nlevels 3
+-dt_max 1e-3
+-energyfv_ksp_monitor
+-energyfv_ksp_type gmres
+-energyfv_pc_type bjacobi
+-energyfv_snes_ksp_ew
+-energyfv_snes_ksp_ew_rtol0 1.0e-2
+-energyfv_snes_ksp_ew_version 1
+-energyfv_snes_lag_preconditioner -2
+-energyfv_snes_monitor
+-energyfv_snes_rtol 1.0e-6
+-fieldsplit_p_ksp_type preonly
+-fieldsplit_p_pc_type jacobi
+-fieldsplit_u_ksp_max_it 2
+-fieldsplit_u_ksp_monitor
+-fieldsplit_u_ksp_rtol 1.0e-2
+-fieldsplit_u_ksp_type fgmres
+-fieldsplit_u_mg_coarse_dmdarepart_ksp_type preonly
+-fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_dmdarepart_ksp_type preonly
+-fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_dmdarepart_pc_factor_mat_solver_type umfpack #mkl_pardiso
+-fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_dmdarepart_pc_type lu
+-fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_ksp_type preonly
+-fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_pc_dmdarepart_factor 16
+-fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_pc_type dmdarepart
+-fieldsplit_u_mg_coarse_dmdarepart_mg_levels_ksp_max_it 6
+-fieldsplit_u_mg_coarse_dmdarepart_mg_levels_ksp_norm_type NONE
+-fieldsplit_u_mg_coarse_dmdarepart_mg_levels_ksp_type gmres
+-fieldsplit_u_mg_coarse_dmdarepart_mg_levels_pc_type bjacobi
+-fieldsplit_u_mg_coarse_dmdarepart_pc_mg_galerkin
+-fieldsplit_u_mg_coarse_dmdarepart_pc_mg_levels 2
+-fieldsplit_u_mg_coarse_dmdarepart_pc_mg_log
+-fieldsplit_u_mg_coarse_dmdarepart_pc_type mg
+-fieldsplit_u_mg_coarse_ksp_type preonly
+-fieldsplit_u_mg_coarse_pc_dmdarepart_factor 32
+-fieldsplit_u_mg_coarse_pc_type dmdarepart
+-fieldsplit_u_mg_levels_ksp_max_it 10
+-fieldsplit_u_mg_levels_ksp_norm_type NONE
+-fieldsplit_u_mg_levels_ksp_type gmres
+-fieldsplit_u_mg_levels_pc_type jacobi
+-fieldsplit_u_pc_mg_levels 4
+-fieldsplit_u_pc_mg_log
+-fieldsplit_u_pc_type mg
+-fvpp_ksp_monitor
+-fvpp_ksp_rtol 1.0e-10
+-fvpp_ksp_type cg
+-fvpp_mg_coarse_pc_type redundant
+-fvpp_mg_coarse_redundant_pc_factor_mat_solver_type umfpack #mkl_pardiso
+-fvpp_mg_coarse_redundant_pc_type lu
+-fvpp_mg_levels_esteig_ksp_norm_type none
+-fvpp_mg_levels_esteig_ksp_type cg
+-fvpp_mg_levels_ksp_chebyshev_esteig 0,0.01,0,1.1
+-fvpp_mg_levels_ksp_max_it 4
+-fvpp_mg_levels_ksp_norm_type none
+-fvpp_mg_levels_ksp_type chebyshev
+-fvpp_mg_levels_pc_type jacobi
+-fvpp_operator_fvspace false
+-fvpp_pc_type gamg
+-ksp_max_it 50
+-ksp_monitor
+-ksp_rtol 1.0e-3
+-ksp_type fgmres
+-newton_its 0
+-nonlinear_driver_v1
+-pc_fieldsplit_schur_fact_type upper
+-pc_fieldsplit_type schur
+-pc_type fieldsplit
+-ptatin_energyfv_nsub 4,4,4
+-snes_atol 1e-2
+-snes_converged_reason
+-snes_max_it 5
+-snes_max_linear_solve_fail 10
+-snes_monitor
+-snes_rtol 1e-4
+-stk_velocity_da_refine_hierarchy_x 2,2
+-stk_velocity_da_refine_hierarchy_y 2,1
+-stk_velocity_da_refine_hierarchy_z 2,2
+-stk_velocity_dm_mat_type aij
+-stokes_ksp_monitor_up false
+-log_view
