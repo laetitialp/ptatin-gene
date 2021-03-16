@@ -1335,3 +1335,29 @@ PetscErrorCode SNESStokes_KSPSetConvergenceTest_ScaledResiduals(SNES snes,pTatin
 
   PetscFunctionReturn(0);
 }
+
+PetscErrorCode pTatinPhysCompAttachData_Stokes(pTatinCtx user,Vec X)
+{
+  PhysCompStokes s;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  ierr = pTatinGetStokesContext(user,&s);CHKERRQ(ierr);
+  if (X) {
+    ierr = pTatinCtxAttachModelDataPetscObject(user,"PhysCompStokes_X",(PetscObject)X);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode pTatinPhysCompGetData_Stokes(pTatinCtx user,Vec *X)
+{
+  PhysCompStokes s;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  ierr = pTatinGetStokesContext(user,&s);CHKERRQ(ierr);
+  if (X) {
+    ierr = pTatinCtxGetModelDataPetscObject(user,"PhysCompStokes_X",(PetscObject*)X);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
