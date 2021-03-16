@@ -1,7 +1,8 @@
 
 #include <petsc.h>
 #include <fvda.h>
-
+#include <fvda_utils.h>
+#include <fvda_impl.h>
 
 /*
  Usage:
@@ -97,4 +98,39 @@ PetscErrorCode FVDABCMethod_SetNeumannWithVector(FVDA fv,
     bcvalue[f] = neumann_value[0]*normal[0] + neumann_value[1]*normal[1] + neumann_value[2]*normal[2];
   }
   PetscFunctionReturn(0);
+}
+
+PetscErrorCode FVSetDirichletFromInflow(FVDA fv,Vec T,DACellFace face)
+{
+  PetscInt        f,len,s,e;
+  const PetscInt  *indices;
+  const PetscReal *vdotn;
+  PetscInt        cell;
+  PetscScalar     *_T;
+  PetscErrorCode  ierr;
+
+  PetscFunctionBegin;
+  // Get rank-local T values
+  ierr = VecGetArray(T,&_T);CHKERRQ(ierr);
+  // Get boundary cells faces indices
+  ierr = FVDAGetBoundaryFaceIndicesRead(fv,face,&len,&indices);CHKERRQ(ierr);
+  ierr = FVDAGetBoundaryFaceIndicesOwnershipRange(fv,face,&s,&e);CHKERRQ(ierr);
+  // Get v dot n values
+  ierr = FVDAGetFacePropertyByNameArrayRead(fv,"v.n",&vdotn);CHKERRQ(ierr);
+  
+  for (f=0; f<len; f++) {
+    PetscInt fvid = indices[f];
+    // Get cell id from faces id
+    cell = fv->face_element_map[2*fvid + 0];
+    // If Inflow set the BC value to the cell value
+    if (vdotn[fvid] < 0.0){
+      fv->boundary_value[s + f] = _T[cell];
+      fv->boundary_flux[s + f] = FVFLUX_DIRICHLET_CONSTRAINT;
+    }
+  }
+
+  ierr = VecRestoreArray(T,&_T);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+
 }

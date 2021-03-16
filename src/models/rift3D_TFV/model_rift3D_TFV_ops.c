@@ -550,6 +550,7 @@ static PetscErrorCode ModelApplyBoundaryCondition_Rift3D_T(pTatinCtx user,void *
     PhysCompEnergyFV energy;
     PetscReal        val_T;
     PetscReal        coeffs[8];
+	PetscInt         l;
     PetscErrorCode   (*iterator_initial_thermal_field)(FVDA,
                                                        DACellFace,
                                                        PetscInt,
@@ -573,6 +574,12 @@ static PetscErrorCode ModelApplyBoundaryCondition_Rift3D_T(pTatinCtx user,void *
       ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_W,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
       ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_F,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
       ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_B,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
+	  
+      /* Iterate through all boundary faces, if there is inflow redefine the bc value and bc flux method */
+      const DACellFace flist[] = { DACELL_FACE_W, DACELL_FACE_E, DACELL_FACE_S, DACELL_FACE_N, DACELL_FACE_B, DACELL_FACE_F };
+      for (l=0; l<sizeof(flist)/sizeof(DACellFace); l++) {
+        ierr = FVSetDirichletFromInflow(energy->fv,energy->T,flist[l]);CHKERRQ(ierr);
+      }
 
     } else {
       val_T = data->Tbottom;
