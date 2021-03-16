@@ -6,6 +6,7 @@ libptatin3dmodels-y.c += $(call thisdir, \
   indentor/model_indentor_ops.c \
   rift3D_T/model_rift3D_T_ops.c \
   rift3D_TFV/model_rift3D_TFV_ops.c \
+  kinematic_TFV/model_kinematic_TFV_ops.c \
   advdiff_example/model_ops_advdiff_example.c \
   delamination/model_delamination_ops.c \
   rift_oblique3d/model_ops_rift_oblique3d.c \
