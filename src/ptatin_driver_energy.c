@@ -97,6 +97,7 @@ PetscErrorCode pTatin3d_energy_tester(int argc,char **argv)
 
   ierr = DMCreateGlobalVector(multipys_pack,&X);CHKERRQ(ierr);
   ierr = VecDuplicate(X,&F);CHKERRQ(ierr);
+  ierr = pTatinPhysCompAttachData_Stokes(user,X);CHKERRQ(ierr);
 
   ierr = pTatin3dCreateMaterialPoints(user,dav);CHKERRQ(ierr);
   ierr = pTatinGetMaterialPoints(user,&materialpoint_db,NULL);CHKERRQ(ierr);

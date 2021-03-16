@@ -105,6 +105,8 @@ PetscErrorCode pTatin3dCheckpoint(pTatinCtx ctx,Vec X,const char prefix[]);
 
 PetscErrorCode pTatinCtxGetModelData(pTatinCtx ctx,const char name[],void **data);
 PetscErrorCode pTatinCtxAttachModelData(pTatinCtx ctx,const char name[],void *data);
+PetscErrorCode pTatinCtxGetModelDataPetscObject(pTatinCtx ctx,const char name[],PetscObject *data);
+PetscErrorCode pTatinCtxAttachModelDataPetscObject(pTatinCtx ctx,const char name[],PetscObject data);
 
 PetscErrorCode pTatin3dCheckpointManager(pTatinCtx ctx,Vec X);
 PetscErrorCode DMCoarsenHierarchy2_DA(DM da,PetscInt nlevels,DM dac[]);
