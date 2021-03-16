@@ -717,11 +717,12 @@ PetscErrorCode pTatin3dDestroyContext(pTatinCtx *ctx)
 PetscErrorCode pTatinCtxGetModelData(pTatinCtx ctx,const char name[],void **data)
 {
   PetscErrorCode ierr;
-  PetscContainer container;
+  PetscContainer container = NULL;
 
   PetscFunctionBegin;
+  if (!ctx->model_data) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"The PetscContainer in pTatinCtx is NULL");
   ierr = PetscObjectQuery((PetscObject)ctx->model_data,name,(PetscObject*)&container);CHKERRQ(ierr);
-  if (!container) SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_ARG_WRONG,"No data with name \"%s\" was composed with ctx->model_data",name);
+  if (!container) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"No data with name \"%s\" was composed with pTatinCtx",name);
   ierr = PetscContainerGetPointer(container,data);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
@@ -733,12 +734,45 @@ PetscErrorCode pTatinCtxAttachModelData(pTatinCtx ctx,const char name[],void *da
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  ierr = PetscContainerCreate(PETSC_COMM_WORLD,&container);CHKERRQ(ierr);
+  if (!ctx->model_data) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"The PetscContainer in pTatinCtx is NULL");
+  {
+    PetscObject obj = NULL;
+    ierr = PetscObjectQuery((PetscObject)ctx->model_data,name,&obj);CHKERRQ(ierr);
+    if (obj) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"A data object with name \"%s\" was already composed with pTatinCtx. Textual names must be unique",name);
+  }
+  ierr = PetscContainerCreate(PETSC_COMM_SELF,&container);CHKERRQ(ierr);
   ierr = PetscContainerSetPointer(container,(void*)data);CHKERRQ(ierr);
 
   ierr = PetscObjectCompose((PetscObject)ctx->model_data,name,(PetscObject)container);CHKERRQ(ierr);
   ierr = PetscContainerDestroy(&container);CHKERRQ(ierr); /* decrement ref counter */
 
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode pTatinCtxGetModelDataPetscObject(pTatinCtx ctx,const char name[],PetscObject *data)
+{
+  PetscErrorCode ierr;
+  PetscObject    obj = NULL;
+  
+  PetscFunctionBegin;
+  if (!ctx->model_data) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"The PetscContainer in pTatinCtx is NULL");
+  ierr = PetscObjectQuery((PetscObject)ctx->model_data,name,&obj);CHKERRQ(ierr);
+  if (!obj) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"No PETSc object with name \"%s\" was composed with pTatinCtx",name);
+  *data = obj;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode pTatinCtxAttachModelDataPetscObject(pTatinCtx ctx,const char name[],PetscObject data)
+{
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  if (!ctx->model_data) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"The PetscContainer in pTatinCtx is NULL");
+  {
+    PetscObject obj = NULL;
+    ierr = PetscObjectQuery((PetscObject)ctx->model_data,name,&obj);CHKERRQ(ierr);
+    if (obj) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"A PETSc object with name \"%s\" was already composed with pTatinCtx. Textual names must be unique",name);
+  }
+  ierr = PetscObjectCompose((PetscObject)ctx->model_data,name,data);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
