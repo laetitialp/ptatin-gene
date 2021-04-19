@@ -39,7 +39,7 @@
 #include "dmdae.h"
 #include "fvda_private.h"
 #include "fvda.h"
-
+#include "ptatin_log.h"
 #include "QPntVolCoefEnergy_def.h"
 #include "phys_comp_energy.h"
 #include "ptatin3d_energy.h"
@@ -352,7 +352,169 @@ PetscErrorCode pTatinPhysCompActivate_LithoP(pTatinCtx user,PetscBool load)
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode Element_FormJacobian_LithoPressure(PetscScalar Re[],
+                                                  PetscScalar el_coords[],
+                                                  PetscInt ngp,
+                                                  PetscScalar gp_xi[],
+                                                  PetscScalar gp_weight[])
+{
+  PetscInt    p,i,j;
+  PetscReal GNi_p[NSD][NODES_PER_EL_Q1_3D];
+  PetscReal GNx_p[NSD][NODES_PER_EL_Q1_3D];
+  PetscScalar J_p,fac;
+  
+  PetscFunctionBegin;
 
+  /* Evaluate integral */
+  for (p=0; p<ngp; p++){
+    /* Evaluate shape functions local derivatives at current point */
+    EvaluateBasisDerivative_Q1_3D(&gp_xi[NSD*p],GNi_p);
+    /* Evaluate shape functions global derivatives at current point */
+    evaluate_cell_geometry_pointwise_3d(el_coords,GNi_p,&J_p,GNx_p[0],GNx_p[1],GNx_p[2]);
+    /* Numerical integration factor */
+    fac = gp_weight[p] * J_p;
+
+    /* We have: F = A(phi^(k+1)).P^(k+1) - b(phi^(k+1)) 
+       with:  A = dN^T.dN 
+       and:   b = dN^T.(rho*g)
+       The Jacobian matrix is:
+       J = dF/dP^(k+1) = A(phi^(k+1))
+    */
+    /* Form element stifness matrix */
+    for (i=0; i<NODES_PER_EL_Q1_3D; i++){
+      for (j=0; j<NODES_PER_EL_Q1_3D; j++){
+        Re[j+i*NODES_PER_EL_Q1_3D] += fac * ((GNx_p[0][i]*GNx_p[0][j] + GNx_p[1][i]*GNx_p[1][j] + GNx_p[2][i]*GNx_p[2][j]));
+      }
+    }  
+  }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode TS_FormJacobianLithoPressure(Vec X,Mat A,Mat B,void *ctx)
+{
+  pTatinCtx              ptatin = (pTatinCtx)ctx;
+  PDESolveLithoP         data;
+  PetscInt               nqp;
+  PetscScalar            *qp_xi,*qp_weight;
+  Quadrature             volQ;
+  QPntVolCoefEnergy      *all_quadpoints,*cell_quadpoints;
+  DM                     da,cda;
+  Vec                    gcoords;
+  PetscScalar            *LA_gcoords;
+  PetscScalar            ADe[NODES_PER_EL_Q1_3D*NODES_PER_EL_Q1_3D];
+  PetscScalar            el_coords[NSD*NODES_PER_EL_Q1_3D];
+  PetscInt               nel,nen,e,n,ii;
+  const PetscInt         *elnidx;
+  BCList                 bclist;
+  ISLocalToGlobalMapping ltog;
+  PetscInt               NUM_GINDICES,el_lidx[Q1_NODES_PER_EL_3D],ge_eqnums[Q1_NODES_PER_EL_3D];
+  const PetscInt         *GINDICES;
+  Vec                    local_X;
+  PetscScalar            *LA_X;
+  PetscBool              mat_mffd;
+  PetscErrorCode         ierr;
+
+  PetscFunctionBegin;
+
+  ierr = pTatinGetContext_LithoP(ptatin,&data);CHKERRQ(ierr);
+  da     = data->daLP;
+  bclist = data->LP_bclist;
+  volQ   = data->volQ;
+    
+  /* setup for coords */
+  ierr = DMGetCoordinateDM(da,&cda);CHKERRQ(ierr);
+  ierr = DMGetCoordinatesLocal(da,&gcoords);CHKERRQ(ierr);
+  ierr = VecGetArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
+
+  /* get solution */
+  ierr = DMGetLocalVector(da,&local_X);CHKERRQ(ierr);
+  ierr = VecZeroEntries(local_X);CHKERRQ(ierr);
+  ierr = DMGlobalToLocalBegin(da,X,INSERT_VALUES,local_X);CHKERRQ(ierr);
+  ierr = DMGlobalToLocalEnd  (da,X,INSERT_VALUES,local_X);CHKERRQ(ierr);
+  ierr = VecGetArray(local_X,&LA_X);CHKERRQ(ierr);
+
+  /* trash old entries */
+  ierr = PetscObjectTypeCompare((PetscObject)A,MATMFFD,&mat_mffd);CHKERRQ(ierr);
+
+  if (!mat_mffd) {
+    ierr = MatZeroEntries(A);CHKERRQ(ierr);
+  } else {
+    ierr = MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+    ierr = MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  }
+  if (B) { ierr = MatZeroEntries(B);CHKERRQ(ierr); }
+  if (B == NULL) { PetscFunctionReturn(0); }
+
+  /* quadrature */
+  volQ      = data->volQ;
+  nqp       = volQ->npoints;
+  qp_xi     = volQ->q_xi_coor;
+  qp_weight = volQ->q_weight;
+
+  /* stuff for eqnums */
+  ierr = DMGetLocalToGlobalMapping(da, &ltog);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetSize(ltog, &NUM_GINDICES);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetIndices(ltog, &GINDICES);CHKERRQ(ierr);
+  ierr = BCListApplyDirichletMask(NUM_GINDICES,(PetscInt*)GINDICES,bclist);CHKERRQ(ierr);
+
+  ierr = DMDAGetElements(da,&nel,&nen,&elnidx);CHKERRQ(ierr);
+
+  for (e=0;e<nel;e++) {
+    /* get coords for the element */
+    ierr = DMDAEQ1_GetVectorElementField_3D(el_coords,(PetscInt*)&elnidx[nen*e],LA_gcoords);CHKERRQ(ierr);
+
+    /* initialise element stiffness matrix */
+    ierr = PetscMemzero(ADe,sizeof(PetscScalar)*NODES_PER_EL_Q1_3D*NODES_PER_EL_Q1_3D);CHKERRQ(ierr);
+    /* form element stiffness matrix */
+    ierr = Element_FormJacobian_LithoPressure( ADe,el_coords,nqp,qp_xi,qp_weight );CHKERRQ(ierr);
+
+    /* get indices */
+    ierr = DMDAEQ1_GetElementLocalIndicesDOF(el_lidx,1,(PetscInt*)&elnidx[nen*e]);CHKERRQ(ierr);
+    for (ii=0; ii<NODES_PER_EL_Q1_3D; ii++) {
+      const PetscInt NID = elnidx[ NODES_PER_EL_Q1_3D * e + ii ];
+      ge_eqnums[ii] = GINDICES[ NID ];
+    }
+
+    /* insert element matrix into global matrix */
+    ierr = MatSetValues(B,NODES_PER_EL_Q1_3D,ge_eqnums, NODES_PER_EL_Q1_3D,ge_eqnums, ADe, ADD_VALUES );CHKERRQ(ierr);
+  }
+  /* tidy up */
+  ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
+  ierr = VecRestoreArray(local_X,&LA_X);CHKERRQ(ierr);
+  ierr = DMRestoreLocalVector(da,&local_X);CHKERRQ(ierr);
+
+  /* partial assembly */
+  ierr = MatAssemblyBegin(B, MAT_FLUSH_ASSEMBLY);CHKERRQ(ierr);
+  ierr = MatAssemblyEnd(B, MAT_FLUSH_ASSEMBLY);CHKERRQ(ierr);
+
+  /* boundary conditions */
+  ierr = BCListRemoveDirichletMask(NUM_GINDICES,(PetscInt*)GINDICES,bclist);CHKERRQ(ierr);
+  ierr = BCListInsertScaling(B,NUM_GINDICES,(PetscInt*)GINDICES,bclist);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingRestoreIndices(ltog, &GINDICES);CHKERRQ(ierr);
+
+  /* assemble */
+  ierr = MatAssemblyBegin(B,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  ierr = MatAssemblyEnd(B,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+
+  if (A != B) {
+    ierr = MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+    ierr = MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode SNES_FormJacobianLithoPressure(SNES snes,Vec X,Mat A,Mat B,void *ctx)
+{
+  pTatinCtx      ptatin  = (pTatinCtx)ctx;
+  PDESolveLithoP litho_p = (PDESolveLithoP)ctx;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  ierr = pTatinGetContext_LithoP(ptatin,&litho_p);CHKERRQ(ierr);
+  ierr = TS_FormJacobianLithoPressure(X,A,B,ctx);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
 
 PetscErrorCode Element_FormFunction_LithoPressure(PetscScalar Re[],
                                                   PetscScalar el_coords[],
@@ -465,7 +627,7 @@ PetscErrorCode FormFunctionLocal_LithoPressure(PDESolveLithoP data,DM da,PetscSc
 
     /* copy the density */
     for (n=0; n<nqp; n++) {
-      qp_rho[n] = 1.0; //data->stokes->volQ->...rho           cell_quadpoints[n].rho;
+      qp_rho[n] = 2700.0; //data->stokes->volQ->...rho           cell_quadpoints[n].rho;
     }
 
     /* initialise element stiffness matrix */
@@ -563,22 +725,28 @@ PetscErrorCode Test_Assembly(void)
   pTatinCtx      pctx = NULL;
   PDESolveLithoP LP = NULL;
   Vec            X = NULL, F = NULL;
+  Mat            J = NULL;
+  PetscLogDouble time[4];
   PetscScalar    val_P;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
   
   ierr = pTatin3dCreateContext(&pctx);CHKERRQ(ierr);
+  ierr = pTatin3dSetFromOptions(pctx);CHKERRQ(ierr);
   
   mesh_generator_type = 0;
-  mx = my = mz = 8;
+  mx = 1;
+  my = 50;
+  mz = 1;
   
   ierr = PhysCompNew_LithoP(da,mx,my,mz,mesh_generator_type,&LP);
   pctx->litho_p_ctx = LP;
-  ierr = DMDASetUniformCoordinates(LP->daLP,-2.0,2.0,-2.0,2.0,-2.0,2.0);CHKERRQ(ierr);
+  ierr = DMDASetUniformCoordinates(LP->daLP,0.0,10.0e3,-30.0e3,0.0,0.0,10.0e3);CHKERRQ(ierr);
   
   val_P = 0.0;
   ierr = DMDABCListTraverse3d(LP->LP_bclist,LP->daLP,DMDABCList_JMAX_LOC,0,BCListEvaluator_constant,(void*)&val_P);CHKERRQ(ierr);
+  /*
   val_P = 1.0;
   ierr = DMDABCListTraverse3d(LP->LP_bclist,LP->daLP,DMDABCList_JMIN_LOC,0,BCListEvaluator_constant,(void*)&val_P);CHKERRQ(ierr);
   val_P = 2.0;
@@ -589,10 +757,34 @@ PetscErrorCode Test_Assembly(void)
   ierr = DMDABCListTraverse3d(LP->LP_bclist,LP->daLP,DMDABCList_KMAX_LOC,0,BCListEvaluator_constant,(void*)&val_P);CHKERRQ(ierr);
   val_P = 5.0;
   ierr = DMDABCListTraverse3d(LP->LP_bclist,LP->daLP,DMDABCList_KMIN_LOC,0,BCListEvaluator_constant,(void*)&val_P);CHKERRQ(ierr);
-  
+  */
   X = LP->X;
-  F = LP->F;  
-  ierr = TS_FormFunctionLithoPressure(X,F,pctx);CHKERRQ(ierr);
+  F = LP->F;
+  ierr = DMSetMatType(LP->daLP,MATAIJ);CHKERRQ(ierr);
+  ierr = DMCreateMatrix(LP->daLP,&J);CHKERRQ(ierr);
+  ierr = MatSetFromOptions(J);CHKERRQ(ierr);
+  
+  //ierr = TS_FormFunctionLithoPressure(X,F,pctx);CHKERRQ(ierr);
+  SNES snesLP;
+
+  ierr = SNESCreate(PETSC_COMM_WORLD,&snesLP);CHKERRQ(ierr);
+  ierr = SNESSetOptionsPrefix(snesLP,"LP_");CHKERRQ(ierr);
+  ierr = SNESSetFunction(snesLP,F,  SNES_FormFunctionLithoPressure,(void*)pctx);CHKERRQ(ierr);
+  ierr = SNESSetJacobian(snesLP,J,J,SNES_FormJacobianLithoPressure,(void*)pctx);CHKERRQ(ierr);
+  ierr = SNESSetType(snesLP,SNESKSPONLY);
+  ierr = SNESSetFromOptions(snesLP);CHKERRQ(ierr);
+
+  PetscPrintf(PETSC_COMM_WORLD,"   [[ COMPUTING LITHOSTATIC PRESSURE ]]\n");
+
+  // insert boundary conditions into solution vector
+  ierr = BCListInsert(LP->LP_bclist,X);CHKERRQ(ierr);
+
+  PetscTime(&time[0]);
+  ierr = SNESSolve(snesLP,NULL,X);CHKERRQ(ierr);
+  PetscTime(&time[1]);
+  ierr = pTatinLogBasicSNES(pctx,"LithoPressure",snesLP);CHKERRQ(ierr);
+  ierr = pTatinLogBasicCPUtime(pctx,"LithoPressure",time[1]-time[0]);CHKERRQ(ierr);
+  ierr = SNESDestroy(&snesLP);CHKERRQ(ierr);
   
   {
     PetscViewer viewer;
