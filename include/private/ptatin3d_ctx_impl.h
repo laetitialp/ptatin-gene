@@ -36,6 +36,7 @@
 #include "data_bucket.h"
 #include "data_exchanger.h"
 #include "ptatin3d_stokes.h"
+#include "litho_pressure_assembly.h"
 #include "ptatin_models.h"
 #include "rheology.h"
 #include "material_constants.h"
@@ -44,6 +45,7 @@
 struct _p_pTatinCtx {
   PhysCompStokes stokes_ctx;
   PhysCompEnergy energy_ctx;
+  PDESolveLithoP litho_p_ctx;
   //  PhysCompCoords coords_ctx;
   PhysCompEnergyFV energyfv_ctx;
 
