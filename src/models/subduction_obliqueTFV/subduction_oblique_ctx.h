@@ -9,7 +9,7 @@
  **        Switzerland
  **
  **    project:    pTatin3d
- **    filename:   model_template_ctx.h
+ **    filename:   subduction_oblique_ctx.h
  **
  **
  **    pTatin3d is free software: you can redistribute it and/or modify
