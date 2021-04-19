@@ -37,12 +37,80 @@
 #include "dmda_checkpoint.h"
 #include "data_bucket.h"
 #include "dmdae.h"
+#include "fvda_private.h"
+#include "fvda.h"
 
 #include "QPntVolCoefEnergy_def.h"
 #include "phys_comp_energy.h"
 #include "ptatin3d_energy.h"
 #include "litho_pressure_assembly.h"
 
+void evaluate_cell_geometry_pointwise_3d(const PetscReal el_coords[3*DACELL3D_Q1_SIZE],
+                                         PetscReal GNI[3][DACELL3D_Q1_SIZE],
+                                         PetscReal *detJ,
+                                         PetscReal dNudx[DACELL3D_Q1_SIZE],
+                                         PetscReal dNudy[DACELL3D_Q1_SIZE],
+                                         PetscReal dNudz[DACELL3D_Q1_SIZE])
+{
+  PetscInt  k;
+  PetscReal J[3][3];
+  PetscReal iJ[3][3];
+  PetscReal t4, t6, t8, t10, t12, t14, t17;
+  
+  J[0][0] = J[0][1] = J[0][2] = 0.0;
+  J[1][0] = J[1][1] = J[1][2] = 0.0;
+  J[2][0] = J[2][1] = J[2][2] = 0.0;
+  
+  for (k=0; k<DACELL3D_Q1_SIZE; k++) {
+    PetscReal xc = el_coords[3*k+0];
+    PetscReal yc = el_coords[3*k+1];
+    PetscReal zc = el_coords[3*k+2];
+    
+    J[0][0] += GNI[0][k] * xc;
+    J[0][1] += GNI[0][k] * yc;
+    J[0][2] += GNI[0][k] * zc;
+    
+    J[1][0] += GNI[1][k] * xc;
+    J[1][1] += GNI[1][k] * yc;
+    J[1][2] += GNI[1][k] * zc;
+    
+    J[2][0] += GNI[2][k] * xc;
+    J[2][1] += GNI[2][k] * yc;
+    J[2][2] += GNI[2][k] * zc;
+  }
+  
+  *detJ = J[0][0]*(J[1][1]*J[2][2] - J[1][2]*J[2][1])
+        - J[0][1]*(J[1][0]*J[2][2] + J[1][2]*J[2][0])
+        + J[0][2]*(J[1][0]*J[2][1] - J[1][1]*J[2][0]);
+        
+  t4  = J[2][0] * J[0][1];
+  t6  = J[2][0] * J[0][2];
+  t8  = J[1][0] * J[0][1];
+  t10 = J[1][0] * J[0][2];
+  t12 = J[0][0] * J[1][1];
+  t14 = J[0][0] * J[1][2]; // 6
+  t17 = 0.1e1 / (t4 * J[1][2] - t6 * J[1][1] - t8 * J[2][2] + t10 * J[2][1] + t12 * J[2][2] - t14 * J[2][1]);  // 12
+
+  iJ[0][0] = (J[1][1] * J[2][2] - J[1][2] * J[2][1]) * t17;  // 4
+  iJ[0][1] = -(J[0][1] * J[2][2] - J[0][2] * J[2][1]) * t17; // 5
+  iJ[0][2] = (J[0][1] * J[1][2] - J[0][2] * J[1][1]) * t17;  // 4
+  iJ[1][0] = -(-J[2][0] * J[1][2] + J[1][0] * J[2][2]) * t17;// 6
+  iJ[1][1] = (-t6 + J[0][0] * J[2][2]) * t17;                // 4
+  iJ[1][2] = -(-t10 + t14) * t17;                            // 4
+  iJ[2][0] = (-J[2][0] * J[1][1] + J[1][0] * J[2][1]) * t17; // 5
+  iJ[2][1] = -(-t4 + J[0][0] * J[2][1]) * t17;               // 5
+  iJ[2][2] = (-t8 + t12) * t17;                              // 3
+  /* flops = [NQP] * 58 */
+
+  /* shape function derivatives */
+  for (k=0; k<8; k++) {
+    dNudx[k] = iJ[0][0]*GNI[0][k] + iJ[0][1]*GNI[1][k] + iJ[0][2]*GNI[2][k];
+
+    dNudy[k] = iJ[1][0]*GNI[0][k] + iJ[1][1]*GNI[1][k] + iJ[1][2]*GNI[2][k];
+
+    dNudz[k] = iJ[2][0]*GNI[0][k] + iJ[2][1]*GNI[1][k] + iJ[2][2]*GNI[2][k];
+  }
+}
 
 PetscErrorCode PhysCompCreate_LithoP(PDESolveLithoP *LP)
 {
@@ -73,7 +141,7 @@ PetscErrorCode PhysCompDestroy_LithoP(PDESolveLithoP *LP)
   if (ctx->volQ) { ierr = QuadratureDestroy(&ctx->volQ);CHKERRQ(ierr); }
   if (ctx->LP_bclist) { ierr = BCListDestroy(&ctx->LP_bclist);CHKERRQ(ierr); }
   if (ctx->daLP) {
-    ierr = DMDestroyDMDAE(ctx->daLP);CHKERRQ(ierr);
+    //ierr = DMDestroyDMDAE(ctx->daLP);CHKERRQ(ierr);
     ierr = DMDestroy(&ctx->daLP);CHKERRQ(ierr);
   }
   if (ctx->F) {      ierr = VecDestroy(&ctx->F);CHKERRQ(ierr); }
@@ -103,8 +171,7 @@ PetscErrorCode PhysCompCreateMesh_LithoP(PDESolveLithoP LP,DM dav,PetscInt mx,Pe
       ierr = DMDACreate3d(PETSC_COMM_WORLD,DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,DM_BOUNDARY_NONE, DMDA_STENCIL_BOX, LP->mx+1,LP->my+1,LP->mz+1, PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE,1,1,NULL,NULL,NULL,&dav);CHKERRQ(ierr);
       ierr = DMSetUp(dav);CHKERRQ(ierr);
       LP->daLP = dav;
-      ierr = DMAttachDMDAE(LP->daLP);CHKERRQ(ierr);
-      ierr = DMDASetElementType_Q1(LP->daLP);CHKERRQ(ierr);
+      ierr = DMDASetElementType(LP->daLP,DMDA_ELEMENT_Q1);CHKERRQ(ierr);
       
       //SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Only overlapping and nested supported {1,2} ");
       break;
@@ -165,10 +232,48 @@ PetscErrorCode PhysCompCreateBoundaryList_LithoP(PDESolveLithoP LP)
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode VolumeQuadratureCreate_GaussLegendreLithoP(PetscInt nsd,PetscInt np_per_dim,Quadrature *quadrature)
+{
+  Quadrature Q;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  ierr = QuadratureCreate(&Q);CHKERRQ(ierr);
+  Q->dim  = nsd;
+  Q->type = VOLUME_QUAD;
+
+  /*PetscPrintf(PETSC_COMM_WORLD,"VolumeQuadratureCreate_GaussLegendreEnergy:\n");*/
+  switch (np_per_dim) {
+    case 1:
+      /*PetscPrintf(PETSC_COMM_WORLD,"\tUsing 1 pnt Gauss Legendre quadrature\n");*/
+      //QuadratureCreateGauss_1pnt_3D(&ngp,gp_xi,gp_weight);
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"This will result in a rank-deficient operator");
+      break;
+
+    case 2:
+      /*PetscPrintf(PETSC_COMM_WORLD,"\tUsing 2x2 pnt Gauss Legendre quadrature\n");*/
+      QuadratureCreateGauss_2pnt_3D(&Q->npoints,&Q->q_xi_coor,&Q->q_weight);
+      break;
+
+    case 3:
+      /*PetscPrintf(PETSC_COMM_WORLD,"\tUsing 3x3 pnt Gauss Legendre quadrature\n");*/
+      QuadratureCreateGauss_3pnt_3D(&Q->npoints,&Q->q_xi_coor,&Q->q_weight);
+      break;
+
+    default:
+      /*PetscPrintf(PETSC_COMM_WORLD,"\tUsing 3x3 pnt Gauss Legendre quadrature\n");*/
+      QuadratureCreateGauss_3pnt_3D(&Q->npoints,&Q->q_xi_coor,&Q->q_weight);
+      break;
+  }
+
+  *quadrature = Q;
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode PhysCompCreateVolumeQuadrature_LithoP(PDESolveLithoP LP)
 {
-  PetscInt dim, np_per_dim, ncells;
-  DMDAE dae;
+  PetscInt dim, np_per_dim;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -176,11 +281,7 @@ PetscErrorCode PhysCompCreateVolumeQuadrature_LithoP(PDESolveLithoP LP)
   np_per_dim = 2;
   dim = 3;
 
-  ierr = DMGetDMDAE(LP->daLP,&dae);CHKERRQ(ierr);
-  ncells = dae->lmx * dae->lmy * dae->lmz;
-  // For now I am not sure if I need to store the value of rho on qp to use elsewhere so I keep the gauss quadrature
-  // from energy since everything is similar except for diffusivity and heat source
-  ierr = VolumeQuadratureCreate_GaussLegendreEnergy(dim,np_per_dim,ncells,&LP->volQ);CHKERRQ(ierr);
+  ierr = VolumeQuadratureCreate_GaussLegendreLithoP(dim,np_per_dim,&LP->volQ);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -262,22 +363,24 @@ PetscErrorCode Element_FormFunction_LithoPressure(PetscScalar Re[],
                                                   PetscScalar gp_weight[])
 {
   PetscInt    p,i,j,k;
-  PetscScalar GNi_p[NSD][NODES_PER_EL_Q1_3D];
-  PetscScalar GNx_p[NSD][NODES_PER_EL_Q1_3D];
+  PetscReal GNi_p[NSD][NODES_PER_EL_Q1_3D];
+  PetscReal GNx_p[NSD][NODES_PER_EL_Q1_3D];
   PetscScalar gradphi_p[NSD];
   PetscScalar rho_g_qp[3],grav[3];
   PetscScalar J_p,fac;
   
   PetscFunctionBegin;
-  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
+
   // Will be removed in the final version for stokes->gravity_vector
   grav[0] = 0.0; grav[1] = -9.8; grav[2] = 0;
   /* Evaluate integral */
   for (p=0; p<ngp; p++){
     /* Evaluate shape functions local derivatives at current point */
-    P3D_ConstructGNi_Q1_3D(&gp_xi[NSD*p],GNi_p);
+    EvaluateBasisDerivative_Q1_3D(&gp_xi[NSD*p],GNi_p);
+    //P3D_ConstructGNi_Q1_3D(&gp_xi[NSD*p],GNi_p);
     /* Evaluate shape functions global derivatives at current point */
-    P3D_evaluate_geometry_elementQ1(1,el_coords,&GNi_p,&J_p,&GNx_p[0],&GNx_p[1],&GNx_p[2]);
+    evaluate_cell_geometry_pointwise_3d(el_coords,GNi_p,&J_p,GNx_p[0],GNx_p[1],GNx_p[2]);
+    //P3D_evaluate_geometry_elementQ1(1,el_coords,&GNi_p,&J_p,&GNx_p[0],&GNx_p[1],&GNx_p[2]);
     /* Numerical integration factor */
     fac = gp_weight[p] * J_p;
     
@@ -331,7 +434,7 @@ PetscErrorCode FormFunctionLocal_LithoPressure(PDESolveLithoP data,DM da,PetscSc
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
-  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
+
   /* Quadrature */
   volQ      = data->volQ;
   nqp       = volQ->npoints;
@@ -346,11 +449,13 @@ PetscErrorCode FormFunctionLocal_LithoPressure(PDESolveLithoP data,DM da,PetscSc
   ierr = VecGetArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
 
   /* Connectivity table */
-  ierr = DMDAGetElementsQ1(da,&nel,&nen,&elnidx);CHKERRQ(ierr);
+  //ierr = DMDAGetElementsQ1(da,&nel,&nen,&elnidx);CHKERRQ(ierr);
+  ierr = DMDAGetElements(da,&nel,&nen,&elnidx);CHKERRQ(ierr);
 
   for (e=0;e<nel;e++) {
-    ierr = DMDAEQ1_GetElementLocalIndicesDOF(ge_eqnums,1,(PetscInt*)&elnidx[nen*e]);CHKERRQ(ierr);
+    
     /* get coords for the element */
+    //ierr = DACellGeometry3d_GetCoordinates((PetscInt*)&elnidx[nen*e],LA_gcoords,el_coords);CHKERRQ(ierr);
     ierr = DMDAEQ1_GetVectorElementField_3D(el_coords,(PetscInt*)&elnidx[nen*e],LA_gcoords);CHKERRQ(ierr);
     /* get value at the element */
     ierr = DMDAEQ1_GetScalarElementField_3D(el_phi,(PetscInt*)&elnidx[nen*e],LA_phi);CHKERRQ(ierr);
@@ -368,6 +473,7 @@ PetscErrorCode FormFunctionLocal_LithoPressure(PDESolveLithoP data,DM da,PetscSc
     /* form element stiffness matrix */
     ierr = Element_FormFunction_LithoPressure(Re,el_coords,el_phi,qp_rho,nqp,qp_xi,qp_weight);CHKERRQ(ierr);
     /* Add value to the residue vector */
+    ierr = DMDAEQ1_GetElementLocalIndicesDOF(ge_eqnums,1,(PetscInt*)&elnidx[nen*e]);CHKERRQ(ierr);
     ierr = DMDAEQ1_SetValuesLocalStencil_AddValues_DOF(LA_R,1,ge_eqnums,Re);CHKERRQ(ierr);
   }
 
