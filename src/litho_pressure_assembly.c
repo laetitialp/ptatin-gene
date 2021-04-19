@@ -563,6 +563,7 @@ PetscErrorCode Test_Assembly(void)
   pTatinCtx      pctx = NULL;
   PDESolveLithoP LP = NULL;
   Vec            X = NULL, F = NULL;
+  PetscScalar    val_P;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -570,11 +571,24 @@ PetscErrorCode Test_Assembly(void)
   ierr = pTatin3dCreateContext(&pctx);CHKERRQ(ierr);
   
   mesh_generator_type = 0;
-  mx = my = mz = 4;
+  mx = my = mz = 8;
   
   ierr = PhysCompNew_LithoP(da,mx,my,mz,mesh_generator_type,&LP);
   pctx->litho_p_ctx = LP;
   ierr = DMDASetUniformCoordinates(LP->daLP,-2.0,2.0,-2.0,2.0,-2.0,2.0);CHKERRQ(ierr);
+  
+  val_P = 0.0;
+  ierr = DMDABCListTraverse3d(LP->LP_bclist,LP->daLP,DMDABCList_JMAX_LOC,0,BCListEvaluator_constant,(void*)&val_P);CHKERRQ(ierr);
+  val_P = 1.0;
+  ierr = DMDABCListTraverse3d(LP->LP_bclist,LP->daLP,DMDABCList_JMIN_LOC,0,BCListEvaluator_constant,(void*)&val_P);CHKERRQ(ierr);
+  val_P = 2.0;
+  ierr = DMDABCListTraverse3d(LP->LP_bclist,LP->daLP,DMDABCList_IMAX_LOC,0,BCListEvaluator_constant,(void*)&val_P);CHKERRQ(ierr);
+  val_P = 3.0;
+  ierr = DMDABCListTraverse3d(LP->LP_bclist,LP->daLP,DMDABCList_IMIN_LOC,0,BCListEvaluator_constant,(void*)&val_P);CHKERRQ(ierr);
+  val_P = 4.0;
+  ierr = DMDABCListTraverse3d(LP->LP_bclist,LP->daLP,DMDABCList_KMAX_LOC,0,BCListEvaluator_constant,(void*)&val_P);CHKERRQ(ierr);
+  val_P = 5.0;
+  ierr = DMDABCListTraverse3d(LP->LP_bclist,LP->daLP,DMDABCList_KMIN_LOC,0,BCListEvaluator_constant,(void*)&val_P);CHKERRQ(ierr);
   
   X = LP->X;
   F = LP->F;  
