@@ -33,6 +33,7 @@
 #include "dmda_bcs.h"
 #include "element_utils_q1.h"
 #include "dmda_element_q1.h"
+#include "dmda_element_q2p1.h"
 #include "quadrature.h"
 #include "dmda_checkpoint.h"
 #include "data_bucket.h"
@@ -152,8 +153,70 @@ PetscErrorCode PhysCompDestroy_LithoP(PDESolveLithoP *LP)
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode DMDACeateQ1FromQ2LithoP_Mesh(DM dmq2, DM *dm)
+{
+  DM             dmq1;
+  PetscInt       stencilq2,sei,sej,sek,lmx,lmy,lmz,MX,MY,MZ,Mp,Np,Pp,i,j,k;
+  PetscInt       *siq2,*sjq2,*skq2,*lmxq2,*lmyq2,*lmzq2,*lxq1,*lyq1,*lzq1;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  ierr = DMDAGetCornersElementQ2(dmq2,&sei,&sej,&sek,&lmx,&lmy,&lmz);CHKERRQ(ierr);
+  ierr = DMDAGetSizeElementQ2(dmq2,&MX,&MY,&MZ);CHKERRQ(ierr);
+  ierr = DMDAGetInfo(dmq2,0, 0,0,0, &Mp,&Np,&Pp,0,&stencilq2, 0,0,0, 0);CHKERRQ(ierr);
+  if (stencilq2 != 2) {
+    SETERRQ(PetscObjectComm((PetscObject)dmq2),PETSC_ERR_SUP,"Attempting to create an overlapping DMDA from a DMDA which doesn't have a stencil width of 2... probably the generator isn't a Q2");
+  }
+  ierr = DMDAGetOwnershipRangesElementQ2(dmq2,0,0,0,&siq2,&sjq2,&skq2,&lmxq2,&lmyq2,&lmzq2);CHKERRQ(ierr);
+
+  ierr = PetscMalloc(sizeof(PetscInt)*Mp,&lxq1);CHKERRQ(ierr);
+  ierr = PetscMalloc(sizeof(PetscInt)*Np,&lyq1);CHKERRQ(ierr);
+  ierr = PetscMalloc(sizeof(PetscInt)*Pp,&lzq1);CHKERRQ(ierr);
+
+  for (i=0; i<Mp-1; i++) {
+    lxq1[i] = siq2[i+1]/2 - siq2[i]/2;
+  }
+  lxq1[Mp-1] = (2*MX - siq2[Mp-1])/2;
+  lxq1[Mp-1]++;
+
+  for (j=0; j<Np-1; j++) {
+    lyq1[j] = sjq2[j+1]/2 - sjq2[j]/2;
+  }
+  lyq1[Np-1] = (2*MY - sjq2[Np-1])/2;
+  lyq1[Np-1]++;
+
+  for (k=0; k<Pp-1; k++) {
+    lzq1[k] = skq2[k+1]/2 - skq2[k]/2;
+  }
+  lzq1[Pp-1] = (2*MZ - skq2[Pp-1])/2;
+  lzq1[Pp-1]++;
+
+  ierr = DMDACreate3d(PetscObjectComm((PetscObject)dmq2),
+                      DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,
+                      DMDA_STENCIL_BOX, /* [NOTE] BOX stencil */
+                      MX+1,MY+1,MZ+1,
+                      Mp,Np,Pp,
+                      1, /* dofs */
+                      1, /* [NOTE] stencil width 1 */
+                      lxq1,lyq1,lzq1,&dmq1);CHKERRQ(ierr);
+
+  ierr = DMSetUp(dmq1);CHKERRQ(ierr);
+  
+  ierr = DMDAProjectCoordinatesQ2toOverlappingQ1_3d(dmq2,dmq1);CHKERRQ(ierr);
+  
+  *dm = dmq1;
+  
+  PetscFree(lxq1);
+  PetscFree(lyq1);
+  PetscFree(lzq1);
+
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode PhysCompCreateMesh_LithoP(PDESolveLithoP LP,DM dav,PetscInt mx,PetscInt my, PetscInt mz,PetscInt mesh_generator_type)
 {
+  PetscInt       MX,MY,MZ;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -161,10 +224,9 @@ PetscErrorCode PhysCompCreateMesh_LithoP(PDESolveLithoP LP,DM dav,PetscInt mx,Pe
   LP->LP_mesh_type = mesh_generator_type;
 
   switch (mesh_generator_type) {
-    DMDAE dae;
 
     case 0:
-      PetscPrintf(PETSC_COMM_WORLD,"PhysCompCreateMesh_Energy: Generating standard Q1 DMDA\n");
+      PetscPrintf(PETSC_COMM_WORLD,"PhysCompCreateMesh_LithoP: Generating standard Q1 DMDA\n");
       LP->mx = mx;
       LP->my = my;
       LP->mz = mz;
@@ -173,45 +235,37 @@ PetscErrorCode PhysCompCreateMesh_LithoP(PDESolveLithoP LP,DM dav,PetscInt mx,Pe
       LP->daLP = dav;
       ierr = DMDASetElementType(LP->daLP,DMDA_ELEMENT_Q1);CHKERRQ(ierr);
       
-      //SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Only overlapping and nested supported {1,2} ");
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Only overlapping Q1 From Q2 mesh supported {1} ");
       break;
 
     case 1:
-      PetscPrintf(PETSC_COMM_WORLD,"PhysCompCreateMesh_Energy: Generating overlapping Q1 DMDA\n");
+      PetscPrintf(PETSC_COMM_WORLD,"PhysCompCreateMesh_LithoP: Generating overlapping Q1 DMDA\n");
       if (!dav) {
         SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Require valid DM dav");
       }
-      ierr = DMDACreateOverlappingQ1FromQ2(dav,1,&LP->daLP);CHKERRQ(ierr);
-      ierr = DMGetDMDAE(LP->daLP,&dae);CHKERRQ(ierr);
-      LP->mx = dae->mx;
-      LP->my = dae->my;
-      LP->mz = dae->mz;
-      break;
-
-    case 2:
-      PetscPrintf(PETSC_COMM_WORLD,"PhysCompCreateMesh_Energy: Generating nested Q1 DMDA\n");
-      if (!dav) {
-        SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Require valid DM dav");
-      }
-      ierr = DMDACreateNestedQ1FromQ2(dav,1,&LP->daLP);CHKERRQ(ierr);
-      ierr = DMGetDMDAE(LP->daLP,&dae);CHKERRQ(ierr);
-      LP->mx = dae->mx;
-      LP->my = dae->my;
-      LP->mz = dae->mz;
+      ierr = DMDACeateQ1FromQ2LithoP_Mesh(dav,&LP->daLP);CHKERRQ(ierr);
+      ierr = DMDASetElementType(LP->daLP,DMDA_ELEMENT_Q1);CHKERRQ(ierr);
+      /* Push back the element number info into LP struct */
+      ierr = DMDAGetInfo(LP->daLP,0, &MX,&MY,&MZ,0,0,0,0,0, 0,0,0, 0);CHKERRQ(ierr);
+      LP->mx = MX-1;
+      LP->my = MY-1;
+      LP->mz = MZ-1;
       break;
 
     default:
       LP->LP_mesh_type = 1;
 
-      PetscPrintf(PETSC_COMM_WORLD,"PhysCompCreateMesh_Energy: Generating overlapping Q1 DMDA\n");
+      PetscPrintf(PETSC_COMM_WORLD,"PhysCompCreateMesh_LithoP: Generating overlapping Q1 DMDA\n");
       if (!dav) {
         SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Require valid DM dav");
       }
-      ierr = DMDACreateOverlappingQ1FromQ2(dav,1,&LP->daLP);CHKERRQ(ierr);
-      ierr = DMGetDMDAE(LP->daLP,&dae);CHKERRQ(ierr);
-      LP->mx = dae->mx;
-      LP->my = dae->my;
-      LP->mz = dae->mz;
+      ierr = DMDACeateQ1FromQ2LithoP_Mesh(dav,&LP->daLP);CHKERRQ(ierr);
+      ierr = DMDASetElementType(LP->daLP,DMDA_ELEMENT_Q1);CHKERRQ(ierr);
+      /* Push back the element number info into LP struct */
+      ierr = DMDAGetInfo(LP->daLP,0, &MX,&MY,&MZ,0,0,0,0,0, 0,0,0, 0);CHKERRQ(ierr);
+      LP->mx = MX-1;
+      LP->my = MY-1;
+      LP->mz = MZ-1;
       break;
   }
 
@@ -243,7 +297,6 @@ PetscErrorCode VolumeQuadratureCreate_GaussLegendreLithoP(PetscInt nsd,PetscInt 
   Q->dim  = nsd;
   Q->type = VOLUME_QUAD;
 
-  /*PetscPrintf(PETSC_COMM_WORLD,"VolumeQuadratureCreate_GaussLegendreEnergy:\n");*/
   switch (np_per_dim) {
     case 1:
       /*PetscPrintf(PETSC_COMM_WORLD,"\tUsing 1 pnt Gauss Legendre quadrature\n");*/
@@ -311,7 +364,7 @@ PetscErrorCode PhysCompNew_LithoP(DM dav,PetscInt mx,PetscInt my, PetscInt mz,Pe
 PetscErrorCode pTatinGetContext_LithoP(pTatinCtx ctx,PDESolveLithoP *LP)
 {
   PetscFunctionBegin;
-  if (LP) { *LP = ctx->litho_p_ctx; } //TODO: add litho_p in ptatin ctx
+  if (LP) { *LP = ctx->litho_p_ctx; }
   PetscFunctionReturn(0);
 }
 
@@ -329,6 +382,7 @@ PetscErrorCode pTatinPhysCompCreate_LithoP(pTatinCtx user)
 {
   PetscErrorCode ierr;
   PhysCompStokes stokes_ctx;
+  PDESolveLithoP LP;
   PetscInt lithoP_mesh_type;
 
   PetscFunctionBegin;
@@ -336,7 +390,9 @@ PetscErrorCode pTatinPhysCompCreate_LithoP(pTatinCtx user)
   /* create from data */
   lithoP_mesh_type = 1; // default is Q1 overlapping Q2
   ierr = PetscOptionsGetInt(NULL,NULL,"-lithoP_mesh_type",&lithoP_mesh_type,0);CHKERRQ(ierr);
-  ierr = PhysCompNew_LithoP(stokes_ctx->dav,-1,-1,-1,lithoP_mesh_type,&user->litho_p_ctx);CHKERRQ(ierr);
+  ierr = PhysCompNew_LithoP(stokes_ctx->dav,-1,-1,-1,lithoP_mesh_type,&LP);CHKERRQ(ierr);
+  
+  user->litho_p_ctx = LP;
   
   PetscFunctionReturn(0);
 }
@@ -375,8 +431,8 @@ PetscErrorCode Element_FormJacobian_LithoPressure(PetscScalar Re[],
     fac = gp_weight[p] * J_p;
 
     /* We have: F = A(phi^(k+1)).P^(k+1) - b(phi^(k+1)) 
-       with:  A = dN^T.dN 
-       and:   b = dN^T.(rho*g)
+       with:    A = dN^T.dN 
+       and:     b = dN^T.(rho*g)
        The Jacobian matrix is:
        J = dF/dP^(k+1) = A(phi^(k+1))
     */
@@ -539,10 +595,8 @@ PetscErrorCode Element_FormFunction_LithoPressure(PetscScalar Re[],
   for (p=0; p<ngp; p++){
     /* Evaluate shape functions local derivatives at current point */
     EvaluateBasisDerivative_Q1_3D(&gp_xi[NSD*p],GNi_p);
-    //P3D_ConstructGNi_Q1_3D(&gp_xi[NSD*p],GNi_p);
     /* Evaluate shape functions global derivatives at current point */
     evaluate_cell_geometry_pointwise_3d(el_coords,GNi_p,&J_p,GNx_p[0],GNx_p[1],GNx_p[2]);
-    //P3D_evaluate_geometry_elementQ1(1,el_coords,&GNi_p,&J_p,&GNx_p[0],&GNx_p[1],&GNx_p[2]);
     /* Numerical integration factor */
     fac = gp_weight[p] * J_p;
     
@@ -611,13 +665,11 @@ PetscErrorCode FormFunctionLocal_LithoPressure(PDESolveLithoP data,DM da,PetscSc
   ierr = VecGetArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
 
   /* Connectivity table */
-  //ierr = DMDAGetElementsQ1(da,&nel,&nen,&elnidx);CHKERRQ(ierr);
   ierr = DMDAGetElements(da,&nel,&nen,&elnidx);CHKERRQ(ierr);
 
   for (e=0;e<nel;e++) {
     
     /* get coords for the element */
-    //ierr = DACellGeometry3d_GetCoordinates((PetscInt*)&elnidx[nen*e],LA_gcoords,el_coords);CHKERRQ(ierr);
     ierr = DMDAEQ1_GetVectorElementField_3D(el_coords,(PetscInt*)&elnidx[nen*e],LA_gcoords);CHKERRQ(ierr);
     /* get value at the element */
     ierr = DMDAEQ1_GetScalarElementField_3D(el_phi,(PetscInt*)&elnidx[nen*e],LA_phi);CHKERRQ(ierr);
@@ -717,16 +769,46 @@ PetscErrorCode SNES_FormFunctionLithoPressure(SNES snes,Vec X,Vec F,void *ctx)
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode SNESSolve_LithoPressure(PDESolveLithoP LP,Mat J,Vec X, Vec F, pTatinCtx pctx)
+{
+  SNES           snesLP;
+  PetscLogDouble time[4];
+  PetscErrorCode ierr;
+  
+  PetscFunctionBegin;
+
+  ierr = SNESCreate(PETSC_COMM_WORLD,&snesLP);CHKERRQ(ierr);
+  ierr = SNESSetOptionsPrefix(snesLP,"LP_");CHKERRQ(ierr);
+  ierr = SNESSetFunction(snesLP,F,  SNES_FormFunctionLithoPressure,(void*)pctx);CHKERRQ(ierr);
+  ierr = SNESSetJacobian(snesLP,J,J,SNES_FormJacobianLithoPressure,(void*)pctx);CHKERRQ(ierr);
+  ierr = SNESSetType(snesLP,SNESKSPONLY);
+  ierr = SNESSetFromOptions(snesLP);CHKERRQ(ierr);
+
+  PetscPrintf(PETSC_COMM_WORLD,"   [[ COMPUTING LITHOSTATIC PRESSURE ]]\n");
+
+  // insert boundary conditions into solution vector
+  ierr = BCListInsert(LP->LP_bclist,X);CHKERRQ(ierr);
+
+  PetscTime(&time[0]);
+  ierr = SNESSolve(snesLP,NULL,X);CHKERRQ(ierr);
+  PetscTime(&time[1]);
+  ierr = pTatinLogBasicSNES(pctx,"LithoPressure",snesLP);CHKERRQ(ierr);
+  ierr = pTatinLogBasicCPUtime(pctx,"LithoPressure",time[1]-time[0]);CHKERRQ(ierr);
+  ierr = SNESDestroy(&snesLP);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode Test_Assembly(void)
 {
-  PetscInt       mx,my,mz;
-  PetscInt       mesh_generator_type;
-  DM             da = NULL;
+  //PetscInt       mx,my,mz;
+  //PetscInt       mesh_generator_type;
+  PetscBool      LP_found=PETSC_FALSE;
+  //DM             da = NULL;
   pTatinCtx      pctx = NULL;
   PDESolveLithoP LP = NULL;
   Vec            X = NULL, F = NULL;
   Mat            J = NULL;
-  PetscLogDouble time[4];
   PetscScalar    val_P;
   PetscErrorCode ierr;
 
@@ -735,15 +817,21 @@ PetscErrorCode Test_Assembly(void)
   ierr = pTatin3dCreateContext(&pctx);CHKERRQ(ierr);
   ierr = pTatin3dSetFromOptions(pctx);CHKERRQ(ierr);
   
-  mesh_generator_type = 0;
-  mx = 1;
-  my = 50;
-  mz = 1;
+  //mesh_generator_type = 1;
+  pctx->mx = 2;
+  pctx->my = 50;
+  pctx->mz = 2;
+  // Create a Q2 mesh 
+  ierr = pTatin3d_PhysCompStokesCreate(pctx);CHKERRQ(ierr);
+  ierr = DMDASetUniformCoordinates(pctx->stokes_ctx->dav,0.0,10.0e3,-30.0e3,0.0,0.0,10.0e3);CHKERRQ(ierr);
   
-  ierr = PhysCompNew_LithoP(da,mx,my,mz,mesh_generator_type,&LP);
-  pctx->litho_p_ctx = LP;
-  ierr = DMDASetUniformCoordinates(LP->daLP,0.0,10.0e3,-30.0e3,0.0,0.0,10.0e3);CHKERRQ(ierr);
-  
+  ierr = pTatinPhysCompCreate_LithoP(pctx);CHKERRQ(ierr);
+  ierr = pTatinContextValid_LithoP(pctx,&LP_found);CHKERRQ(ierr);
+  if (!LP_found){
+    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"LP is NULL\n");
+  }
+  ierr = pTatinGetContext_LithoP(pctx,&LP);CHKERRQ(ierr);
+
   val_P = 0.0;
   ierr = DMDABCListTraverse3d(LP->LP_bclist,LP->daLP,DMDABCList_JMAX_LOC,0,BCListEvaluator_constant,(void*)&val_P);CHKERRQ(ierr);
   /*
@@ -764,27 +852,7 @@ PetscErrorCode Test_Assembly(void)
   ierr = DMCreateMatrix(LP->daLP,&J);CHKERRQ(ierr);
   ierr = MatSetFromOptions(J);CHKERRQ(ierr);
   
-  //ierr = TS_FormFunctionLithoPressure(X,F,pctx);CHKERRQ(ierr);
-  SNES snesLP;
-
-  ierr = SNESCreate(PETSC_COMM_WORLD,&snesLP);CHKERRQ(ierr);
-  ierr = SNESSetOptionsPrefix(snesLP,"LP_");CHKERRQ(ierr);
-  ierr = SNESSetFunction(snesLP,F,  SNES_FormFunctionLithoPressure,(void*)pctx);CHKERRQ(ierr);
-  ierr = SNESSetJacobian(snesLP,J,J,SNES_FormJacobianLithoPressure,(void*)pctx);CHKERRQ(ierr);
-  ierr = SNESSetType(snesLP,SNESKSPONLY);
-  ierr = SNESSetFromOptions(snesLP);CHKERRQ(ierr);
-
-  PetscPrintf(PETSC_COMM_WORLD,"   [[ COMPUTING LITHOSTATIC PRESSURE ]]\n");
-
-  // insert boundary conditions into solution vector
-  ierr = BCListInsert(LP->LP_bclist,X);CHKERRQ(ierr);
-
-  PetscTime(&time[0]);
-  ierr = SNESSolve(snesLP,NULL,X);CHKERRQ(ierr);
-  PetscTime(&time[1]);
-  ierr = pTatinLogBasicSNES(pctx,"LithoPressure",snesLP);CHKERRQ(ierr);
-  ierr = pTatinLogBasicCPUtime(pctx,"LithoPressure",time[1]-time[0]);CHKERRQ(ierr);
-  ierr = SNESDestroy(&snesLP);CHKERRQ(ierr);
+  ierr = SNESSolve_LithoPressure(LP,J,X,F,pctx);CHKERRQ(ierr);
   
   {
     PetscViewer viewer;
