@@ -31,6 +31,8 @@
 #define __litho_pressure_assembly_h__
 
 #include <petscdm.h>
+#include "ptatin3d.h"
+#include "quadrature.h"
 #include "dmda_bcs.h"
 
 struct _p_PDESolveLithoP {
@@ -41,18 +43,19 @@ struct _p_PDESolveLithoP {
   DM                      daLP;
   BCList                  LP_bclist;
   Quadrature              volQ;
-  //  SurfaceQuadratureEnergy surfQ[QUAD_EDGES]; /* four edges */
-  Vec                     F; /* residue vector */
+  Vec                     F; /* residual vector */
   Vec                     X; /* solution vector */
 };
 
-PetscErrorCode Element_FormFunction_LithoPressure(PetscScalar Re[],
-                                                  PetscScalar el_coords[],
-                                                  PetscScalar el_phi[],
-                                                  PetscScalar gp_rho[],
-                                                  PetscInt ngp,
-                                                  PetscScalar gp_xi[],
-                                                  PetscScalar gp_weight[]);
-
+PetscErrorCode PhysCompCreate_LithoP(PDESolveLithoP *LP);
+PetscErrorCode PhysCompDestroy_LithoP(PDESolveLithoP *LP);
+PetscErrorCode PhysCompCreateMesh_LithoP(PDESolveLithoP LP,DM dav,PetscInt mx,PetscInt my, PetscInt mz,PetscInt mesh_generator_type);
+PetscErrorCode PhysCompCreateBoundaryList_LithoP(PDESolveLithoP LP);
+PetscErrorCode PhysCompCreateVolumeQuadrature_LithoP(PDESolveLithoP LP);
+PetscErrorCode PhysCompNew_LithoP(DM dav,PetscInt mx,PetscInt my, PetscInt mz,PetscInt mesh_generator_type,PDESolveLithoP *LP);
+PetscErrorCode pTatinGetContext_LithoP(pTatinCtx ctx,PDESolveLithoP *LP);
+PetscErrorCode pTatinContextValid_LithoP(pTatinCtx ctx,PetscBool *exists);
+PetscErrorCode pTatinPhysCompCreate_LithoP(pTatinCtx user);
+PetscErrorCode pTatinPhysCompActivate_LithoP(pTatinCtx user,PetscBool load);
 
 #endif
