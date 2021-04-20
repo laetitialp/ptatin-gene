@@ -62,7 +62,7 @@ void evaluate_cell_geometry_pointwise_3d(const PetscReal el_coords[3*DACELL3D_Q1
   J[1][0] = J[1][1] = J[1][2] = 0.0;
   J[2][0] = J[2][1] = J[2][2] = 0.0;
   
-  for (k=0; k<DACELL3D_Q1_SIZE; k++) {
+  for (k=0; k<NODES_PER_EL_Q1_3D; k++) {
     PetscReal xc = el_coords[3*k+0];
     PetscReal yc = el_coords[3*k+1];
     PetscReal zc = el_coords[3*k+2];
@@ -104,7 +104,7 @@ void evaluate_cell_geometry_pointwise_3d(const PetscReal el_coords[3*DACELL3D_Q1
   /* flops = [NQP] * 58 */
 
   /* shape function derivatives */
-  for (k=0; k<8; k++) {
+  for (k=0; k<NODES_PER_EL_Q1_3D; k++) {
     dNudx[k] = iJ[0][0]*GNI[0][k] + iJ[0][1]*GNI[1][k] + iJ[0][2]*GNI[2][k];
 
     dNudy[k] = iJ[1][0]*GNI[0][k] + iJ[1][1]*GNI[1][k] + iJ[1][2]*GNI[2][k];
@@ -133,7 +133,7 @@ PetscErrorCode PhysCompDestroy_LithoP(PDESolveLithoP *LP)
 
   PetscFunctionBegin;
 
-  if (!LP) {PetscFunctionReturn(0);}
+  if (!LP) { PetscFunctionReturn(0); }
   ctx = *LP;
 
   //  for (e=0; e<HEX_FACES; e++) {
@@ -141,13 +141,10 @@ PetscErrorCode PhysCompDestroy_LithoP(PDESolveLithoP *LP)
   //  }
   if (ctx->volQ) { ierr = QuadratureDestroy(&ctx->volQ);CHKERRQ(ierr); }
   if (ctx->LP_bclist) { ierr = BCListDestroy(&ctx->LP_bclist);CHKERRQ(ierr); }
-  if (ctx->daLP) {
-    //ierr = DMDestroyDMDAE(ctx->daLP);CHKERRQ(ierr);
-    ierr = DMDestroy(&ctx->daLP);CHKERRQ(ierr);
-  }
-  if (ctx->F) {      ierr = VecDestroy(&ctx->F);CHKERRQ(ierr); }
-  if (ctx->X) {      ierr = VecDestroy(&ctx->X);CHKERRQ(ierr); }
-  if (ctx) { ierr = PetscFree(ctx);CHKERRQ(ierr); }
+  ierr = DMDestroy(&ctx->daLP);CHKERRQ(ierr);
+  ierr = VecDestroy(&ctx->F);CHKERRQ(ierr);
+  ierr = VecDestroy(&ctx->X);CHKERRQ(ierr);
+  ierr = PetscFree(ctx);CHKERRQ(ierr);
 
   *LP = NULL;
   PetscFunctionReturn(0);
@@ -207,9 +204,9 @@ PetscErrorCode DMDACeateQ1FromQ2LithoP_Mesh(DM dmq2, DM *dm)
   
   *dm = dmq1;
   
-  PetscFree(lxq1);
-  PetscFree(lyq1);
-  PetscFree(lzq1);
+  ierr = PetscFree(lxq1);CHKERRQ(ierr);
+  ierr = PetscFree(lyq1);CHKERRQ(ierr);
+  ierr = PetscFree(lzq1);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -274,7 +271,7 @@ PetscErrorCode PhysCompCreateMesh_LithoP(PDESolveLithoP LP,DM dav,PetscInt mx,Pe
 
 PetscErrorCode PhysCompCreateBoundaryList_LithoP(PDESolveLithoP LP)
 {
-  DM daLP;
+  DM             daLP;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -288,7 +285,7 @@ PetscErrorCode PhysCompCreateBoundaryList_LithoP(PDESolveLithoP LP)
 
 PetscErrorCode VolumeQuadratureCreate_GaussLegendreLithoP(PetscInt nsd,PetscInt np_per_dim,Quadrature *quadrature)
 {
-  Quadrature Q;
+  Quadrature     Q;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -383,7 +380,7 @@ PetscErrorCode pTatinPhysCompCreate_LithoP(pTatinCtx user)
   PetscErrorCode ierr;
   PhysCompStokes stokes_ctx;
   PDESolveLithoP LP;
-  PetscInt lithoP_mesh_type;
+  PetscInt       lithoP_mesh_type;
 
   PetscFunctionBegin;
   stokes_ctx = user->stokes_ctx;
@@ -415,8 +412,8 @@ PetscErrorCode Element_FormJacobian_LithoPressure(PetscScalar Re[],
                                                   PetscScalar gp_weight[])
 {
   PetscInt    p,i,j;
-  PetscReal GNi_p[NSD][NODES_PER_EL_Q1_3D];
-  PetscReal GNx_p[NSD][NODES_PER_EL_Q1_3D];
+  PetscReal   GNi_p[NSD][NODES_PER_EL_Q1_3D];
+  PetscReal   GNx_p[NSD][NODES_PER_EL_Q1_3D];
   PetscScalar J_p,fac;
   
   PetscFunctionBegin;
@@ -494,16 +491,6 @@ PetscErrorCode TS_FormJacobianLithoPressure(Vec X,Mat A,Mat B,void *ctx)
 
   ierr = MatZeroEntries(B);CHKERRQ(ierr);
 
-/*
-  if (!mat_mffd) {
-    ierr = MatZeroEntries(A);CHKERRQ(ierr);
-  } else {
-    ierr = MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-    ierr = MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  }
-  if (B) { ierr = MatZeroEntries(B);CHKERRQ(ierr); }
-  if (B == NULL) { PetscFunctionReturn(0); }
-*/
   /* quadrature */
   volQ      = data->volQ;
   nqp       = volQ->npoints;
@@ -518,7 +505,7 @@ PetscErrorCode TS_FormJacobianLithoPressure(Vec X,Mat A,Mat B,void *ctx)
 
   ierr = DMDAGetElements(da,&nel,&nen,&elnidx);CHKERRQ(ierr);
 
-  for (e=0;e<nel;e++) {
+  for (e=0; e<nel; e++) {
     /* get coords for the element */
     ierr = DMDAEQ1_GetVectorElementField_3D(el_coords,(PetscInt*)&elnidx[nen*e],LA_gcoords);CHKERRQ(ierr);
 
@@ -584,10 +571,10 @@ PetscErrorCode Element_FormFunction_LithoPressure(PetscScalar Re[],
                                                   PetscScalar gp_weight[])
 {
   PetscInt    p,i,j,k;
-  PetscReal GNi_p[NSD][NODES_PER_EL_Q1_3D];
-  PetscReal GNx_p[NSD][NODES_PER_EL_Q1_3D];
+  PetscReal   GNi_p[NSD][NODES_PER_EL_Q1_3D];
+  PetscReal   GNx_p[NSD][NODES_PER_EL_Q1_3D];
   PetscScalar gradphi_p[NSD];
-  PetscScalar rho_g_qp[3],grav[3];
+  PetscScalar rho_g_qp[NSD],grav[NSD];
   PetscScalar J_p,fac;
   
   PetscFunctionBegin;
@@ -660,9 +647,7 @@ PetscErrorCode FormFunctionLocal_LithoPressure(PDESolveLithoP data,DM da,PetscSc
   qp_xi     = volQ->q_xi_coor;
   qp_weight = volQ->q_weight;
 
-  if (nqp != 8) {
-    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"nqp =! 8");
-  }
+  if (nqp != 8) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"nqp =! 8");
 
   //ierr = VolumeQuadratureGetAllCellData_Energy(volQ,&all_quadpoints);CHKERRQ(ierr);
 
@@ -674,7 +659,7 @@ PetscErrorCode FormFunctionLocal_LithoPressure(PDESolveLithoP data,DM da,PetscSc
   /* Connectivity table */
   ierr = DMDAGetElements(da,&nel,&nen,&elnidx);CHKERRQ(ierr);
 
-  for (e=0;e<nel;e++) {
+  for (e=0; e<nel; e++) {
     
     /* get coords for the element */
     ierr = DMDAEQ1_GetVectorElementField_3D(el_coords,(PetscInt*)&elnidx[nen*e],LA_gcoords);CHKERRQ(ierr);
@@ -713,6 +698,7 @@ PetscErrorCode TS_FormFunctionLithoPressure(Vec X,Vec F,void *ctx)
   Vec            philoc, Fphiloc;
   PetscScalar    *LA_philoc, *LA_Fphiloc;
   PetscErrorCode ierr;
+  
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
   ierr = pTatinGetContext_LithoP(ptatin,&data);CHKERRQ(ierr);
   //ierr = pTatinGetStokesContext(ptatin,&stokes);CHKERRQ(ierr);
@@ -779,7 +765,7 @@ PetscErrorCode SNES_FormFunctionLithoPressure(SNES snes,Vec X,Vec F,void *ctx)
 PetscErrorCode SNESSolve_LithoPressure(PDESolveLithoP LP,Mat J,Vec X, Vec F, pTatinCtx pctx)
 {
   SNES           snesLP;
-  PetscLogDouble time[4];
+  PetscLogDouble time[2];
   PetscErrorCode ierr;
   
   PetscFunctionBegin;
@@ -809,10 +795,7 @@ PetscErrorCode SNESSolve_LithoPressure(PDESolveLithoP LP,Mat J,Vec X, Vec F, pTa
 
 PetscErrorCode Test_Assembly(void)
 {
-  //PetscInt       mx,my,mz;
-  //PetscInt       mesh_generator_type;
   PetscBool      LP_found=PETSC_FALSE;
-  //DM             da = NULL;
   pTatinCtx      pctx = NULL;
   PDESolveLithoP LP = NULL;
   Vec            X = NULL, F = NULL;
@@ -883,8 +866,10 @@ PetscErrorCode Test_Assembly(void)
     ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
   }
   
+  ierr = MatDestroy(&J);CHKERRQ(ierr);
   ierr = PhysCompDestroy_LithoP(&LP);CHKERRQ(ierr);
-
+  ierr = pTatin3dDestroyContext(&pctx);CHKERRQ(ierr);
+  
   PetscFunctionReturn(0);
 }
 
