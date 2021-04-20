@@ -471,7 +471,7 @@ PetscErrorCode TS_FormJacobianLithoPressure(Vec X,Mat A,Mat B,void *ctx)
   PetscErrorCode         ierr;
 
   PetscFunctionBegin;
-
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
   ierr = pTatinGetContext_LithoP(ptatin,&data);CHKERRQ(ierr);
   da     = data->daLP;
   bclist = data->LP_bclist;
@@ -492,6 +492,9 @@ PetscErrorCode TS_FormJacobianLithoPressure(Vec X,Mat A,Mat B,void *ctx)
   /* trash old entries */
   ierr = PetscObjectTypeCompare((PetscObject)A,MATMFFD,&mat_mffd);CHKERRQ(ierr);
 
+  ierr = MatZeroEntries(B);CHKERRQ(ierr);
+
+/*
   if (!mat_mffd) {
     ierr = MatZeroEntries(A);CHKERRQ(ierr);
   } else {
@@ -500,7 +503,7 @@ PetscErrorCode TS_FormJacobianLithoPressure(Vec X,Mat A,Mat B,void *ctx)
   }
   if (B) { ierr = MatZeroEntries(B);CHKERRQ(ierr); }
   if (B == NULL) { PetscFunctionReturn(0); }
-
+*/
   /* quadrature */
   volQ      = data->volQ;
   nqp       = volQ->npoints;
@@ -646,7 +649,7 @@ PetscErrorCode FormFunctionLocal_LithoPressure(PDESolveLithoP data,DM da,PetscSc
   PetscScalar       *qp_xi,*qp_weight;
   Quadrature        volQ;
   QPntVolCoefEnergy *all_quadpoints,*cell_quadpoints;
-  PetscScalar       qp_rho[NSD];
+  PetscScalar       qp_rho[8];
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
@@ -656,6 +659,10 @@ PetscErrorCode FormFunctionLocal_LithoPressure(PDESolveLithoP data,DM da,PetscSc
   nqp       = volQ->npoints;
   qp_xi     = volQ->q_xi_coor;
   qp_weight = volQ->q_weight;
+
+  if (nqp != 8) {
+    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"nqp =! 8");
+  }
 
   //ierr = VolumeQuadratureGetAllCellData_Energy(volQ,&all_quadpoints);CHKERRQ(ierr);
 
@@ -781,6 +788,7 @@ PetscErrorCode SNESSolve_LithoPressure(PDESolveLithoP LP,Mat J,Vec X, Vec F, pTa
   ierr = SNESSetOptionsPrefix(snesLP,"LP_");CHKERRQ(ierr);
   ierr = SNESSetFunction(snesLP,F,  SNES_FormFunctionLithoPressure,(void*)pctx);CHKERRQ(ierr);
   ierr = SNESSetJacobian(snesLP,J,J,SNES_FormJacobianLithoPressure,(void*)pctx);CHKERRQ(ierr);
+  ierr = SNESSetSolution(snesLP,X);CHKERRQ(ierr);
   ierr = SNESSetType(snesLP,SNESKSPONLY);
   ierr = SNESSetFromOptions(snesLP);CHKERRQ(ierr);
 
