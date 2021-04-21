@@ -26,5 +26,5 @@ ptatin-tests-y.c += $(call thisdir, \
   test_mpiiob.c \
   test_databucket_checkpoint.c \
   test_ptatin_quantity.c \
-  ../litho_pressure_assembly.c \
+  test_lithostatic_pressure_solve.c \
 )
