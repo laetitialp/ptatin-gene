@@ -134,9 +134,6 @@ PetscErrorCode PhysCompDestroy_LithoP(PDESolveLithoP *LP)
   if (!LP) { PetscFunctionReturn(0); }
   ctx = *LP;
 
-  //  for (e=0; e<HEX_FACES; e++) {
-  //    if (ctx->surfQ[e]) { ierr = SurfaceQuadratureDestroy(&ctx->surfQ[e]);CHKERRQ(ierr); }
-  //  }
   if (ctx->volQ) { ierr = QuadratureDestroy(&ctx->volQ);CHKERRQ(ierr); }
   if (ctx->LP_bclist) { ierr = BCListDestroy(&ctx->LP_bclist);CHKERRQ(ierr); }
   ierr = DMDestroy(&ctx->daLP);CHKERRQ(ierr);
@@ -627,7 +624,7 @@ PetscErrorCode FormFunctionLocal_LithoPressure_dV(PDESolveLithoP data,DM da,Pets
   PetscScalar       *qp_xi,*qp_weight;
   Quadrature        volQ;
   QPntVolCoefStokes *all_quadpoints = NULL,*cell_quadpoints = NULL;
-  PetscScalar       qp_rho[27];
+  PetscScalar       *qp_rho;
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
@@ -637,7 +634,9 @@ PetscErrorCode FormFunctionLocal_LithoPressure_dV(PDESolveLithoP data,DM da,Pets
   qp_xi     = volQ->q_xi_coor;
   qp_weight = volQ->q_weight;
 
-  if (nqp != 27) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"nqp != 27");
+  
+  ierr = PetscCalloc1(nqp,&qp_rho);CHKERRQ(ierr); /* buffer to store cell quad point densities */
+  
   /* Get stokes volume quadrature data */
   ierr = VolumeQuadratureGetAllCellData_Stokes(data->stokes->volQ,&all_quadpoints);CHKERRQ(ierr);
 
@@ -673,7 +672,8 @@ PetscErrorCode FormFunctionLocal_LithoPressure_dV(PDESolveLithoP data,DM da,Pets
 
   /* tidy up local arrays (input) */
   ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
-
+  ierr = PetscFree(qp_rho);CHKERRQ(ierr);
+  
   PetscFunctionReturn(0);
 }
 
