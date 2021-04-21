@@ -36,7 +36,7 @@
 #include "data_bucket.h"
 #include "data_exchanger.h"
 #include "ptatin3d_stokes.h"
-#include "litho_pressure_assembly.h"
+#include "litho_pressure_PDESolve.h"
 #include "ptatin_models.h"
 #include "rheology.h"
 #include "material_constants.h"
