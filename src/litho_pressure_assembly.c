@@ -46,6 +46,9 @@
 #include "ptatin3d_energy.h"
 #include "litho_pressure_assembly.h"
 
+/* defined in ptatin3d_energyfv.c */
+PetscErrorCode dmda3d_create_q1_from_element_partition(MPI_Comm comm,PetscInt bs,PetscInt target_decomp[],const PetscInt m[],DM *dm);
+
 void evaluate_cell_geometry_pointwise_3d(const PetscReal el_coords[3*DACELL3D_Q1_SIZE],
                                          PetscReal GNI[3][DACELL3D_Q1_SIZE],
                                          PetscReal *detJ,
@@ -145,73 +148,6 @@ PetscErrorCode PhysCompDestroy_LithoP(PDESolveLithoP *LP)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMDACeateQ1FromQ2LithoP_Mesh(DM dmq2, DM *dm)
-{
-  DM             dmq1;
-  PetscInt       stencilq2,sei,sej,sek,lmx,lmy,lmz,MX,MY,MZ,Mp,Np,Pp,i,j,k;
-  PetscInt       *siq2,*sjq2,*skq2,*lmxq2,*lmyq2,*lmzq2,*lxq1,*lyq1,*lzq1;
-  PetscErrorCode ierr;
-
-  PetscFunctionBegin;
-  ierr = DMDAGetCornersElementQ2(dmq2,&sei,&sej,&sek,&lmx,&lmy,&lmz);CHKERRQ(ierr);
-  ierr = DMDAGetSizeElementQ2(dmq2,&MX,&MY,&MZ);CHKERRQ(ierr);
-  ierr = DMDAGetInfo(dmq2,0, 0,0,0, &Mp,&Np,&Pp,0,&stencilq2, 0,0,0, 0);CHKERRQ(ierr);
-  if (stencilq2 != 2) {
-    SETERRQ(PetscObjectComm((PetscObject)dmq2),PETSC_ERR_SUP,"Attempting to create an overlapping DMDA from a DMDA which doesn't have a stencil width of 2... probably the generator isn't a Q2");
-  }
-  ierr = DMDAGetOwnershipRangesElementQ2(dmq2,0,0,0,&siq2,&sjq2,&skq2,&lmxq2,&lmyq2,&lmzq2);CHKERRQ(ierr);
-
-  ierr = PetscCalloc1(Mp,&lxq1);CHKERRQ(ierr);
-  ierr = PetscCalloc1(Np,&lyq1);CHKERRQ(ierr);
-  ierr = PetscCalloc1(Pp,&lzq1);CHKERRQ(ierr);
-
-  for (i=0; i<Mp-1; i++) {
-    lxq1[i] = siq2[i+1]/2 - siq2[i]/2;
-  }
-  lxq1[Mp-1] = (2*MX - siq2[Mp-1])/2;
-  lxq1[Mp-1]++;
-
-  for (j=0; j<Np-1; j++) {
-    lyq1[j] = sjq2[j+1]/2 - sjq2[j]/2;
-  }
-  lyq1[Np-1] = (2*MY - sjq2[Np-1])/2;
-  lyq1[Np-1]++;
-
-  for (k=0; k<Pp-1; k++) {
-    lzq1[k] = skq2[k+1]/2 - skq2[k]/2;
-  }
-  lzq1[Pp-1] = (2*MZ - skq2[Pp-1])/2;
-  lzq1[Pp-1]++;
-
-  ierr = DMDACreate3d(PetscObjectComm((PetscObject)dmq2),
-                      DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,
-                      DMDA_STENCIL_BOX, /* [NOTE] BOX stencil */
-                      MX+1,MY+1,MZ+1,
-                      Mp,Np,Pp,
-                      1, /* dofs */
-                      1, /* [NOTE] stencil width 1 */
-                      lxq1,lyq1,lzq1,&dmq1);CHKERRQ(ierr);
-
-  ierr = DMSetUp(dmq1);CHKERRQ(ierr);
-  
-  ierr = DMDAProjectCoordinatesQ2toOverlappingQ1_3d(dmq2,dmq1);CHKERRQ(ierr);
-  
-  *dm = dmq1;
-  
-  ierr = PetscFree(lxq1);CHKERRQ(ierr);
-  ierr = PetscFree(lyq1);CHKERRQ(ierr);
-  ierr = PetscFree(lzq1);CHKERRQ(ierr);
-
-  ierr = PetscFree(siq2);CHKERRQ(ierr);
-  ierr = PetscFree(sjq2);CHKERRQ(ierr);
-  ierr = PetscFree(skq2);CHKERRQ(ierr);
-  ierr = PetscFree(lmxq2);CHKERRQ(ierr);
-  ierr = PetscFree(lmyq2);CHKERRQ(ierr);
-  ierr = PetscFree(lmzq2);CHKERRQ(ierr);
-  
-  PetscFunctionReturn(0);
-}
-
 PetscErrorCode PhysCompCreateMesh_LithoP(PDESolveLithoP LP,DM dav,PetscInt mx,PetscInt my, PetscInt mz,PetscInt mesh_generator_type)
 {
   PetscInt       MX,MY,MZ;
@@ -240,8 +176,17 @@ PetscErrorCode PhysCompCreateMesh_LithoP(PDESolveLithoP LP,DM dav,PetscInt mx,Pe
       if (!dav) {
         SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Require valid DM dav");
       }
-      ierr = DMDACeateQ1FromQ2LithoP_Mesh(dav,&LP->daLP);CHKERRQ(ierr);
-      ierr = DMDASetElementType(LP->daLP,DMDA_ELEMENT_Q1);CHKERRQ(ierr);
+
+      {
+        PetscInt q2_mi[]={0,0,0},decomp[]={0,0,0};
+        
+        ierr = DMDAGetLocalSizeElementQ2(dav,&q2_mi[0],&q2_mi[1],&q2_mi[2]);CHKERRQ(ierr);
+        ierr = DMDAGetInfo(dav,NULL,NULL,NULL,NULL,&decomp[0],&decomp[1],&decomp[2],NULL,NULL,NULL,NULL,NULL,NULL);CHKERRQ(ierr);
+
+        ierr = dmda3d_create_q1_from_element_partition(PETSC_COMM_WORLD,1,decomp,q2_mi,&LP->daLP);CHKERRQ(ierr);
+      }
+      ierr = DMDAProjectCoordinatesQ2toOverlappingQ1_3d(dav,LP->daLP);CHKERRQ(ierr);
+      
       /* Push back the element number info into LP struct */
       ierr = DMDAGetInfo(LP->daLP,0, &MX,&MY,&MZ,0,0,0,0,0, 0,0,0, 0);CHKERRQ(ierr);
       LP->mx = MX-1;
@@ -256,8 +201,17 @@ PetscErrorCode PhysCompCreateMesh_LithoP(PDESolveLithoP LP,DM dav,PetscInt mx,Pe
       if (!dav) {
         SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Require valid DM dav");
       }
-      ierr = DMDACeateQ1FromQ2LithoP_Mesh(dav,&LP->daLP);CHKERRQ(ierr);
-      ierr = DMDASetElementType(LP->daLP,DMDA_ELEMENT_Q1);CHKERRQ(ierr);
+
+      {
+        PetscInt q2_mi[]={0,0,0},decomp[]={0,0,0};
+        
+        ierr = DMDAGetLocalSizeElementQ2(dav,&q2_mi[0],&q2_mi[1],&q2_mi[2]);CHKERRQ(ierr);
+        ierr = DMDAGetInfo(dav,NULL,NULL,NULL,NULL,&decomp[0],&decomp[1],&decomp[2],NULL,NULL,NULL,NULL,NULL,NULL);CHKERRQ(ierr);
+        
+        ierr = dmda3d_create_q1_from_element_partition(PETSC_COMM_WORLD,1,decomp,q2_mi,&LP->daLP);CHKERRQ(ierr);
+      }
+      ierr = DMDAProjectCoordinatesQ2toOverlappingQ1_3d(dav,LP->daLP);CHKERRQ(ierr);
+      
       /* Push back the element number info into LP struct */
       ierr = DMDAGetInfo(LP->daLP,0, &MX,&MY,&MZ,0,0,0,0,0, 0,0,0, 0);CHKERRQ(ierr);
       LP->mx = MX-1;
@@ -384,9 +338,20 @@ PetscErrorCode pTatinPhysCompCreate_LithoP(pTatinCtx user)
   lithoP_mesh_type = 1; // default is Q1 overlapping Q2
   ierr = PetscOptionsGetInt(NULL,NULL,"-lithoP_mesh_type",&lithoP_mesh_type,0);CHKERRQ(ierr);
   ierr = PhysCompNew_LithoP(stokes_ctx->dav,-1,-1,-1,lithoP_mesh_type,&LP);CHKERRQ(ierr);
+  LP->stokes = stokes_ctx;
+  
+  if (stokes_ctx->volQ->npoints != LP->volQ->npoints) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Integration scheme is inconsistent");
+  
+  {
+    PetscInt       nelQ2,nenQ2,nel,nen;
+    const PetscInt *elnidxQ2,*elnidx;
+    
+    ierr = DMDAGetElements_pTatinQ2P1(LP->stokes->dav,&nelQ2,&nenQ2,&elnidxQ2);CHKERRQ(ierr);
+    ierr = DMDAGetElements(LP->daLP,&nel,&nen,&elnidx);CHKERRQ(ierr);
+    if (nelQ2 != nel) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"nelQ2 != nel");
+  }
   
   user->litho_p_ctx = LP;
-  LP->stokes = stokes_ctx;
   
   PetscFunctionReturn(0);
 }
@@ -641,12 +606,11 @@ PetscErrorCode FormFunctionLocal_LithoPressure_dV(PDESolveLithoP data,DM da,Pets
   qp_xi     = volQ->q_xi_coor;
   qp_weight = volQ->q_weight;
 
-  
   ierr = PetscCalloc1(nqp,&qp_rho);CHKERRQ(ierr); /* buffer to store cell quad point densities */
   
   /* Get stokes volume quadrature data */
   ierr = VolumeQuadratureGetAllCellData_Stokes(data->stokes->volQ,&all_quadpoints);CHKERRQ(ierr);
-
+  
   /* Setup for coords */
   ierr = DMGetCoordinateDM(da,&cda);CHKERRQ(ierr);
   ierr = DMGetCoordinatesLocal(da,&gcoords);CHKERRQ(ierr);

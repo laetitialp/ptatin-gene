@@ -646,7 +646,7 @@ PetscErrorCode _ijk_get_ownership_ranges_3d(MPI_Comm comm,const PetscInt mp[],co
  The special item to note is that the left-most rank as +1 points cf the other ranks.
  
 */
-PetscErrorCode fvgeometry_dmda3d_create_from_element_partition(MPI_Comm comm,PetscInt target_decomp[],const PetscInt m[],DM *dm)
+PetscErrorCode dmda3d_create_q1_from_element_partition(MPI_Comm comm,PetscInt bs,PetscInt target_decomp[],const PetscInt m[],DM *dm)
 {
   PetscErrorCode ierr;
   PetscMPIInt    commsize,commsize2;
@@ -680,7 +680,7 @@ PetscErrorCode fvgeometry_dmda3d_create_from_element_partition(MPI_Comm comm,Pet
   ierr = DMDACreate3d(comm,DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,DMDA_STENCIL_BOX,
                       M[0],M[1],M[2],
                       target_decomp[0],target_decomp[1],target_decomp[2],
-                      3,1, /* [NOTE] stencil width 1 */
+                      bs,1, /* [NOTE] stencil width 1 */
                       ni,nj,nk,dm);CHKERRQ(ierr);
   ierr = DMSetUp(*dm);CHKERRQ(ierr);
   
@@ -733,6 +733,14 @@ PetscErrorCode fvgeometry_dmda3d_create_from_element_partition(MPI_Comm comm,Pet
   ierr = PetscFree(nj);CHKERRQ(ierr);
   ierr = PetscFree(nk);CHKERRQ(ierr);
   
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode fvgeometry_dmda3d_create_from_element_partition(MPI_Comm comm,PetscInt target_decomp[],const PetscInt m[],DM *dm)
+{
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  ierr = dmda3d_create_q1_from_element_partition(comm,3,target_decomp,m,dm);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
