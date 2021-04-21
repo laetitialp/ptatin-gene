@@ -321,7 +321,7 @@ PetscErrorCode PhysCompCreateVolumeQuadrature_LithoP(PDESolveLithoP LP)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  np_per_dim = 2;
+  np_per_dim = 3;
   dim = 3;
 
   ierr = VolumeQuadratureCreate_GaussLegendreLithoP(dim,np_per_dim,&LP->volQ);CHKERRQ(ierr);
@@ -382,6 +382,7 @@ PetscErrorCode pTatinPhysCompCreate_LithoP(pTatinCtx user)
   ierr = PhysCompNew_LithoP(stokes_ctx->dav,-1,-1,-1,lithoP_mesh_type,&LP);CHKERRQ(ierr);
   
   user->litho_p_ctx = LP;
+  LP->stokes = stokes_ctx;
   
   PetscFunctionReturn(0);
 }
@@ -441,7 +442,6 @@ PetscErrorCode FormJacobianLithoPressure(Vec X,Mat A,Mat B,void *ctx)
   PetscInt               nqp;
   PetscScalar            *qp_xi,*qp_weight;
   Quadrature             volQ;
-  QPntVolCoefEnergy      *all_quadpoints = NULL,*cell_quadpoints = NULL;
   DM                     da,cda;
   Vec                    gcoords;
   PetscScalar            *LA_gcoords;
@@ -455,7 +455,6 @@ PetscErrorCode FormJacobianLithoPressure(Vec X,Mat A,Mat B,void *ctx)
   const PetscInt         *GINDICES;
   Vec                    local_X;
   PetscScalar            *LA_X;
-  PetscBool              mat_mffd;
   PetscErrorCode         ierr;
 
   PetscFunctionBegin;
@@ -562,18 +561,17 @@ PetscErrorCode Element_FormFunction_LithoPressure(PetscScalar Re[],
                                                   PetscScalar gp_rho[],
                                                   PetscInt ngp,
                                                   PetscScalar gp_xi[],
-                                                  PetscScalar gp_weight[])
+                                                  PetscScalar gp_weight[],
+                                                  PDESolveLithoP data)
 {
   PetscInt    p,i,j,k;
   PetscReal   GNi_p[NSD][NODES_PER_EL_Q1_3D];
   PetscReal   GNx_p[NSD][NODES_PER_EL_Q1_3D];
   PetscScalar gradphi_p[NSD];
-  PetscScalar rho_g_qp[NSD],grav[NSD];
+  PetscScalar rho_g_qp[NSD];
   PetscScalar J_p,fac;
   
   PetscFunctionBegin;
-  // Will be removed in the final version for stokes->gravity_vector
-  grav[0] = 0.0; grav[1] = -9.8; grav[2] = 0;
   /* Evaluate integral */
   for (p=0; p<ngp; p++){
     /* Evaluate shape functions local derivatives at current point */
@@ -585,7 +583,7 @@ PetscErrorCode Element_FormFunction_LithoPressure(PetscScalar Re[],
     
     /* Compute rho*g */
     for (k=0; k<NSD; k++){
-      rho_g_qp[k] = grav[k]*gp_rho[p];//stokes->gravity_vector[k]*gp_rho[p];
+      rho_g_qp[k] = data->stokes->gravity_vector[k]*gp_rho[p];
     }
     
     /* We do: Re = A.phi - b 
@@ -628,8 +626,8 @@ PetscErrorCode FormFunctionLocal_LithoPressure_dV(PDESolveLithoP data,DM da,Pets
   PetscInt          nqp;
   PetscScalar       *qp_xi,*qp_weight;
   Quadrature        volQ;
-  QPntVolCoefEnergy *all_quadpoints = NULL,*cell_quadpoints = NULL;
-  PetscScalar       qp_rho[8];
+  QPntVolCoefStokes *all_quadpoints = NULL,*cell_quadpoints = NULL;
+  PetscScalar       qp_rho[27];
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
@@ -639,9 +637,9 @@ PetscErrorCode FormFunctionLocal_LithoPressure_dV(PDESolveLithoP data,DM da,Pets
   qp_xi     = volQ->q_xi_coor;
   qp_weight = volQ->q_weight;
 
-  if (nqp != 8) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"nqp =! 8");
-
-  //ierr = VolumeQuadratureGetAllCellData_Energy(data->stokes->volQ,&all_quadpoints);CHKERRQ(ierr);
+  if (nqp != 27) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"nqp != 27");
+  /* Get stokes volume quadrature data */
+  ierr = VolumeQuadratureGetAllCellData_Stokes(data->stokes->volQ,&all_quadpoints);CHKERRQ(ierr);
 
   /* Setup for coords */
   ierr = DMGetCoordinateDM(da,&cda);CHKERRQ(ierr);
@@ -658,18 +656,16 @@ PetscErrorCode FormFunctionLocal_LithoPressure_dV(PDESolveLithoP data,DM da,Pets
     /* get value at the element */
     ierr = DMDAEQ1_GetScalarElementField_3D(el_phi,(PetscInt*)&elnidx[nen*e],LA_phi);CHKERRQ(ierr);
     
-    // TODO: get rho from stokes qp for lithoP
-    //ierr = VolumeQuadratureGetCellData_Energy(data->stokes->volQ,all_quadpoints,e,&cell_quadpoints);CHKERRQ(ierr);
-
-    /* copy the density */
+    /* copy the density from stokes volume quadrature points */
+    ierr = VolumeQuadratureGetCellData_Stokes(data->stokes->volQ,all_quadpoints,e,&cell_quadpoints);CHKERRQ(ierr);
     for (q=0; q<nqp; q++) {
-      qp_rho[q] = 2700.0; //data->stokes->volQ->...rho           cell_quadpoints[n].rho;
+      qp_rho[q] = cell_quadpoints[q].rho;
     }
 
     /* initialise element stiffness matrix */
     ierr = PetscMemzero(Re,sizeof(PetscScalar)*NODES_PER_EL_Q1_3D);CHKERRQ(ierr);
     /* form element stiffness matrix */
-    ierr = Element_FormFunction_LithoPressure(Re,el_coords,el_phi,qp_rho,nqp,qp_xi,qp_weight);CHKERRQ(ierr);
+    ierr = Element_FormFunction_LithoPressure(Re,el_coords,el_phi,qp_rho,nqp,qp_xi,qp_weight,data);CHKERRQ(ierr);
     /* Add value to the residue vector */
     ierr = DMDAEQ1_GetElementLocalIndicesDOF(ge_eqnums,1,(PetscInt*)&elnidx[nen*e]);CHKERRQ(ierr);
     ierr = DMDAEQ1_SetValuesLocalStencil_AddValues_DOF(LA_R,1,ge_eqnums,Re);CHKERRQ(ierr);
@@ -794,6 +790,7 @@ PetscErrorCode Test_Assembly(void)
   PDESolveLithoP LP = NULL;
   Vec            X = NULL, F = NULL;
   Mat            J = NULL;
+  PetscReal      grav[] = {0.0,-9.8,0.0};
   PetscScalar    val_P;
   PetscErrorCode ierr;
 
@@ -807,7 +804,30 @@ PetscErrorCode Test_Assembly(void)
   pctx->mz = 2;
   // Create a Q2 mesh 
   ierr = pTatin3d_PhysCompStokesCreate(pctx);CHKERRQ(ierr);
-  ierr = DMDASetUniformCoordinates(pctx->stokes_ctx->dav,0.0,10.0e3,-30.0e3,0.0,0.0,10.0e3);CHKERRQ(ierr);
+  ierr = DMDASetUniformCoordinates(pctx->stokes_ctx->dav,0.0,10.0e-2,-30.0e-2,0.0,0.0,10.0e-2);CHKERRQ(ierr);
+  ierr = PhysCompStokesSetGravityVector(pctx->stokes_ctx,grav);CHKERRQ(ierr);
+  
+  /* 
+     Here I manually set the value of rho on stokes volume quadrature points for testing
+     the copying of rho from stokes to lithoP in FormFunctionLocal_LithoPressure_dV()
+     This will not be necessary in regular models
+  */
+  {
+    QPntVolCoefStokes *all_quadpoints = NULL,*cell_quadpoints = NULL;
+    PetscInt nel,nen,e,nqp,q;
+    const PetscInt *elnidx;
+    
+    nqp = pctx->stokes_ctx->volQ->npoints;
+    ierr = VolumeQuadratureGetAllCellData_Stokes(pctx->stokes_ctx->volQ,&all_quadpoints);CHKERRQ(ierr);
+    ierr = DMDAGetElements_pTatinQ2P1(pctx->stokes_ctx->dav,&nel,&nen,&elnidx);CHKERRQ(ierr);
+    for (e=0; e<nel; e++){
+      ierr = VolumeQuadratureGetCellData_Stokes(pctx->stokes_ctx->volQ,all_quadpoints,e,&cell_quadpoints);CHKERRQ(ierr);
+      /* copy the density */
+      for (q=0; q<nqp; q++) {
+        cell_quadpoints[q].rho = 27.0; //scale units of rho*g
+      }
+    }
+  }
   
   ierr = pTatinPhysCompCreate_LithoP(pctx);CHKERRQ(ierr);
   ierr = pTatinContextValid_LithoP(pctx,&LP_found);CHKERRQ(ierr);
@@ -815,7 +835,7 @@ PetscErrorCode Test_Assembly(void)
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"LP is NULL\n");
   }
   ierr = pTatinGetContext_LithoP(pctx,&LP);CHKERRQ(ierr);
-
+  
   val_P = 0.0;
   ierr = DMDABCListTraverse3d(LP->LP_bclist,LP->daLP,DMDABCList_JMAX_LOC,0,BCListEvaluator_constant,(void*)&val_P);CHKERRQ(ierr);
   /*
