@@ -36,12 +36,12 @@
 #include "dmda_bcs.h"
 
 struct _p_PDESolveLithoP {
-  PetscInt                LP_mesh_type; /* 0-std dmda, 1-overlap, 2-nested */
+  PetscInt                mesh_type; /* 0-std dmda, 1-overlap, 2-nested */
   PhysCompStokes          stokes;
-  SNES                    snesLP;
+  SNES                    snes;
   PetscInt                mx,my,mz; /* global mesh size */
-  DM                      daLP;
-  BCList                  LP_bclist;
+  DM                      da;
+  BCList                  bclist;
   Quadrature              volQ;
   Vec                     F; /* residual vector */
   Vec                     X; /* solution vector */
