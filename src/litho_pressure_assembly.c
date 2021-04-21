@@ -202,6 +202,13 @@ PetscErrorCode DMDACeateQ1FromQ2LithoP_Mesh(DM dmq2, DM *dm)
   ierr = PetscFree(lyq1);CHKERRQ(ierr);
   ierr = PetscFree(lzq1);CHKERRQ(ierr);
 
+  ierr = PetscFree(siq2);CHKERRQ(ierr);
+  ierr = PetscFree(sjq2);CHKERRQ(ierr);
+  ierr = PetscFree(skq2);CHKERRQ(ierr);
+  ierr = PetscFree(lmxq2);CHKERRQ(ierr);
+  ierr = PetscFree(lmyq2);CHKERRQ(ierr);
+  ierr = PetscFree(lmzq2);CHKERRQ(ierr);
+  
   PetscFunctionReturn(0);
 }
 
