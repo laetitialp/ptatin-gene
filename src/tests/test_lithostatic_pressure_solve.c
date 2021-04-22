@@ -9,7 +9,7 @@
  **        Switzerland
  **
  **    project:    pTatin3d
- **    filename:   litho_pressure_assembly.c
+ **    filename:   test_lithostatic_pressure_solve.c
  **
  **
  **    pTatin3d is free software: you can redistribute it and/or modify
@@ -121,6 +121,9 @@ PetscErrorCode test_lithostatic_pressure_solve(void)
   ierr = MatSetFromOptions(J);CHKERRQ(ierr);
   
   ierr = SNESSolve_LithoPressure(LP,J,X,F,pctx);CHKERRQ(ierr);
+  
+  /* Apply the computed lithostatic pressure to the stokes surface quadrature points on the face HEX_FACE_Neta (bottom) */
+  ierr = ApplyLithostaticPressure_SurfQuadratureStokes_FullFace(pctx->stokes_ctx,LP->da,X,HEX_FACE_Neta);CHKERRQ(ierr);
   
   {
     PetscViewer viewer;
