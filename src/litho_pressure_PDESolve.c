@@ -823,11 +823,48 @@ PetscErrorCode ApplyLithostaticPressure_SurfQuadratureStokes_FullFace(PhysCompSt
       traction[0] = (- litho_pressure_qp) * (normal[0]);
       traction[1] = (- litho_pressure_qp) * (normal[1]);
       traction[2] = (- litho_pressure_qp) * (normal[2]);
+      
     }
   }
 
   ierr = VecRestoreArray(LP_local,&LA_LP_local);CHKERRQ(ierr);
+  ierr = DMRestoreLocalVector(da,&LP_local);CHKERRQ(ierr);
   ierr = DMDARestoreElements(da,&nel_lp,&nen_lp,&elnidx_lp);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ModelApplyTractionFromLithoPressure(pTatinCtx user)
+{
+  PDESolveLithoP LP;
+  PetscReal      val_P;
+  Mat            J = NULL;
+  PetscErrorCode ierr;
+  
+  PetscFunctionBegin;
+  
+  ierr = pTatinPhysCompActivate_LithoP(user,PETSC_TRUE);CHKERRQ(ierr);
+  ierr = pTatinGetContext_LithoP(user,&LP);CHKERRQ(ierr);
+  
+  val_P = 0.0;
+  ierr = DMDABCListTraverse3d(LP->bclist,LP->da,DMDABCList_JMAX_LOC,0,BCListEvaluator_constant,(void*)&val_P);CHKERRQ(ierr);
+  
+  ierr = DMSetMatType(LP->da,MATAIJ);CHKERRQ(ierr);
+  ierr = DMCreateMatrix(LP->da,&J);CHKERRQ(ierr);
+  ierr = MatSetFromOptions(J);CHKERRQ(ierr);
+  
+  ierr = SNESSolve_LithoPressure(LP,J,LP->X,LP->F,user);CHKERRQ(ierr);
+  // Lithostatic Pressure on the face JMIN
+  ierr = ApplyLithostaticPressure_SurfQuadratureStokes_FullFace(user->stokes_ctx,LP->da,LP->X,HEX_FACE_Neta);CHKERRQ(ierr);
+  
+  ierr = ApplyLithostaticPressure_SurfQuadratureStokes_FullFace(user->stokes_ctx,LP->da,LP->X,HEX_FACE_Pxi);CHKERRQ(ierr);
+  ierr = ApplyLithostaticPressure_SurfQuadratureStokes_FullFace(user->stokes_ctx,LP->da,LP->X,HEX_FACE_Nxi);CHKERRQ(ierr);
+  ierr = ApplyLithostaticPressure_SurfQuadratureStokes_FullFace(user->stokes_ctx,LP->da,LP->X,HEX_FACE_Pzeta);CHKERRQ(ierr);
+  ierr = ApplyLithostaticPressure_SurfQuadratureStokes_FullFace(user->stokes_ctx,LP->da,LP->X,HEX_FACE_Nzeta);CHKERRQ(ierr);
+
+  ierr = MatDestroy(&J);CHKERRQ(ierr);
+  ierr = PhysCompDestroy_LithoP(&LP);CHKERRQ(ierr);
+  user->litho_p_ctx = NULL;
   
   PetscFunctionReturn(0);
 }

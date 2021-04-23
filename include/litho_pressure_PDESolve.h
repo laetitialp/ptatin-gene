@@ -59,5 +59,6 @@ PetscErrorCode pTatinPhysCompCreate_LithoP(pTatinCtx user);
 PetscErrorCode pTatinPhysCompActivate_LithoP(pTatinCtx user,PetscBool load);
 PetscErrorCode SNESSolve_LithoPressure(PDESolveLithoP LP,Mat J,Vec X, Vec F, pTatinCtx user);
 PetscErrorCode ApplyLithostaticPressure_SurfQuadratureStokes_FullFace(PhysCompStokes stokes,DM da,Vec X,HexElementFace face_location);
+PetscErrorCode ModelApplyTractionFromLithoPressure(pTatinCtx pctx);
 
 #endif
