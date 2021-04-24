@@ -67,6 +67,8 @@ PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
   ModelSubductionObliqueCtx *data;
   RheologyConstants         *rheology;
   PetscInt                  nn,region_idx;
+  PetscReal                 y_continent[3],y_ocean[3];
+  PetscReal                 alpha_subd,theta_subd,y0;
   int                       source_type[7] = {0, 0, 0, 0, 0, 0, 0};
   PetscBool                 flg;
   PetscErrorCode            ierr;
@@ -81,7 +83,7 @@ PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
   /* force energy equation to be introduced */
   ierr = PetscOptionsInsertString(NULL,"-activate_energyfv true");CHKERRQ(ierr);
   
-  data->n_phases = 8;
+  data->n_phases = 9;
   rheology->nphases_active = data->n_phases;
   rheology->apply_viscosity_cutoff_global = PETSC_TRUE;
   rheology->eta_upper_cutoff_global = 1.e+25;
@@ -185,7 +187,7 @@ PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
   source_type[0] = ENERGYSOURCE_CONSTANT;
   rho_ref        = 1.0;
   Cp             = 1.0;
-  for (region_idx=0;region_idx<rheology->nphases_active;region_idx++) {
+  for (region_idx=0;region_idx<rheology->nphases_active-1;region_idx++) {
     preexpA[region_idx]     = 6.3e-6;
     Ascale[region_idx]      = 1.0e6;
     entalpy[region_idx]     = 156.0e3;
@@ -204,7 +206,7 @@ PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
     alpha[region_idx]       = 2.0e-5;
     rho[region_idx]         = 2700.0;
   }
-  for (region_idx=0;region_idx<rheology->nphases_active;region_idx++) {
+  for (region_idx=0;region_idx<rheology->nphases_active-1;region_idx++) {
     /* Set material constitutive laws */
     MaterialConstantsSetValues_MaterialType(materialconstants,region_idx,VISCOUS_ARRHENIUS_2,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_BOUSSINESQ);
 
@@ -277,7 +279,7 @@ PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
     MaterialConstantsSetValues_DensityBoussinesq(materialconstants,region_idx,rho[region_idx],alpha[region_idx],beta[region_idx]);
   }
   
-  for (regionidx=0; regionidx<rheology->nphases_active;regionidx++) {
+  for (regionidx=0; regionidx<rheology->nphases_active-1;regionidx++) {
     EnergyConductivityConst *data_k;
     EnergySourceConst       *data_Q;
     DataField               PField_k,PField_Q;
@@ -290,6 +292,14 @@ PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
     DataFieldGetEntries(PField_Q,(void**)&data_Q);
     EnergySourceConstSetField_HeatSource(&data_Q[regionidx],0.0);
   }
+  
+  /* region_idx 8 --> Sticky Air */
+  region_idx = 8;
+  MaterialConstantsSetValues_MaterialType(materialconstants,region_idx,VISCOUS_CONSTANT,PLASTIC_NONE,NULL,DENSITY_CONSTANT);
+  MaterialConstantsSetValues_ViscosityConst(materialconstants,region_idx,1.0e+19);
+  MaterialConstantsSetValues_DensityConst(materialconstants,region_idx,1.0);
+  // Thermal parameters for sticky air ??
+
   /* Report all material parameters values */
   for (regionidx=0; regionidx<rheology->nphases_active;regionidx++) {
     MaterialConstantsPrintAll(materialconstants,regionidx);
@@ -452,24 +462,28 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_ObliqueIC(pTatinCtx c,void *ctx
     x_subd   = -(position[1] - data->y0) / tan(data->theta_subd) + x_trench;
     
     if (position[0] <= x_subd && position[1] >= data->y_ocean[0]) {
-      region_idx = 0;
+      region_idx = 0; // Oceanic upper crust
     } else if (position[0] <= x_subd && position[1] >= data->y_ocean[1]) {
-      region_idx = 1;
+      region_idx = 1; // Oceanic lower crust
     } else if (position[0] <= (x_subd-data->wz) && position[1] >= data->y_ocean[2]) {
-      region_idx = 4;
+      region_idx = 4; // Oceanic lithosphere mantle
     } else if (position[0] >= (x_subd-data->wz) && 
                position[0] <= (x_subd+data->wz) &&
                position[1] < data->y_ocean[1]   && 
                position[1] >= data->y_continent[2]) {
-      region_idx = 7;
+      region_idx = 7; // Weak zone
     } else if (position[0] > x_subd && position[1] >= data->y_continent[0]) {
-      region_idx = 2;
+      region_idx = 2; // Continental upper crust
     } else if (position[0] > x_subd && position[1] >= data->y_continent[1]) {
-      region_idx = 3;
+      region_idx = 3; // Continental lower crust
     } else if (position[0] > x_subd && position[1] >= data->y_continent[2]) {
-      region_idx = 5;
+      region_idx = 5; // Continental lithosphere mante
     } else {
-      region_idx = 6;
+      region_idx = 6; // Asthenosphere
+    }
+    
+    if (position[1] > data->y0) {
+      region_idx = 8; // Sticky Air
     }
     
     MPntStdSetField_phase_index(material_point,region_idx);
