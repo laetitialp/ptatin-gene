@@ -14,7 +14,6 @@
 #include <finite_volume/fvda_private.h>
 #include <finite_volume/kdtree.h>
 
-PetscErrorCode fvgeometry_dmda3d_create_from_element_partition(MPI_Comm comm,PetscInt target_decomp[],const PetscInt m[],DM *dm);
 PetscErrorCode _cart_convert_index_to_ijk(PetscInt r,const PetscInt mp[],PetscInt rijk[]);
 PetscErrorCode _cart_convert_ijk_to_index(const PetscInt rijk[],const PetscInt mp[],PetscInt *r);
 
@@ -1072,7 +1071,7 @@ PetscErrorCode EnergyFVEvaluateCoefficients_MaterialPoints(pTatinCtx user,PetscR
     diffusivity_mp = conductivity_mp / (rho_mp * Cp);
     
     H_mp = H_mp / (rho_mp * Cp);
-    
+
     MPntPEnergySetField_diffusivity(mpp_energy,diffusivity_mp);
     MPntPEnergySetField_heat_source(mpp_energy,H_mp);
   }

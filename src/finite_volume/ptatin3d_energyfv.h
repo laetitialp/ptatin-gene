@@ -48,5 +48,7 @@ PetscErrorCode pTatinPhysCompEnergyFV_ComputeALEVelocity(DM dmg,Vec x0,Vec x1,Pe
 
 PetscErrorCode pTatinPhysCompEnergyFV_ComputeAdvectiveTimestep(PhysCompEnergyFV energy,Vec X,PetscReal *_dt);
 
+PetscErrorCode fvgeometry_dmda3d_create_from_element_partition(MPI_Comm comm,PetscInt target_decomp[],const PetscInt m[],DM *dm);
+
 #endif
 
