@@ -38,13 +38,13 @@
 PetscErrorCode EvalRHS_HeatProd(FVDA fv,Vec F)
 {
   PetscErrorCode  ierr;
-  PetscReal       cell_x[3],dV;
+  PetscReal       dV;
   const PetscReal *H;
   PetscReal       cell_coor[3 * DACELL3D_Q1_SIZE];
   Vec             coorl;
   const PetscReal *_geom_coor;
   PetscReal       *_F;
-  PetscInt        i,d,c,dm_nel,dm_nen;
+  PetscInt        c,dm_nel,dm_nen;
   const PetscInt  *dm_element,*element;
   
   PetscFunctionBegin;
@@ -58,7 +58,7 @@ PetscErrorCode EvalRHS_HeatProd(FVDA fv,Vec F)
   ierr = VecGetArrayRead(coorl,&_geom_coor);CHKERRQ(ierr);
   
   ierr = FVDAGetCellPropertyByNameArrayRead(fv,"H",&H);CHKERRQ(ierr);
-         //FVDAGetCellPropertyByNameArrayRead
+  
   for (c=0; c<fv->ncells; c++) {
     element = (const PetscInt*)&dm_element[DACELL3D_Q1_SIZE * c];
     
@@ -66,7 +66,6 @@ PetscErrorCode EvalRHS_HeatProd(FVDA fv,Vec F)
     _EvaluateCellVolume3d(cell_coor,&dV);
     
     _F[c] = -H[c] * dV;
-    //PetscPrintf(PETSC_COMM_WORLD,"H[%d] = %1.4e, dV[%d] = %1.4e, F[%d] = %1.4e \n",c,H[c],c,dV,c,_F[c]);
   }
   ierr = VecRestoreArray(F,&_F);CHKERRQ(ierr);
   ierr = VecRestoreArrayRead(coorl,&_geom_coor);CHKERRQ(ierr);
@@ -246,7 +245,6 @@ PetscErrorCode PhysCompEnergyFVSetUp_SteadyState(PhysCompEnergyFV energy,pTatinC
   ierr = FVDARegisterFaceProperty(energy->fv,"v.n",1);CHKERRQ(ierr);
   ierr = FVDARegisterFaceProperty(energy->fv,"xDot.n",1);CHKERRQ(ierr);
   ierr = FVDARegisterFaceProperty(energy->fv,"k",1);CHKERRQ(ierr);
-  ierr = FVDARegisterFaceProperty(energy->fv,"H",1);CHKERRQ(ierr);
   
   ierr = FVDARegisterCellProperty(energy->fv,"rho*cp",1);CHKERRQ(ierr);
   ierr = FVDARegisterCellProperty(energy->fv,"k",1);CHKERRQ(ierr);
@@ -343,16 +341,14 @@ PetscErrorCode pTatin3d_SteadyStateDiffusion_TFV_driver(int argc,char **argv)
   pTatinCtx         user;
   pTatinModel       model;
   PhysCompStokes    stokes;
-  //PhysCompEnergy    energy = NULL;
   PhysCompEnergyFV  energyfv = NULL;
-  DM              multipys_pack,dav,dap;
-  Vec       X,F,rhs;
-  IS        *is_stokes_field;
-  PetscBool        active_energy;
-  PetscBool        monitor_stages = PETSC_FALSE,write_icbc = PETSC_FALSE;
-  DataBucket       materialpoint_db;
-  PetscLogDouble   time[2];
-  PetscErrorCode   ierr;
+  DM                multipys_pack,dav,dap;
+  Vec               F,rhs;
+  PetscBool         active_energy;
+  PetscBool         monitor_stages = PETSC_FALSE,write_icbc = PETSC_FALSE;
+  DataBucket        materialpoint_db;
+  PetscLogDouble    time[2];
+  PetscErrorCode    ierr;
 
   PetscFunctionBegin;
 
@@ -385,15 +381,6 @@ PetscErrorCode pTatin3d_SteadyStateDiffusion_TFV_driver(int argc,char **argv)
   dav           = stokes->dav;
   dap           = stokes->dap;
 
-  /* IF I DON'T DO THIS, THE IS's OBTAINED FROM DMCompositeGetGlobalISs() are wrong !! */
-/*  {
-    Vec X;
-
-    ierr = DMGetGlobalVector(multipys_pack,&X);CHKERRQ(ierr);
-    ierr = DMRestoreGlobalVector(multipys_pack,&X);CHKERRQ(ierr);
-  }
-  ierr = DMCompositeGetGlobalISs(multipys_pack,&is_stokes_field);CHKERRQ(ierr);
-*/
   ierr = pTatin3dCreateMaterialPoints(user,dav);CHKERRQ(ierr);
   ierr = pTatinGetMaterialPoints(user,&materialpoint_db,NULL);CHKERRQ(ierr);
   PetscPrintf(PETSC_COMM_WORLD,"Generated material points --> ");
@@ -424,15 +411,8 @@ PetscErrorCode pTatin3d_SteadyStateDiffusion_TFV_driver(int argc,char **argv)
     ierr = FVDAGetDM(energyfv->fv,&dmfv);CHKERRQ(ierr);
     ierr = pTatinLogBasicDMDA(user,"EnergyFV",dmfv);CHKERRQ(ierr);
 
-    //ierr = pTatinLogBasicDMDA(user,"Energy",energy->daT);CHKERRQ(ierr);
-    //ierr = DMCreateGlobalVector(energy->daT,&T);CHKERRQ(ierr);
-    //ierr = pTatinPhysCompAttachData_Energy(user,T,NULL);CHKERRQ(ierr);
     ierr = pTatinCtxAttachModelData(user,"PhysCompEnergy_T",(void*)energyfv->T);CHKERRQ(ierr);
     ierr = DMCreateGlobalVector(dmfv,&rhs);CHKERRQ(ierr);
-    //ierr = DMCreateGlobalVector(energy->daT,&f);CHKERRQ(ierr);
-    //ierr = DMSetMatType(energy->daT,MATAIJ);CHKERRQ(ierr);
-    //ierr = DMCreateMatrix(energy->daT,&JE);CHKERRQ(ierr);
-    //ierr = MatSetFromOptions(JE);CHKERRQ(ierr);
 
     pTatinGetRangeCurrentMemoryUsage(NULL);
   }
@@ -451,7 +431,8 @@ PetscErrorCode pTatin3d_SteadyStateDiffusion_TFV_driver(int argc,char **argv)
     ierr = pTatinPhysCompEnergyFV_MPProjection(energyfv,user);CHKERRQ(ierr);
     
     ierr = FVDACellPropertyProjectToFace_HarmonicMean(energyfv->fv,"k","k");CHKERRQ(ierr);
-
+    
+    /* Evaluate \int_V -H dV */
     ierr = EvalRHS_HeatProd(energyfv->fv,rhs);CHKERRQ(ierr);
   }
   DataBucketView(PetscObjectComm((PetscObject)multipys_pack), materialpoint_db,"MaterialPoints StokesCoefficients",DATABUCKET_VIEW_STDOUT);
@@ -465,11 +446,6 @@ PetscErrorCode pTatin3d_SteadyStateDiffusion_TFV_driver(int argc,char **argv)
 
   ierr = pTatinLogBasic(user);CHKERRQ(ierr);
 
-  /* solve energy equation */
-
-  //PetscInt tsize;
-  //ierr = VecGetSize(rhs,&tsize);CHKERRQ(ierr);
-  //PetscPrintf(PETSC_COMM_WORLD,"Size rhs = %d \n",tsize);
   /* solve energy equation */
   if (active_energy) {
     {
@@ -503,19 +479,7 @@ PetscErrorCode pTatin3d_SteadyStateDiffusion_TFV_driver(int argc,char **argv)
     ierr = VecView(rhs,viewer);CHKERRQ(ierr);
     ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
   }
- 
-    /*
-    if (step%user->output_frequency == 0) {
-      PetscSNPrintf(stepname,PETSC_MAX_PATH_LEN-1,"step%1.6D",step);
-      ierr = pTatinModel_Output(model,user,X,stepname);CHKERRQ(ierr);
-    }
-*/
-  /* Clean up */
-//  ierr = ISDestroy(&is_stokes_field[0]);CHKERRQ(ierr);
-//  ierr = ISDestroy(&is_stokes_field[1]);CHKERRQ(ierr);
-//  ierr = PetscFree(is_stokes_field);CHKERRQ(ierr);
 
-  //ierr = VecDestroy(&X);CHKERRQ(ierr);
   ierr = VecDestroy(&rhs);CHKERRQ(ierr);
   ierr = VecDestroy(&F);CHKERRQ(ierr);
   ierr = pTatin3dDestroyContext(&user);
