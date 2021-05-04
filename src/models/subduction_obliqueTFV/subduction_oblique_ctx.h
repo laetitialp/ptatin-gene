@@ -27,13 +27,23 @@
  **
  ** ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ @*/
 
-#ifndef __ptatin3d_model_template_ctx_h__
-#define __ptatin3d_model_template_ctx_h__
+#ifndef __ptatin3d_subduction_oblique_ctx_h__
+#define __ptatin3d_subduction_oblique_ctx_h__
 
 /* define user model */
 typedef struct {
-  PetscReal param1;
-  PetscInt  param2;
-} ModelTemplateCtx;
+  PetscReal length_bar, viscosity_bar, velocity_bar, time_bar, pressure_bar, density_bar, acceleration_bar;
+  PetscReal Lx, Ly, Lz, Ox, Oy, Oz;
+  PetscReal y_continent[3], y_ocean[4];
+  PetscReal y0, alpha_subd, theta_subd, wz;
+  PetscReal normV, angle_v;
+  PetscBool oblique_IC, oblique_BC, output_markers;
+  PetscInt  n_phases;
+} ModelSubductionObliqueCtx;
+
+typedef struct _p_BC_Lithosphere *BC_Lithosphere;
+struct _p_BC_Lithosphere {
+  PetscReal y_lab,v;
+};
 
 #endif

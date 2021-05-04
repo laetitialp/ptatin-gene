@@ -39,28 +39,30 @@
 #include "MPntPStokes_def.h"
 #include "MPntPStokesPl_def.h"
 #include "MPntPEnergy_def.h"
+#include "output_material_points.h"
+#include "output_material_points_p0.h"
+#include "energy_output.h"
+#include "output_paraview.h"
+#include "material_point_std_utils.h"
+#include "material_point_utils.h"
+#include "material_point_popcontrol.h"
 #include "stokes_form_function.h"
 #include "ptatin_std_dirichlet_boundary_conditions.h"
 #include "dmda_iterator.h"
 #include "mesh_update.h"
-#include "output_material_points.h"
-#include "output_material_points_p0.h"
-#include "material_point_std_utils.h"
-#include "material_point_utils.h"
-#include "material_point_popcontrol.h"
-#include "energy_output.h"
+#include "dmda_remesh.h"
 #include "ptatin3d_stokes.h"
 #include "ptatin3d_energy.h"
-#include "geometry_object.h"
-#include "output_paraview.h"
-#include <material_constants_energy.h>
 #include <ptatin3d_energyfv.h>
 #include <ptatin3d_energyfv_impl.h>
-#include "dmda_remesh.h"
+#include "quadrature.h"
+#include "QPntSurfCoefStokes_def.h"
+#include "geometry_object.h"
+#include <material_constants_energy.h>
 #include "model_utils.h"
 #include "subduction_oblique_ctx.h"
 
-static const char MODEL_NAME_SO[] = "model_subduction_oblique_"
+static const char MODEL_NAME_SO[] = "model_subduction_oblique_";
 
 PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
 {
@@ -72,11 +74,14 @@ PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
   DataBucket                materialconstants;
   EnergyMaterialConstants   *matconstants_e;
   PetscInt                  nn,region_idx;
-  PetscReal                 y_continent[3],y_ocean[4];
-  PetscReal                 alpha_subd,theta_subd,y0;
   int                       source_type[7] = {0, 0, 0, 0, 0, 0, 0};
   PetscReal                 cm_per_yer2m_per_sec = 1.0e-2 / ( 365.0 * 24.0 * 60.0 * 60.0 );
+  PetscReal                 *preexpA,*Ascale,*entalpy,*Vmol,*nexp,*Tref;
+  PetscReal                 *phi,*phi_inf,*Co,*Co_inf,*Tens_cutoff,*Hst_cutoff,*eps_min,*eps_max;
+  PetscReal                 *beta,*alpha,*rho,*heat_source,*conductivity;
+  PetscReal                 phi_rad,phi_inf_rad,Cp;
   PetscBool                 flg,found;
+  char                      *option_name;
   PetscErrorCode            ierr;
 
   PetscFunctionBegin;
@@ -173,8 +178,10 @@ PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
   
   data->oblique_IC = PETSC_FALSE;
   data->oblique_BC = PETSC_FALSE;
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-oblique_IC",&data->oblique_IC,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-oblique_BC",&data->oblique_BC,NULL);CHKERRQ(ierr);
+  data->output_markers = PETSC_FALSE;
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-IC",&data->oblique_IC,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-BC",&data->oblique_BC,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-output_markers",&data->output_markers,NULL);CHKERRQ(ierr);
   
   /* Material constants */
   ierr = pTatinGetMaterialConstants(c,&materialconstants);CHKERRQ(ierr);
@@ -364,6 +371,7 @@ PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
   data->y_ocean[0]     = data->y_ocean[0]     / data->length_bar;
   data->y_ocean[1]     = data->y_ocean[1]     / data->length_bar;
   data->y_ocean[2]     = data->y_ocean[2]     / data->length_bar;
+  data->y_ocean[3]     = data->y_ocean[3]     / data->length_bar;
   data->y0             = data->y0             / data->length_bar;
   data->wz             = data->wz             / data->length_bar;
   data->alpha_subd     = data->alpha_subd * M_PI/180.0;
@@ -408,6 +416,7 @@ PetscErrorCode ModelApplyInitialMeshGeometry_SubductionOblique(pTatinCtx c,void 
   PhysCompStokes   stokes;
   DM               stokes_pack,dav,dap;
   PetscInt         dir,npoints;
+  PetscReal        *xref,*xnat;
   PetscErrorCode   ierr;
 
   PetscFunctionBegin;
@@ -438,8 +447,7 @@ PetscErrorCode ModelApplyInitialMeshGeometry_SubductionOblique(pTatinCtx c,void 
   PetscReal gvec[] = { 0.0, -9.8, 0.0 };
   ierr = PhysCompStokesSetGravityVector(c->stokes_ctx,gvec);CHKERRQ(ierr);
   ierr = PhysCompStokesScaleGravityVector(c->stokes_ctx,data->acceleration_bar);CHKERRQ(ierr);
-  ierr = PhysCompStokesUpdateSurfaceQuadrature(c->stokes_ctx);CHKERRQ(ierr);
-  
+
   ierr = PetscFree(xref);CHKERRQ(ierr);
   ierr = PetscFree(xnat);CHKERRQ(ierr);
   
@@ -449,10 +457,11 @@ PetscErrorCode ModelApplyInitialMeshGeometry_SubductionOblique(pTatinCtx c,void 
 /* GEOMETRY: Obliquity through initial conditions */
 PetscErrorCode ModelApplyInitialMaterialGeometry_ObliqueIC(pTatinCtx c,void *ctx)
 {
-  DataBucket       db;
-  DataField        PField_std,PField_pls;
-  PetscInt         p;
-  PetscReal        xc,zc;
+  ModelSubductionObliqueCtx *data = (ModelSubductionObliqueCtx*)ctx;
+  DataBucket                db;
+  DataField                 PField_std,PField_pls;
+  PetscInt                  p,n_mp_points;
+  PetscReal                 xc,zc;
   
   PetscFunctionBegin;
   
@@ -477,7 +486,7 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_ObliqueIC(pTatinCtx c,void *ctx
     int           region_idx;
     double        *position;
     float         pls;
-    char          yield;
+    short         yield;
 
     DataFieldAccessPoint(PField_std,p,(void**)&material_point);
     DataFieldAccessPoint(PField_pls,p,(void**)&mpprop_pls);
@@ -503,7 +512,7 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_ObliqueIC(pTatinCtx c,void *ctx
       region_idx = 4; // Oceanic lithosphere mantle
     } else if (position[0] >= (x_subd-data->wz) && 
                position[0] <= (x_subd+data->wz) &&
-               position[1] < data->y_ocean[1]   && 
+               position[1] < data->y_ocean[2]   && 
                position[1] >= data->y_continent[2]) {
       region_idx = 7; // Weak zone
     } else if (position[0] > x_subd && position[1] >= data->y_continent[0]) {
@@ -533,10 +542,11 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_ObliqueIC(pTatinCtx c,void *ctx
 /* GEOMETRY: Obliquity through boundary conditions */
 PetscErrorCode ModelApplyInitialMaterialGeometry_ObliqueBC(pTatinCtx c,void *ctx)
 {
-  DataBucket       db;
-  DataField        PField_std,PField_pls;
-  PetscInt         p;
-  PetscReal        xc,zc;
+  ModelSubductionObliqueCtx *data = (ModelSubductionObliqueCtx*)ctx;
+  DataBucket                db;
+  DataField                 PField_std,PField_pls;
+  PetscInt                  p,n_mp_points;
+  PetscReal                 xc;
   
   PetscFunctionBegin;
   
@@ -551,17 +561,16 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_ObliqueBC(pTatinCtx c,void *ctx
   DataFieldVerifyAccess(PField_pls,sizeof(MPntPStokesPl));
   
   xc = (data->Lx + data->Ox)/2.0;
-  zc = (data->Lz + data->Oz)/2.0;
   
   DataBucketGetSizes(db,&n_mp_points,0,0);
   for (p=0; p<n_mp_points; p++) {
     PetscReal     x_trench,x_subd;
     MPntStd       *material_point;
     MPntPStokesPl *mpprop_pls;
-    int           region_idx,yield;
+    int           region_idx;
     double        *position;
     float         pls;
-    char          yield;
+    short         yield;
 
     DataFieldAccessPoint(PField_std,p,(void**)&material_point);
     DataFieldAccessPoint(PField_pls,p,(void**)&mpprop_pls);
@@ -587,7 +596,7 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_ObliqueBC(pTatinCtx c,void *ctx
       region_idx = 4; // Oceanic lithosphere mantle
     } else if (position[0] >= (x_subd-data->wz) && 
                position[0] <= (x_subd+data->wz) &&
-               position[1] < data->y_ocean[1]   && 
+               position[1] < data->y_ocean[2]   && 
                position[1] >= data->y_continent[2]) {
       region_idx = 7; // Weak zone
     } else if (position[0] > x_subd && position[1] >= data->y_continent[0]) {
@@ -617,7 +626,8 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_ObliqueBC(pTatinCtx c,void *ctx
 PetscErrorCode ModelApplyInitialMaterialGeometry_SubductionOblique(pTatinCtx c,void *ctx)
 {
   ModelSubductionObliqueCtx *data = (ModelSubductionObliqueCtx*)ctx;
-
+  PetscErrorCode            ierr;
+  
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
   
@@ -660,6 +670,11 @@ PetscBool BCListEvaluator_Lithosphere(PetscScalar position[],PetscScalar *value,
 
 PetscErrorCode SubductionOblique_VelocityBC_Oblique(BCList bclist,DM dav,pTatinCtx c,ModelSubductionObliqueCtx *data)
 {
+  BC_Lithosphere bcdata;
+  PetscReal      vx,vz,vxl,vxr,vzl,vzr;
+  PetscReal      zero = 0.0;
+  PetscErrorCode ierr;
+  
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
   
@@ -678,22 +693,22 @@ PetscErrorCode SubductionOblique_VelocityBC_Oblique(BCList bclist,DM dav,pTatinC
   vxr = -vx;
   vzr = -vz;
 
-  bcdata->y = data->y_ocean[3];
+  bcdata->y_lab = data->y_ocean[3];
   bcdata->v = vxl;
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
   bcdata->v = vzl;
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,2,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
   
-  bcdata->y = data->y_continent[2];
+  bcdata->y_lab = data->y_continent[2];
   bcdata->v = vxr;
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
   bcdata->v = vzr;
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,2,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
 
   /* No slip bottom */
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,0,BCListEvaluator_Constant,(void*)&zero);CHKERRQ(ierr);
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_Constant,(void*)&zero);CHKERRQ(ierr);
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,2,BCListEvaluator_Constant,(void*)&zero);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
   
   ierr = PetscFree(bcdata);CHKERRQ(ierr);
   
@@ -712,7 +727,6 @@ PetscErrorCode ModelApplyBoundaryCondition_SubductionOblique(pTatinCtx c,void *c
   data = (ModelSubductionObliqueCtx*)ctx;
 
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
-  PetscPrintf(PETSC_COMM_WORLD,"param1 = %lf \n", data->param1 );
 
   /* Define velocity boundary conditions */
   ierr = pTatinGetStokesContext(c,&stokes);CHKERRQ(ierr);
@@ -812,11 +826,17 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_SubductionOblique(pTatinCtx c
 
 PetscErrorCode ModelApplyUpdateMeshGeometry_SubductionOblique(pTatinCtx c,Vec X,void *ctx)
 {
-  /* ModelSubductionObliqueCtx *data; */
-
+  PhysCompStokes  stokes;
+  DM              stokes_pack,dav,dap;
+  Vec             velocity,pressure;
+  PetscInt        npoints,dir;
+  PetscReal       step;
+  PetscReal       *xref,*xnat;
+  PetscErrorCode  ierr;
+  
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
-  /* data = (ModelSubductionObliqueCtx*)ctx; */
+
   /* fully lagrangian update */
   ierr = pTatinGetTimestep(c,&step);CHKERRQ(ierr);
   ierr = pTatinGetStokesContext(c,&stokes);CHKERRQ(ierr);
@@ -870,7 +890,6 @@ PetscErrorCode ModelOutput_SubductionOblique(pTatinCtx c,Vec X,const char prefix
   
   /* Output markers cell fields (for production runs) */
   {
-    const int                   nf = 4;
     const MaterialPointVariable mp_prop_list[] = { MPV_region, MPV_viscosity, MPV_density, MPV_plastic_strain }; //MPV_viscous_strain,
 
     ierr = pTatin3dModelOutput_MarkerCellFieldsP0_PetscVec(c,PETSC_FALSE,sizeof(mp_prop_list)/sizeof(MaterialPointVariable),mp_prop_list,prefix);CHKERRQ(ierr);
@@ -881,8 +900,8 @@ PetscErrorCode ModelOutput_SubductionOblique(pTatinCtx c,Vec X,const char prefix
   {
     ierr = pTatinGetMaterialPoints(c,&materialpoint_db,NULL);CHKERRQ(ierr);
 
-    const int nf = 5;
-    const MaterialPointField mp_prop_list[] = { MPField_Std, MPField_Stokes, MPField_StokesPl, MPField_Energy };
+    const int nf = 3;
+    const MaterialPointField mp_prop_list[] = { MPField_Std, MPField_Stokes, MPField_StokesPl};//, MPField_Energy };
     char mp_file_prefix[256];
 
     sprintf(mp_file_prefix,"%s_mpoints",prefix);
@@ -926,8 +945,8 @@ PetscErrorCode ModelOutput_SubductionOblique(pTatinCtx c,Vec X,const char prefix
     ierr = PetscVecWriteJSON(energy->T,0,fname);CHKERRQ(ierr); /* write cell temperature */
     
     if (data->output_markers) {
-      PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/%s-Tfv",pvoutputdir,prefix);
-      ierr = FVDAView_CellData(energy->fv,energy->T,PETSC_TRUE,fname);CHKERRQ(ierr);
+      //PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/%s-Tfv",pvoutputdir,prefix);
+      //ierr = FVDAView_CellData(energy->fv,energy->T,PETSC_TRUE,fname);CHKERRQ(ierr);
     }
   }
   
