@@ -305,7 +305,6 @@ PetscErrorCode pTatin3d_SteadyStateDiffusion_TFV_driver(int argc,char **argv)
   PhysCompStokes    stokes;
   PhysCompEnergyFV  energyfv = NULL;
   DM                multipys_pack,dav,dap;
-  Vec               F,rhs;
   PetscBool         active_energy;
   DataBucket        materialpoint_db;
   PetscLogDouble    time[2];
@@ -375,7 +374,6 @@ PetscErrorCode pTatin3d_SteadyStateDiffusion_TFV_driver(int argc,char **argv)
     ierr = pTatinLogBasicDMDA(user,"EnergyFV",dmfv);CHKERRQ(ierr);
 
     ierr = pTatinCtxAttachModelData(user,"PhysCompEnergy_T",(void*)energyfv->T);CHKERRQ(ierr);
-    ierr = DMCreateGlobalVector(dmfv,&rhs);CHKERRQ(ierr);
 
     pTatinGetRangeCurrentMemoryUsage(NULL);
   }
@@ -429,7 +427,7 @@ PetscErrorCode pTatin3d_SteadyStateDiffusion_TFV_driver(int argc,char **argv)
   if (active_energy) {
     {
       PetscTime(&time[0]);
-      ierr = SNESSolve(energyfv->snes,rhs,energyfv->T);CHKERRQ(ierr);
+      ierr = SNESSolve(energyfv->snes,energyfv->G,energyfv->T);CHKERRQ(ierr);
       PetscTime(&time[1]);
       
       ierr = pTatinLogBasicSNES(user,"EnergyFV_StadyState",energyfv->snes);CHKERRQ(ierr);
@@ -461,7 +459,6 @@ PetscErrorCode pTatin3d_SteadyStateDiffusion_TFV_driver(int argc,char **argv)
   }
   
   ierr = VecDestroy(&energyfv->G);CHKERRQ(ierr);
-  ierr = VecDestroy(&F);CHKERRQ(ierr);
   ierr = pTatin3dDestroyContext(&user);
 
   PetscFunctionReturn(0);
