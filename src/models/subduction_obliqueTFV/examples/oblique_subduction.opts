@@ -32,6 +32,12 @@
 -model_subduction_oblique_angle_v 30.0
 -model_subduction_oblique_Ttop 0.0
 -model_subduction_oblique_Tbottom 1600.0
+-model_subduction_oblique_ic_steady_state
+-model_subduction_oblique_qm_init 20.0e-3
+-model_subduction_oblique_k_init 3.3
+-model_subduction_oblique_y_prod_init -40.0e3
+-model_subduction_oblique_Tlitho_init 1300.0
+-model_subduction_oblique_age_init 100.0
 #-shear_heating_factor 1
 ############### Geometry ###############
 #-model_subduction_oblique_alpha_trench 45.0

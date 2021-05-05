@@ -183,9 +183,11 @@ PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
   data->oblique_IC = PETSC_FALSE;
   data->oblique_BC = PETSC_FALSE;
   data->output_markers = PETSC_FALSE;
+  data->subduction_temp_ic_steadystate = PETSC_FALSE;
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-IC",&data->oblique_IC,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-BC",&data->oblique_BC,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-output_markers",&data->output_markers,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-ic_steady_state",&data->subduction_temp_ic_steadystate,NULL);CHKERRQ(ierr);
   
   /* Material constants */
   ierr = pTatinGetMaterialConstants(c,&materialconstants);CHKERRQ(ierr);
