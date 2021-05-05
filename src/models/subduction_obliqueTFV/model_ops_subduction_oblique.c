@@ -655,6 +655,35 @@ PetscErrorCode ModelApplyInitialSolution_SubductionOblique(pTatinCtx c,Vec X,voi
   PetscFunctionReturn(0);
 }
 
+PetscBool ContinentalGeotherm_1DTS(PetscScalar coord[],PetscScalar *value,void *ctx)
+{
+  ModelSubductionObliqueCtx *data;
+  PetscBool                 impose_dirichlet = PETSC_TRUE;
+  
+  data = (ModelSubductionObliqueCtx*)ctx;
+  
+  /* Analytical solution for a continental geotherm with heat production from Turcott and Schubert (2014) Geodynamics 3rd Edition p176*/
+  *value = data->Ttop + data->qm*(-coord[1])/data->k + data->h_prod*pow(data->y_prod,2)/data->k * (1.0-exp(-coord[1]/data->y_prod));
+
+  if (*value >= data->Tlitho) {
+    *value = -((data->Tbottom-data->Tlitho)/(data->Ox-data->y_continent[2])) * (data->y_continent[2]-coord[1]) + data->Tlitho;
+  }
+  
+  return impose_dirichlet;
+}
+
+PetscBool OceanicGeotherm_1DTS(PetscScalar coord[],PetscScalar *value,void *ctx)
+{
+  ModelSubductionObliqueCtx *data;
+  PetscBool                 impose_dirichlet = PETSC_TRUE;
+  
+  data = (ModelSubductionObliqueCtx*)ctx;
+  
+  *value = (data->Ttop-data->Tbottom)*erfc(coord[1]/(2.0*PetscSqrtReal(data->age)))+data->Tbottom;
+  
+  return impose_dirichlet;
+}
+
 PetscBool BCListEvaluator_Lithosphere(PetscScalar position[],PetscScalar *value,void *ctx)
 {
   PetscBool      impose_dirichlet;
@@ -719,6 +748,163 @@ PetscErrorCode SubductionOblique_VelocityBC_Oblique(BCList bclist,DM dav,pTatinC
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode FVDABCMethod_ContinentalGeotherm(FVDA fv,
+                                             DACellFace face,
+                                             PetscInt nfaces,
+                                             const PetscReal coor[],
+                                             const PetscReal normal[],
+                                             const PetscInt cell[],
+                                             PetscReal time,
+                                             FVFluxType flux[],
+                                             PetscReal bcvalue[],
+                                             void *ctx)
+{
+  PetscInt    f;
+  PetscScalar value;
+  
+  for (f=0; f<nfaces; f++) {
+    PetscBool set = ContinentalGeotherm_1DTS((PetscScalar*)&coor[3*f],&value,ctx);
+    flux[f] = FVFLUX_DIRICHLET_CONSTRAINT;
+    bcvalue[f] = value;
+  }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode GetInitialContinentalGeotherm_FV(ModelSubductionObliqueCtx *data,
+                                                       PetscErrorCode (**func)(FVDA,
+                                                                               DACellFace,
+                                                                               PetscInt,
+                                                                               const PetscReal*,
+                                                                               const PetscReal*,
+                                                                               const PetscInt*,
+                                                                               PetscReal,FVFluxType*,PetscReal*,void*))
+{
+  PetscFunctionBegin;
+  
+  /* assign function to use */
+  *func = FVDABCMethod_ContinentalGeotherm;
+  
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode FVDABCMethod_OceanicGeotherm(FVDA fv,
+                                             DACellFace face,
+                                             PetscInt nfaces,
+                                             const PetscReal coor[],
+                                             const PetscReal normal[],
+                                             const PetscInt cell[],
+                                             PetscReal time,
+                                             FVFluxType flux[],
+                                             PetscReal bcvalue[],
+                                             void *ctx)
+{
+  PetscInt    f;
+  PetscScalar value;
+  
+  for (f=0; f<nfaces; f++) {
+    PetscBool set = OceanicGeotherm_1DTS((PetscScalar*)&coor[3*f],&value,ctx);
+    flux[f] = FVFLUX_DIRICHLET_CONSTRAINT;
+    bcvalue[f] = value;
+  }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode GetInitialOceanicGeotherm_FV(ModelSubductionObliqueCtx *data,
+                                                   PetscErrorCode (**func)(FVDA,
+                                                                           DACellFace,
+                                                                           PetscInt,
+                                                                           const PetscReal*,
+                                                                           const PetscReal*,
+                                                                           const PetscInt*,
+                                                                           PetscReal,FVFluxType*,PetscReal*,void*))
+{
+  PetscFunctionBegin;
+  
+  /* assign function to use */
+  *func = FVDABCMethod_OceanicGeotherm;
+  
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode InitialSteadyStateGeotherm_BCs(pTatinCtx c,ModelSubductionObliqueCtx *data)
+{
+  PhysCompEnergyFV energy;
+  PetscReal        val_T;
+  PetscErrorCode   ierr;
+  PetscErrorCode (*initial_continental_geotherm)(FVDA,DACellFace,PetscInt,const PetscReal*,const PetscReal*,const PetscInt*,PetscReal,FVFluxType*,PetscReal*,void*);
+  PetscErrorCode (*initial_oceanic_geotherm)(FVDA,DACellFace,PetscInt,const PetscReal*,const PetscReal*,const PetscInt*,PetscReal,FVFluxType*,PetscReal*,void*);
+
+  PetscFunctionBegin;
+  
+  ierr = pTatinGetContext_EnergyFV(c,&energy);CHKERRQ(ierr);
+  
+  /* Continental geotherm params */
+  data->qm     = 20.0e-3;
+  data->k      = 3.3;
+  data->h_prod = 1.5e-6;
+  data->y_prod = -40.0e3;
+  data->Tlitho = 1300.0;
+  
+  /* Oceanic geotherm params */
+  data->age = 100.0;
+  
+  /* Set from options */
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-heat_source_2",&data->h_prod,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-qm_init",      &data->qm,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-k_init",       &data->k,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-y_prod_init",  &data->y_prod,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-Tlitho_init",  &data->Tlitho,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-age_init",     &data->age,NULL);CHKERRQ(ierr);
+  
+  /* Scale values */
+  data->qm     = data->qm / (data->pressure_bar*data->velocity_bar);
+  data->k      = data->k / (data->pressure_bar * data->length_bar * data->length_bar / data->time_bar);
+  data->h_prod = data->h_prod / (data->pressure_bar / data->time_bar);
+  data->y_prod = data->y_prod / data->length_bar;
+  data->age    = data->age*3.14e7 / data->time_bar;
+  
+  /* Get the 1D geotherms to apply as BCs */
+  ierr = GetInitialContinentalGeotherm_FV(data,&initial_continental_geotherm);CHKERRQ(ierr);
+  ierr = GetInitialOceanicGeotherm_FV(data,&initial_oceanic_geotherm);CHKERRQ(ierr);
+  
+  val_T = data->Tbottom;
+  ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_S,PETSC_FALSE,0.0,FVDABCMethod_SetDirichlet,(void*)&val_T);CHKERRQ(ierr);
+  
+  val_T = data->Ttop;
+  ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_N,PETSC_FALSE,0.0,FVDABCMethod_SetDirichlet,(void*)&val_T);CHKERRQ(ierr);
+
+  ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_E,PETSC_FALSE,0.0,initial_continental_geotherm,data);CHKERRQ(ierr);
+  ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_W,PETSC_FALSE,0.0,initial_oceanic_geotherm,data);CHKERRQ(ierr);
+  ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_F,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
+  ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_B,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode SetTimeDependantEnergy_BCs(pTatinCtx c,ModelSubductionObliqueCtx *data)
+{
+  PhysCompEnergyFV energy;
+  PetscReal        val_T;
+  PetscErrorCode   ierr;
+  
+  PetscFunctionBegin;
+
+  ierr = pTatinGetContext_EnergyFV(c,&energy);CHKERRQ(ierr);
+
+  val_T = data->Tbottom;
+  ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_S,PETSC_FALSE,0.0,FVDABCMethod_SetDirichlet,(void*)&val_T);CHKERRQ(ierr);
+  
+  val_T = data->Ttop;
+  ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_N,PETSC_FALSE,0.0,FVDABCMethod_SetDirichlet,(void*)&val_T);CHKERRQ(ierr);
+
+  ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_E,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
+  ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_W,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
+  ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_F,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
+  ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_B,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode ModelApplyBoundaryCondition_SubductionOblique(pTatinCtx c,void *ctx)
 {
   ModelSubductionObliqueCtx *data;
@@ -744,24 +930,15 @@ PetscErrorCode ModelApplyBoundaryCondition_SubductionOblique(pTatinCtx c,void *c
      -  IMIN, IMAX below the lithosphere
      -  KMIN, KMAX on all face 
   */
+  
   /* Define boundary conditions for any other physics */
   ierr = pTatinContextValid_EnergyFV(c,&active_energy);CHKERRQ(ierr);
   if (active_energy) {
-    PhysCompEnergyFV energy;
-    PetscReal        val_T;
-
-    ierr = pTatinGetContext_EnergyFV(c,&energy);CHKERRQ(ierr);
-
-    val_T = data->Tbottom;
-    ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_S,PETSC_FALSE,0.0,FVDABCMethod_SetDirichlet,(void*)&val_T);CHKERRQ(ierr);
-    
-    val_T = data->Ttop;
-    ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_N,PETSC_FALSE,0.0,FVDABCMethod_SetDirichlet,(void*)&val_T);CHKERRQ(ierr);
-
-    ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_E,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
-    ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_W,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
-    ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_F,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
-    ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_B,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
+    if (data->subduction_temp_ic_steadystate) {
+      ierr = InitialSteadyStateGeotherm_BCs(c,data);CHKERRQ(ierr);
+    } else {
+      ierr = SetTimeDependantEnergy_BCs(c,data);CHKERRQ(ierr);
+    }
   }
   
   PetscFunctionReturn(0);
