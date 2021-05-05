@@ -345,18 +345,17 @@ PetscErrorCode pTatin3d_SteadyStateDiffusion_TFV_driver(int argc,char **argv)
   DM                multipys_pack,dav,dap;
   Vec               F,rhs;
   PetscBool         active_energy;
-  PetscBool         monitor_stages = PETSC_FALSE,write_icbc = PETSC_FALSE;
   DataBucket        materialpoint_db;
   PetscLogDouble    time[2];
+  PetscBool         view_ic = PETSC_FALSE;
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
 
   ierr = pTatin3dCreateContext(&user);CHKERRQ(ierr);
   ierr = pTatin3dSetFromOptions(user);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,NULL,"-monitor_stages",&monitor_stages,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,NULL,"-ptatin_driver_write_icbc",&write_icbc,NULL);CHKERRQ(ierr);
-
+  ierr = PetscOptionsGetBool(NULL,NULL,"-view_ic",&view_ic,NULL);CHKERRQ(ierr);
+  
   /* Register all models */
   ierr = pTatinModelRegisterAll();CHKERRQ(ierr);
   /* Load model, call an initialization routines */
@@ -439,7 +438,11 @@ PetscErrorCode pTatin3d_SteadyStateDiffusion_TFV_driver(int argc,char **argv)
 
   /* boundary conditions */
   ierr = pTatinModel_ApplyBoundaryCondition(model,user);CHKERRQ(ierr);
-
+  
+  /* initial condition */
+  //ierr = pTatinModel_ApplyInitialSolution(model,user,X);CHKERRQ(ierr);
+  PetscPrintf(PETSC_COMM_WORLD,"IGNORING pTatinModel_ApplyInitialSolution()\n");
+  
   if (active_energy) {
     ierr = pTatinPhysCompEnergyFV_Initialise(energyfv,energyfv->T);CHKERRQ(ierr);
   }
@@ -458,12 +461,12 @@ PetscErrorCode pTatin3d_SteadyStateDiffusion_TFV_driver(int argc,char **argv)
     } 
   }
 
-    /* output */
-    {
+  /* output */
+  if (view_ic) {
     PetscViewer viewer;
-    char        fname[256];
+    char        fname[PETSC_MAX_PATH_LEN];
     
-    sprintf(fname,"T_steady.vts");
+    PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/T_steady.vts",user->outputpath);
     ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
     ierr = PetscViewerSetType(viewer,PETSCVIEWERVTK);CHKERRQ(ierr);
     ierr = PetscViewerFileSetMode(viewer,FILE_MODE_WRITE);CHKERRQ(ierr);
@@ -471,7 +474,7 @@ PetscErrorCode pTatin3d_SteadyStateDiffusion_TFV_driver(int argc,char **argv)
     ierr = VecView(energyfv->T,viewer);CHKERRQ(ierr);
     ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
     
-    sprintf(fname,"rhs_steady.vts");
+    PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/rhs_steady.vts",user->outputpath);
     ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
     ierr = PetscViewerSetType(viewer,PETSCVIEWERVTK);CHKERRQ(ierr);
     ierr = PetscViewerFileSetMode(viewer,FILE_MODE_WRITE);CHKERRQ(ierr);
@@ -479,7 +482,20 @@ PetscErrorCode pTatin3d_SteadyStateDiffusion_TFV_driver(int argc,char **argv)
     ierr = VecView(rhs,viewer);CHKERRQ(ierr);
     ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
   }
-
+  
+  {
+    PetscViewer viewer;
+    char        fname[PETSC_MAX_PATH_LEN];
+    
+    PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/temperature_steady.pbvec",user->outputpath);
+    ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
+    ierr = PetscViewerSetType(viewer,PETSCVIEWERBINARY);CHKERRQ(ierr);
+    ierr = PetscViewerFileSetMode(viewer,FILE_MODE_WRITE);CHKERRQ(ierr);
+    ierr = PetscViewerFileSetName(viewer,fname);CHKERRQ(ierr);
+    ierr = VecView(energyfv->T,viewer);CHKERRQ(ierr);
+    ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
+  }
+  
   ierr = VecDestroy(&rhs);CHKERRQ(ierr);
   ierr = VecDestroy(&F);CHKERRQ(ierr);
   ierr = pTatin3dDestroyContext(&user);
