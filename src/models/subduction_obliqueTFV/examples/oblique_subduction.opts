@@ -30,6 +30,8 @@
 -model_subduction_oblique_BC
 -model_subduction_oblique_normV 3.0
 -model_subduction_oblique_angle_v 30.0
+-model_subduction_oblique_Ttop 0.0
+-model_subduction_oblique_Tbottom 1600.0
 #-shear_heating_factor 1
 ############### Geometry ###############
 #-model_subduction_oblique_alpha_trench 45.0
@@ -327,7 +329,7 @@
 -energyfv_ksp_monitor
 -energyfv_ksp_type gmres
 -energyfv_mg_coarse_pc_type redundant
--energyfv_mg_coarse_redundant_pc_factor_mat_solver_type mkl_pardiso
+#-energyfv_mg_coarse_redundant_pc_factor_mat_solver_type lu #mkl_pardiso
 -energyfv_mg_coarse_redundant_pc_type lu
 -energyfv_mg_levels_esteig_ksp_norm_type none
 -energyfv_mg_levels_esteig_ksp_type cg

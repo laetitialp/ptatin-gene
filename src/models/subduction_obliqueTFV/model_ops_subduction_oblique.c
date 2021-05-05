@@ -144,10 +144,11 @@ PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
   
   /* Velocity */
   data->normV = 1.0;
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-normV",&data->normV,NULL);CHKERRQ(ierr);  
   /* Angle of the velocity vector with the face on which it is applied */
   data->angle_v = 30.0;
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-angle_v",&data->angle_v,NULL);CHKERRQ(ierr);  
+  
+  data->Ttop = 0.0;
+  data->Tbottom = 1600.0;
   
   nn = 3;
   ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME_SO,"-y_continent",data->y_continent,&nn,&found);CHKERRQ(ierr);
@@ -163,10 +164,13 @@ PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
       SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 4 values for -y_ocean. Found %d",nn);
     }
   }
-  
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-normV",       &data->normV,NULL);CHKERRQ(ierr);  
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-angle_v",     &data->angle_v,NULL);CHKERRQ(ierr);  
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-alpha_trench",&data->alpha_subd,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-theta_subd",  &data->theta_subd,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-wz_width",    &data->wz,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-Ttop",        &data->Ttop,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-Tbottom",     &data->Tbottom,NULL);CHKERRQ(ierr);
   
   PetscPrintf(PETSC_COMM_WORLD,"*************** Layering ***************\n",NULL);
   PetscPrintf(PETSC_COMM_WORLD,"CONTINENT: Upper Crust Depth %+1.4e [m] \n", data->y_continent[0] );
@@ -720,6 +724,7 @@ PetscErrorCode ModelApplyBoundaryCondition_SubductionOblique(pTatinCtx c,void *c
   ModelSubductionObliqueCtx *data;
   PhysCompStokes   stokes;
   DM               stokes_pack,dav,dap;
+  PetscBool        active_energy;
   PetscErrorCode   ierr;
 
   PetscFunctionBegin;
@@ -740,7 +745,25 @@ PetscErrorCode ModelApplyBoundaryCondition_SubductionOblique(pTatinCtx c,void *c
      -  KMIN, KMAX on all face 
   */
   /* Define boundary conditions for any other physics */
+  ierr = pTatinContextValid_EnergyFV(c,&active_energy);CHKERRQ(ierr);
+  if (active_energy) {
+    PhysCompEnergyFV energy;
+    PetscReal        val_T;
 
+    ierr = pTatinGetContext_EnergyFV(c,&energy);CHKERRQ(ierr);
+
+    val_T = data->Tbottom;
+    ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_S,PETSC_FALSE,0.0,FVDABCMethod_SetDirichlet,(void*)&val_T);CHKERRQ(ierr);
+    
+    val_T = data->Ttop;
+    ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_N,PETSC_FALSE,0.0,FVDABCMethod_SetDirichlet,(void*)&val_T);CHKERRQ(ierr);
+
+    ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_E,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
+    ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_W,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
+    ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_F,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
+    ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_B,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
+  }
+  
   PetscFunctionReturn(0);
 }
 

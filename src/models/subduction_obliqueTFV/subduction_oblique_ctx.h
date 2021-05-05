@@ -37,6 +37,7 @@ typedef struct {
   PetscReal y_continent[3], y_ocean[4];
   PetscReal y0, alpha_subd, theta_subd, wz;
   PetscReal normV, angle_v;
+  PetscReal Ttop,Tbottom;
   PetscBool oblique_IC, oblique_BC, output_markers;
   PetscInt  n_phases;
 } ModelSubductionObliqueCtx;
