@@ -35,45 +35,6 @@
 #include <fvda.h>
 #include <ptatin3d_energyfv_impl.h>
 
-PetscErrorCode EvalRHS_HeatProd(FVDA fv,Vec F)
-{
-  PetscErrorCode  ierr;
-  PetscReal       dV;
-  const PetscReal *H;
-  PetscReal       cell_coor[3 * DACELL3D_Q1_SIZE];
-  Vec             coorl;
-  const PetscReal *_geom_coor;
-  PetscReal       *_F;
-  PetscInt        c,dm_nel,dm_nen;
-  const PetscInt  *dm_element,*element;
-  
-  PetscFunctionBegin;
-  
-  ierr = VecZeroEntries(F);CHKERRQ(ierr);
-  ierr = VecGetArray(F,&_F);CHKERRQ(ierr);
-  
-  ierr = DMDAGetElements(fv->dm_geometry,&dm_nel,&dm_nen,&dm_element);CHKERRQ(ierr);
-  ierr = DMCreateLocalVector(fv->dm_geometry,&coorl);CHKERRQ(ierr);
-  ierr = DMGlobalToLocal(fv->dm_geometry,fv->vertex_coor_geometry,INSERT_VALUES,coorl);CHKERRQ(ierr);
-  ierr = VecGetArrayRead(coorl,&_geom_coor);CHKERRQ(ierr);
-  
-  ierr = FVDAGetCellPropertyByNameArrayRead(fv,"H",&H);CHKERRQ(ierr);
-  
-  for (c=0; c<fv->ncells; c++) {
-    element = (const PetscInt*)&dm_element[DACELL3D_Q1_SIZE * c];
-    
-    ierr = DACellGeometry3d_GetCoordinates(element,_geom_coor,cell_coor);CHKERRQ(ierr);
-    _EvaluateCellVolume3d(cell_coor,&dV);
-    
-    _F[c] = -H[c] * dV;
-  }
-  ierr = VecRestoreArray(F,&_F);CHKERRQ(ierr);
-  ierr = VecRestoreArrayRead(coorl,&_geom_coor);CHKERRQ(ierr);
-  ierr = VecDestroy(&coorl);CHKERRQ(ierr);
-  
-  PetscFunctionReturn(0);
-}
-
 PetscErrorCode eval_F_diffusion_SteadyState(SNES snes,Vec X,Vec F,void *data)
 {
   PetscErrorCode    ierr;
