@@ -245,6 +245,7 @@ PetscErrorCode PhysCompEnergyFVSetUp_SteadyState(PhysCompEnergyFV energy,pTatinC
   ierr = PetscObjectSetName((PetscObject)energy->T,"T");CHKERRQ(ierr);
   ierr = DMCreateGlobalVector(energy->fv->dm_fv,&energy->Told);CHKERRQ(ierr);
   ierr = DMCreateGlobalVector(energy->fv->dm_fv,&energy->F);CHKERRQ(ierr);
+  ierr = DMCreateGlobalVector(energy->fv->dm_fv,&energy->G);CHKERRQ(ierr);
   /*ierr = DMCreateMatrix(energy->fv->dm_fv,&energy->J);CHKERRQ(ierr);*/
   ierr = FVDACreateMatrix(energy->fv,DMDA_STENCIL_STAR,&energy->J);CHKERRQ(ierr);
   {
@@ -309,6 +310,8 @@ PetscErrorCode pTatin3d_SteadyStateDiffusion_TFV_driver(int argc,char **argv)
   DataBucket        materialpoint_db;
   PetscLogDouble    time[2];
   PetscBool         view_ic = PETSC_FALSE;
+  PetscViewer       viewer;
+  char              fname[PETSC_MAX_PATH_LEN];
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
@@ -392,8 +395,20 @@ PetscErrorCode pTatin3d_SteadyStateDiffusion_TFV_driver(int argc,char **argv)
     
     ierr = FVDACellPropertyProjectToFace_HarmonicMean(energyfv->fv,"k","k");CHKERRQ(ierr);
     
-    /* Evaluate \int_V -H dV */
-    ierr = EvalRHS_HeatProd(energyfv->fv,rhs);CHKERRQ(ierr);
+    /* Evaluate \int_V H dV */
+    ierr = EvalRHS_HeatProd(energyfv->fv,energyfv->G);CHKERRQ(ierr);
+    
+    if (view_ic) {
+      PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/rhs_steady.vts",user->outputpath);
+      ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
+      ierr = PetscViewerSetType(viewer,PETSCVIEWERVTK);CHKERRQ(ierr);
+      ierr = PetscViewerFileSetMode(viewer,FILE_MODE_WRITE);CHKERRQ(ierr);
+      ierr = PetscViewerFileSetName(viewer,fname);CHKERRQ(ierr);
+      ierr = VecView(energyfv->G,viewer);CHKERRQ(ierr);
+      ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
+    }
+    /* Scale by -1.0 */
+    ierr = VecScale(energyfv->G,-1.0);CHKERRQ(ierr);
   }
   DataBucketView(PetscObjectComm((PetscObject)multipys_pack), materialpoint_db,"MaterialPoints StokesCoefficients",DATABUCKET_VIEW_STDOUT);
 
@@ -424,9 +439,7 @@ PetscErrorCode pTatin3d_SteadyStateDiffusion_TFV_driver(int argc,char **argv)
 
   /* output */
   if (view_ic) {
-    PetscViewer viewer;
-    char        fname[PETSC_MAX_PATH_LEN];
-    
+
     PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/T_steady.vts",user->outputpath);
     ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
     ierr = PetscViewerSetType(viewer,PETSCVIEWERVTK);CHKERRQ(ierr);
@@ -435,19 +448,9 @@ PetscErrorCode pTatin3d_SteadyStateDiffusion_TFV_driver(int argc,char **argv)
     ierr = VecView(energyfv->T,viewer);CHKERRQ(ierr);
     ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
     
-    PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/rhs_steady.vts",user->outputpath);
-    ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
-    ierr = PetscViewerSetType(viewer,PETSCVIEWERVTK);CHKERRQ(ierr);
-    ierr = PetscViewerFileSetMode(viewer,FILE_MODE_WRITE);CHKERRQ(ierr);
-    ierr = PetscViewerFileSetName(viewer,fname);CHKERRQ(ierr);
-    ierr = VecView(rhs,viewer);CHKERRQ(ierr);
-    ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
   }
   
   {
-    PetscViewer viewer;
-    char        fname[PETSC_MAX_PATH_LEN];
-    
     PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/temperature_steady.pbvec",user->outputpath);
     ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
     ierr = PetscViewerSetType(viewer,PETSCVIEWERBINARY);CHKERRQ(ierr);

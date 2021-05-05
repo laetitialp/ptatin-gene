@@ -1339,7 +1339,8 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
       ierr = FVDACellPropertyProjectToFace_HarmonicMean(energyfv->fv,"k","k");CHKERRQ(ierr);
       
       ierr = EvalRHS_HeatProd(energyfv->fv,energyfv->G);CHKERRQ(ierr);
-      ierr = VecScale(energyfv->G,energyfv->dt);CHKERRQ(ierr);
+      /* Scale by dt, note the minus sign */
+      ierr = VecScale(energyfv->G,-energyfv->dt);CHKERRQ(ierr);
     }
 
     // [FV EXTENSION] (1) Interpolate Q2 velocity onto vertices of FV geometry mesh, (2) interpolate the nodal velocity onto the cell faces

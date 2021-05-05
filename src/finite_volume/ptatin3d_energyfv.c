@@ -1621,7 +1621,7 @@ PetscErrorCode EvalRHS_HeatProd(FVDA fv,Vec F)
     ierr = DACellGeometry3d_GetCoordinates(element,_geom_coor,cell_coor);CHKERRQ(ierr);
     _EvaluateCellVolume3d(cell_coor,&dV);
     
-    _F[c] = -H[c] * dV;
+    _F[c] = H[c] * dV;
   }
   ierr = VecRestoreArray(F,&_F);CHKERRQ(ierr);
   ierr = VecRestoreArrayRead(coorl,&_geom_coor);CHKERRQ(ierr);
