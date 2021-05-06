@@ -648,11 +648,87 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_SubductionOblique(pTatinCtx c,v
 
 PetscErrorCode ModelApplyInitialSolution_SubductionOblique(pTatinCtx c,Vec X,void *ctx)
 {
-  /* ModelSubductionObliqueCtx *data; */
-
+  ModelSubductionObliqueCtx                    *data;
+  DM                                           stokes_pack,dau,dap;
+  Vec                                          velocity,pressure;
+  PetscReal                                    vx,vz,vxl,vxr,vzl,vzr;
+  DMDAVecTraverse3d_HydrostaticPressureCalcCtx HPctx;
+  DMDAVecTraverse3d_InterpCtx                  IntpCtx;
+  PetscReal                                    MeshMin[3],MeshMax[3],domain_height;
+  PetscBool                                    active_energy;
+  PetscErrorCode                               ierr;
+  
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
-  /* data = (ModelSubductionObliqueCtx*)ctx; */
+  data = (ModelSubductionObliqueCtx*)ctx;
+  
+  stokes_pack = c->stokes_ctx->stokes_pack;
+
+  ierr = DMCompositeGetEntries(stokes_pack,&dau,&dap);CHKERRQ(ierr);
+  ierr = DMCompositeGetAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
+  
+  /* Velocity IC */
+  vz = data->normV*PetscCosReal(data->angle_v);
+  vx = PetscSqrtReal(data->normV*data->normV - vz*vz);
+
+  /* Left face */  
+  vxl = vx;
+  vzl = vz;
+  /* Right face */
+  vxr = -vx;
+  vzr = -vz;
+  
+  ierr = VecZeroEntries(velocity);CHKERRQ(ierr);
+
+  ierr = DMDAVecTraverse3d_InterpCtxSetUp_X(&IntpCtx,(vxr-vxl)/(data->Lx-data->Ox),vxl,0.0);CHKERRQ(ierr);
+  ierr = DMDAVecTraverse3d(dau,velocity,0,DMDAVecTraverse3d_Interp,(void*)&IntpCtx);CHKERRQ(ierr);
+  ierr = DMDAVecTraverse3d_InterpCtxSetUp_Y(&IntpCtx,0.0,0.0,0.0);CHKERRQ(ierr);
+  ierr = DMDAVecTraverse3d(dau,velocity,1,DMDAVecTraverse3d_Interp,(void*)&IntpCtx);CHKERRQ(ierr);
+  ierr = DMDAVecTraverse3d_InterpCtxSetUp_Z(&IntpCtx,(vzl-vzr)/(data->Lz-data->Oz),vzl,0.0);CHKERRQ(ierr);
+  ierr = DMDAVecTraverse3d(dau,velocity,2,DMDAVecTraverse3d_Interp,(void*)&IntpCtx);CHKERRQ(ierr);
+  
+  /* Pressure IC */
+  ierr = VecZeroEntries(pressure);CHKERRQ(ierr);
+
+  ierr = DMGetBoundingBox(dau,MeshMin,MeshMax);CHKERRQ(ierr);
+  domain_height = MeshMax[1] - MeshMin[1];
+
+  HPctx.surface_pressure = 0.0;
+  HPctx.ref_height = domain_height;
+  HPctx.ref_N      = c->stokes_ctx->my-1;
+  HPctx.grav       = 9.8 / data->acceleration_bar;
+  HPctx.rho        = 3300.0 / data->density_bar;
+
+  ierr = DMDAVecTraverseIJK(dap,pressure,0,DMDAVecTraverseIJK_HydroStaticPressure_v2,     (void*)&HPctx);CHKERRQ(ierr);
+  ierr = DMDAVecTraverseIJK(dap,pressure,2,DMDAVecTraverseIJK_HydroStaticPressure_dpdy_v2,(void*)&HPctx);CHKERRQ(ierr);
+  ierr = DMCompositeRestoreAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
+
+  /* Temperature IC */
+  ierr = pTatinContextValid_EnergyFV(c,&active_energy);CHKERRQ(ierr);
+  if (active_energy) {
+    PhysCompEnergyFV energy;
+    PetscBool        flg = PETSC_FALSE,subduction_temperature_ic_from_file = PETSC_FALSE;
+    char             fname[PETSC_MAX_PATH_LEN],temperature_file[PETSC_MAX_PATH_LEN];
+    PetscViewer      viewer;
+    
+    ierr = pTatinGetContext_EnergyFV(c,&energy);CHKERRQ(ierr);
+    
+    ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-temperature_ic_from_file",&subduction_temperature_ic_from_file,NULL);CHKERRQ(ierr);
+    if (subduction_temperature_ic_from_file) {
+      /* Check if a file is provided */
+      ierr = PetscOptionsGetString(NULL,MODEL_NAME_SO,"-temperature_file",temperature_file,PETSC_MAX_PATH_LEN-1,&flg);CHKERRQ(ierr);
+      if (flg) {
+        ierr = PetscViewerBinaryOpen(PETSC_COMM_WORLD,temperature_file,FILE_MODE_READ,&viewer);CHKERRQ(ierr);
+      } else {
+        PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/temperature_steady.pbvec",c->outputpath);
+        ierr = PetscViewerBinaryOpen(PETSC_COMM_WORLD,fname,FILE_MODE_READ,&viewer);CHKERRQ(ierr);
+      }
+      ierr = VecLoad(energy->T,viewer);CHKERRQ(ierr);
+      ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
+    } else {
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Providing a temperature file for initial state is required\n");
+    }
+  }
 
   PetscFunctionReturn(0);
 }
@@ -1025,7 +1101,7 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_SubductionOblique(pTatinCtx c
 
   PetscFunctionReturn(0);
 }
-
+/* Currently not call in the ModelRegister function*/
 PetscErrorCode ModelApplyUpdateMeshGeometry_SubductionOblique(pTatinCtx c,Vec X,void *ctx)
 {
   PhysCompStokes  stokes;
@@ -1201,7 +1277,7 @@ PetscErrorCode pTatinModelRegister_SubductionOblique(void)
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_BC,              (void (*)(void))ModelApplyBoundaryCondition_SubductionOblique);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_BCMG,            (void (*)(void))ModelApplyBoundaryConditionMG_SubductionOblique);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_MAT_BC,          (void (*)(void))ModelApplyMaterialBoundaryCondition_SubductionOblique);CHKERRQ(ierr);
-  ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_UPDATE_MESH_GEOM,(void (*)(void))ModelApplyUpdateMeshGeometry_SubductionOblique);CHKERRQ(ierr);
+  ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_UPDATE_MESH_GEOM,(void (*)(void))NULL);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_OUTPUT,                (void (*)(void))ModelOutput_SubductionOblique);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_DESTROY,               (void (*)(void))ModelDestroy_SubductionOblique);CHKERRQ(ierr);
 
