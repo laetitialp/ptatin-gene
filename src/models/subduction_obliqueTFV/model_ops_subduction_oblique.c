@@ -183,11 +183,11 @@ PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
   data->oblique_IC = PETSC_FALSE;
   data->oblique_BC = PETSC_FALSE;
   data->output_markers = PETSC_FALSE;
-  data->subduction_temp_ic_steadystate = PETSC_FALSE;
+  data->subduction_temp_ic_steadystate_analytics = PETSC_FALSE;
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-IC",&data->oblique_IC,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-BC",&data->oblique_BC,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-output_markers",&data->output_markers,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-ic_steady_state",&data->subduction_temp_ic_steadystate,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-ic_steady_state_analytics",&data->subduction_temp_ic_steadystate_analytics,NULL);CHKERRQ(ierr);
   
   /* Material constants */
   ierr = pTatinGetMaterialConstants(c,&materialconstants);CHKERRQ(ierr);
@@ -668,7 +668,7 @@ PetscBool ContinentalGeotherm_1DTS(PetscScalar coord[],PetscScalar *value,void *
   *value = data->Ttop + data->qm*(-coord[1])/data->k + data->h_prod*pow(data->y_prod,2)/data->k * (1.0-exp(-coord[1]/data->y_prod));
 
   if (*value >= data->Tlitho) {
-    *value = -((data->Tbottom-data->Tlitho)/(data->Ox-data->y_continent[2])) * (data->y_continent[2]-coord[1]) + data->Tlitho;
+    *value = -((data->Tbottom-data->Tlitho)/(data->Oy-data->y_continent[2])) * (data->y_continent[2]-coord[1]) + data->Tlitho;
   }
   
   return impose_dirichlet;
@@ -681,7 +681,7 @@ PetscBool OceanicGeotherm_1DTS(PetscScalar coord[],PetscScalar *value,void *ctx)
   
   data = (ModelSubductionObliqueCtx*)ctx;
   
-  *value = (data->Ttop-data->Tbottom)*erfc(coord[1]/(2.0*PetscSqrtReal(data->age)))+data->Tbottom;
+  *value = (data->Ttop-data->Tbottom)*erfc(-coord[1]/(2.0*PetscSqrtReal(data->age)))+data->Tbottom;
   
   return impose_dirichlet;
 }
@@ -828,7 +828,7 @@ static PetscErrorCode GetInitialOceanicGeotherm_FV(ModelSubductionObliqueCtx *da
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode InitialSteadyStateGeotherm_BCs(pTatinCtx c,ModelSubductionObliqueCtx *data)
+static PetscErrorCode InitialSteadyStateGeotherm_BCFromAnalytics(pTatinCtx c,ModelSubductionObliqueCtx *data)
 {
   PhysCompEnergyFV energy;
   PetscReal        val_T;
@@ -863,7 +863,7 @@ static PetscErrorCode InitialSteadyStateGeotherm_BCs(pTatinCtx c,ModelSubduction
   data->k      = data->k / (data->pressure_bar * data->length_bar * data->length_bar / data->time_bar);
   data->h_prod = data->h_prod / (data->pressure_bar / data->time_bar);
   data->y_prod = data->y_prod / data->length_bar;
-  data->age    = data->age*3.14e7 / data->time_bar;
+  data->age    = data->age*3.14e13 / data->time_bar;
   
   /* Get the 1D geotherms to apply as BCs */
   ierr = GetInitialContinentalGeotherm_FV(data,&initial_continental_geotherm);CHKERRQ(ierr);
@@ -936,8 +936,8 @@ PetscErrorCode ModelApplyBoundaryCondition_SubductionOblique(pTatinCtx c,void *c
   /* Define boundary conditions for any other physics */
   ierr = pTatinContextValid_EnergyFV(c,&active_energy);CHKERRQ(ierr);
   if (active_energy) {
-    if (data->subduction_temp_ic_steadystate) {
-      ierr = InitialSteadyStateGeotherm_BCs(c,data);CHKERRQ(ierr);
+    if (data->subduction_temp_ic_steadystate_analytics) {
+      ierr = InitialSteadyStateGeotherm_BCFromAnalytics(c,data);CHKERRQ(ierr);
     } else {
       ierr = SetTimeDependantEnergy_BCs(c,data);CHKERRQ(ierr);
     }
