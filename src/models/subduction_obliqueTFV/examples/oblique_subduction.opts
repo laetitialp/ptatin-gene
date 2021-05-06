@@ -1,6 +1,6 @@
 ##  Using driver: 
 ## ===============================================================
--non_linear_driver_v1
+-nonlinear_driver_v1
 ### Model ###
 -ptatin_model subduction_oblique # Used model
 -log_summary
