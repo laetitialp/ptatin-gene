@@ -1,6 +1,6 @@
 ##  Using driver: 
 ## ===============================================================
-
+-non_linear_driver_v1
 ### Model ###
 -ptatin_model subduction_oblique # Used model
 -log_summary
@@ -8,14 +8,15 @@
 -checkpoint_every_ncpumins 720 
 -model_subduction_oblique_output_markers
 -output_path SUBDUCTION
+-model_subduction_oblique_temperature_ic_from_file
 ########## BASIC NUMERICS ##############
--mx 128 # Number of elements along x
--my 128 # Number of elements along y
--mz 64 # Number of elements along z
--nsteps 600000001 # Max number of steps
+-mx 64 # Number of elements along x
+-my 64 # Number of elements along y
+-mz 32 # Number of elements along z
+-nsteps 1 # Max number of steps
 -dt_max 1e-3 # Max timestep allowed
 #-dt_min 1e-8
--output_frequency 100
+-output_frequency 1
 -dt_max_surface_displacement 5.0e-4
 -use_quasi_newton_coordinate_update
 ########### Box Geometry ################
@@ -105,7 +106,7 @@
 -model_subduction_oblique_alpha_2 3.0e-5
 -model_subduction_oblique_beta_2 0.0
 -model_subduction_oblique_rho_2 2700.0
--model_subduction_oblique_heat_source_2 1.0e-6
+-model_subduction_oblique_heat_source_2 1.5e-6
 -model_subduction_oblique_conductivity_2 2.7
 #### Continental lower crust phase number 3 ####
 #### Anorthite Rybacki & Dresen 2000 ####
@@ -126,7 +127,7 @@
 -model_subduction_oblique_alpha_3 3.0e-5
 -model_subduction_oblique_beta_3 1.0e-11
 -model_subduction_oblique_rho_3 2850.0
--model_subduction_oblique_heat_source_3 0.0
+-model_subduction_oblique_heat_source_3 0.3e-6
 -model_subduction_oblique_conductivity_3 2.85
 #### Oceanic lithosphere mantle phase number 4 ####
 #### Dry peridotite Ranalli 1997 ####
