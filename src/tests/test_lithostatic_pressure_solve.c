@@ -50,6 +50,7 @@
 PetscErrorCode test_lithostatic_pressure_solve(void)
 {
   PetscBool      LP_found = PETSC_FALSE;
+  PetscInt       face_n;
   pTatinCtx      pctx = NULL;
   PDESolveLithoP LP = NULL;
   Vec            X = NULL, F = NULL;
@@ -123,7 +124,9 @@ PetscErrorCode test_lithostatic_pressure_solve(void)
   ierr = SNESSolve_LithoPressure(LP,J,X,F,pctx);CHKERRQ(ierr);
   
   /* Apply the computed lithostatic pressure to the stokes surface quadrature points on the face HEX_FACE_Neta (bottom) */
-  ierr = ApplyLithostaticPressure_SurfQuadratureStokes_FullFace(pctx->stokes_ctx,LP->da,X,HEX_FACE_Neta);CHKERRQ(ierr);
+  HexElementFace face_location[] = {HEX_FACE_Neta};
+  face_n = 1;
+  ierr = ApplyLithostaticPressure_SurfQuadratureStokes_FullFace(pctx->stokes_ctx,LP->da,X,face_location,face_n);CHKERRQ(ierr);
   
   {
     PetscViewer viewer;
