@@ -9,9 +9,9 @@
 -model_subduction_oblique_output_markers
 -output_path SUBDUCTION
 ########## BASIC NUMERICS ##############
--mx 64 # Number of elements along x
--my 64 # Number of elements along y
--mz 32 # Number of elements along z
+-mx 8 # Number of elements along x
+-my 8 # Number of elements along y
+-mz 8 # Number of elements along z
 -nsteps 600000001 # Max number of steps
 -dt_max 1e-3 # Max timestep allowed
 #-dt_min 1e-8

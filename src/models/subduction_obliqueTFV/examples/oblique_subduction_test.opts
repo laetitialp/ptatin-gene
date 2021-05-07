@@ -10,10 +10,10 @@
 -output_path SUBDUCTION
 -model_subduction_oblique_temperature_ic_from_file
 ########## BASIC NUMERICS ##############
--mx 64 # Number of elements along x
--my 64 # Number of elements along y
--mz 32 # Number of elements along z
--nsteps 1 # Max number of steps
+-mx 8 # Number of elements along x
+-my 8 # Number of elements along y
+-mz 8 # Number of elements along z
+-nsteps 3 # Max number of steps
 -dt_max 1e-3 # Max timestep allowed
 #-dt_min 1e-8
 -output_frequency 1
@@ -271,7 +271,7 @@
 -energyfv_ksp_type gmres
 -energyfv_mg_coarse_pc_type redundant
 #-energyfv_mg_coarse_redundant_pc_factor_mat_solver_type lu #mkl_pardiso
--energyfv_mg_coarse_redundant_pc_type lu
+#-energyfv_mg_coarse_redundant_pc_type lu
 -energyfv_mg_levels_esteig_ksp_norm_type none
 -energyfv_mg_levels_esteig_ksp_type cg
 -energyfv_mg_levels_ksp_chebyshev_esteig 0,0.01,0,1.1
@@ -290,8 +290,8 @@
 -fvpp_ksp_rtol 1.0e-10
 -fvpp_ksp_type cg
 -fvpp_mg_coarse_pc_type redundant
--fvpp_mg_coarse_redundant_pc_factor_mat_solver_type lu
--fvpp_mg_coarse_redundant_pc_type lu
+#-fvpp_mg_coarse_redundant_pc_factor_mat_solver_type lu
+#-fvpp_mg_coarse_redundant_pc_type lu
 -fvpp_mg_levels_esteig_ksp_norm_type none
 -fvpp_mg_levels_esteig_ksp_type cg
 -fvpp_mg_levels_ksp_chebyshev_esteig 0,0.01,0,1.1
