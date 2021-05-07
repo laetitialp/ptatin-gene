@@ -164,7 +164,7 @@ PetscErrorCode PhysCompEnergyFVSetUp(PhysCompEnergyFV energy,pTatinCtx pctx)
   ierr = FVDARegisterFaceProperty(energy->fv,"xDot.n",1);CHKERRQ(ierr);
   ierr = FVDARegisterFaceProperty(energy->fv,"k",1);CHKERRQ(ierr);
   
-  ierr = FVDARegisterCellProperty(energy->fv,"rho*cp",1);CHKERRQ(ierr);
+  ierr = FVDARegisterCellProperty(energy->fv,"rho.cp",1);CHKERRQ(ierr);
   ierr = FVDARegisterCellProperty(energy->fv,"k",1);CHKERRQ(ierr);
   ierr = FVDARegisterCellProperty(energy->fv,"H",1);CHKERRQ(ierr);
   
