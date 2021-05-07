@@ -861,17 +861,9 @@ PetscErrorCode ModelApplyTractionFromLithoPressure(pTatinCtx user)
   
   HexElementFace face_list[] = {HEX_FACE_Neta, HEX_FACE_Pxi, HEX_FACE_Nxi, HEX_FACE_Pzeta, HEX_FACE_Nzeta};
   face_list_n = 5;
-  
+  /* Apply the lithostatic pressure on surface quadrature points */
   ierr = ApplyLithostaticPressure_SurfQuadratureStokes_FullFace(user->stokes_ctx,LP->da,LP->X,face_list,face_list_n);CHKERRQ(ierr);
-  
-  // Lithostatic Pressure on the face JMIN
-  /*
-  ierr = ApplyLithostaticPressure_SurfQuadratureStokes_FullFace(user->stokes_ctx,LP->da,LP->X,HEX_FACE_Neta);CHKERRQ(ierr);
-  ierr = ApplyLithostaticPressure_SurfQuadratureStokes_FullFace(user->stokes_ctx,LP->da,LP->X,HEX_FACE_Pxi);CHKERRQ(ierr);
-  ierr = ApplyLithostaticPressure_SurfQuadratureStokes_FullFace(user->stokes_ctx,LP->da,LP->X,HEX_FACE_Nxi);CHKERRQ(ierr);
-  ierr = ApplyLithostaticPressure_SurfQuadratureStokes_FullFace(user->stokes_ctx,LP->da,LP->X,HEX_FACE_Pzeta);CHKERRQ(ierr);
-  ierr = ApplyLithostaticPressure_SurfQuadratureStokes_FullFace(user->stokes_ctx,LP->da,LP->X,HEX_FACE_Nzeta);CHKERRQ(ierr);
-  */
+
   ierr = MatDestroy(&J);CHKERRQ(ierr);
   ierr = PhysCompDestroy_LithoP(&LP);CHKERRQ(ierr);
   user->litho_p_ctx = NULL;
