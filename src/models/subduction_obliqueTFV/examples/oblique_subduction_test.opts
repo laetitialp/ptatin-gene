@@ -301,3 +301,16 @@
 -fvpp_mg_levels_pc_type jacobi
 -fvpp_operator_fvspace false
 -fvpp_pc_type gamg
+### Solver for lithostatic pressure
+-LP_snes_atol 1.0e-5
+-LP_snes_rtol 1.0e-6
+-LP_snes_max_it 10
+-LP_ksp_atol 1.0e-15
+#-LP_snes_view
+-LP_ksp_monitor
+-LP_ksp_rtol 1.0e-12
+-LP_ksp_type fgmres
+-LP_snes_mf_operator
+-LP_pc_type lu #lu not parallel
+-LP_ksp_max_it 150
+-LP_snes_type ksponly
