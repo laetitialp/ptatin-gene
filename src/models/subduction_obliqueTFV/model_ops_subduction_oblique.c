@@ -1232,6 +1232,8 @@ PetscErrorCode ModelOutput_SubductionOblique(pTatinCtx c,Vec X,const char prefix
     }
   }
   
+  been_here = PETSC_TRUE;
+  
   PetscFunctionReturn(0);
 }
 
