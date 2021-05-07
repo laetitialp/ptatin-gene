@@ -54,6 +54,7 @@ extern PetscErrorCode pTatinModelRegister_SubductionOblique(void);
 extern PetscErrorCode pTatinModelCreate_StaticBox(pTatinModel);
 extern PetscErrorCode pTatinModelCreate_StaticBoxTM(pTatinModel);
 extern PetscErrorCode pTatinModelCreate_AnlVV(pTatinModel m);
+extern PetscErrorCode pTatinModelRegister_Steady_TFV(void);
 
 PetscErrorCode pTatinModelRegisterAll(void)
 {
@@ -83,6 +84,7 @@ PetscErrorCode pTatinModelRegisterAll(void)
   ierr = pTatinModelRegister_PAS();CHKERRQ(ierr);
   ierr = pTatinModelRegister_PD();CHKERRQ(ierr);
   ierr = pTatinModelRegister_SubductionOblique();CHKERRQ(ierr);
+  ierr = pTatinModelRegister_Steady_TFV();CHKERRQ(ierr);
 
   ierr = pTatinModelDynamicRegister("static_box",pTatinModelCreate_StaticBox);CHKERRQ(ierr);
   ierr = pTatinModelDynamicRegister("static_box_thermomech",pTatinModelCreate_StaticBoxTM);CHKERRQ(ierr);
