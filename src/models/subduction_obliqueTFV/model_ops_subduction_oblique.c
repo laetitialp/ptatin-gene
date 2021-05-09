@@ -963,6 +963,7 @@ static PetscErrorCode SetTimeDependantEnergy_BCs(pTatinCtx c,ModelSubductionObli
 {
   PhysCompEnergyFV energy;
   PetscReal        val_T;
+  PetscInt         l;
   PetscErrorCode   ierr;
   
   PetscFunctionBegin;
@@ -980,6 +981,12 @@ static PetscErrorCode SetTimeDependantEnergy_BCs(pTatinCtx c,ModelSubductionObli
   ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_F,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
   ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_B,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
 
+  /* Iterate through all boundary faces, if there is inflow redefine the bc value and bc flux method */
+  const DACellFace flist[] = { DACELL_FACE_W, DACELL_FACE_E, DACELL_FACE_B, DACELL_FACE_F };
+  for (l=0; l<sizeof(flist)/sizeof(DACellFace); l++) {
+    ierr = FVSetDirichletFromInflow(energy->fv,energy->T,flist[l]);CHKERRQ(ierr);
+  }
+  
   PetscFunctionReturn(0);
 }
 
@@ -1071,8 +1078,8 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_SubductionOblique(pTatinCtx c
 
     /* traverse */
     /* [0,1/east,west] ; [2,3/north,south] ; [4,5/front,back] */
-    Nxp[0]  = 1;
-    Nxp[1]  = 1;
+    Nxp[0]  = 10;
+    Nxp[1]  = 10;
     perturb = 0.1;
 
     /* reset size */
