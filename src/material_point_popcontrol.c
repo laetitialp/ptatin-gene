@@ -1943,3 +1943,130 @@ PetscErrorCode MPPCSortedCtxGetPointByCell(DataBucket db,PetscInt cell_idx,Petsc
 
   PetscFunctionReturn(0);
 }
+
+
+#include "finite_volume/kdtree.h"
+
+PetscErrorCode MaterialPointRegionAssignment_KDTree(DataBucket db,PetscBool clone_nearest)
+{
+  PetscLogDouble  cumtime[] = {0,0,0,0},st0,st1;
+  KDTree          kdtree;
+  kd_node         node;
+  PetscErrorCode  ierr;
+  int             p,npoints,npoints_assigned = 0;
+  DataField       PField;
+  MPntStd         *marker_p;
+  
+  
+  DataBucketGetSizes(db,&npoints,NULL,NULL);
+  DataBucketGetDataFieldByName(db,MPntStd_classname,&PField);
+  DataFieldGetAccess(PField);
+  for (p=0; p<npoints; p++) {
+    DataFieldAccessPoint(PField,p,(void**)&marker_p);
+    if (marker_p->phase != MATERIAL_POINT_PHASE_UNASSIGNED) {
+      npoints_assigned++;
+    }
+  }
+  DataFieldRestoreAccess(PField);
+  
+  
+  KDTreeCreate(3,&kdtree);
+
+  /* set points */
+  KDTreeSetPoints(kdtree,npoints_assigned);
+
+  /* fill points + labels */
+  PetscTime(&st0);
+  KDTreeGetPoints(kdtree,NULL,&node);
+  DataFieldGetAccess(PField);
+  npoints_assigned = 0;
+  for (p=0; p<npoints; p++) {
+    DataFieldAccessPoint(PField,p,(void**)&marker_p);
+    if (marker_p->phase != MATERIAL_POINT_PHASE_UNASSIGNED) {
+      node[npoints_assigned].x[0] = marker_p->coor[0];
+      node[npoints_assigned].x[1] = marker_p->coor[1];
+      node[npoints_assigned].x[2] = marker_p->coor[2];
+      node[npoints_assigned].index = p;
+      npoints_assigned++;
+    }
+  }
+  DataFieldRestoreAccess(PField);
+  PetscTime(&st1);
+  cumtime[0] += (st1 - st0);
+  
+  /* setup */
+  PetscTime(&st0);
+  KDTreeSetup(kdtree);
+  PetscTime(&st1);
+  cumtime[1] += (st1 - st0);
+
+  /* get nearest and assign props */
+  PetscTime(&st0);
+  
+  if (clone_nearest) {
+    MPntStd *all_points;
+    
+    DataFieldGetEntries(PField,(void**)&all_points);
+    for (p=0; p<npoints; p++) {
+      
+      if (all_points[p].phase == MATERIAL_POINT_PHASE_UNASSIGNED) {
+        kd_node  nearest;
+        double   *target = all_points[p].coor;
+        double   coor_orig[3],xi_orig[3];
+        int      wil_orig,d;
+        long int pid_orig;
+        
+        KDTreeFindNearest(kdtree,target,&nearest,NULL);
+        
+        /* copy coords, labels */
+        pid_orig = marker_p->pid;
+        wil_orig = marker_p->wil;
+        for (d=0; d<3; d++) {
+          coor_orig[d] = all_points[p].coor[d];
+          xi_orig[d]   = all_points[p].xi[d];
+        }
+        
+        DataBucketCopyPoint(db,nearest->index,db,p);
+        
+        all_points[p].pid     = pid_orig;
+        all_points[p].wil     = wil_orig;
+        for (d=0; d<3; d++) {
+          all_points[p].coor[d] = coor_orig[d];
+          all_points[p].xi[d]   = xi_orig[d];
+        }
+      }
+    }
+    DataFieldRestoreEntries(PField,(void**)&all_points);
+    
+  } else { /* only copy phase value */
+    
+    DataFieldGetAccess(PField);
+    for (p=0; p<npoints; p++) {
+      DataFieldAccessPoint(PField,p,(void**)&marker_p);
+      
+      if (marker_p->phase == MATERIAL_POINT_PHASE_UNASSIGNED) {
+        kd_node nearest;
+        double  *target = marker_p->coor;
+        MPntStd *marker_nearest;
+        
+        KDTreeFindNearest(kdtree,target,&nearest,NULL);
+        DataFieldAccessPoint(PField,nearest->index,(void**)&marker_nearest);
+        
+        marker_p->phase = marker_nearest->phase;
+      }
+    }
+    DataFieldRestoreAccess(PField);
+  }
+
+  PetscTime(&st1);
+  cumtime[2] += (st1 - st0);
+
+  PetscPrintf(PETSC_COMM_WORLD,"[kdtree][fill points] time %1.2e (sec)\n",cumtime[0]);
+  PetscPrintf(PETSC_COMM_WORLD,"[kdtree][setup] time %1.2e (sec)\n",cumtime[1]);
+  PetscPrintf(PETSC_COMM_WORLD,"[kdtree][get nearest] time %1.2e (sec)\n",cumtime[2]);
+
+  KDTreeDestroy(&kdtree);
+
+  PetscFunctionReturn(0);
+}
+
