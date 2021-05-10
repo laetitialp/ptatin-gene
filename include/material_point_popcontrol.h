@@ -38,6 +38,7 @@ typedef struct _p_PSortCtx {
 PetscErrorCode MaterialPointPopulationControl_v1(pTatinCtx ctx);
 PetscErrorCode MaterialPointRegionAssignment_v1(DataBucket db,DM da);
 PetscErrorCode MaterialPointRegionAssignment_v2(DataBucket db,DM da);
+PetscErrorCode MaterialPointRegionAssignment_KDTree(DataBucket db,PetscBool clone_nearest);
 
 PetscErrorCode MPPCCreateSortedCtx(DataBucket db,DM da,PetscInt *_np,PetscInt *_nc,PSortCtx **_plist,PetscInt **_pcell_list);
 PetscErrorCode MPPCDestroySortedCtx(DataBucket db,DM da,PSortCtx **_plist,PetscInt **_pcell_list);

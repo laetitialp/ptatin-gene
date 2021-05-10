@@ -498,38 +498,6 @@ PetscErrorCode SwarmMPntStd_CoordAssignment_FaceLatticeLayout3d(DM da,PetscInt N
   
   DataBucketSetSizes(db,np_new,-1);
 
-  // re-size //
-  switch (face_idx) {
-    case 0:
-      if (contains_east) points_face_local = points_face;
-      break;
-    case 1:
-      if (contains_west) points_face_local = points_face;
-      break;
-
-    case 2:
-      if (contains_north) points_face_local = points_face;
-      break;
-    case 3:
-      if (contains_south) points_face_local = points_face;
-      break;
-
-    case 4:
-      if (contains_front) points_face_local = points_face;
-      break;
-    case 5:
-      if (contains_back) points_face_local = points_face;
-      break;
-  }
-  
-  
-  DataBucketGetSizes(db,&np_current,NULL,NULL);
-  np_new = np_current + points_face_local;
-  /*printf("set size: from %d to %d\n",np_current,np_new);*/
-  
-  DataBucketSetSizes(db,np_new,-1);
-  
-
   /* setup for coords */
   ierr = DMGetCoordinatesLocal(da,&gcoords);CHKERRQ(ierr);
   ierr = VecGetArray(gcoords,&LA_coords);CHKERRQ(ierr);
