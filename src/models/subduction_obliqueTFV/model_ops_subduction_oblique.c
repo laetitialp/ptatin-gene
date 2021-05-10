@@ -1101,7 +1101,8 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_SubductionOblique(pTatinCtx c
   }
 
   /* Copy ALL values from nearest markers to newly inserted markers except (xi,xip,pid) */
-  ierr = MaterialPointRegionAssignment_v1(material_point_db,dav);CHKERRQ(ierr);
+  //ierr = MaterialPointRegionAssignment_v1(material_point_db,dav);CHKERRQ(ierr);
+  ierr = MaterialPointRegionAssignment_KDTree(material_point_db,PETSC_TRUE);CHKERRQ(ierr);
 
   /* delete */
   DataBucketDestroy(&material_point_face_db);
