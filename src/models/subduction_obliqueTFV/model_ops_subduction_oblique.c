@@ -62,7 +62,13 @@
 #include "model_utils.h"
 #include "subduction_oblique_ctx.h"
 
+#include "element_utils_q1.h"
+#include "element_type_Q2.h"
+#include "dmda_element_q2p1.h"
+
 static const char MODEL_NAME_SO[] = "model_subduction_oblique_";
+
+PetscErrorCode SwarmMPntStd_CoordAssignment_FaceLatticeLayout3d_epsilon(DM da,PetscInt Nxp[],PetscReal perturb, PetscReal epsilon, PetscInt face_idx,DataBucket db);
 
 PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
 {
@@ -1053,7 +1059,7 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_SubductionOblique(pTatinCtx c
   PhysCompStokes  stokes;
   DM              stokes_pack,dav,dap;
   PetscInt        Nxp[2];
-  PetscReal       perturb;
+  PetscReal       perturb, epsilon;
   DataBucket      material_point_db,material_point_face_db;
   PetscInt        f, n_face_list;
   int             p,n_mp_points;
@@ -1072,8 +1078,8 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_SubductionOblique(pTatinCtx c
 
   /* create face storage for markers */
   DataBucketDuplicateFields(material_point_db,&material_point_face_db);
-  n_face_list = 5;
-  PetscInt face_list[] = { 0, 1, 2, 4, 5 };
+  n_face_list = 4;
+  PetscInt face_list[] = { 0, 1, 4, 5 };
   for (f=0; f<n_face_list; f++) {
 
     /* traverse */
@@ -1086,7 +1092,9 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_SubductionOblique(pTatinCtx c
     DataBucketSetSizes(material_point_face_db,0,-1);
 
     /* assign coords */
-    ierr = SwarmMPntStd_CoordAssignment_FaceLatticeLayout3d(dav,Nxp,perturb, face_list[f], material_point_face_db);CHKERRQ(ierr);
+    epsilon = 1.0e-6;
+    //ierr = SwarmMPntStd_CoordAssignment_FaceLatticeLayout3d(dav,Nxp,perturb, face_list[f], material_point_face_db);CHKERRQ(ierr);
+    ierr = SwarmMPntStd_CoordAssignment_FaceLatticeLayout3d_epsilon(dav,Nxp,perturb,epsilon,face_list[f],material_point_face_db);CHKERRQ(ierr);
 
     /* assign values */
     DataBucketGetSizes(material_point_face_db,&n_mp_points,0,0);
@@ -1293,6 +1301,254 @@ PetscErrorCode pTatinModelRegister_SubductionOblique(void)
 
   /* Insert model into list */
   ierr = pTatinModelRegister(m);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode SwarmMPntStd_CoordAssignment_FaceLatticeLayout3d_epsilon(DM da,PetscInt Nxp[],PetscReal perturb, PetscReal epsilon, PetscInt face_idx,DataBucket db)
+{
+  DataField      PField;
+  PetscInt       e,ei,ej,ek,eij2d;
+  Vec            gcoords;
+  PetscScalar    *LA_coords;
+  PetscScalar    el_coords[Q2_NODES_PER_EL_3D*NSD];
+  int            ncells,ncells_face,np_per_cell,points_face,points_face_local=0;
+  PetscInt       nel,nen,lmx,lmy,lmz,MX,MY,MZ;
+  const PetscInt *elnidx;
+  PetscInt       p,k,pi,pj;
+  PetscReal      dxi,deta;
+  int            np_current,np_new;
+  PetscInt       si,sj,sk,M,N,P,lnx,lny,lnz;
+  PetscBool      contains_east,contains_west,contains_north,contains_south,contains_front,contains_back;
+  PetscErrorCode ierr;
+
+
+  PetscFunctionBegin;
+
+  ierr = DMDAGetElements_pTatinQ2P1(da,&nel,&nen,&elnidx);CHKERRQ(ierr);
+  ncells = nel;
+  ierr = DMDAGetLocalSizeElementQ2(da,&lmx,&lmy,&lmz);CHKERRQ(ierr);
+
+  switch (face_idx) {
+    case 0:// east-west
+      ncells_face = lmy * lmz; // east
+      break;
+    case 1:
+      ncells_face = lmy * lmz; // west
+      break;
+
+    case 2:// north-south
+      ncells_face = lmx * lmz; // north
+      break;
+    case 3:
+      ncells_face = lmx * lmz; // south
+      break;
+
+    case 4: // front-back
+      ncells_face = lmx * lmy; // front
+      break;
+    case 5:
+      ncells_face = lmx * lmy; // back
+      break;
+
+    default:
+      SETERRQ(PetscObjectComm((PetscObject)da),PETSC_ERR_USER,"Unknown face index");
+      break;
+  }
+
+  np_per_cell = Nxp[0] * Nxp[1];
+  points_face = ncells_face * np_per_cell;
+
+  if (perturb < 0.0) {
+    SETERRQ(PetscObjectComm((PetscObject)da),PETSC_ERR_USER,"Cannot use a negative perturbation");
+  }
+  if (perturb > 1.0) {
+    SETERRQ(PetscObjectComm((PetscObject)da),PETSC_ERR_USER,"Cannot use a perturbation greater than 1.0");
+  }
+
+  ierr = DMDAGetSizeElementQ2(da,&MX,&MY,&MZ);CHKERRQ(ierr);
+  ierr = DMDAGetCorners(da,&si,&sj,&sk,&lnx,&lny,&lnz);CHKERRQ(ierr);
+  ierr = DMDAGetInfo(da,0, &M,&N,&P, 0,0,0, 0,0, 0,0,0, 0);CHKERRQ(ierr);
+
+  contains_east  = PETSC_FALSE; if (si+lnx == M) { contains_east  = PETSC_TRUE; }
+  contains_west  = PETSC_FALSE; if (si == 0)     { contains_west  = PETSC_TRUE; }
+  contains_north = PETSC_FALSE; if (sj+lny == N) { contains_north = PETSC_TRUE; }
+  contains_south = PETSC_FALSE; if (sj == 0)     { contains_south = PETSC_TRUE; }
+  contains_front = PETSC_FALSE; if (sk+lnz == P) { contains_front = PETSC_TRUE; }
+  contains_back  = PETSC_FALSE; if (sk == 0)     { contains_back  = PETSC_TRUE; }
+
+  // re-size //
+  switch (face_idx) {
+    case 0:
+      if (contains_east) points_face_local = points_face;
+      break;
+    case 1:
+      if (contains_west) points_face_local = points_face;
+      break;
+
+    case 2:
+      if (contains_north) points_face_local = points_face;
+      break;
+    case 3:
+      if (contains_south) points_face_local = points_face;
+      break;
+
+    case 4:
+      if (contains_front) points_face_local = points_face;
+      break;
+    case 5:
+      if (contains_back) points_face_local = points_face;
+      break;
+  }
+  
+  DataBucketGetSizes(db,&np_current,NULL,NULL);
+  np_new = np_current + points_face_local;
+  
+  DataBucketSetSizes(db,np_new,-1);
+
+  /* setup for coords */
+  ierr = DMGetCoordinatesLocal(da,&gcoords);CHKERRQ(ierr);
+  ierr = VecGetArray(gcoords,&LA_coords);CHKERRQ(ierr);
+
+  DataBucketGetDataFieldByName(db,MPntStd_classname,&PField);
+  DataFieldGetAccess(PField);
+  DataFieldVerifyAccess( PField,sizeof(MPntStd));
+
+  dxi  = 2.0/(PetscReal)Nxp[0];
+  deta = 2.0/(PetscReal)Nxp[1];
+
+  p = np_current;
+  for (e = 0; e < ncells; e++) {
+    /* get coords for the element */
+    ierr = DMDAGetElementCoordinatesQ2_3D(el_coords,(PetscInt*)&elnidx[nen*e],LA_coords);CHKERRQ(ierr);
+
+    ek = e / (lmx*lmy);
+    eij2d = e - ek * (lmx*lmy);
+    ej = eij2d / lmx;
+    ei = eij2d - ej * lmx;
+
+    switch (face_idx) {
+      case 0:// east-west
+        if (!contains_east) { continue; }
+        if (ei != lmx-1) { continue; }
+        break;
+      case 1:
+        if (!contains_west) { continue; }
+        if (ei != 0) { continue; }
+        break;
+
+      case 2:// north-south
+        if (!contains_north) { continue; }
+        if (ej != lmy-1) { continue; }
+        break;
+      case 3:
+        if (!contains_south) { continue; }
+        if (ej != 0) { continue; }
+        break;
+
+      case 4: // front-back
+        if (!contains_front) { continue; }
+        if (ek != lmz-1) { continue; }
+        break;
+      case 5:
+        if (!contains_back) { continue; }
+        if (ek != 0) { continue; }
+        break;
+    }
+
+    for (pj=0; pj<Nxp[1]; pj++) {
+      for (pi=0; pi<Nxp[0]; pi++) {
+        MPntStd *marker;
+        double xip2d[2],xip_shift2d[2],xip_rand2d[2];
+        double xip[NSD],xp_rand[NSD],Ni[Q2_NODES_PER_EL_3D];
+
+        /* define coordinates in 2d layout */
+        xip2d[0] = -1.0 + dxi    * (pi + 0.5);
+        xip2d[1] = -1.0 + deta   * (pj + 0.5);
+
+        /* random between -0.5 <= shift <= 0.5 */
+        xip_shift2d[0] = 1.0*(rand()/(RAND_MAX+1.0)) - 0.5;
+        xip_shift2d[1] = 1.0*(rand()/(RAND_MAX+1.0)) - 0.5;
+
+        xip_rand2d[0] = xip2d[0] + perturb * dxi    * xip_shift2d[0];
+        xip_rand2d[1] = xip2d[1] + perturb * deta   * xip_shift2d[1];
+
+        if (fabs(xip_rand2d[0]) > 1.0) {
+          SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"fabs(x-point coord) greater than 1.0");
+        }
+        if (fabs(xip_rand2d[1]) > 1.0) {
+          SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"fabs(y-point coord) greater than 1.0");
+        }
+
+        /* set to 3d dependnent on face */
+        // case 0:// east-west
+        // case 2:// north-south
+        // case 4: // front-back
+        switch (face_idx) {
+          case 0:// east-west
+            xip[0] = 1.0 - epsilon;
+            xip[1] = xip_rand2d[0];
+            xip[2] = xip_rand2d[1];
+            break;
+          case 1:
+            xip[0] = -1.0 + epsilon;
+            xip[1] = xip_rand2d[0];
+            xip[2] = xip_rand2d[1];
+            break;
+
+          case 2:// north-south
+            xip[0] = xip_rand2d[0];
+            xip[1] = 1.0 - epsilon;
+            xip[2] = xip_rand2d[1];
+            break;
+          case 3:
+            xip[0] = xip_rand2d[0];
+            xip[1] = -1.0 + epsilon;
+            xip[2] = xip_rand2d[1];
+            break;
+
+          case 4: // front-back
+            xip[0] = xip_rand2d[0];
+            xip[1] = xip_rand2d[1];
+            xip[2] = 1.0 - epsilon;
+            break;
+          case 5:
+            xip[0] = xip_rand2d[0];
+            xip[1] = xip_rand2d[1];
+            xip[2] = -1.0 + epsilon;
+            break;
+        }
+
+        pTatin_ConstructNi_Q2_3D(xip,Ni);
+
+        xp_rand[0] = xp_rand[1] = xp_rand[2] = 0.0;
+        for (k=0; k<Q2_NODES_PER_EL_3D; k++) {
+          xp_rand[0] += Ni[k] * el_coords[NSD*k+0];
+          xp_rand[1] += Ni[k] * el_coords[NSD*k+1];
+          xp_rand[2] += Ni[k] * el_coords[NSD*k+2];
+        }
+
+        DataFieldAccessPoint(PField,p,(void**)&marker);
+
+        marker->coor[0] = xp_rand[0];
+        marker->coor[1] = xp_rand[1];
+        marker->coor[2] = xp_rand[2];
+
+        marker->xi[0] = xip[0];
+        marker->xi[1] = xip[1];
+        marker->xi[2] = xip[2];
+
+        marker->wil    = e;
+        marker->pid    = 0;
+        p++;
+      }
+    }
+
+  }
+  DataFieldRestoreAccess(PField);
+  ierr = VecRestoreArray(gcoords,&LA_coords);CHKERRQ(ierr);
+
+  ierr = SwarmMPntStd_AssignUniquePointIdentifiers(PetscObjectComm((PetscObject)da),db,np_current,np_new);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
