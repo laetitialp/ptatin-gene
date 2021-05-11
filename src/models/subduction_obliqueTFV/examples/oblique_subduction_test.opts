@@ -7,18 +7,20 @@
 -checkpoint_every_nsteps 50 
 -checkpoint_every_ncpumins 720 
 -model_subduction_oblique_output_markers
--output_path SUBDUCTION_markers
+-output_path SUBDUCTION_markers_8epsilon
 -model_subduction_oblique_temperature_ic_from_file
+#-lattice_layout_N 8,8,32
+-mp_popctrl_np_upper 50000
 ########## BASIC NUMERICS ##############
--mx 32 # Number of elements along x
--my 64 # Number of elements along y
--mz 32 # Number of elements along z
+-mx 8 # Number of elements along x
+-my 8 # Number of elements along y
+-mz 8 # Number of elements along z
 -nsteps 1 # Max number of steps
 -dt_max 1e-3 # Max timestep allowed
 #-dt_min 1e-8
 -output_frequency 1
--dt_max_surface_displacement 5.0e-4
--use_quasi_newton_coordinate_update
+#-dt_max_surface_displacement 5.0e-4
+#-use_quasi_newton_coordinate_update
 ########### Box Geometry ################
 -model_subduction_oblique_Lx 10.0e+5  # Max length along x
 -model_subduction_oblique_Ly 5.0e+3 # Origin for y axis
