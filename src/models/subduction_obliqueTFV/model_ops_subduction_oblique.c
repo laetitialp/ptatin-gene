@@ -440,18 +440,20 @@ PetscErrorCode ModelApplyInitialMeshGeometry_SubductionOblique(pTatinCtx c,void 
   ierr = DMDASetUniformCoordinates(dav,data->Ox,data->Lx,data->Oy,data->Ly,data->Oz,data->Lz);CHKERRQ(ierr);
   
   dir = 1; // 0 = x; 1 = y; 2 = z;
-  npoints = 3;
+  npoints = 4;
 
   ierr = PetscMalloc1(npoints,&xref);CHKERRQ(ierr); 
   ierr = PetscMalloc1(npoints,&xnat);CHKERRQ(ierr); 
 
   xref[0] = 0.0;
-  xref[1] = 0.3;
-  xref[2] = 1.0;
+  xref[1] = 0.28; //0.375;
+  xref[2] = 0.65; //0.75;
+  xref[3] = 1.0;
 
   xnat[0] = 0.0;
-  xnat[1] = 0.6;
-  xnat[2] = 1.0;
+  xnat[1] = 0.8;
+  xnat[2] = 0.935;//0.95;
+  xnat[3] = 1.0;
 
   ierr = DMDACoordinateRefinementTransferFunction(dav,dir,PETSC_TRUE,npoints,xref,xnat);CHKERRQ(ierr);
   ierr = DMDABilinearizeQ2Elements(dav);CHKERRQ(ierr);
@@ -1145,18 +1147,20 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_SubductionOblique(pTatinCtx c,Vec X,
  
   /* Update Mesh Refinement */
   dir = 1; // 0 = x; 1 = y; 2 = z;
-  npoints = 3;
+  npoints = 4;
 
   ierr = PetscMalloc1(npoints,&xref);CHKERRQ(ierr); 
   ierr = PetscMalloc1(npoints,&xnat);CHKERRQ(ierr); 
 
   xref[0] = 0.0;
-  xref[1] = 0.3;
-  xref[2] = 1.0;
+  xref[1] = 0.28; //0.375;
+  xref[2] = 0.65; //0.75;
+  xref[3] = 1.0;
 
   xnat[0] = 0.0;
-  xnat[1] = 0.6;
-  xnat[2] = 1.0;
+  xnat[1] = 0.8;
+  xnat[2] = 0.935;//0.95;
+  xnat[3] = 1.0;
 
   ierr = DMDACoordinateRefinementTransferFunction(dav,dir,PETSC_TRUE,npoints,xref,xnat);CHKERRQ(ierr);
   ierr = DMDABilinearizeQ2Elements(dav);CHKERRQ(ierr);
