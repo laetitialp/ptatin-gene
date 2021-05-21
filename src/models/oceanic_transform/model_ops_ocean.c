@@ -118,12 +118,20 @@ PetscErrorCode ModelInitialize_Ocean(pTatinCtx c,void *ctx)
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME_OT,"-v_spreading",&data->v_spreading,NULL);CHKERRQ(ierr);
   model_thickness = data->Ly - data->Oy;
   rock_thickness  = model_thickness - (data->Ly - data->ocean_floor);
-  data->v_top = data->v_spreading*(model_thickness - rock_thickness)/(data->Lx - data->Ox);
-  data->v_bot = data->v_spreading*rock_thickness/(data->Lx - data->Ox);
+  data->v_top = -data->v_spreading*(model_thickness - rock_thickness)/(data->Lx - data->Ox);
+  data->v_bot =  data->v_spreading*rock_thickness/(data->Lx - data->Ox);
   
   /* Temperature BCs */
   data->T_top = 0.0;
   data->T_bot = 1330.0;
+  
+  /* Weak zones */
+  data->w_offset = 50.0e3;
+  data->w_width  = 10.0e3;
+  data->w_length = 25.0e3;
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_OT,"-w_offset",&data->w_offset,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_OT,"-w_width", &data->w_width,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_OT,"-w_length",&data->w_length,NULL);CHKERRQ(ierr);
   
   /* Compute additional scaling parameters */
   data->time_bar         = data->length_bar / data->velocity_bar;
@@ -140,6 +148,9 @@ PetscErrorCode ModelInitialize_Ocean(pTatinCtx c,void *ctx)
   PetscPrintf(PETSC_COMM_WORLD,"  P*    : %1.4e [Pa]\n", data->pressure_bar );
   PetscPrintf(PETSC_COMM_WORLD,"  a*    : %1.4e [m.s^-2]\n", data->acceleration_bar );
   
+  data->output_markers = PETSC_FALSE;
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_OT,"-output_markers",&data->output_markers,NULL);CHKERRQ(ierr);
+  
   /* Scale length */
   data->Lx = data->Lx / data->length_bar;
   data->Ly = data->Ly / data->length_bar;
@@ -151,6 +162,9 @@ PetscErrorCode ModelInitialize_Ocean(pTatinCtx c,void *ctx)
   data->ocean_floor = data->ocean_floor / data->length_bar;
   data->moho = data->moho / data->length_bar;
   
+  data->w_offset = data->w_offset / data->length_bar;
+  data->w_width  = data->w_width  / data->length_bar;
+  data->w_length = data->w_length / data->length_bar;
   /* Scale velocity */
   data->v_spreading = data->v_spreading / data->velocity_bar;
   data->v_top       = data->v_top       / data->velocity_bar;
@@ -232,50 +246,50 @@ static PetscErrorCode SetRheologicalParameters_Ocean(pTatinCtx c,RheologyConstan
 
     /* VISCOUS PARAMETERS */
     if (asprintf (&option_name, "-preexpA_%d", region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&preexpA[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_OT, option_name,&preexpA[region_idx],NULL);CHKERRQ(ierr);
     free (option_name);
     if (asprintf (&option_name, "-Ascale_%d", region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&Ascale[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_OT, option_name,&Ascale[region_idx],NULL);CHKERRQ(ierr);
     free (option_name);
     if (asprintf (&option_name, "-entalpy_%d", region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&entalpy[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_OT, option_name,&entalpy[region_idx],NULL);CHKERRQ(ierr);
     free (option_name); 
     if (asprintf (&option_name, "-Vmol_%d", region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&Vmol[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_OT, option_name,&Vmol[region_idx],NULL);CHKERRQ(ierr);
     free (option_name);
     if (asprintf (&option_name, "-nexp_%d", region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&nexp[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_OT, option_name,&nexp[region_idx],NULL);CHKERRQ(ierr);
     free (option_name); 
     if (asprintf (&option_name, "-Tref_%d", region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&Tref[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_OT, option_name,&Tref[region_idx],NULL);CHKERRQ(ierr);
     free (option_name);
     /* Set viscous params for region_idx */
     MaterialConstantsSetValues_ViscosityArrh(materialconstants,region_idx,preexpA[region_idx],Ascale[region_idx],entalpy[region_idx],Vmol[region_idx],nexp[region_idx],Tref[region_idx]);  
 
     /* PLASTIC PARAMETERS */
     if (asprintf (&option_name, "-phi_%d", region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&phi[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_OT, option_name,&phi[region_idx],NULL);CHKERRQ(ierr);
     free (option_name);
     if (asprintf (&option_name, "-phi_inf_%d", region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&phi_inf[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_OT, option_name,&phi_inf[region_idx],NULL);CHKERRQ(ierr);
     free (option_name);
     if (asprintf (&option_name, "-Co_%d", region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&Co[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_OT, option_name,&Co[region_idx],NULL);CHKERRQ(ierr);
     free (option_name);
     if (asprintf (&option_name, "-Co_inf_%d", region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&Co_inf[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_OT, option_name,&Co_inf[region_idx],NULL);CHKERRQ(ierr);
     free (option_name);
     if (asprintf (&option_name, "-Tens_cutoff_%d", region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&Tens_cutoff[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_OT, option_name,&Tens_cutoff[region_idx],NULL);CHKERRQ(ierr);
     free (option_name);
     if (asprintf (&option_name, "-Hst_cutoff_%d", region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&Hst_cutoff[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_OT, option_name,&Hst_cutoff[region_idx],NULL);CHKERRQ(ierr);
     free (option_name);
     if (asprintf (&option_name, "-eps_min_%d", region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&eps_min[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_OT, option_name,&eps_min[region_idx],NULL);CHKERRQ(ierr);
     free (option_name);
     if (asprintf (&option_name, "-eps_max_%d", region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&eps_max[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_OT, option_name,&eps_max[region_idx],NULL);CHKERRQ(ierr);
     free (option_name);
 
     phi_rad     = M_PI * phi[region_idx]/180.0;
@@ -286,19 +300,19 @@ static PetscErrorCode SetRheologicalParameters_Ocean(pTatinCtx c,RheologyConstan
 
     /* ENERGY PARAMETERS */
     if (asprintf (&option_name, "-alpha_%d", region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&alpha[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_OT, option_name,&alpha[region_idx],NULL);CHKERRQ(ierr);
     free (option_name);
     if (asprintf (&option_name, "-beta_%d", region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&beta[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_OT, option_name,&beta[region_idx],NULL);CHKERRQ(ierr);
     free (option_name);
     if (asprintf (&option_name, "-rho_%d", region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&rho[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_OT, option_name,&rho[region_idx],NULL);CHKERRQ(ierr);
     free (option_name);
     if (asprintf (&option_name, "-heat_source_%d", region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&heat_source[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_OT, option_name,&heat_source[region_idx],NULL);CHKERRQ(ierr);
     free (option_name);
     if (asprintf (&option_name, "-conductivity_%d", region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&conductivity[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_OT, option_name,&conductivity[region_idx],NULL);CHKERRQ(ierr);
     free (option_name);
     
     /* Set energy params for region_idx */
@@ -380,12 +394,16 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_Ocean(pTatinCtx c,void *ctx)
   ModelOceanCtx  *data;
   DataBucket     db;
   DataField      PField_std,PField_pls;
+  PetscReal      xc1,xc2;
   PetscInt       p,n_mp_points;
   PetscErrorCode ierr;
   
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
   data = (ModelOceanCtx*)ctx;
+
+  xc1 = (data->Lx - data->Ox)/2.0 - data->w_offset/2.0;
+  xc2 = (data->Lx - data->Ox)/2.0 + data->w_offset/2.0;
   
   db = c->materialpoint_db;
   DataBucketGetDataFieldByName(db,MPntStd_classname,&PField_std);
@@ -422,10 +440,19 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_Ocean(pTatinCtx c,void *ctx)
       region_idx = 2; // Mantle
     }
     
+    if (position[1] > data->moho) {
+      if ( (fabs(position[0] - xc1) < data->w_width) && (position[2] < data->w_length) ) {
+        pls = ptatin_RandomNumberGetDouble(0.0,0.8);
+      }
+      if ( (fabs(position[0] - xc2) < data->w_width) && (position[2] > data->Lz-data->w_length) ) {
+        pls = ptatin_RandomNumberGetDouble(0.0,0.8);
+      }
+    }
     yield = 0;
     
     MPntStdSetField_phase_index(material_point,region_idx);
     MPntPStokesPlSetField_yield_indicator(mpprop_pls,yield);
+    MPntPStokesPlSetField_plastic_strain(mpprop_pls,pls);
   }
   DataFieldRestoreAccess(PField_std);
   DataFieldRestoreAccess(PField_pls);
@@ -435,11 +462,59 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_Ocean(pTatinCtx c,void *ctx)
 
 PetscErrorCode ModelApplyInitialSolution_Ocean(pTatinCtx c,Vec X,void *ctx)
 {
-  /* ModelOceanCtx *data; */
-
+  ModelOceanCtx *data;
+  DM                                           stokes_pack,dau,dap;
+  Vec                                          velocity,pressure;
+  PetscReal                                    vx,vz,vxl,vxr,vzl,vzr;
+  DMDAVecTraverse3d_HydrostaticPressureCalcCtx HPctx;
+  DMDAVecTraverse3d_InterpCtx                  IntpCtx;
+  PetscReal                                    MeshMin[3],MeshMax[3],domain_height;
+  PetscBool                                    active_energy;
+  PetscErrorCode                               ierr;
+  
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
-  /* data = (ModelOceanCtx*)ctx; */
+  data = (ModelOceanCtx*)ctx;
+  
+  stokes_pack = c->stokes_ctx->stokes_pack;
+
+  ierr = DMCompositeGetEntries(stokes_pack,&dau,&dap);CHKERRQ(ierr);
+  ierr = DMCompositeGetAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
+  
+  /* Velocity IC */
+
+  /* Left face */  
+  vxl = -0.5*data->v_spreading;
+  /* Right face */
+  vxr =  0.5*data->v_spreading;
+  
+  ierr = VecZeroEntries(velocity);CHKERRQ(ierr);
+
+  ierr = DMDAVecTraverse3d_InterpCtxSetUp_X(&IntpCtx,(vxr-vxl)/(data->Lx-data->Ox),vxl,0.0);CHKERRQ(ierr);
+  ierr = DMDAVecTraverse3d(dau,velocity,0,DMDAVecTraverse3d_Interp,(void*)&IntpCtx);CHKERRQ(ierr);
+  ierr = DMDAVecTraverse3d_InterpCtxSetUp_Y(&IntpCtx,(data->v_top-data->v_bot)/(data->Ly-data->Oy),data->v_bot,0.0);CHKERRQ(ierr);
+  ierr = DMDAVecTraverse3d(dau,velocity,1,DMDAVecTraverse3d_Interp,(void*)&IntpCtx);CHKERRQ(ierr);
+  ierr = DMDAVecTraverse3d_InterpCtxSetUp_Z(&IntpCtx,0.0,0.0,0.0);CHKERRQ(ierr);
+  ierr = DMDAVecTraverse3d(dau,velocity,2,DMDAVecTraverse3d_Interp,(void*)&IntpCtx);CHKERRQ(ierr);
+  
+  /* Pressure IC */
+  ierr = VecZeroEntries(pressure);CHKERRQ(ierr);
+
+  ierr = DMGetBoundingBox(dau,MeshMin,MeshMax);CHKERRQ(ierr);
+  domain_height = MeshMax[1] - MeshMin[1];
+
+  HPctx.surface_pressure = 0.0;
+  HPctx.ref_height = domain_height;
+  HPctx.ref_N      = c->stokes_ctx->my-1;
+  HPctx.grav       = 9.8 / data->acceleration_bar;
+  HPctx.rho        = 3300.0 / data->density_bar;
+
+  ierr = DMDAVecTraverseIJK(dap,pressure,0,DMDAVecTraverseIJK_HydroStaticPressure_v2,     (void*)&HPctx);CHKERRQ(ierr);
+  ierr = DMDAVecTraverseIJK(dap,pressure,2,DMDAVecTraverseIJK_HydroStaticPressure_dpdy_v2,(void*)&HPctx);CHKERRQ(ierr);
+  ierr = DMCompositeRestoreAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
+
+  /* Temperature IC */
+  ierr = pTatinContextValid_EnergyFV(c,&active_energy);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -508,14 +583,11 @@ PetscErrorCode ModelApplyBoundaryCondition_Ocean(pTatinCtx c,void *ctx)
     ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_B,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
 
     /* Iterate through all boundary faces, if there is inflow redefine the bc value and bc flux method */
-    /*
     const DACellFace flist[] = { DACELL_FACE_W, DACELL_FACE_E, DACELL_FACE_B, DACELL_FACE_F };
     for (l=0; l<sizeof(flist)/sizeof(DACellFace); l++) {
       ierr = FVSetDirichletFromInflow(energy->fv,energy->T,flist[l]);CHKERRQ(ierr);
     }
-    */
   }
-  
   PetscFunctionReturn(0);
 }
 
@@ -540,10 +612,62 @@ PetscErrorCode ModelApplyBoundaryConditionMG_Ocean(PetscInt nl,BCList bclist[],D
 PetscErrorCode ModelApplyMaterialBoundaryCondition_Ocean(pTatinCtx c,void *ctx)
 {
   /* ModelOceanCtx *data; */
-
+  PhysCompStokes  stokes;
+  DM              stokes_pack,dav,dap;
+  PetscInt        Nxp[2];
+  PetscReal       perturb, epsilon;
+  DataBucket      material_point_db,material_point_face_db;
+  PetscInt        f, n_face_list;
+  int             p,n_mp_points;
+  MPAccess        mpX;
+  PetscErrorCode  ierr;
+  
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
   /* data = (ModelOceanCtx*)ctx; */
+  
+  ierr = pTatinGetStokesContext(c,&stokes);CHKERRQ(ierr);
+  stokes_pack = stokes->stokes_pack;
+  ierr = DMCompositeGetEntries(stokes_pack,&dav,&dap);CHKERRQ(ierr);
+
+  ierr = pTatinGetMaterialPoints(c,&material_point_db,NULL);CHKERRQ(ierr);
+
+  /* create face storage for markers */
+  DataBucketDuplicateFields(material_point_db,&material_point_face_db);
+  n_face_list = 2;
+  PetscInt face_list[] = { 2, 3 };
+  for (f=0; f<n_face_list; f++) {
+
+    /* traverse */
+    /* [0,1/east,west] ; [2,3/north,south] ; [4,5/front,back] */
+    Nxp[0]  = 5;
+    Nxp[1]  = 5;
+    perturb = 0.1;
+
+    /* reset size */
+    DataBucketSetSizes(material_point_face_db,0,-1);
+
+    /* assign coords */
+    epsilon = 1.0e-6;
+    ierr = SwarmMPntStd_CoordAssignment_FaceLatticeLayout3d_epsilon_Ocean(dav,Nxp,perturb,epsilon,face_list[f],material_point_face_db);CHKERRQ(ierr);
+
+    /* assign values */
+    DataBucketGetSizes(material_point_face_db,&n_mp_points,0,0);
+    ierr = MaterialPointGetAccess(material_point_face_db,&mpX);CHKERRQ(ierr);
+    for (p=0; p<n_mp_points; p++) {
+      ierr = MaterialPointSet_phase_index(mpX,p,MATERIAL_POINT_PHASE_UNASSIGNED);CHKERRQ(ierr);
+    }
+    ierr = MaterialPointRestoreAccess(material_point_face_db,&mpX);CHKERRQ(ierr);
+
+    /* insert into volume bucket */
+    DataBucketInsertValues(material_point_db,material_point_face_db);
+  }
+
+  /* Copy ALL values from nearest markers to newly inserted markers except (xi,xip,pid) */
+  ierr = MaterialPointRegionAssignment_KDTree(material_point_db,PETSC_TRUE);CHKERRQ(ierr);
+
+  /* delete */
+  DataBucketDestroy(&material_point_face_db);
 
   PetscFunctionReturn(0);
 }
@@ -561,12 +685,82 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_Ocean(pTatinCtx c,Vec X,void *ctx)
 
 PetscErrorCode ModelOutput_Ocean(pTatinCtx c,Vec X,const char prefix[],void *ctx)
 {
-  /* ModelOceanCtx *data; */
+  ModelOceanCtx *data;
+  PetscBool                 active_energy;
+  DataBucket                materialpoint_db;
+  PetscErrorCode            ierr;
+  static PetscBool          been_here = PETSC_FALSE;
 
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
-  /* data = (ModelOceanCtx*)ctx; */
+  data = (ModelOceanCtx*)ctx;
+  
+  /* Output Velocity and pressure */
+  ierr = pTatin3d_ModelOutputPetscVec_VelocityPressure_Stokes(c,X,prefix);CHKERRQ(ierr);
+  
+  /* Output markers cell fields (for production runs) */
+  {
+    const MaterialPointVariable mp_prop_list[] = { MPV_region, MPV_viscosity, MPV_density, MPV_plastic_strain }; //MPV_viscous_strain,
 
+    ierr = pTatin3dModelOutput_MarkerCellFieldsP0_PetscVec(c,PETSC_FALSE,sizeof(mp_prop_list)/sizeof(MaterialPointVariable),mp_prop_list,prefix);CHKERRQ(ierr);
+  }
+  
+  /* Output raw markers (for testing and debugging) */
+  if (data->output_markers)
+  {
+    ierr = pTatinGetMaterialPoints(c,&materialpoint_db,NULL);CHKERRQ(ierr);
+
+    const int nf = 3;
+    const MaterialPointField mp_prop_list[] = { MPField_Std, MPField_Stokes, MPField_StokesPl};//, MPField_Energy };
+    char mp_file_prefix[256];
+
+    sprintf(mp_file_prefix,"%s_mpoints",prefix);
+    ierr = SwarmViewGeneric_ParaView(materialpoint_db,nf,mp_prop_list,c->outputpath,mp_file_prefix);CHKERRQ(ierr);
+  }
+  
+  /* Output temperature (FV) */
+  ierr = pTatinContextValid_EnergyFV(c,&active_energy);CHKERRQ(ierr);
+  if (active_energy) {
+    PhysCompEnergyFV energy;
+    char             root[PETSC_MAX_PATH_LEN],pvoutputdir[PETSC_MAX_PATH_LEN],fname[PETSC_MAX_PATH_LEN];
+    
+    ierr = pTatinGetContext_EnergyFV(c,&energy);CHKERRQ(ierr);
+    
+    // PVD
+    {
+      char pvdfilename[PETSC_MAX_PATH_LEN],vtkfilename[PETSC_MAX_PATH_LEN];
+      char stepprefix[PETSC_MAX_PATH_LEN];
+      
+      PetscSNPrintf(pvdfilename,PETSC_MAX_PATH_LEN-1,"%s/timeseries_T_fv.pvd",c->outputpath);
+      if (prefix) { PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "%s_T_fv.pvts",prefix);
+      } else {      PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "T_fv.pvts");           }
+      
+      PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%D",c->step);
+      //ierr = ParaviewPVDOpenAppend(PETSC_FALSE,c->step,pvdfilename,c->time, vtkfilename, stepprefix);CHKERRQ(ierr);
+      if (!been_here) { /* new file */
+        ierr = ParaviewPVDOpen(pvdfilename);CHKERRQ(ierr);
+        ierr = ParaviewPVDAppend(pvdfilename,c->time,vtkfilename,stepprefix);CHKERRQ(ierr);
+      } else {
+        ierr = ParaviewPVDAppend(pvdfilename,c->time,vtkfilename,stepprefix);CHKERRQ(ierr);
+      }
+    }
+    ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s",c->outputpath);CHKERRQ(ierr);
+    ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%D",root,c->step);CHKERRQ(ierr);
+    
+    /* PetscVec */
+    PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s_energy",prefix);
+    ierr = FVDAView_JSON(energy->fv,pvoutputdir,fname);CHKERRQ(ierr); /* write meta data abour fv mesh, its DMDA and the coords */
+    ierr = FVDAView_Heavy(energy->fv,pvoutputdir,fname);CHKERRQ(ierr);  /* write cell fields */
+    PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/%s_energy_T",pvoutputdir,prefix);
+    ierr = PetscVecWriteJSON(energy->T,0,fname);CHKERRQ(ierr); /* write cell temperature */
+    
+    if (data->output_markers) {
+      PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/%s-Tfv",pvoutputdir,prefix);
+      ierr = FVDAView_CellData(energy->fv,energy->T,PETSC_TRUE,fname);CHKERRQ(ierr);
+    }
+  }
+  
+  been_here = PETSC_TRUE;
 
   PetscFunctionReturn(0);
 }
@@ -601,8 +795,6 @@ PetscErrorCode pTatinModelRegister_Ocean(void)
   ierr = PetscMemzero(data,sizeof(ModelOceanCtx));CHKERRQ(ierr);
 
   /* set initial values for model parameters */
-  data->param1 = 0.0;
-  data->param2 = 0;
 
   /* register user model */
   ierr = pTatinModelCreate(&m);CHKERRQ(ierr);
@@ -627,6 +819,254 @@ PetscErrorCode pTatinModelRegister_Ocean(void)
 
   /* Insert model into list */
   ierr = pTatinModelRegister(m);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode SwarmMPntStd_CoordAssignment_FaceLatticeLayout3d_epsilon_Ocean(DM da,PetscInt Nxp[],PetscReal perturb, PetscReal epsilon, PetscInt face_idx,DataBucket db)
+{
+  DataField      PField;
+  PetscInt       e,ei,ej,ek,eij2d;
+  Vec            gcoords;
+  PetscScalar    *LA_coords;
+  PetscScalar    el_coords[Q2_NODES_PER_EL_3D*NSD];
+  int            ncells,ncells_face,np_per_cell,points_face,points_face_local=0;
+  PetscInt       nel,nen,lmx,lmy,lmz,MX,MY,MZ;
+  const PetscInt *elnidx;
+  PetscInt       p,k,pi,pj;
+  PetscReal      dxi,deta;
+  int            np_current,np_new;
+  PetscInt       si,sj,sk,M,N,P,lnx,lny,lnz;
+  PetscBool      contains_east,contains_west,contains_north,contains_south,contains_front,contains_back;
+  PetscErrorCode ierr;
+
+
+  PetscFunctionBegin;
+
+  ierr = DMDAGetElements_pTatinQ2P1(da,&nel,&nen,&elnidx);CHKERRQ(ierr);
+  ncells = nel;
+  ierr = DMDAGetLocalSizeElementQ2(da,&lmx,&lmy,&lmz);CHKERRQ(ierr);
+
+  switch (face_idx) {
+    case 0:// east-west
+      ncells_face = lmy * lmz; // east
+      break;
+    case 1:
+      ncells_face = lmy * lmz; // west
+      break;
+
+    case 2:// north-south
+      ncells_face = lmx * lmz; // north
+      break;
+    case 3:
+      ncells_face = lmx * lmz; // south
+      break;
+
+    case 4: // front-back
+      ncells_face = lmx * lmy; // front
+      break;
+    case 5:
+      ncells_face = lmx * lmy; // back
+      break;
+
+    default:
+      SETERRQ(PetscObjectComm((PetscObject)da),PETSC_ERR_USER,"Unknown face index");
+      break;
+  }
+
+  np_per_cell = Nxp[0] * Nxp[1];
+  points_face = ncells_face * np_per_cell;
+
+  if (perturb < 0.0) {
+    SETERRQ(PetscObjectComm((PetscObject)da),PETSC_ERR_USER,"Cannot use a negative perturbation");
+  }
+  if (perturb > 1.0) {
+    SETERRQ(PetscObjectComm((PetscObject)da),PETSC_ERR_USER,"Cannot use a perturbation greater than 1.0");
+  }
+
+  ierr = DMDAGetSizeElementQ2(da,&MX,&MY,&MZ);CHKERRQ(ierr);
+  ierr = DMDAGetCorners(da,&si,&sj,&sk,&lnx,&lny,&lnz);CHKERRQ(ierr);
+  ierr = DMDAGetInfo(da,0, &M,&N,&P, 0,0,0, 0,0, 0,0,0, 0);CHKERRQ(ierr);
+
+  contains_east  = PETSC_FALSE; if (si+lnx == M) { contains_east  = PETSC_TRUE; }
+  contains_west  = PETSC_FALSE; if (si == 0)     { contains_west  = PETSC_TRUE; }
+  contains_north = PETSC_FALSE; if (sj+lny == N) { contains_north = PETSC_TRUE; }
+  contains_south = PETSC_FALSE; if (sj == 0)     { contains_south = PETSC_TRUE; }
+  contains_front = PETSC_FALSE; if (sk+lnz == P) { contains_front = PETSC_TRUE; }
+  contains_back  = PETSC_FALSE; if (sk == 0)     { contains_back  = PETSC_TRUE; }
+
+  // re-size //
+  switch (face_idx) {
+    case 0:
+      if (contains_east) points_face_local = points_face;
+      break;
+    case 1:
+      if (contains_west) points_face_local = points_face;
+      break;
+
+    case 2:
+      if (contains_north) points_face_local = points_face;
+      break;
+    case 3:
+      if (contains_south) points_face_local = points_face;
+      break;
+
+    case 4:
+      if (contains_front) points_face_local = points_face;
+      break;
+    case 5:
+      if (contains_back) points_face_local = points_face;
+      break;
+  }
+  
+  DataBucketGetSizes(db,&np_current,NULL,NULL);
+  np_new = np_current + points_face_local;
+  
+  DataBucketSetSizes(db,np_new,-1);
+
+  /* setup for coords */
+  ierr = DMGetCoordinatesLocal(da,&gcoords);CHKERRQ(ierr);
+  ierr = VecGetArray(gcoords,&LA_coords);CHKERRQ(ierr);
+
+  DataBucketGetDataFieldByName(db,MPntStd_classname,&PField);
+  DataFieldGetAccess(PField);
+  DataFieldVerifyAccess( PField,sizeof(MPntStd));
+
+  dxi  = 2.0/(PetscReal)Nxp[0];
+  deta = 2.0/(PetscReal)Nxp[1];
+
+  p = np_current;
+  for (e = 0; e < ncells; e++) {
+    /* get coords for the element */
+    ierr = DMDAGetElementCoordinatesQ2_3D(el_coords,(PetscInt*)&elnidx[nen*e],LA_coords);CHKERRQ(ierr);
+
+    ek = e / (lmx*lmy);
+    eij2d = e - ek * (lmx*lmy);
+    ej = eij2d / lmx;
+    ei = eij2d - ej * lmx;
+
+    switch (face_idx) {
+      case 0:// east-west
+        if (!contains_east) { continue; }
+        if (ei != lmx-1) { continue; }
+        break;
+      case 1:
+        if (!contains_west) { continue; }
+        if (ei != 0) { continue; }
+        break;
+
+      case 2:// north-south
+        if (!contains_north) { continue; }
+        if (ej != lmy-1) { continue; }
+        break;
+      case 3:
+        if (!contains_south) { continue; }
+        if (ej != 0) { continue; }
+        break;
+
+      case 4: // front-back
+        if (!contains_front) { continue; }
+        if (ek != lmz-1) { continue; }
+        break;
+      case 5:
+        if (!contains_back) { continue; }
+        if (ek != 0) { continue; }
+        break;
+    }
+
+    for (pj=0; pj<Nxp[1]; pj++) {
+      for (pi=0; pi<Nxp[0]; pi++) {
+        MPntStd *marker;
+        double xip2d[2],xip_shift2d[2],xip_rand2d[2];
+        double xip[NSD],xp_rand[NSD],Ni[Q2_NODES_PER_EL_3D];
+
+        /* define coordinates in 2d layout */
+        xip2d[0] = -1.0 + dxi    * (pi + 0.5);
+        xip2d[1] = -1.0 + deta   * (pj + 0.5);
+
+        /* random between -0.5 <= shift <= 0.5 */
+        xip_shift2d[0] = 1.0*(rand()/(RAND_MAX+1.0)) - 0.5;
+        xip_shift2d[1] = 1.0*(rand()/(RAND_MAX+1.0)) - 0.5;
+
+        xip_rand2d[0] = xip2d[0] + perturb * dxi    * xip_shift2d[0];
+        xip_rand2d[1] = xip2d[1] + perturb * deta   * xip_shift2d[1];
+
+        if (fabs(xip_rand2d[0]) > 1.0) {
+          SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"fabs(x-point coord) greater than 1.0");
+        }
+        if (fabs(xip_rand2d[1]) > 1.0) {
+          SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"fabs(y-point coord) greater than 1.0");
+        }
+
+        /* set to 3d dependnent on face */
+        // case 0:// east-west
+        // case 2:// north-south
+        // case 4: // front-back
+        switch (face_idx) {
+          case 0:// east-west
+            xip[0] = 1.0 - epsilon;
+            xip[1] = xip_rand2d[0];
+            xip[2] = xip_rand2d[1];
+            break;
+          case 1:
+            xip[0] = -1.0 + epsilon;
+            xip[1] = xip_rand2d[0];
+            xip[2] = xip_rand2d[1];
+            break;
+
+          case 2:// north-south
+            xip[0] = xip_rand2d[0];
+            xip[1] = 1.0 - epsilon;
+            xip[2] = xip_rand2d[1];
+            break;
+          case 3:
+            xip[0] = xip_rand2d[0];
+            xip[1] = -1.0 + epsilon;
+            xip[2] = xip_rand2d[1];
+            break;
+
+          case 4: // front-back
+            xip[0] = xip_rand2d[0];
+            xip[1] = xip_rand2d[1];
+            xip[2] = 1.0 - epsilon;
+            break;
+          case 5:
+            xip[0] = xip_rand2d[0];
+            xip[1] = xip_rand2d[1];
+            xip[2] = -1.0 + epsilon;
+            break;
+        }
+
+        pTatin_ConstructNi_Q2_3D(xip,Ni);
+
+        xp_rand[0] = xp_rand[1] = xp_rand[2] = 0.0;
+        for (k=0; k<Q2_NODES_PER_EL_3D; k++) {
+          xp_rand[0] += Ni[k] * el_coords[NSD*k+0];
+          xp_rand[1] += Ni[k] * el_coords[NSD*k+1];
+          xp_rand[2] += Ni[k] * el_coords[NSD*k+2];
+        }
+
+        DataFieldAccessPoint(PField,p,(void**)&marker);
+
+        marker->coor[0] = xp_rand[0];
+        marker->coor[1] = xp_rand[1];
+        marker->coor[2] = xp_rand[2];
+
+        marker->xi[0] = xip[0];
+        marker->xi[1] = xip[1];
+        marker->xi[2] = xip[2];
+
+        marker->wil    = e;
+        marker->pid    = 0;
+        p++;
+      }
+    }
+
+  }
+  DataFieldRestoreAccess(PField);
+  ierr = VecRestoreArray(gcoords,&LA_coords);CHKERRQ(ierr);
+
+  ierr = SwarmMPntStd_AssignUniquePointIdentifiers(PetscObjectComm((PetscObject)da),db,np_current,np_new);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
