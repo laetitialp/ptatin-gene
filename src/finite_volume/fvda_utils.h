@@ -198,6 +198,8 @@ PetscErrorCode FVDABCMethod_SetNeumannWithVector(FVDA fv,
                                                  PetscReal bcvalue[],
                                                  void *ctx);
 
+PetscErrorCode FVSetDirichletFromInflow(FVDA fv,Vec T,DACellFace face);
+
 /* dmda_warp.c */
 PetscErrorCode DMDAWarpCoordinates_SinJMax(DM da,PetscReal amp,PetscReal omega[]);
 PetscErrorCode DMDAWarpCoordinates_ExpJMax(DM da,PetscReal amp,PetscReal lambda[]);
