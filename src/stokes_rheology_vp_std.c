@@ -1253,6 +1253,108 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
       }
         break;
         
+      case PLASTIC_DP_TENS:
+      {
+        double            tau_yield_mp;
+        short             yield_type;
+        PetscReal         phi     = PlasticDP_data[ region_idx ].phi;
+        PetscReal         Co      = PlasticDP_data[ region_idx ].Co;
+        PetscReal         phi_inf = PlasticDP_data[ region_idx ].phi_inf;
+        PetscReal         Co_inf  = PlasticDP_data[ region_idx ].Co_inf;
+        PetscReal         g_norm,g[3] = {0.0,0.0,0.0};
+        PetscReal         Pf_mp,pressure,phi_coeff;
+        RheologyConstants *rheology;
+        
+        ierr = pTatinGetRheology(user,&rheology);CHKERRQ(ierr);
+        
+        switch (MatType_data[ region_idx ].softening_type) {
+            
+          case SOFTENING_NONE:
+          {
+            
+          }
+            break;
+            
+          case SOFTENING_LINEAR:
+          {
+            float     eplastic;
+            PetscReal emin = SoftLin_data[ region_idx ].eps_min;
+            PetscReal emax = SoftLin_data[ region_idx ].eps_max;
+            
+            MPntPStokesPlGetField_plastic_strain(mpprop_pls,&eplastic);
+            ComputeLinearSoft(eplastic,emin,emax,Co , Co_inf, &Co);
+            ComputeLinearSoft(eplastic,emin,emax,phi, phi_inf, &phi);
+          }
+            break;
+            
+          case SOFTENING_EXPONENTIAL:
+          {
+            float     eplastic;
+            PetscReal emin  = SoftExpo_data[ region_idx ].eps_min;
+            PetscReal efold = SoftExpo_data[ region_idx ].eps_fold;
+            
+            MPntPStokesPlGetField_plastic_strain(mpprop_pls,&eplastic);
+            ComputeExponentialSoft(eplastic,emin,efold,Co , Co_inf, &Co);
+            ComputeExponentialSoft(eplastic,emin,efold,phi, phi_inf, &phi);
+          }
+            break;
+          default:
+            SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"No default SofteningType set. Valid choices are SOFTENING_NONE, SOFTENING_LINEAR, SOFTENING_EXPONENTIAL");
+        }
+        
+        /* mark all markers as not yielding */
+        MPntPStokesPlSetField_yield_indicator(mpprop_pls,YTYPE_NONE);
+        
+        /* 
+           compute rho_fluid * g * y 
+           for a more general formulation this will need to be integrated 
+        */
+        g[0] = user->stokes_ctx->gravity_vector[0];
+        g[1] = user->stokes_ctx->gravity_vector[1];
+        g[2] = user->stokes_ctx->gravity_vector[2];
+        g_norm = PetscSqrtReal(g[0]*g[0] + g[1]*g[1] + g[2]*g[2]);
+        /* define and scale rho_f in user model */
+        Pf_mp = rheology->rho_f * g_norm * mpprop_std->coor[1];
+        /* compute P-Pf */
+        pressure = pressure_mp - Pf_mp;
+        if (pressure < 0.0) {
+          phi_coeff = 1.0;
+          /* set yield_type to tensile fracture */
+          yield_type = 3;
+        } else {
+          phi_coeff = tan(phi);
+          yield_type = 1;
+        }
+        /* compute yield surface */
+        tau_yield_mp = Co + phi_coeff * pressure;
+        
+        if ( tau_yield_mp < PlasticDP_data[region_idx].tens_cutoff) {
+          /* failure in tension cutoff */
+          tau_yield_mp = PlasticDP_data[region_idx].tens_cutoff;
+          yield_type = 3;
+        } else if (tau_yield_mp > PlasticDP_data[region_idx].hst_cutoff) {
+          /* failure at High stress cut off à la boris */
+          tau_yield_mp = PlasticDP_data[region_idx].hst_cutoff;
+          yield_type = 2;
+        }
+        
+        /* strain rate */
+        ComputeStrainRate3d(ux,uy,uz,dNudx,dNudy,dNudz,D_mp);
+        /* stress */
+        ComputeStressIsotropic3d(eta_mp,D_mp,Tpred_mp);
+        /* second inv stress */
+        ComputeSecondInvariant3d(Tpred_mp,&inv2_Tpred_mp);
+        
+        if (inv2_Tpred_mp > tau_yield_mp) {
+          ComputeSecondInvariant3d(D_mp,&inv2_D_mp);
+          
+          eta_mp = 0.5 * tau_yield_mp / inv2_D_mp;
+          npoints_yielded++;
+          MPntPStokesPlSetField_yield_indicator(mpprop_pls,yield_type);
+        }
+      }
+        break;
+        
       case PLASTIC_DP_H:
       {
         

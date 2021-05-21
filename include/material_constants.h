@@ -56,7 +56,8 @@ typedef enum {
   PLASTIC_MISES     =1,
   PLASTIC_DP        =2,
   PLASTIC_MISES_H   =3,
-  PLASTIC_DP_H      =4,
+  PLASTIC_DP_TENS   =4,
+  PLASTIC_DP_H      =5,
 } PlasticType;
 
 typedef enum {

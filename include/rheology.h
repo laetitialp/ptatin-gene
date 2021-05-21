@@ -71,6 +71,9 @@ struct _p_RheologyConstants {
   PetscReal soft_max_strain_cutoff [MAX_PHASE];
   PetscReal soft_Co_inf [MAX_PHASE];
   PetscReal soft_phi_inf [MAX_PHASE];
+  
+  /* Fluid density for plastic tensile yielding */
+  PetscReal rho_f;
 
   PetscInt     nphases_active;
   RheologyType rheology_type;
