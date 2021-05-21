@@ -239,7 +239,7 @@ static PetscErrorCode SetRheologicalParameters_Ocean(pTatinCtx c,RheologyConstan
   
   source_type[0] = ENERGYSOURCE_NONE;
   Cp             = 800.0;
-  
+  rheology->rho_f = 1000.0e3 / data->density_bar;
   for (region_idx=0;region_idx<rheology->nphases_active-1;region_idx++) {
     /* Set material constitutive laws */
     MaterialConstantsSetValues_MaterialType(materialconstants,region_idx,VISCOUS_ARRHENIUS_2,PLASTIC_DP_TENS,SOFTENING_LINEAR,DENSITY_BOUSSINESQ);
