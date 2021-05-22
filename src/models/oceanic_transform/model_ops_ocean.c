@@ -9,7 +9,7 @@
 **        Switzerland
 **
 **    project:    pTatin3d
-**    filename:   model_ops_oceanic_transform.c
+**    filename:   model_ops_ocean.c
 **
 **
 **    pTatin3d is free software: you can redistribute it and/or modify
@@ -36,21 +36,50 @@
 #include "petsc.h"
 #include "ptatin3d.h"
 #include "private/ptatin_impl.h"
+#include "ptatin_utils.h"
+#include "dmda_bcs.h"
+#include "data_bucket.h"
+#include "MPntStd_def.h"
+#include "MPntPStokes_def.h"
+#include "MPntPStokesPl_def.h"
+#include "MPntPEnergy_def.h"
+#include "output_material_points.h"
+#include "output_material_points_p0.h"
+#include "energy_output.h"
+#include "output_paraview.h"
+#include "material_point_std_utils.h"
+#include "material_point_utils.h"
+#include "material_point_popcontrol.h"
+#include "stokes_form_function.h"
+#include "ptatin_std_dirichlet_boundary_conditions.h"
+#include "dmda_iterator.h"
+#include "mesh_update.h"
+#include "dmda_remesh.h"
 #include "ptatin3d_stokes.h"
 #include "ptatin3d_energy.h"
-#include "ptatin_models.h"
-#include "model_template_ctx.h"
+#include <ptatin3d_energyfv.h>
+#include <ptatin3d_energyfv_impl.h>
+#include "quadrature.h"
+#include "QPntSurfCoefStokes_def.h"
+#include "geometry_object.h"
+#include <material_constants_energy.h>
+#include "model_utils.h"
+#include "element_utils_q1.h"
+#include "element_type_Q2.h"
+#include "dmda_element_q2p1.h"
+#include "ocean_ctx.h"
 
 static const char MODEL_NAME_OT[] = "model_ocean_";
+
+static PetscErrorCode SetRheologicalParameters_Ocean(pTatinCtx c,RheologyConstants *rheology,void *ctx);
+static PetscErrorCode SwarmMPntStd_CoordAssignment_FaceLatticeLayout3d_epsilon_Ocean(DM da,PetscInt Nxp[],PetscReal perturb, PetscReal epsilon, PetscInt face_idx,DataBucket db);
 
 PetscErrorCode ModelInitialize_Ocean(pTatinCtx c,void *ctx)
 {
   ModelOceanCtx     *data;
   RheologyConstants *rheology;
-  PetscReal         crust_thickness;
+  PetscReal         crust_thickness,model_thickness,rock_thickness;
   PetscReal         cm_per_yer2m_per_sec = 1.0e-2 / ( 365.0 * 24.0 * 60.0 * 60.0 );
-  int               source_type[7] = {0, 0, 0, 0, 0, 0, 0};
-  PetscBool         flg;
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
@@ -139,7 +168,7 @@ PetscErrorCode ModelInitialize_Ocean(pTatinCtx c,void *ctx)
   data->density_bar      = data->pressure_bar * (data->time_bar*data->time_bar)/(data->length_bar*data->length_bar); // kg.m^-3
   data->acceleration_bar = data->length_bar / (data->time_bar*data->time_bar);
   
-  PetscPrintf(PETSC_COMM_WORLD,"[subduction_oblique]:  during the solve scaling will be done using \n");
+  PetscPrintf(PETSC_COMM_WORLD,"[ocean]:  during the solve scaling will be done using \n");
   PetscPrintf(PETSC_COMM_WORLD,"  L*    : %1.4e [m]\n", data->length_bar );
   PetscPrintf(PETSC_COMM_WORLD,"  U*    : %1.4e [m.s^-1]\n", data->velocity_bar );
   PetscPrintf(PETSC_COMM_WORLD,"  t*    : %1.4e [s]\n", data->time_bar );
@@ -180,7 +209,7 @@ PetscErrorCode ModelInitialize_Ocean(pTatinCtx c,void *ctx)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode SetRheologicalParameters_Ocean(pTatinCtx c,RheologyConstants rheology,void *ctx)
+static PetscErrorCode SetRheologicalParameters_Ocean(pTatinCtx c,RheologyConstants *rheology,void *ctx)
 {
   ModelOceanCtx             *data;
   DataField                 PField,PField_k,PField_Q;
@@ -192,8 +221,9 @@ static PetscErrorCode SetRheologicalParameters_Ocean(pTatinCtx c,RheologyConstan
   PetscReal                 *preexpA,*Ascale,*entalpy,*Vmol,*nexp,*Tref;
   PetscReal                 *phi,*phi_inf,*Co,*Co_inf,*Tens_cutoff,*Hst_cutoff,*eps_min,*eps_max;
   PetscReal                 *beta,*alpha,*rho,*heat_source,*conductivity;
-  PetscReal                 phi_rad,phi_inf_rad,Cp;
+  PetscReal                 phi_rad,phi_inf_rad,Cp,rho_f;
   char                      *option_name;
+  int                       source_type[7] = {0, 0, 0, 0, 0, 0, 0};
   PetscErrorCode            ierr;
 
   PetscFunctionBegin;
@@ -237,9 +267,11 @@ static PetscErrorCode SetRheologicalParameters_Ocean(pTatinCtx c,RheologyConstan
   ierr = PetscMalloc1(rheology->nphases_active,&heat_source);CHKERRQ(ierr);
   ierr = PetscMalloc1(rheology->nphases_active,&conductivity);CHKERRQ(ierr);
   
-  source_type[0] = ENERGYSOURCE_NONE;
-  Cp             = 800.0;
-  rheology->rho_f = 1000.0e3 / data->density_bar;
+  source_type[0]  = ENERGYSOURCE_NONE;
+  Cp              = 800.0;
+  rho_f           = 1000.0;
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_OT,"-rho_f",&rho_f,NULL);CHKERRQ(ierr);
+  rheology->rho_f = rho_f / data->density_bar;
   for (region_idx=0;region_idx<rheology->nphases_active-1;region_idx++) {
     /* Set material constitutive laws */
     MaterialConstantsSetValues_MaterialType(materialconstants,region_idx,VISCOUS_ARRHENIUS_2,PLASTIC_DP_TENS,SOFTENING_LINEAR,DENSITY_BOUSSINESQ);
@@ -326,7 +358,7 @@ static PetscErrorCode SetRheologicalParameters_Ocean(pTatinCtx c,RheologyConstan
   region_idx = 3;
   MaterialConstantsSetValues_MaterialType(materialconstants,region_idx,VISCOUS_CONSTANT,PLASTIC_NONE,SOFTENING_NONE,DENSITY_CONSTANT);
   MaterialConstantsSetValues_ViscosityConst(materialconstants,region_idx,rheology->eta_lower_cutoff_global);
-  MaterialConstantsSetValues_DensityConst(materialconstants,region_idx,1000.0);
+  MaterialConstantsSetValues_DensityConst(materialconstants,region_idx,rho_f);
   MaterialConstantsSetValues_EnergyMaterialConstants(region_idx,matconstants_e,0.0,0.0,1.0,Cp,ENERGYDENSITY_CONSTANT,ENERGYCONDUCTIVITY_CONSTANT,source_type);
   EnergyConductivityConstSetField_k0(&data_k[region_idx],1.0);
   EnergySourceConstSetField_HeatSource(&data_Q[region_idx],0.0);
@@ -396,7 +428,6 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_Ocean(pTatinCtx c,void *ctx)
   DataField      PField_std,PField_pls;
   PetscReal      xc1,xc2;
   PetscInt       p,n_mp_points;
-  PetscErrorCode ierr;
   
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
@@ -416,7 +447,6 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_Ocean(pTatinCtx c,void *ctx)
   
   DataBucketGetSizes(db,&n_mp_points,0,0);
   for (p=0; p<n_mp_points; p++) {
-    PetscReal     x_trench,x_subd;
     MPntStd       *material_point;
     MPntPStokesPl *mpprop_pls;
     int           region_idx;
@@ -465,7 +495,7 @@ PetscErrorCode ModelApplyInitialSolution_Ocean(pTatinCtx c,Vec X,void *ctx)
   ModelOceanCtx *data;
   DM                                           stokes_pack,dau,dap;
   Vec                                          velocity,pressure;
-  PetscReal                                    vx,vz,vxl,vxr,vzl,vzr;
+  PetscReal                                    vxl,vxr;
   DMDAVecTraverse3d_HydrostaticPressureCalcCtx HPctx;
   DMDAVecTraverse3d_InterpCtx                  IntpCtx;
   PetscReal                                    MeshMin[3],MeshMax[3],domain_height;
@@ -517,7 +547,7 @@ PetscErrorCode ModelApplyInitialSolution_Ocean(pTatinCtx c,Vec X,void *ctx)
   ierr = pTatinContextValid_EnergyFV(c,&active_energy);CHKERRQ(ierr);
   if (active_energy) {
     PhysCompEnergyFV energy;
-    PetscBool        flg = PETSC_FALSE,subduction_temperature_ic_from_file = PETSC_FALSE;
+    PetscBool        flg = PETSC_FALSE,ocean_temperature_ic_from_file = PETSC_FALSE;
     char             fname[PETSC_MAX_PATH_LEN],temperature_file[PETSC_MAX_PATH_LEN];
     PetscViewer      viewer;
     
@@ -545,12 +575,11 @@ PetscErrorCode ModelApplyInitialSolution_Ocean(pTatinCtx c,Vec X,void *ctx)
 
 PetscErrorCode Ocean_VelocityBC(BCList bclist,DM dav,pTatinCtx c,ModelOceanCtx *data)
 {
-  ModelOceanCtx *data;
-  PetscReal     vxl,vxr,zero = 0.0;
+  PetscReal      vxl,vxr,zero = 0.0;
+  PetscErrorCode ierr;
   
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
-  data = (ModelOceanCtx*)ctx;
   
   vxl = -0.5*data->v_spreading;
   vxr =  0.5*data->v_spreading;
@@ -572,6 +601,7 @@ PetscErrorCode ModelApplyBoundaryCondition_Ocean(pTatinCtx c,void *ctx)
   PhysCompStokes   stokes;
   DM               stokes_pack,dav,dap;
   PhysCompEnergyFV energy;
+  PetscBool        active_energy;
   PetscReal        val_T;
   PetscInt         l;
   PetscErrorCode   ierr;
@@ -581,7 +611,6 @@ PetscErrorCode ModelApplyBoundaryCondition_Ocean(pTatinCtx c,void *ctx)
   data = (ModelOceanCtx*)ctx;
 
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
-  PetscPrintf(PETSC_COMM_WORLD,"param1 = %lf \n", data->param1 );
 
   /* Define velocity boundary conditions */
   ierr = pTatinGetStokesContext(c,&stokes);CHKERRQ(ierr);
@@ -595,10 +624,10 @@ PetscErrorCode ModelApplyBoundaryCondition_Ocean(pTatinCtx c,void *ctx)
   if (active_energy) {
     ierr = pTatinGetContext_EnergyFV(c,&energy);CHKERRQ(ierr);
 
-    val_T = data->Tbottom;
+    val_T = data->T_bot;
     ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_S,PETSC_FALSE,0.0,FVDABCMethod_SetDirichlet,(void*)&val_T);CHKERRQ(ierr);
     
-    val_T = data->Ttop;
+    val_T = data->T_top;
     ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_N,PETSC_FALSE,0.0,FVDABCMethod_SetDirichlet,(void*)&val_T);CHKERRQ(ierr);
 
     ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_E,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
