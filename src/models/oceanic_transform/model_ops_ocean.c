@@ -515,7 +515,31 @@ PetscErrorCode ModelApplyInitialSolution_Ocean(pTatinCtx c,Vec X,void *ctx)
 
   /* Temperature IC */
   ierr = pTatinContextValid_EnergyFV(c,&active_energy);CHKERRQ(ierr);
-
+  if (active_energy) {
+    PhysCompEnergyFV energy;
+    PetscBool        flg = PETSC_FALSE,subduction_temperature_ic_from_file = PETSC_FALSE;
+    char             fname[PETSC_MAX_PATH_LEN],temperature_file[PETSC_MAX_PATH_LEN];
+    PetscViewer      viewer;
+    
+    ierr = pTatinGetContext_EnergyFV(c,&energy);CHKERRQ(ierr);
+    
+    ierr = PetscOptionsGetBool(NULL,MODEL_NAME_OT,"-temperature_ic_from_file",&ocean_temperature_ic_from_file,NULL);CHKERRQ(ierr);
+    if (ocean_temperature_ic_from_file) {
+      /* Check if a file is provided */
+      ierr = PetscOptionsGetString(NULL,MODEL_NAME_OT,"-temperature_file",temperature_file,PETSC_MAX_PATH_LEN-1,&flg);CHKERRQ(ierr);
+      if (flg) {
+        ierr = PetscViewerBinaryOpen(PETSC_COMM_WORLD,temperature_file,FILE_MODE_READ,&viewer);CHKERRQ(ierr);
+      } else {
+        PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/temperature_steady.pbvec",c->outputpath);
+        ierr = PetscViewerBinaryOpen(PETSC_COMM_WORLD,fname,FILE_MODE_READ,&viewer);CHKERRQ(ierr);
+      }
+      ierr = VecLoad(energy->T,viewer);CHKERRQ(ierr);
+      ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
+    } else {
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Providing a temperature file for initial state is required\n");
+    }
+  }
+  
   PetscFunctionReturn(0);
 }
 
