@@ -1337,6 +1337,10 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
       ierr = pTatinPhysCompEnergyFV_MPProjection(energyfv,user);CHKERRQ(ierr);
       
       ierr = FVDACellPropertyProjectToFace_HarmonicMean(energyfv->fv,"k","k");CHKERRQ(ierr);
+      
+      ierr = EvalRHS_HeatProd(energyfv->fv,energyfv->G);CHKERRQ(ierr);
+      /* Scale by dt, note the minus sign */
+      ierr = VecScale(energyfv->G,-energyfv->dt);CHKERRQ(ierr);
     }
 
     // [FV EXTENSION] (1) Interpolate Q2 velocity onto vertices of FV geometry mesh, (2) interpolate the nodal velocity onto the cell faces
@@ -1452,7 +1456,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
         //ierr = EnergyFV_RK2SSP(energyfv->snes,range,energyfv->time,energyfv->dt,energyfv->Told,energyfv->T);CHKERRQ(ierr);
         
         PetscTime(&time[0]);
-        ierr = SNESSolve(energyfv->snes,NULL,energyfv->T);CHKERRQ(ierr);
+        ierr = SNESSolve(energyfv->snes,energyfv->G,energyfv->T);CHKERRQ(ierr);
         PetscTime(&time[1]);
         
         ierr = pTatinLogBasicSNES(user,"EnergyFV",energyfv->snes);CHKERRQ(ierr);
