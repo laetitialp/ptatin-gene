@@ -1,0 +1,133 @@
+##  Using driver: 
+## ===============================================================
+-nonlinear_driver_v1
+### Model ###
+-ptatin_model ocean # Used model
+-log_summary
+-checkpoint_every_nsteps 50 
+-checkpoint_every_ncpumins 720 
+-model_ocean_output_markers
+-output_path Setup_ocean
+-model_ocean_temperature_ic_from_file
+#-lattice_layout_N 8,8,32
+-mp_popctrl_np_upper 50000
+########## BASIC NUMERICS ##############
+-mx 16 # Number of elements along x
+-my 16 # Number of elements along y
+-mz 16 # Number of elements along z
+-nsteps 1 # Max number of steps
+-dt_max 1e-3 # Max timestep allowed
+#-dt_min 1e-8
+-output_frequency 1
+################ BCs ##################
+-model_ocean_w_offset 50.0e3
+-model_ocean_w_width 10.0e3
+-model_ocean_w_length 20.0e3
+############ Phases Parameters #############
+#### Oceanic crust phase number 0 ####
+-model_ocean_preexpA_0 3.3e-4
+-model_ocean_Ascale_0 1.0e+6
+-model_ocean_entalpy_0 238.0e3
+-model_ocean_Vmol_0 0.0
+-model_ocean_nexp_0 3.2
+-model_ocean_Tref_0 273.15
+-model_ocean_phi_0 30.0
+-model_ocean_phi_inf_0 0.0
+-model_ocean_Co_0 10.0e6
+-model_ocean_Co_inf_0 3.0e6
+-model_ocean_Tens_cutoff_0 0.0
+-model_ocean_Hst_cutoff_0 800.0e6
+-model_ocean_eps_min_0 0.0
+-model_ocean_eps_max_0 1.0
+-model_ocean_alpha_0 3.0e-5
+-model_ocean_beta_0 1.0e-5
+-model_ocean_rho_0 3000.0
+-model_ocean_heat_source_0 0.0
+-model_ocean_conductivity_0 3.0
+#### Mantle phase number 1 ####
+-model_ocean_preexpA_1 2.5e4
+-model_ocean_Ascale_1 1.0e6
+-model_ocean_entalpy_1 532.0e3
+-model_ocean_Vmol_1 0.0
+-model_ocean_nexp_1 3.5
+-model_ocean_Tref_1 273.15
+-model_ocean_phi_1 30.0
+-model_ocean_phi_inf_1 0.0
+-model_ocean_Co_1 10.0e6
+-model_ocean_Co_inf_1 3.0e6
+-model_ocean_Tens_cutoff_1 0.0
+-model_ocean_Hst_cutoff_1 800.0e6
+-model_ocean_eps_min_1 0.0
+-model_ocean_eps_max_1 1.0
+-model_ocean_alpha_1 3.0e-5
+-model_ocean_beta_1 1.0e-5
+-model_ocean_rho_1 3300.0
+-model_ocean_heat_source_1 0.0
+-model_ocean_conductivity_1 3.0
+################ SOLVERS ################
+###### Viscous-sinker options
+-A11_operator_type 0,1,1
+-dau_nlevels 3
+-fieldsplit_p_ksp_type preonly
+-fieldsplit_p_pc_type jacobi
+-fieldsplit_u_ksp_monitor
+-fieldsplit_u_ksp_rtol 1.0e-1
+-fieldsplit_u_ksp_type fgmres
+-fieldsplit_u_pc_type mg
+-fieldsplit_u_pc_mg_levels 3
+#-fieldsplit_u_pc_mg_log
+#-fieldsplit_u_mg_coarse_pc_factor_mat_solver_package superlu_dist
+#-fieldsplit_u_mg_coarse_pc_factor_mat_solver_package umfpack
+-fieldsplit_u_mg_coarse_pc_type lu
+-fieldsplit_u_mg_levels_ksp_chebyshev_esteig 0,0.2,0,1.1
+-fieldsplit_u_mg_levels_ksp_max_it 10
+-fieldsplit_u_mg_levels_ksp_type chebyshev
+-fieldsplit_u_mg_levels_pc_type jacobi
+-fieldsplit_u_mg_levels_ksp_norm_type NONE
+-fieldsplit_u_mg_levels_esteig_ksp_norm_type NONE
+-ksp_type fgmres
+-ksp_rtol 1.0e-3
+-ksp_atol 1.0e-6
+-log_summary
+-pc_fieldsplit_schur_fact_type upper
+-pc_fieldsplit_type schur
+-pc_type fieldsplit
+-snes_type ksponly
+-stk_velocity_dm_mat_type aij
+
+#### THERMAL SOLVER
+-ptatin_energyfv_nsub 2,2,2
+-energyfv_ksp_monitor
+-energyfv_ksp_type gmres
+-energyfv_mg_coarse_pc_type redundant
+#-energyfv_mg_coarse_redundant_pc_factor_mat_solver_type lu #mkl_pardiso
+#-energyfv_mg_coarse_redundant_pc_type lu
+-energyfv_mg_levels_esteig_ksp_norm_type none
+-energyfv_mg_levels_esteig_ksp_type cg
+-energyfv_mg_levels_ksp_chebyshev_esteig 0,0.01,0,1.1
+-energyfv_mg_levels_ksp_max_it 4
+-energyfv_mg_levels_ksp_norm_type none
+-energyfv_mg_levels_ksp_type chebyshev
+-energyfv_mg_levels_pc_type jacobi
+-energyfv_pc_type gamg
+-energyfv_snes_ksp_ew
+-energyfv_snes_ksp_ew_rtol0 1.0e-2
+-energyfv_snes_ksp_ew_version 1
+-energyfv_snes_lag_preconditioner -2
+-energyfv_snes_monitor
+-energyfv_snes_rtol 1.0e-6
+-fvpp_ksp_monitor
+-fvpp_ksp_rtol 1.0e-10
+-fvpp_ksp_type cg
+-fvpp_mg_coarse_pc_type redundant
+#-fvpp_mg_coarse_redundant_pc_factor_mat_solver_type lu
+#-fvpp_mg_coarse_redundant_pc_type lu
+-fvpp_mg_levels_esteig_ksp_norm_type none
+-fvpp_mg_levels_esteig_ksp_type cg
+-fvpp_mg_levels_ksp_chebyshev_esteig 0,0.01,0,1.1
+-fvpp_mg_levels_ksp_max_it 4
+-fvpp_mg_levels_ksp_norm_type none
+-fvpp_mg_levels_ksp_type chebyshev
+-fvpp_mg_levels_pc_type jacobi
+-fvpp_operator_fvspace false
+-fvpp_pc_type gamg

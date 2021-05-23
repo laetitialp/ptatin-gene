@@ -1,0 +1,195 @@
+-view_ic
+### Model ###
+-ptatin_model ocean # Used model
+-log_summary
+-checkpoint_every_nsteps 50 
+-checkpoint_every_ncpumins 720 
+-model_ocean_output_markers
+-output_path Setup_ocean
+#-lattice_layout_N 8,8,8
+########## BASIC NUMERICS ##############
+-mx 16 # Number of elements along x
+-my 16 # Number of elements along y
+-mz 16 # Number of elements along z
+-nsteps 600000001 # Max number of steps
+-dt_max 1e-3 # Max timestep allowed
+#-dt_min 1e-8
+-output_frequency 1
+################ BCs ##################
+-model_ocean_w_offset 50.0e3
+-model_ocean_w_width 10.0e3
+-model_ocean_w_length 20.0e3
+############ Phases Parameters #############
+#### Oceanic crust phase number 0 ####
+-model_ocean_preexpA_0 3.3e-4
+-model_ocean_Ascale_0 1.0e+6
+-model_ocean_entalpy_0 238.0e3
+-model_ocean_Vmol_0 0.0
+-model_ocean_nexp_0 3.2
+-model_ocean_Tref_0 273.15
+-model_ocean_phi_0 30.0
+-model_ocean_phi_inf_0 0.0
+-model_ocean_Co_0 10.0e6
+-model_ocean_Co_inf_0 3.0e6
+-model_ocean_Tens_cutoff_0 0.0
+-model_ocean_Hst_cutoff_0 400.0e6
+-model_ocean_eps_min_0 0.0
+-model_ocean_eps_max_0 1.0
+-model_ocean_alpha_0 3.0e-5
+-model_ocean_beta_0 1.0e-5
+-model_ocean_rho_0 3000.0
+-model_ocean_heat_source_0 0.0
+-model_ocean_conductivity_0 3.0
+#### Mantle phase number 1 ####
+-model_ocean_preexpA_1 2.5e4
+-model_ocean_Ascale_1 1.0e6
+-model_ocean_entalpy_1 532.0e3
+-model_ocean_Vmol_1 0.0
+-model_ocean_nexp_1 3.5
+-model_ocean_Tref_1 273.15
+-model_ocean_phi_1 30.0
+-model_ocean_phi_inf_1 0.0
+-model_ocean_Co_1 10.0e6
+-model_ocean_Co_inf_1 3.0e6
+-model_ocean_Tens_cutoff_1 0.0
+-model_ocean_Hst_cutoff_1 400.0e6
+-model_ocean_eps_min_1 0.0
+-model_ocean_eps_max_1 1.0
+-model_ocean_alpha_1 3.0e-5
+-model_ocean_beta_1 1.0e-5
+-model_ocean_rho_1 3300.0
+-model_ocean_heat_source_1 0.0
+-model_ocean_conductivity_1 3.0
+################ SOLVERS ################
+###### MG
+-A11_operator_type 0,1,1,1
+-dau_nlevels 4
+-stk_velocity_dm_mat_type aij
+#    3 MG Level
+# | 512 x 64 x 256 |
+# | 128 x 32 x 64  |
+# | 64  x 16 x 32  |
+# ------------------
+#-stk_velocity_da_refine_hierarchy_x 2,4
+#-stk_velocity_da_refine_hierarchy_y 2,2
+#-stk_velocity_da_refine_hierarchy_z 2,4
+# ------------------
+#     4 MG Level
+# | 512 x 64 x 256 |
+# | 256 x 32 x 128 |
+# | 128 x 32 x 64  |
+# | 64  x 16 x 32  |
+# ------------------
+-stk_velocity_da_refine_hierarchy_x 2,2,2
+-stk_velocity_da_refine_hierarchy_y 2,1,2
+-stk_velocity_da_refine_hierarchy_z 2,2,2
+#### SNES
+-newton_its 0
+-snes_atol 1e-2
+-snes_max_it 10
+-snes_rtol 1e-4
+-snes_max_linear_solve_fail 5
+-snes_monitor
+-snes_converged_reason
+-snes_linesearch_type basic
+## Test snes options from guillaume's options file ###
+#-snes_ksp_ew
+#-snes_ksp_ew_rtol0 0.001
+#-snes_ksp_ew_rtolmax 0.001
+#-snes_ksp_ew_version 2
+#-snes_linesearch_type l2
+#-snes_type newtonls
+#-a11_op avx
+#####  KSP LAETITIA
+-ksp_max_it 50
+-ksp_rtol 1.0e-3
+-ksp_type fgmres
+-pc_fieldsplit_schur_fact_type upper
+-pc_fieldsplit_type schur
+-pc_type fieldsplit
+-fieldsplit_p_ksp_type preonly
+-fieldsplit_p_pc_type jacobi
+-fieldsplit_u_ksp_max_it 2
+-fieldsplit_u_ksp_monitor
+-fieldsplit_u_ksp_rtol 1.0e-2
+-fieldsplit_u_ksp_type fgmres
+-fieldsplit_u_pc_type mg
+-fieldsplit_u_pc_mg_levels 4
+-fieldsplit_u_mg_levels_ksp_type gmres
+-fieldsplit_u_mg_levels_pc_type jacobi
+-fieldsplit_u_mg_levels_ksp_max_it 10
+-fieldsplit_u_mg_levels_ksp_norm_type NONE
+#### KSP COARSE
+# From 1024 I have now 1024/16 = 64
+-fieldsplit_u_pc_mg_log
+-fieldsplit_u_mg_coarse_dmdarepart_pc_mg_log
+-fieldsplit_u_mg_coarse_ksp_type preonly
+-fieldsplit_u_mg_coarse_pc_type dmdarepart
+-fieldsplit_u_mg_coarse_pc_dmdarepart_factor 16
+# -----------------
+# 64 x 16 x 32
+# 32 x  8 x 16
+# 16 x  4 x  8
+# -----------------
+    -fieldsplit_u_mg_coarse_dmdarepart_ksp_type preonly
+    -fieldsplit_u_mg_coarse_dmdarepart_pc_type mg
+    -fieldsplit_u_mg_coarse_dmdarepart_pc_mg_galerkin
+    -fieldsplit_u_mg_coarse_dmdarepart_pc_mg_levels 3
+    -fieldsplit_u_mg_coarse_dmdarepart_mg_levels_ksp_type gmres
+    -fieldsplit_u_mg_coarse_dmdarepart_mg_levels_ksp_norm_type NONE
+    -fieldsplit_u_mg_coarse_dmdarepart_mg_levels_pc_type jacobi
+    -fieldsplit_u_mg_coarse_dmdarepart_mg_levels_ksp_max_it 6
+# -----------------
+# 16 x 4 x 8
+#  8 x 2 x 4
+# -----------------
+# From 1024 I have now 1024/64 = 16
+  -fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_ksp_type preonly
+  -fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_pc_type dmdarepart
+  -fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_pc_dmdarepart_factor 64
+    -fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_dmdarepart_ksp_type preonly
+    -fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_dmdarepart_pc_type mg
+    -fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_dmdarepart_pc_mg_galerkin
+    -fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_dmdarepart_pc_mg_levels 2
+    -fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_dmdarepart_mg_levels_ksp_type gmres
+    -fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_dmdarepart_mg_levels_ksp_norm_type NONE
+    -fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_dmdarepart_mg_levels_pc_type bjacobi
+    -fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_dmdarepart_mg_levels_ksp_max_it 6
+
+
+#### THERMAL SOLVER
+-ptatin_energyfv_nsub 2,2,2
+-energyfv_ksp_monitor
+-energyfv_ksp_type gmres
+-energyfv_mg_coarse_pc_type redundant
+#-energyfv_mg_coarse_redundant_pc_factor_mat_solver_type lu #mkl_pardiso
+-energyfv_mg_coarse_redundant_pc_type lu
+-energyfv_mg_levels_esteig_ksp_norm_type none
+-energyfv_mg_levels_esteig_ksp_type cg
+-energyfv_mg_levels_ksp_chebyshev_esteig 0,0.01,0,1.1
+-energyfv_mg_levels_ksp_max_it 4
+-energyfv_mg_levels_ksp_norm_type none
+-energyfv_mg_levels_ksp_type chebyshev
+-energyfv_mg_levels_pc_type jacobi
+-energyfv_pc_type gamg
+-energyfv_snes_ksp_ew
+-energyfv_snes_ksp_ew_rtol0 1.0e-2
+-energyfv_snes_ksp_ew_version 1
+-energyfv_snes_lag_preconditioner -2
+-energyfv_snes_monitor
+-energyfv_snes_rtol 1.0e-6
+-fvpp_ksp_monitor
+-fvpp_ksp_rtol 1.0e-10
+-fvpp_ksp_type cg
+-fvpp_mg_coarse_pc_type redundant
+-fvpp_mg_coarse_redundant_pc_factor_mat_solver_type lu
+-fvpp_mg_coarse_redundant_pc_type lu
+-fvpp_mg_levels_esteig_ksp_norm_type none
+-fvpp_mg_levels_esteig_ksp_type cg
+-fvpp_mg_levels_ksp_chebyshev_esteig 0,0.01,0,1.1
+-fvpp_mg_levels_ksp_max_it 4
+-fvpp_mg_levels_ksp_norm_type none
+-fvpp_mg_levels_ksp_type chebyshev
+-fvpp_mg_levels_pc_type jacobi
+-fvpp_operator_fvspace false
+-fvpp_pc_type gamg
