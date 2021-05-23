@@ -357,8 +357,8 @@ static PetscErrorCode SetRheologicalParameters_Ocean(pTatinCtx c,RheologyConstan
     EnergyConductivityConstSetField_k0(&data_k[region_idx],conductivity[region_idx]);
   }
 
-  /* region_idx 3 --> Water */
-  region_idx = 3;
+  /* region_idx 2 --> Water */
+  region_idx = 2;
   MaterialConstantsSetValues_MaterialType(materialconstants,region_idx,VISCOUS_CONSTANT,PLASTIC_NONE,SOFTENING_NONE,DENSITY_CONSTANT);
   MaterialConstantsSetValues_ViscosityConst(materialconstants,region_idx,rheology->eta_lower_cutoff_global);
   MaterialConstantsSetValues_DensityConst(materialconstants,region_idx,rho_f);
@@ -367,10 +367,10 @@ static PetscErrorCode SetRheologicalParameters_Ocean(pTatinCtx c,RheologyConstan
   EnergySourceConstSetField_HeatSource(&data_Q[region_idx],0.0);
 
   /* Report all material parameters values */
-  /*for (region_idx=0; region_idx<rheology->nphases_active;region_idx++) {
+  for (region_idx=0; region_idx<rheology->nphases_active;region_idx++) {
     MaterialConstantsPrintAll(materialconstants,region_idx);
     MaterialConstantsEnergyPrintAll(materialconstants,region_idx);
-  }*/
+  }
   
   /* scale material properties */
   for (region_idx=0; region_idx<rheology->nphases_active;region_idx++) {
@@ -464,16 +464,16 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_Ocean(pTatinCtx c,void *ctx)
     MPntStdGetField_global_coord(material_point,&position);
     
     if (position[1] <= data->Ly) {
-      region_idx = 3; // Water
+      region_idx = 2; // Water
     }
     if (position[1] <= data->ocean_floor) {
       region_idx = 0; // Oceanic crust
     }
     if (position[1] < data->moho) {
-      region_idx = 2; // Mantle
+      region_idx = 1; // Mantle
     }
-    
-    if (position[1] > data->moho) {
+    pls = 0.0;
+    if (position[1] > data->moho && position[1] <= data->ocean_floor) {
       if ( (fabs(position[0] - xc1) < data->w_width) && (position[2] < data->w_length) ) {
         pls = ptatin_RandomNumberGetDouble(0.0,0.8);
       }
