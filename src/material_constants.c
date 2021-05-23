@@ -1873,6 +1873,9 @@ PetscErrorCode MaterialConstantsSetFromOptions(DataBucket db,const char model_na
     case PLASTIC_DP:
       ierr = MaterialConstantsSetFromOptions_PlasticDP(db,model_name,region_id,essential);CHKERRQ(ierr);
       break;
+    case PLASTIC_DP_TENS:
+      ierr = MaterialConstantsSetFromOptions_PlasticDP(db,model_name,region_id,essential);CHKERRQ(ierr);
+      break;
     case PLASTIC_DP_H:
       ierr = MaterialConstantsSetFromOptions_PlasticDP(db,model_name,region_id,essential);CHKERRQ(ierr);
       break;
@@ -1966,6 +1969,9 @@ PetscErrorCode MaterialConstantsScaleAll(DataBucket db,const int region_id,Petsc
     case PLASTIC_DP:
       ierr = MaterialConstantsScaleValues_PlasticDP(db,region_id,P_star);CHKERRQ(ierr);
       break;
+    case PLASTIC_DP_TENS:
+      ierr = MaterialConstantsScaleValues_PlasticDP(db,region_id,P_star);CHKERRQ(ierr);
+      break;
     case PLASTIC_DP_H:
       ierr = MaterialConstantsScaleValues_PlasticDP(db,region_id,P_star);CHKERRQ(ierr);
       break;
@@ -2056,6 +2062,8 @@ PetscErrorCode MaterialConstantsPrintAll(DataBucket db,const int region_id)
     case PLASTIC_DP:
       ierr = MaterialConstantsPrintValues_PlasticDP(db,region_id);CHKERRQ(ierr);
       break;
+    case PLASTIC_DP_TENS:
+      ierr = MaterialConstantsPrintValues_PlasticDP(db,region_id);CHKERRQ(ierr);
     case PLASTIC_DP_H:
       ierr = MaterialConstantsPrintValues_PlasticDP(db,region_id);CHKERRQ(ierr);
       break;
