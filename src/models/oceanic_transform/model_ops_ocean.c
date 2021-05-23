@@ -268,10 +268,13 @@ static PetscErrorCode SetRheologicalParameters_Ocean(pTatinCtx c,RheologyConstan
   ierr = PetscMalloc1(rheology->nphases_active,&conductivity);CHKERRQ(ierr);
   
   source_type[0]  = ENERGYSOURCE_NONE;
-  Cp              = 800.0;
+  Cp              = 1000.0;
   rho_f           = 1000.0;
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME_OT,"-rho_f",&rho_f,NULL);CHKERRQ(ierr);
   rheology->rho_f = rho_f / data->density_bar;
+  /* Taras uses a conductivity that depends on T, depth and a Nusselt number following:
+     k_eff = k + k0*(Nu - 1)*exp( A*( 2 - T/T_max - y/y_max ) )
+     Here, k is constant, need some tests to see if Taras' k is necessary or not */
   for (region_idx=0;region_idx<rheology->nphases_active-1;region_idx++) {
     /* Set material constitutive laws */
     MaterialConstantsSetValues_MaterialType(materialconstants,region_idx,VISCOUS_ARRHENIUS_2,PLASTIC_DP_TENS,SOFTENING_LINEAR,DENSITY_BOUSSINESQ);
@@ -364,10 +367,10 @@ static PetscErrorCode SetRheologicalParameters_Ocean(pTatinCtx c,RheologyConstan
   EnergySourceConstSetField_HeatSource(&data_Q[region_idx],0.0);
 
   /* Report all material parameters values */
-  for (region_idx=0; region_idx<rheology->nphases_active;region_idx++) {
+  /*for (region_idx=0; region_idx<rheology->nphases_active;region_idx++) {
     MaterialConstantsPrintAll(materialconstants,region_idx);
     MaterialConstantsEnergyPrintAll(materialconstants,region_idx);
-  }
+  }*/
   
   /* scale material properties */
   for (region_idx=0; region_idx<rheology->nphases_active;region_idx++) {
