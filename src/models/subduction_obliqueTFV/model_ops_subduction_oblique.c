@@ -741,6 +741,55 @@ PetscErrorCode ModelApplyInitialSolution_SubductionOblique(pTatinCtx c,Vec X,voi
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ModelApplyInitialStokesVariableMarkers_SubductionOblique(pTatinCtx user,Vec X,void *ctx)
+{
+  DM                         stokes_pack,dau,dap;
+  PhysCompStokes             stokes;
+  Vec                        Uloc,Ploc;
+  PetscScalar                *LA_Uloc,*LA_Ploc;
+  DataField                  PField;
+  MaterialConst_MaterialType *truc;
+  PetscInt                   regionidx;
+  PetscErrorCode             ierr;
+
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
+
+  DataBucketGetDataFieldByName(user->material_constants,MaterialConst_MaterialType_classname,&PField);
+  DataFieldGetAccess(PField);
+  for (regionidx=0; regionidx<user->rheology_constants.nphases_active;regionidx++) {
+    DataFieldAccessPoint(PField,regionidx,(void**)&truc);
+    MaterialConst_MaterialTypeSetField_plastic_type(truc,PLASTIC_MISES);
+  }
+  DataFieldRestoreAccess(PField);
+  
+  ierr = pTatinGetStokesContext(user,&stokes);CHKERRQ(ierr);
+  stokes_pack = stokes->stokes_pack;
+
+  ierr = DMCompositeGetEntries(stokes_pack,&dau,&dap);CHKERRQ(ierr);
+  ierr = DMCompositeGetLocalVectors(stokes_pack,&Uloc,&Ploc);CHKERRQ(ierr);
+
+  ierr = DMCompositeScatter(stokes_pack,X,Uloc,Ploc);CHKERRQ(ierr);
+  ierr = VecGetArray(Uloc,&LA_Uloc);CHKERRQ(ierr);
+  ierr = VecGetArray(Ploc,&LA_Ploc);CHKERRQ(ierr);
+  ierr = pTatin_EvaluateRheologyNonlinearities(user,dau,LA_Uloc,dap,LA_Ploc);CHKERRQ(ierr);
+
+  ierr = VecRestoreArray(Uloc,&LA_Uloc);CHKERRQ(ierr);
+  ierr = VecRestoreArray(Ploc,&LA_Ploc);CHKERRQ(ierr);
+
+  ierr = DMCompositeRestoreLocalVectors(stokes_pack,&Uloc,&Ploc);CHKERRQ(ierr);
+  for (regionidx=0; regionidx<user->rheology_constants.nphases_active;regionidx++) {
+    DataBucketGetDataFieldByName(user->material_constants,MaterialConst_MaterialType_classname,&PField);
+    DataFieldGetAccess(PField);
+    for (regionidx=0; regionidx<user->rheology_constants.nphases_active;regionidx++) {
+      DataFieldAccessPoint(PField,regionidx,(void**)&truc);
+      MaterialConst_MaterialTypeSetField_plastic_type(truc,PLASTIC_DP);
+    }
+    DataFieldRestoreAccess(PField);
+  }
+  PetscFunctionReturn(0);
+}
+
 PetscBool ContinentalGeotherm_1DTS(PetscScalar coord[],PetscScalar *value,void *ctx)
 {
   ModelSubductionObliqueCtx *data;
@@ -1295,6 +1344,7 @@ PetscErrorCode pTatinModelRegister_SubductionOblique(void)
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_INIT,                  (void (*)(void))ModelInitialize_SubductionOblique);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_INIT_MESH_GEOM,  (void (*)(void))ModelApplyInitialMeshGeometry_SubductionOblique);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_INIT_MAT_GEOM,   (void (*)(void))ModelApplyInitialMaterialGeometry_SubductionOblique);CHKERRQ(ierr);
+  ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_INIT_STOKES_VARIABLE_MARKERS,(void (*)(void))ModelApplyInitialStokesVariableMarkers_SubductionOblique);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_INIT_SOLUTION,   (void (*)(void))ModelApplyInitialSolution_SubductionOblique);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_BC,              (void (*)(void))ModelApplyBoundaryCondition_SubductionOblique);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_BCMG,            (void (*)(void))ModelApplyBoundaryConditionMG_SubductionOblique);CHKERRQ(ierr);
