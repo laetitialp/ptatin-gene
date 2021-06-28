@@ -149,7 +149,7 @@
 -model_subduction_oblique_beta_4 1.0e-11
 -model_subduction_oblique_rho_4 3300.0
 -model_subduction_oblique_heat_source_4 0.0
--model_subduction_oblique_conductivity_4 2.0
+-model_subduction_oblique_conductivity_4 3.3
 #### Continental lithosphere mante phase number 5 ####
 #### Dry peridotite Ranalli 1997 ####
 -model_subduction_oblique_preexpA_5 2.5e4
@@ -212,7 +212,7 @@
 -model_subduction_oblique_beta_7 1.0e-11
 -model_subduction_oblique_rho_7 3300.0
 -model_subduction_oblique_heat_source_7 0.0
--model_subduction_oblique_conductivity_7 3.0
+-model_subduction_oblique_conductivity_7 3.3
 #### Oceanic sediments phase number 8 ####
 #### Quartzite Ranalli 1997 ####
 -model_subduction_oblique_preexpA_8 6.7e-6
