@@ -1648,8 +1648,8 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
         ierr = DMCompositeRestoreAccess(user->pack,X,&velocity,&pressure);CHKERRQ(ierr);
       }
       
-      ierr = pTatin_SetTimestep(user,"AdvDiffCourant",timestep);CHKERRQ(ierr);
-      PetscPrintf(PETSC_COMM_WORLD,"  timestep_advdiff[%D] dt_courant = %1.4e \n", step,user->dt );
+      //ierr = pTatin_SetTimestep(user,"AdvDiffCourant",timestep);CHKERRQ(ierr);
+      //PetscPrintf(PETSC_COMM_WORLD,"  timestep_advdiff[%D] dt_courant = %1.4e \n", step,user->dt );
       
       energyfv->dt   = user->dt;
     }
