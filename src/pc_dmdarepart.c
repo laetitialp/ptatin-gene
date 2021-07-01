@@ -520,12 +520,14 @@ static PetscErrorCode PCSetUp_DMDARepart(PC pc)
       // ierr = DMSetUp(red->dmrepart);CHKERRQ(ierr);
       /* Note - I just use stencil_width = 1 here - this allows me to tunnel down deep with gmg without getting errors about stencil width > overlap */
       ierr = DMDACreate3d(subcomm->sub_comm,bx,by,bz,stencil,nx,ny,nz, PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE, ndof,1, NULL,NULL,NULL,&red->dmrepart);CHKERRQ(ierr);
-      ierr = DMSetUp(red->dmrepart);CHKERRQ(ierr);
       ierr = DMSetOptionsPrefix(red->dmrepart,"repart_");CHKERRQ(ierr);
 
       ierr = DMDASetRefinementFactor(red->dmrepart,refine_x,refine_y,refine_z);CHKERRQ(ierr);
       ierr = DMDASetInterpolationType(red->dmrepart,itype);CHKERRQ(ierr);
-
+      
+      ierr = DMSetFromOptions(red->dmrepart);CHKERRQ(ierr);
+      ierr = DMSetUp(red->dmrepart);CHKERRQ(ierr);
+      
       //ierr = DMView(red->dmrepart, PETSC_VIEWER_STDOUT_(subcomm->sub_comm));CHKERRQ(ierr);
 
       ierr = DMDAGetInfo(red->dmrepart,0,0,0,0,&red->Mp_re,&red->Np_re,&red->Pp_re, 0,0,0,0,0,0);CHKERRQ(ierr);
