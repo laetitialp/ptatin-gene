@@ -460,7 +460,7 @@ PetscErrorCode ModelApplyInitialMeshGeometry_SubductionOblique(pTatinCtx c,void 
   
   PetscReal gvec[] = { 0.0, -9.8, 0.0 };
   ierr = PhysCompStokesSetGravityVector(c->stokes_ctx,gvec);CHKERRQ(ierr);
-  ierr = PhysCompStokesScaleGravityVector(c->stokes_ctx,data->acceleration_bar);CHKERRQ(ierr);
+  ierr = PhysCompStokesScaleGravityVector(c->stokes_ctx,1.0/data->acceleration_bar);CHKERRQ(ierr);
 
   ierr = PetscFree(xref);CHKERRQ(ierr);
   ierr = PetscFree(xnat);CHKERRQ(ierr);
