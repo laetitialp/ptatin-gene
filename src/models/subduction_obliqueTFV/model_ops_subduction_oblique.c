@@ -194,6 +194,7 @@ PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-BC",&data->oblique_BC,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-output_markers",&data->output_markers,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-ic_steady_state_analytics",&data->subduction_temp_ic_steadystate_analytics,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-is_2D",&data->is_2D,NULL);CHKERRQ(ierr);
   
   /* Material constants */
   ierr = pTatinGetMaterialConstants(c,&materialconstants);CHKERRQ(ierr);
@@ -553,6 +554,41 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_ObliqueIC(pTatinCtx c,void *ctx
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ComputeIsostaticTopography(ModelSubductionObliqueCtx *data,PetscReal *dh)
+{
+  PetscReal      h_s,h_ouc,h_olc,h_uc,h_lc;
+  PetscReal      d_s,d_ouc,d_olc,d_uc,d_lc,d_m,d_a;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  
+  /* Compute thickness of the different layers */
+  h_s   = data->y0 - data->y_ocean[0] ;
+  h_ouc = data->y_ocean[0] - data->y_ocean[1];
+  h_olc = data->y_ocean[1] - data->y_ocean[2];
+  h_uc  = data->y0 - data->y_continent[0];
+  h_lc  = data->y_continent[0] - data->y_continent[1];
+  
+  /* Get their densities from options */
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-rho_0",&d_ouc,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-rho_1",&d_olc,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-rho_2",&d_uc,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-rho_3",&d_lc,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-rho_4",&d_m,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-rho_8",&d_s,NULL);CHKERRQ(ierr);
+  /* Scale the densities */
+  d_s = d_s/data->density_bar;
+  d_ouc = d_ouc/data->density_bar;
+  d_olc = d_olc/data->density_bar;
+  d_uc = d_uc/data->density_bar;
+  d_lc = d_lc/data->density_bar;
+  d_m = d_m/data->density_bar;
+  d_a = 1.0/data->density_bar;
+  
+  *dh = (h_ouc*(d_m-d_ouc) + h_olc*(d_m-d_olc) + h_s*(d_m-d_s) + h_uc*(d_uc-d_m) + h_lc*(d_lc-d_m))/(d_a - d_m);
+  
+  PetscFunctionReturn(0);
+}
+
 /* GEOMETRY: Obliquity through boundary conditions */
 PetscErrorCode ModelApplyInitialMaterialGeometry_ObliqueBC(pTatinCtx c,void *ctx)
 {
@@ -560,7 +596,8 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_ObliqueBC(pTatinCtx c,void *ctx
   DataBucket                db;
   DataField                 PField_std,PField_pls;
   PetscInt                  p,n_mp_points;
-  PetscReal                 xc;
+  PetscReal                 xc,dy;
+  PetscErrorCode            ierr;
   
   PetscFunctionBegin;
   
@@ -576,9 +613,12 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_ObliqueBC(pTatinCtx c,void *ctx
   
   xc = (data->Lx + data->Ox)/2.0;
   
+  /* Compute the isostatic subsidence of the ocean */
+  ierr = ComputeIsostaticTopography(data,&dy);CHKERRQ(ierr);
+  
   DataBucketGetSizes(db,&n_mp_points,0,0);
   for (p=0; p<n_mp_points; p++) {
-    PetscReal     x_trench,x_subd;
+    PetscReal     x_trench,x_subd,x_margin;
     MPntStd       *material_point;
     MPntPStokesPl *mpprop_pls;
     int           region_idx;
@@ -599,18 +639,19 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_ObliqueBC(pTatinCtx c,void *ctx
     x_trench =  xc;
     /* Initial weak zone angle */
     x_subd   = -(position[1] - data->y0) / tan(data->theta_subd) + x_trench;
+    x_margin =  (position[1] - data->y0) / tan(data->theta_subd) + x_trench + 2.0*dy/tan(data->theta_subd);
     
-    if (position[0] <= x_subd && position[1] >= data->y_ocean[0]) {
+    if (position[0] <= x_subd && position[1] >= data->y_ocean[0]-dy) {
       region_idx = 8; // Oceanic sediments
-    } else if (position[0] <= x_subd && position[1] >= data->y_ocean[1]) {
+    } else if (position[0] <= x_subd && position[1] >= data->y_ocean[1]-dy) {
       region_idx = 0; // Oceanic upper crust
-    } else if (position[0] <= x_subd && position[1] >= data->y_ocean[2]) {
+    } else if (position[0] <= x_subd && position[1] >= data->y_ocean[2]-dy) {
       region_idx = 1; // Oceanic lower crust
-    } else if (position[0] <= (x_subd-data->wz) && position[1] >= data->y_ocean[3]) {
+    } else if (position[0] <= (x_subd-data->wz) && position[1] >= data->y_ocean[3]-dy) {
       region_idx = 4; // Oceanic lithosphere mantle
-    } else if (position[0] >= (x_subd-data->wz) && 
-               position[0] <= (x_subd+data->wz) &&
-               position[1] < data->y_ocean[2]   && 
+    } else if (position[0] >= (x_subd-data->wz)  && 
+               position[0] <= (x_subd+data->wz)  &&
+               position[1] < data->y_ocean[2]-dy && 
                position[1] >= data->y_continent[2]) {
       region_idx = 7; // Weak zone
     } else if (position[0] > x_subd && position[1] >= data->y_continent[0]) {
@@ -623,8 +664,14 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_ObliqueBC(pTatinCtx c,void *ctx
       region_idx = 6; // Asthenosphere
     }
     
-    if (position[1] > data->y0) {
+    if (position[0] <= x_subd && position[1] >= data->y0-dy) {
       region_idx = 9; // Sticky Air
+    } 
+    if (position[0] <= x_margin && position[0] > x_subd ){
+      region_idx = 9;
+    }
+    if (position[0] > x_margin && position[1] > data->y0) {
+      region_idx = 9;
     }
     
     MPntStdSetField_phase_index(material_point,region_idx);
@@ -756,13 +803,13 @@ static PetscErrorCode ModelApplyInitialStokesVariableMarkers_SubductionOblique(p
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
 
   DataBucketGetDataFieldByName(user->material_constants,MaterialConst_MaterialType_classname,&PField);
-  DataFieldGetAccess(PField);
+/*  DataFieldGetAccess(PField);
   for (regionidx=0; regionidx<user->rheology_constants.nphases_active;regionidx++) {
     DataFieldAccessPoint(PField,regionidx,(void**)&truc);
     MaterialConst_MaterialTypeSetField_plastic_type(truc,PLASTIC_MISES);
   }
   DataFieldRestoreAccess(PField);
-  
+*/  
   ierr = pTatinGetStokesContext(user,&stokes);CHKERRQ(ierr);
   stokes_pack = stokes->stokes_pack;
 
@@ -776,7 +823,7 @@ static PetscErrorCode ModelApplyInitialStokesVariableMarkers_SubductionOblique(p
 
   ierr = VecRestoreArray(Uloc,&LA_Uloc);CHKERRQ(ierr);
   ierr = VecRestoreArray(Ploc,&LA_Ploc);CHKERRQ(ierr);
-
+/*
   ierr = DMCompositeRestoreLocalVectors(stokes_pack,&Uloc,&Ploc);CHKERRQ(ierr);
   for (regionidx=0; regionidx<user->rheology_constants.nphases_active;regionidx++) {
     DataBucketGetDataFieldByName(user->material_constants,MaterialConst_MaterialType_classname,&PField);
@@ -787,6 +834,7 @@ static PetscErrorCode ModelApplyInitialStokesVariableMarkers_SubductionOblique(p
     }
     DataFieldRestoreAccess(PField);
   }
+*/  
   PetscFunctionReturn(0);
 }
 
@@ -867,12 +915,25 @@ PetscErrorCode SubductionOblique_VelocityBC_Oblique(BCList bclist,DM dav,pTatinC
   bcdata->v = vzl;
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,2,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
   
+  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_constant,(void*)&vxl);CHKERRQ(ierr);
+  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,2,BCListEvaluator_constant,(void*)&vzl);CHKERRQ(ierr);
+  
+  
   bcdata->y_lab = data->y_continent[2];
   bcdata->v = vxr;
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
   bcdata->v = vzr;
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,2,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
 
+  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_constant,(void*)&vxr);CHKERRQ(ierr);
+  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,2,BCListEvaluator_constant,(void*)&vzr);CHKERRQ(ierr);
+  
+  if (data->is_2D) {
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  }
+  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMAX_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  
   /* No slip bottom */
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
@@ -1135,8 +1196,8 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_SubductionOblique(pTatinCtx c
 
     /* traverse */
     /* [0,1/east,west] ; [2,3/north,south] ; [4,5/front,back] */
-    Nxp[0]  = 10;
-    Nxp[1]  = 10;
+    Nxp[0]  = 1;
+    Nxp[1]  = 1;
     perturb = 0.1;
 
     /* reset size */
