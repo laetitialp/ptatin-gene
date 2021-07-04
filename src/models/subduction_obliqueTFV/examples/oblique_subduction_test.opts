@@ -7,18 +7,18 @@
 -checkpoint_every_nsteps 50 
 -checkpoint_every_ncpumins 720 
 -model_subduction_oblique_output_markers
--output_path SUBDUCTION_markers_8epsilon
+-output_path TEST_LP_3D
 -model_subduction_oblique_temperature_ic_from_file
 #-lattice_layout_N 8,8,32
 -mp_popctrl_np_upper 50000
 ########## BASIC NUMERICS ##############
--mx 8 # Number of elements along x
--my 8 # Number of elements along y
--mz 8 # Number of elements along z
--nsteps 1 # Max number of steps
--dt_max 1e-3 # Max timestep allowed
-#-dt_min 1e-8
--output_frequency 1
+-mx 16 # Number of elements along x
+-my 16 # Number of elements along y
+-mz 1 # Number of elements along z
+-nsteps 100 # Max number of steps
+#-dt_max 1e-3 # Max timestep allowed
+-dt_min 3.16e-5 # Min timestep = 1000 years
+-output_frequency 10
 #-dt_max_surface_displacement 5.0e-4
 #-use_quasi_newton_coordinate_update
 ########### Box Geometry ################
@@ -30,6 +30,7 @@
 -model_subduction_oblique_Oz 0.0e+5 # Origin for z axis
 ################ BCs ##################
 #-model_subduction_oblique_IC
+-model_subduction_oblique_is_2D
 -model_subduction_oblique_BC
 -model_subduction_oblique_normV 3.0
 -model_subduction_oblique_angle_v 90.0
@@ -238,19 +239,17 @@
 -model_subduction_oblique_conductivity_8 2.5
 ################ SOLVERS ################
 ###### Viscous-sinker options
--A11_operator_type 0,1,1
--dau_nlevels 3
+-A11_operator_type 2,0
+-dau_nlevels 2
 -fieldsplit_p_ksp_type preonly
 -fieldsplit_p_pc_type jacobi
--fieldsplit_u_ksp_monitor
+-fieldsplit_u_ksp_converged_reason
 -fieldsplit_u_ksp_rtol 1.0e-1
 -fieldsplit_u_ksp_type fgmres
 -fieldsplit_u_pc_type mg
--fieldsplit_u_pc_mg_levels 3
-#-fieldsplit_u_pc_mg_log
-#-fieldsplit_u_mg_coarse_pc_factor_mat_solver_package superlu_dist
-#-fieldsplit_u_mg_coarse_pc_factor_mat_solver_package umfpack
--fieldsplit_u_mg_coarse_pc_type gamg #lu
+-fieldsplit_u_pc_mg_levels 2
+-fieldsplit_u_mg_coarse_pc_factor_mat_solver_type umfpack
+-fieldsplit_u_mg_coarse_pc_type lu
 -fieldsplit_u_mg_levels_ksp_chebyshev_esteig 0,0.2,0,1.1
 -fieldsplit_u_mg_levels_ksp_max_it 10
 -fieldsplit_u_mg_levels_ksp_type chebyshev
@@ -258,17 +257,47 @@
 -fieldsplit_u_mg_levels_ksp_norm_type NONE
 -fieldsplit_u_mg_levels_esteig_ksp_norm_type NONE
 -ksp_type fgmres
--ksp_rtol 1.0e-3
--ksp_atol 1.0e-6
+-fieldsplit_u_ksp_monitor
+-fieldsplit_u_snes_monitor
+-ksp_monitor
+-snes_monitor
+#-A11_operator_type 0,1,1
+#-dau_nlevels 3
+#-fieldsplit_p_ksp_type preonly
+#-fieldsplit_p_pc_type jacobi
+#-fieldsplit_u_ksp_monitor
+#-fieldsplit_u_snes_monitor
+#-fieldsplit_u_ksp_rtol 5.0e-1
+#-fieldsplit_u_ksp_type fgmres
+#-fieldsplit_u_pc_type mg
+#-fieldsplit_u_pc_mg_levels 3
+#-fieldsplit_u_pc_mg_log
+#-fieldsplit_u_mg_coarse_pc_factor_mat_solver_package superlu_dist
+#-fieldsplit_u_mg_coarse_pc_factor_mat_solver_package umfpack
+#-fieldsplit_u_mg_coarse_pc_type gamg #lu
+#-fieldsplit_u_mg_levels_ksp_chebyshev_esteig 0,0.2,0,1.1
+#-fieldsplit_u_mg_levels_ksp_max_it 10
+#-fieldsplit_u_mg_levels_ksp_type chebyshev
+#-fieldsplit_u_mg_levels_pc_type jacobi
+#-fieldsplit_u_mg_levels_ksp_norm_type NONE
+#-fieldsplit_u_mg_levels_esteig_ksp_norm_type NONE
+#-ksp_type fgmres
+#-ksp_rtol 1.0e-3
+#-ksp_atol 1.0e-6
+#-ksp_max_it 500
 -log_summary
 -pc_fieldsplit_schur_fact_type upper
 -pc_fieldsplit_type schur
 -pc_type fieldsplit
--snes_type ksponly
+#-snes_type ksponly
 -stk_velocity_dm_mat_type aij
-
+-repart_da_processors_z 1 
+-da_processors_z 1
+-da_refine_z 1 
+-stk_velocity_da_refine_z 1 
+-repart_da_refine_z 1
 #### THERMAL SOLVER
--ptatin_energyfv_nsub 2,2,2
+-ptatin_energyfv_nsub 3,3,3
 -energyfv_ksp_monitor
 -energyfv_ksp_type gmres
 -energyfv_mg_coarse_pc_type redundant
@@ -304,15 +333,16 @@
 -fvpp_operator_fvspace false
 -fvpp_pc_type gamg
 ### Solver for lithostatic pressure
--LP_snes_atol 1.0e-5
--LP_snes_rtol 1.0e-6
+-LP_snes_atol 1.0e-12
+-LP_snes_rtol 1.0e-12
 -LP_snes_max_it 10
--LP_ksp_atol 1.0e-15
+-LP_ksp_atol 1.0e-12
 #-LP_snes_view
+-LP_snes_monitor
 -LP_ksp_monitor
 -LP_ksp_rtol 1.0e-12
 -LP_ksp_type fgmres
 -LP_snes_mf_operator
 -LP_pc_type gamg #lu not parallel
--LP_ksp_max_it 150
--LP_snes_type ksponly
+#-LP_ksp_max_it 150
+#-LP_snes_type ksponly
