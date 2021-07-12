@@ -42,7 +42,7 @@ typedef struct {
   PetscInt  n_phases;
   PetscBool subduction_temp_ic_steadystate_analytics,is_2D;
   PetscReal qm,k,h_prod,y_prod,Tlitho; /* Initial continental geotherm params */
-  PetscReal age; /* Initial oceanic geotherm params */
+  PetscReal age,air_rho; /* Initial oceanic geotherm params */
   
 } ModelSubductionObliqueCtx;
 
