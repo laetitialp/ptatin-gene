@@ -663,7 +663,6 @@ PetscErrorCode FormFunctionLithoPressure(Vec X,Vec F,void *ctx)
   PetscErrorCode ierr;
   
   PetscFunctionBegin;
-  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
   ierr = pTatinGetContext_LithoP(ptatin,&data);CHKERRQ(ierr);
   da = data->da;
 
