@@ -992,8 +992,8 @@ PetscErrorCode SubductionOblique_VelocityBC_Oblique(BCList bclist,DM dav,pTatinC
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,2,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
   
-  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_constant,(void*)&vxr);CHKERRQ(ierr);
-  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,2,BCListEvaluator_constant,(void*)&vzr);CHKERRQ(ierr);
+  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
   
   if (data->is_2D) {
     ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
@@ -1003,7 +1003,7 @@ PetscErrorCode SubductionOblique_VelocityBC_Oblique(BCList bclist,DM dav,pTatinC
   
   /* No slip bottom */
   //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
-  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
   //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
 
   ierr = PetscFree(bcdata);CHKERRQ(ierr);
@@ -1234,10 +1234,11 @@ PetscErrorCode ModelApplyBoundaryConditionMG_SubductionOblique(PetscInt nl,BCLis
 
 PetscErrorCode ModelApplyMaterialBoundaryCondition_SubductionOblique(pTatinCtx c,void *ctx)
 {
-  /* ModelSubductionObliqueCtx *data; */
+  ModelSubductionObliqueCtx *data;
   PhysCompStokes  stokes;
   DM              stokes_pack,dav,dap;
   PetscInt        Nxp[2];
+  PetscInt        *face_list;
   PetscReal       perturb, epsilon;
   DataBucket      material_point_db,material_point_face_db;
   PetscInt        f, n_face_list;
@@ -1247,7 +1248,7 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_SubductionOblique(pTatinCtx c
 
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
-  /* data = (ModelSubductionObliqueCtx*)ctx; */
+  data = (ModelSubductionObliqueCtx*)ctx;
   
   ierr = pTatinGetStokesContext(c,&stokes);CHKERRQ(ierr);
   stokes_pack = stokes->stokes_pack;
@@ -1257,8 +1258,21 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_SubductionOblique(pTatinCtx c
 
   /* create face storage for markers */
   DataBucketDuplicateFields(material_point_db,&material_point_face_db);
-  n_face_list = 4;
-  PetscInt face_list[] = { 0, 1, 4, 5 };
+  
+  if (data->is_2D){
+    n_face_list = 2;
+    ierr = PetscMalloc1(n_face_list,&face_list);CHKERRQ(ierr);
+    face_list[0] = 0;
+    face_list[1] = 1;
+  } else {
+    n_face_list = 4;
+    ierr = PetscMalloc1(n_face_list,&face_list);CHKERRQ(ierr);
+    face_list[0] = 0;
+    face_list[1] = 1;
+    face_list[2] = 4;
+    face_list[3] = 5;
+  }
+  
   for (f=0; f<n_face_list; f++) {
 
     /* traverse */
