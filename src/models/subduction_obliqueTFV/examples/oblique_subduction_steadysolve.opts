@@ -8,10 +8,10 @@
 -checkpoint_every_ncpumins 720 
 -model_subduction_oblique_output_markers
 -output_path TEST_LP_3D
-#-lattice_layout_N 8,8,8
+-lattice_layout_N 10,10,1
 ########## BASIC NUMERICS ##############
--mx 16 # Number of elements along x
--my 16 # Number of elements along y
+-mx 22 # Number of elements along x
+-my 22 # Number of elements along y
 -mz 1 # Number of elements along z
 -nsteps 600000001 # Max number of steps
 #-dt_max 1e-3 # Max timestep allowed
@@ -21,10 +21,10 @@
 -use_quasi_newton_coordinate_update
 ########### Box Geometry ################
 -model_subduction_oblique_Lx 10.0e+5  # Max length along x
--model_subduction_oblique_Ly 5.0e+3 # Origin for y axis
--model_subduction_oblique_Lz 6.0e+5 # Max length along z
+-model_subduction_oblique_Ly 15.0e+3 # Origin for y axis
+-model_subduction_oblique_Lz 1.0e+3 # Max length along z
 -model_subduction_oblique_Ox 0.0e+5 # Origin for x axis
--model_subduction_oblique_Oy -6.8e+5 # Max depth along y axis
+-model_subduction_oblique_Oy -2.0e+5 # Max depth along y axis
 -model_subduction_oblique_Oz 0.0e+5 # Origin for z axis
 ################ BCs ##################
 #-model_subduction_oblique_IC
@@ -32,19 +32,20 @@
 -model_subduction_oblique_normV 3.0
 -model_subduction_oblique_angle_v 30.0
 -model_subduction_oblique_Ttop 0.0
--model_subduction_oblique_Tbottom 1600.0
-#-model_subduction_oblique_ic_steady_state
--model_subduction_oblique_qm_init 20.0e-3
--model_subduction_oblique_k_init 3.3
--model_subduction_oblique_y_prod_init -40.0e3
--model_subduction_oblique_Tlitho_init 1300.0
--model_subduction_oblique_age_init 100.0
+-model_subduction_oblique_Tbottom 1400.0
+
+-model_subduction_oblique_y_continent -25.0e3,-35.0e3,-120.0e3
+#-model_subduction_oblique_y_ocean -1.0e3,-5.0e3,-10.0e3,-80.0e3
+-model_subduction_oblique_y_ocean -0.0e3,-25.0e3,-35.0e3,-120.0e3
+-model_subduction_oblique_theta_subd 90.0
+
 #-shear_heating_factor 1
 ############### Geometry ###############
 #-model_subduction_oblique_alpha_trench 45.0
 #-model_subduction_oblique_theta_subd
 #-model_subduction_oblique_wz_width
 ############ Phases Parameters #############
+-model_subduction_oblique_air_rho 1000.0
 #### Oceanic upper crust phase number 0 ####
 #### Plagioclase An75 Ranalli 1997 ####
 -model_subduction_oblique_preexpA_0 3.3e-4
@@ -104,9 +105,9 @@
 -model_subduction_oblique_eps_min_2 0.0
 -model_subduction_oblique_eps_max_2 1.0
 -model_subduction_oblique_alpha_2 3.0e-5
--model_subduction_oblique_beta_2 0.0
+-model_subduction_oblique_beta_2 1.0e-11
 -model_subduction_oblique_rho_2 2700.0
--model_subduction_oblique_heat_source_2 1.5e-6
+-model_subduction_oblique_heat_source_2 0.0 #1.5e-6
 -model_subduction_oblique_conductivity_2 2.7
 #### Continental lower crust phase number 3 ####
 #### Anorthite Rybacki & Dresen 2000 ####
@@ -127,7 +128,7 @@
 -model_subduction_oblique_alpha_3 3.0e-5
 -model_subduction_oblique_beta_3 1.0e-11
 -model_subduction_oblique_rho_3 2850.0
--model_subduction_oblique_heat_source_3 0.3e-6
+-model_subduction_oblique_heat_source_3 0.0 #0.3e-6
 -model_subduction_oblique_conductivity_3 2.85
 #### Oceanic lithosphere mantle phase number 4 ####
 #### Dry peridotite Ranalli 1997 ####
@@ -341,19 +342,20 @@
 -energyfv_mg_levels_esteig_ksp_norm_type none
 -energyfv_mg_levels_esteig_ksp_type cg
 -energyfv_mg_levels_ksp_chebyshev_esteig 0,0.01,0,1.1
--energyfv_mg_levels_ksp_max_it 4
+-energyfv_mg_levels_ksp_max_it 10
 -energyfv_mg_levels_ksp_norm_type none
 -energyfv_mg_levels_ksp_type chebyshev
 -energyfv_mg_levels_pc_type jacobi
 -energyfv_pc_type gamg
 -energyfv_snes_ksp_ew
--energyfv_snes_ksp_ew_rtol0 1.0e-2
+-energyfv_snes_ksp_ew_rtol0 1.0e-3
 -energyfv_snes_ksp_ew_version 1
 -energyfv_snes_lag_preconditioner -2
 -energyfv_snes_monitor
--energyfv_snes_rtol 1.0e-6
+-energyfv_snes_rtol 1.0e-4
+-energyfv_ksp_rtol 1.0e-6
 -fvpp_ksp_monitor
--fvpp_ksp_rtol 1.0e-10
+-fvpp_ksp_rtol 1.0e-4
 -fvpp_ksp_type cg
 -fvpp_mg_coarse_pc_type redundant
 -fvpp_mg_coarse_redundant_pc_factor_mat_solver_type lu
@@ -361,9 +363,10 @@
 -fvpp_mg_levels_esteig_ksp_norm_type none
 -fvpp_mg_levels_esteig_ksp_type cg
 -fvpp_mg_levels_ksp_chebyshev_esteig 0,0.01,0,1.1
--fvpp_mg_levels_ksp_max_it 4
+-fvpp_mg_levels_ksp_max_it 10
 -fvpp_mg_levels_ksp_norm_type none
 -fvpp_mg_levels_ksp_type chebyshev
 -fvpp_mg_levels_pc_type jacobi
 -fvpp_operator_fvspace false
 -fvpp_pc_type gamg
+-ksp_rtol 1.0e-6
