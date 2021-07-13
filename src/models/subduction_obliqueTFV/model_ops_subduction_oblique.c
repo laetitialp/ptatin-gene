@@ -441,7 +441,9 @@ PetscErrorCode ModelApplyInitialMeshGeometry_SubductionOblique(pTatinCtx c,void 
   stokes_pack = stokes->stokes_pack;
   ierr = DMCompositeGetEntries(stokes_pack,&dav,&dap);CHKERRQ(ierr);
   ierr = DMDASetUniformCoordinates(dav,data->Ox,data->Lx,data->Oy,data->Ly,data->Oz,data->Lz);CHKERRQ(ierr);
-  
+  if (data->is_2D) {
+    ierr = pTatin3d_DefineVelocityMeshGeometryQuasi2D(c);CHKERRQ(ierr);
+  }
   dir = 1; // 0 = x; 1 = y; 2 = z;
   npoints = 4;
 
@@ -997,11 +999,11 @@ PetscErrorCode SubductionOblique_VelocityBC_Oblique(BCList bclist,DM dav,pTatinC
     ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
     ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
   }
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMAX_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMAX_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
   
   /* No slip bottom */
   //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
   //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
 
   ierr = PetscFree(bcdata);CHKERRQ(ierr);
