@@ -1307,6 +1307,8 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_SubductionOblique(pTatinCtx c
 
   /* delete */
   DataBucketDestroy(&material_point_face_db);
+  
+  ierr = PetscFree(face_list);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
