@@ -735,6 +735,7 @@ PetscErrorCode SNESSolve_LithoPressure(PDESolveLithoP LP,Mat J,Vec X, Vec F, pTa
   ierr = SNESSetFunction(snes,F,  SNES_FormFunctionLithoPressure,(void*)pctx);CHKERRQ(ierr);
   ierr = SNESSetJacobian(snes,J,J,SNES_FormJacobianLithoPressure,(void*)pctx);CHKERRQ(ierr);
   ierr = SNESSetSolution(snes,X);CHKERRQ(ierr);
+  ierr = SNESSetType(snes,SNESKSPONLY);
   ierr = SNESSetFromOptions(snes);CHKERRQ(ierr);
 
   PetscPrintf(PETSC_COMM_WORLD,"   [[ COMPUTING LITHOSTATIC PRESSURE ]]\n");
