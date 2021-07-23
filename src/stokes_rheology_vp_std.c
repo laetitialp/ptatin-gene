@@ -111,6 +111,21 @@ static inline void ComputeStrainRate3d(double ux[],double uy[],double uz[],doubl
   D[2][0] = exz;    D[2][1] = eyz;    D[2][2] = ezz;
 }
 
+static inline void ComputeDeviatoricStrainRate3d(double D[NSD][NSD], double dev_D[NSD][NSD])
+{
+  double Trace_D;
+  
+  Trace_D = D[0][0] + D[1][1] + D[2][2];
+  
+  dev_D[0][0] = D[0][0] - Trace_D/3.0;
+  dev_D[1][1] = D[1][1] - Trace_D/3.0;
+  dev_D[2][2] = D[2][2] - Trace_D/3.0;
+  
+  dev_D[0][1] = D[0][1]; dev_D[0][2] = D[0][2];
+  dev_D[1][0] = D[1][0]; dev_D[1][2] = D[1][2];
+  dev_D[2][0] = D[2][0]; dev_D[2][1] = D[2][1];
+}
+
 /*
    static inline void ComputeDeformationGradient3d(double ux[],double uy[],double uz[],double dNudx[],double dNudy[],double dNudz[],double L[NSD][NSD])
    {
@@ -189,7 +204,7 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
   PetscReal dNudx[Q2_NODES_PER_EL_3D],dNudy[Q2_NODES_PER_EL_3D],dNudz[Q2_NODES_PER_EL_3D];
 
   double         eta_mp;
-  double         D_mp[NSD][NSD],Tpred_mp[NSD][NSD];
+  double         D_mp[NSD][NSD],Tpred_mp[NSD][NSD],dev_D_mp[NSD][NSD];
   double         inv2_D_mp,inv2_Tpred_mp;
 
   DataField      PField_MatTypes;
@@ -448,7 +463,8 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
           PetscReal sr, eta, pressure;
 
           ComputeStrainRate3d(ux,uy,uz,dNudx,dNudy,dNudz,D_mp);
-          ComputeSecondInvariant3d(D_mp,&inv2_D_mp);
+          ComputeDeviatoricStrainRate3d(D_mp,dev_D_mp);
+          ComputeSecondInvariant3d(dev_D_mp,&inv2_D_mp);
 
           sr = inv2_D_mp/ViscArrh_data[ region_idx ].Eta_scale*ViscArrh_data[ region_idx ].P_scale;
           if (sr < 1.0e-17) {
@@ -651,13 +667,14 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
 
           /* strain rate */
           ComputeStrainRate3d(ux,uy,uz,dNudx,dNudy,dNudz,D_mp);
+          ComputeDeviatoricStrainRate3d(D_mp,dev_D_mp);
           /* stress */
-          ComputeStressIsotropic3d(eta_mp,D_mp,Tpred_mp);
+          ComputeStressIsotropic3d(eta_mp,dev_D_mp,Tpred_mp);
           /* second inv stress */
           ComputeSecondInvariant3d(Tpred_mp,&inv2_Tpred_mp);
 
           if (inv2_Tpred_mp > tau_yield_mp) {
-            ComputeSecondInvariant3d(D_mp,&inv2_D_mp);
+            ComputeSecondInvariant3d(dev_D_mp,&inv2_D_mp);
 
             eta_mp = 0.5 * tau_yield_mp / inv2_D_mp;
             npoints_yielded++;
