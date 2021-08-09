@@ -376,7 +376,7 @@ PetscErrorCode t7_forward(void)
     PetscViewer viewer;
     char        fname[256];
     
-    sprintf(fname,"step%.4d-x.vts",nt);
+    sprintf(fname,"step%.4d-x.vts",(int)nt);
     ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
     ierr = PetscViewerSetType(viewer,PETSCVIEWERVTK);CHKERRQ(ierr);
     ierr = PetscViewerFileSetMode(viewer,FILE_MODE_WRITE);CHKERRQ(ierr);
@@ -449,7 +449,7 @@ PetscErrorCode t7_forward(void)
         delta = (dV1 - (*dt) *_source[c]) - dV0;
         delta = fabs(delta) / dV0;
         if (delta > 1.0e-12) {
-          printf("[cell %d] v.n dS %+1.6e dV0 %+1.6e dV1 %+1.6e\n",c,_source[c],dV0,dV1);
+          printf("[cell %d] v.n dS %+1.6e dV0 %+1.6e dV1 %+1.6e\n",(int)c,_source[c],dV0,dV1);
           printf("          V1-dt.source %+1.6e || V0 %+1.6e\n",dV1 - (*dt) *_source[c],dV0);
           SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"GCL violated");
         }
@@ -509,7 +509,7 @@ PetscErrorCode t7_forward(void)
     ierr = FVDAUpdateGeometry(fv);CHKERRQ(ierr);
 
     
-    sprintf(fname,"step%.4d-x.vts",nt);
+    sprintf(fname,"step%.4d-x.vts",(int)nt);
     ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
     ierr = PetscViewerSetType(viewer,PETSCVIEWERVTK);CHKERRQ(ierr);
     ierr = PetscViewerFileSetMode(viewer,FILE_MODE_WRITE);CHKERRQ(ierr);
@@ -610,7 +610,7 @@ PetscErrorCode t7_backward(void)
     PetscViewer viewer;
     char        fname[256];
     
-    sprintf(fname,"step%.4d-x.vts",nt);
+    sprintf(fname,"step%.4d-x.vts",(int)nt);
     ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
     ierr = PetscViewerSetType(viewer,PETSCVIEWERVTK);CHKERRQ(ierr);
     ierr = PetscViewerFileSetMode(viewer,FILE_MODE_WRITE);CHKERRQ(ierr);
@@ -695,7 +695,7 @@ PetscErrorCode t7_backward(void)
         delta = (dV1 - (*dt) *_source[c]) - dV0;
         delta = fabs(delta) / dV1;
         if (delta > 1.0e-12) {
-          printf("[cell %d] v.n dS %+1.6e dV0 %+1.6e dV1 %+1.6e\n",c,_source[c],dV0,dV1);
+          printf("[cell %d] v.n dS %+1.6e dV0 %+1.6e dV1 %+1.6e\n",(int)c,_source[c],dV0,dV1);
           printf("          V1-dt.source %+1.6e || V0 %+1.6e\n",dV1 - (*dt) *_source[c],dV0);
           SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"GCL violated");
         }
@@ -743,7 +743,7 @@ PetscErrorCode t7_backward(void)
     
     
     
-    sprintf(fname,"step%.4d-x.vts",nt);
+    sprintf(fname,"step%.4d-x.vts",(int)nt);
     ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
     ierr = PetscViewerSetType(viewer,PETSCVIEWERVTK);CHKERRQ(ierr);
     ierr = PetscViewerFileSetMode(viewer,FILE_MODE_WRITE);CHKERRQ(ierr);

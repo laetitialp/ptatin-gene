@@ -299,7 +299,7 @@ PetscErrorCode t3_warp_mms(void)
     m[1] *= 2;
     m[2] *= 2;
     ierr = create_level(m,&fvl[k]);CHKERRQ(ierr);
-    printf("  fvl[%d] %p\n",k,fvl[k]);
+    printf("  fvl[%d] %p\n",(int)k,fvl[k]);
   }
   
   fv = fvl[nlevels-1];
@@ -307,7 +307,7 @@ PetscErrorCode t3_warp_mms(void)
   for (k=0; k<nlevels; k++) {
     ierr = DMClone(fvl[k]->dm_fv,&dmc[k]);CHKERRQ(ierr);
     ierr = DMDASetInterpolationType(dmc[k],DMDA_Q0);CHKERRQ(ierr);
-    printf("dmc[%d] %p\n",k,dmc[k]);
+    printf("dmc[%d] %p\n",(int)k,dmc[k]);
   }
 
   /*
@@ -432,7 +432,7 @@ PetscErrorCode t3_warp_mms_r(void)
     m[2] *= rfac;
     ierr = create_level(m,&fvl[k]);CHKERRQ(ierr);
     ierr = DMDASetRefinementFactor(fvl[k]->dm_fv,rfac,rfac,rfac);CHKERRQ(ierr);
-    printf("  fvl[%d] %p\n",k,fvl[k]);
+    printf("  fvl[%d] %p\n",(int)k,fvl[k]);
   }
   
   fv = fvl[nlevels-1];
@@ -453,7 +453,7 @@ PetscErrorCode t3_warp_mms_r(void)
   printf("dmc[0] %p\n",dmc[0]);
   for (k=1; k<nlevels; k++) {
     ierr = DMRefine(dmc[k-1],PETSC_COMM_WORLD,&dmc[k]);CHKERRQ(ierr);
-    printf("dmc[%d] %p\n",k,dmc[k]);
+    printf("dmc[%d] %p\n",(int)k,dmc[k]);
     ierr = DMDASetInterpolationType(dmc[k],DMDA_Q0);CHKERRQ(ierr);
     ierr = DMDASetRefinementFactor(dmc[k],rfac,rfac,rfac);CHKERRQ(ierr);
   }

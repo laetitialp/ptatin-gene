@@ -128,7 +128,7 @@ PetscErrorCode t6(void)
     PetscViewer viewer;
     char        fname[256];
     
-    sprintf(fname,"step%.4d-x.vts",nt);
+    sprintf(fname,"step%.4d-x.vts",(int)nt);
     ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
     ierr = PetscViewerSetType(viewer,PETSCVIEWERVTK);CHKERRQ(ierr);
     ierr = PetscViewerFileSetMode(viewer,FILE_MODE_WRITE);CHKERRQ(ierr);
@@ -146,7 +146,7 @@ PetscErrorCode t6(void)
     
     ierr = SNESSolve(snes,NULL,X);CHKERRQ(ierr);
   
-    sprintf(fname,"step%.4d-x.vts",nt);
+    sprintf(fname,"step%.4d-x.vts",(int)nt);
     ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
     ierr = PetscViewerSetType(viewer,PETSCVIEWERVTK);CHKERRQ(ierr);
     ierr = PetscViewerFileSetMode(viewer,FILE_MODE_WRITE);CHKERRQ(ierr);

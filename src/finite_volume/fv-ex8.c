@@ -239,7 +239,7 @@ PetscErrorCode t7(void)
     PetscViewer viewer;
     char        fname[256];
     
-    sprintf(fname,"step%.4d-x.vts",nt);
+    sprintf(fname,"step%.4d-x.vts",(int)nt);
     ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
     ierr = PetscViewerSetType(viewer,PETSCVIEWERVTK);CHKERRQ(ierr);
     ierr = PetscViewerFileSetMode(viewer,FILE_MODE_WRITE);CHKERRQ(ierr);
@@ -252,7 +252,7 @@ PetscErrorCode t7(void)
     PetscViewer viewer;
     char        fname[256];
     
-    printf("<<<<<<<<<< step %d >>>>>>>>>>\n",nt);
+    printf("<<<<<<<<<< step %d >>>>>>>>>>\n",(int)nt);
     time += (*dt);
     
     /* evaluate fluid v . n flux */
@@ -377,7 +377,7 @@ PetscErrorCode t7(void)
     
     
     
-    sprintf(fname,"step%.4d-x.vts",nt);
+    sprintf(fname,"step%.4d-x.vts",(int)nt);
     ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
     ierr = PetscViewerSetType(viewer,PETSCVIEWERVTK);CHKERRQ(ierr);
     ierr = PetscViewerFileSetMode(viewer,FILE_MODE_WRITE);CHKERRQ(ierr);
@@ -482,7 +482,7 @@ PetscErrorCode t6_ale(void)
     PetscViewer viewer;
     char        fname[256];
     
-    sprintf(fname,"step%.4d-x.vts",nt);
+    sprintf(fname,"step%.4d-x.vts",(int)nt);
     ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
     ierr = PetscViewerSetType(viewer,PETSCVIEWERVTK);CHKERRQ(ierr);
     ierr = PetscViewerFileSetMode(viewer,FILE_MODE_WRITE);CHKERRQ(ierr);
@@ -500,7 +500,7 @@ PetscErrorCode t6_ale(void)
     
     ierr = SNESSolve(snes,NULL,X);CHKERRQ(ierr);
     
-    sprintf(fname,"step%.4d-x.vts",nt);
+    sprintf(fname,"step%.4d-x.vts",(int)nt);
     ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
     ierr = PetscViewerSetType(viewer,PETSCVIEWERVTK);CHKERRQ(ierr);
     ierr = PetscViewerFileSetMode(viewer,FILE_MODE_WRITE);CHKERRQ(ierr);

@@ -58,8 +58,9 @@
 PetscErrorCode MarkerCellFieldsP0_ProjectIntegerField(DataBucket db,MaterialPointVariable variable,Vec scalar)
 {
   PetscScalar *LA_scalar,var;
-  int         e,ncells,*nearestpoint_list;
+  int         e,*nearestpoint_list;
   int         p,n_mp;
+  PetscInt    ncells;
   MPAccess    X;
   PetscReal   *sep_list;
   PetscErrorCode ierr;

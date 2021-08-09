@@ -644,7 +644,7 @@ PetscErrorCode FVDAView_FaceData_local(FVDA fv,const char prefix[])
       fprintf(fp,"      </DataArray>\n");
     } else {
       for (b=0; b<bs; b++) {
-        fprintf(fp,"      <DataArray Name=\"%s_%d\" type=\"Float64\" NumberOfComponents=\"1\" format=\"ascii\">\n",fv->face_coeff_name[p],b);
+        fprintf(fp,"      <DataArray Name=\"%s_%d\" type=\"Float64\" NumberOfComponents=\"1\" format=\"ascii\">\n",fv->face_coeff_name[p],(int)b);
         for (i=0; i<Nf; i++) {
           fprintf(fp,"%+1.6e ",fv->face_coefficient[p][bs*i+b]);
         }
@@ -792,7 +792,7 @@ PetscErrorCode FVDAView_CellData_local(FVDA fv,Vec field,PetscBool view_cell_pro
         fprintf(fp,"      </DataArray>\n");
       } else {
         for (b=0; b<bs; b++) {
-          fprintf(fp,"      <DataArray Name=\"%s_%d\" type=\"Float64\" NumberOfComponents=\"1\" format=\"ascii\">\n",fv->cell_coeff_name[p],b);
+          fprintf(fp,"      <DataArray Name=\"%s_%d\" type=\"Float64\" NumberOfComponents=\"1\" format=\"ascii\">\n",fv->cell_coeff_name[p],(int)b);
           for (i=0; i<dm_nel; i++) {
             fprintf(fp,"%+1.6e ",fv->cell_coefficient[p][bs*i+b]);
           }
@@ -908,7 +908,7 @@ PetscErrorCode FVDAView_CellData(FVDA fv,Vec field,PetscBool view_cell_prop,cons
         fprintf(vtk_fp,"      <PDataArray Name=\"%s\" NumberOfComponents=\"1\" type=\"Float64\"/>\n",fv->cell_coeff_name[p]);
       } else {
         for (b=0; b<bs; b++) {
-          fprintf(vtk_fp,"      <PDataArray Name=\"%s_%d\" NumberOfComponents=\"1\" type=\"Float64\"/>\n",fv->cell_coeff_name[p],b);
+          fprintf(vtk_fp,"      <PDataArray Name=\"%s_%d\" NumberOfComponents=\"1\" type=\"Float64\"/>\n",fv->cell_coeff_name[p],(int)b);
         }
       }
     }
@@ -1377,7 +1377,7 @@ static PetscErrorCode _FVDAOutputParaView_VTS_binary(FVDA fv,Vec field,PetscBool
 
       } else {
         for (b=0; b<bs; b++) {
-          fprintf(vtk_fp,"      <DataArray Name=\"%s_%d\" NumberOfComponents=\"1\" type=\"Float64\" format=\"appended\" offset=\"%d\"/>\n",fv->cell_coeff_name[cf],b,offset);
+          fprintf(vtk_fp,"      <DataArray Name=\"%s_%d\" NumberOfComponents=\"1\" type=\"Float64\" format=\"appended\" offset=\"%d\"/>\n",fv->cell_coeff_name[cf],(int)b,offset);
           offset += sizeof(int) + sizeof(double)*1*(fv->mi[0])*(fv->mi[1])*(fv->mi[2]);
         }
       }
@@ -1520,7 +1520,7 @@ static PetscErrorCode _FVDAOutputParaView_PVTS(FVDA fv,Vec field,PetscBool view_
         fprintf(vtk_fp,"      <PDataArray Name=\"%s\" NumberOfComponents=\"1\" type=\"Float64\"/>\n",fv->cell_coeff_name[p]);
       } else {
         for (b=0; b<bs; b++) {
-          fprintf(vtk_fp,"      <PDataArray Name=\"%s_%d\" NumberOfComponents=\"1\" type=\"Float64\"/>\n",fv->cell_coeff_name[p],b);
+          fprintf(vtk_fp,"      <PDataArray Name=\"%s_%d\" NumberOfComponents=\"1\" type=\"Float64\"/>\n",fv->cell_coeff_name[p],(int)b);
         }
       }
     }
@@ -1562,7 +1562,7 @@ static PetscErrorCode _FVDAOutputParaView_PVTS(FVDA fv,Vec field,PetscBool view_
       s[2] = e[2] - fv->cell_ownership_k[rijk[2]];
       
       ierr = PetscSNPrintf(vtu_fname,PETSC_MAX_PATH_LEN-1,"%s-subdomain%1.5d.vts",prefix,(int)r);CHKERRQ(ierr);
-      fprintf(vtk_fp,"    <Piece Extent=\"%d %d %d %d %d %d\" Source=\"%s\"/>\n",s[0],e[0],s[1],e[1],s[2],e[2],vtu_fname);
+      fprintf(vtk_fp,"    <Piece Extent=\"%d %d %d %d %d %d\" Source=\"%s\"/>\n",(int)s[0],(int)e[0],(int)s[1],(int)e[1],(int)s[2],(int)e[2],vtu_fname);
     }
   }
    

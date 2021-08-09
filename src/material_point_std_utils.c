@@ -1347,7 +1347,7 @@ PetscErrorCode SwarmMPntStd_CoordAssignment_InsertFromList(DataBucket db,DM dav,
     InverseMappingDomain_3dQ2(tolerance,max_its,
                               use_nonzero_guess,
                               monitor,
-                              (const double*)LA_gcoords, (const int)lmx,(const int)lmy,(const int)lmz, (const int*)elnidx_u,
+                              (const double*)LA_gcoords, (const int)lmx,(const int)lmy,(const int)lmz, (const PetscInt*)elnidx_u,
                               1, &mp_std );
 
     point_found = PETSC_TRUE;
