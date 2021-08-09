@@ -190,11 +190,14 @@ PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
   data->oblique_BC = PETSC_FALSE;
   data->output_markers = PETSC_FALSE;
   data->subduction_temp_ic_steadystate_analytics = PETSC_FALSE;
+  data->is_2D = PETSC_FALSE;
+  data->open_base = PETSC_FALSE;
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-IC",&data->oblique_IC,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-BC",&data->oblique_BC,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-output_markers",&data->output_markers,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-ic_steady_state_analytics",&data->subduction_temp_ic_steadystate_analytics,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-is_2D",&data->is_2D,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-open_base",&data->open_base,NULL);CHKERRQ(ierr);
   
   /* Material constants */
   ierr = pTatinGetMaterialConstants(c,&materialconstants);CHKERRQ(ierr);
@@ -602,7 +605,7 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_ObliqueBC(pTatinCtx c,void *ctx
   DataField                 PField_std,PField_pls;
   PetscInt                  p;
   int                       n_mp_points;
-  PetscReal                 xc,dy,x_trench;
+  PetscReal                 xc,dy,x_trench,x_offset=0.0;
   PetscReal                 d_ouc,d_olc,d_uc,d_lc,d_air,d_m;
   PetscReal                 h_s,h_ouc,h_olc,h_o;
   PetscReal                 h_uc,h_lc,h_c;
@@ -637,7 +640,9 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_ObliqueBC(pTatinCtx c,void *ctx
   
   xc = (data->Lx + data->Ox)/2.0;
   /* Trench located at centre of the model in x direction */
-  x_trench =  xc;
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-xtrench_offset",&x_offset,NULL);CHKERRQ(ierr);
+  x_offset = x_offset / data->length_bar;
+  x_trench = xc + x_offset;
   /* Compute the isostatic subsidence of the ocean */
   ierr = ComputeIsostaticTopography(data,&dy);CHKERRQ(ierr);
   
@@ -1003,9 +1008,11 @@ PetscErrorCode SubductionOblique_VelocityBC_Oblique(BCList bclist,DM dav,pTatinC
   }
   //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMAX_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
   
-  /* No slip bottom */
+  /* Free slip bottom */
   //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  if (!data->open_base) {
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  }
   //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
 
   ierr = PetscFree(bcdata);CHKERRQ(ierr);
