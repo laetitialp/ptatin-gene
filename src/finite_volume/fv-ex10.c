@@ -155,7 +155,7 @@ PetscErrorCode PrintValues(FVDA fv)
   ierr = FVDAGetFaceInfo(fv,&nfaces,NULL,NULL,NULL,NULL);CHKERRQ(ierr);
   //if (commrank == 0) {
     for (f=0; f<nfaces; f++) {
-      printf("rank[%d]: face[%d]: cell[%d,%d]\n",commrank,f,fv->face_element_map[2*f+0],fv->face_element_map[2*f+1]);
+      printf("rank[%d]: face[%d]: cell[%d,%d]\n",(int)commrank,(int)f,(int)fv->face_element_map[2*f+0],(int)fv->face_element_map[2*f+1]);
     }
   //}
   PetscFunctionReturn(0);
@@ -241,7 +241,7 @@ PetscErrorCode t10a(void)
 	PetscViewer viewer;
     char        fname[256];
     
-    sprintf(fname,"Tvn%d.vts",l);
+    sprintf(fname,"Tvn%d.vts",(int)l);
     ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
     ierr = PetscViewerSetType(viewer,PETSCVIEWERVTK);CHKERRQ(ierr);
     ierr = PetscViewerFileSetMode(viewer,FILE_MODE_WRITE);CHKERRQ(ierr);
