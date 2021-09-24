@@ -1502,6 +1502,75 @@ PetscErrorCode pTatinNonlinearStokesSolve(pTatinCtx user,SNES snes,Vec X,const c
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode ProjectStokesVariablesOnQuadraturePoints(pTatinCtx user)
+{
+  int               npoints;
+  DataField         PField_std;
+  DataField         PField_stokes;
+  MPntStd           *mp_std;
+  MPntPStokes       *mp_stokes;
+  PhysCompStokes    stokes;
+  PetscErrorCode    ierr;
+  
+  PetscFunctionBegin;
+  
+  /* Marker -> quadrature point projection */
+  DataBucketGetDataFieldByName(user->materialpoint_db, MPntStd_classname     , &PField_std);
+  DataBucketGetDataFieldByName(user->materialpoint_db, MPntPStokes_classname , &PField_stokes);
+
+  DataBucketGetSizes(user->materialpoint_db,&npoints,NULL,NULL);
+  DataFieldGetEntries(PField_std,(void**)&mp_std);
+  DataFieldGetEntries(PField_stokes,(void**)&mp_stokes);
+  
+  ierr = pTatinGetStokesContext(user,&stokes);CHKERRQ(ierr);
+
+  switch (user->coefficient_projection_type) {
+
+    case -1:      /* Perform null projection use the values currently defined on the quadrature points */
+      break;
+
+    case 0:     /* Perform P0 projection over Q2 element directly onto quadrature points */
+      //SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"P0 [arithmetic avg] marker->quadrature projection not supported");
+            ierr = MPntPStokesProj_P0(CoefAvgARITHMETIC,npoints,mp_std,mp_stokes,stokes->dav,stokes->volQ);CHKERRQ(ierr);
+      break;
+    case 10:
+      //SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"P0 [harmonic avg] marker->quadrature projection not supported");
+            ierr = MPntPStokesProj_P0(CoefAvgHARMONIC,npoints,mp_std,mp_stokes,stokes->dav,stokes->volQ);CHKERRQ(ierr);
+      break;
+    case 20:
+      //SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"P0 [geometric avg] marker->quadrature projection not supported");
+            ierr = MPntPStokesProj_P0(CoefAvgGEOMETRIC,npoints,mp_std,mp_stokes,stokes->dav,stokes->volQ);CHKERRQ(ierr);
+      break;
+    case 30:
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"P0 [dominant phase] marker->quadrature projection not supported");
+      break;
+
+    case 1:     /* Perform Q1 projection over Q2 element and interpolate back to quadrature points */
+      ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes(npoints,mp_std,mp_stokes,stokes->dav,stokes->volQ);CHKERRQ(ierr);
+      break;
+
+    case 2:       /* Perform Q2 projection and interpolate back to quadrature points */
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Q2 marker->quadrature projection not supported");
+      break;
+
+    case 3:       /* Perform P1 projection and interpolate back to quadrature points */
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"P1 marker->quadrature projection not supported");
+      break;
+        case 4:
+            ierr = SwarmUpdateGaussPropertiesOne2OneMap_MPntPStokes(npoints,mp_std,mp_stokes,stokes->volQ);CHKERRQ(ierr);
+            break;
+
+    default:
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Viscosity projection type is not defined");
+      break;
+  }
+  
+  DataFieldRestoreEntries(PField_stokes,(void**)&mp_stokes);
+  DataFieldRestoreEntries(PField_std,(void**)&mp_std);
+  
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode CheckpointWrite_EnergyFV(PhysCompEnergyFV energyfv,PetscBool write_dmda,const char path[],const char prefix[])
 {
   PetscMPIInt    commsize,commrank;
@@ -1681,7 +1750,7 @@ PetscErrorCode PhysCompLoad_EnergyFV(pTatinCtx user,DM dav,const char jfilename[
   ierr = PhysCompEnergyFVCreate(PETSC_COMM_WORLD,&energyfv);CHKERRQ(ierr);
   ierr = PhysCompEnergyFVSetParams(energyfv,time,dt,nsub);CHKERRQ(ierr);
   ierr = PhysCompEnergyFVSetUp(energyfv,user);CHKERRQ(ierr);
-  
+  ierr = PhysCompEnergyFVUpdateGeometry(energyfv,user->stokes_ctx);CHKERRQ(ierr);
   /* query file for state vector filenames - load vectors into energy struct */
   {
     cJSON *jso_petscvec;
@@ -2101,10 +2170,9 @@ PetscErrorCode LoadStateFromModelDefinitionFV(pTatinCtx *pctx,Vec *v1,Vec *v2,Pe
   }
 
   /* initial condition - call user method, then clobber */
-  ierr = pTatinModel_ApplyInitialStokesVariableMarkers(model,user,X_s);CHKERRQ(ierr);//TEST!!
   ierr = pTatinModel_ApplyInitialSolution(model,user,X_s);CHKERRQ(ierr);
   ierr = pTatin3dLoadState_FromFile_FV(user,dmstokes,dmenergy,X_s,X_e);CHKERRQ(ierr);
-
+  ierr = ProjectStokesVariablesOnQuadraturePoints(user);CHKERRQ(ierr);
   /* boundary conditions */
   ierr = pTatinModel_ApplyBoundaryCondition(model,user);CHKERRQ(ierr);
 
@@ -2593,19 +2661,6 @@ PetscErrorCode Run_NonLinearFV(pTatinCtx user,Vec v1,Vec v2)
 
     ierr = pTatinLogBasic(user);CHKERRQ(ierr);
     
-    /* update marker time dependent terms */
-    /* e.g. e_plastic^1 = e_plastic^0 + dt * [ strain_rate_inv(u^0) ] */
-    /*
-     NOTE: for a consistent forward difference time integration we evaluate u^0 at x^0
-     - thus this update is performed BEFORE we advect the markers
-     */
-    ierr = pTatin_UpdateCoefficientTemporalDependence_Stokes(user,X);CHKERRQ(ierr);
-    
-    /* update marker positions */
-    ierr = DMCompositeGetAccess(user->pack,X,&velocity,&pressure);CHKERRQ(ierr);
-    ierr = MaterialPointStd_UpdateGlobalCoordinates(user->materialpoint_db,dav,velocity,user->dt);CHKERRQ(ierr);
-    ierr = DMCompositeRestoreAccess(user->pack,X,&velocity,&pressure);CHKERRQ(ierr);
-    
     /* update mesh coordinates then restore */
     {
       DM  cdm;
@@ -2627,91 +2682,6 @@ PetscErrorCode Run_NonLinearFV(pTatinCtx user,Vec v1,Vec v2)
       
       ierr = VecDestroy(&tmp);CHKERRQ(ierr);
     }
-    
-    /* Q2: update mesh coordinates */
-    {
-      Vec q2_coor;
-      
-      ierr = DMGetCoordinates(dav,&q2_coor);CHKERRQ(ierr);
-      
-      ierr = VecCopy(q2_coor_k,q2_coor);CHKERRQ(ierr);
-      ierr = DMDAUpdateGhostedCoordinates(dav);CHKERRQ(ierr);
-    }
-    
-    /* update mesh coordinate hierarchy */
-    ierr = DMDARestrictCoordinatesHierarchy(mgctx.dav_hierarchy,mgctx.nlevels);CHKERRQ(ierr);
-
-    /* 3 Update local coordinates and communicate */
-    ierr = MaterialPointStd_UpdateCoordinates(user->materialpoint_db,dav,user->materialpoint_ex);CHKERRQ(ierr);
-
-    /* 3a - Add material */
-    ierr = pTatinModel_ApplyMaterialBoundaryCondition(model,user);CHKERRQ(ierr);
-
-    /* add / remove points if cells are over populated or depleted of points */
-    ierr = MaterialPointPopulationControl_v1(user);CHKERRQ(ierr);
-
-    /* update markers = >> gauss points */
-    {
-      int               npoints;
-      DataField         PField_std;
-      DataField         PField_stokes;
-      MPntStd           *mp_std;
-      MPntPStokes       *mp_stokes;
-
-      DataBucketGetDataFieldByName(user->materialpoint_db, MPntStd_classname     , &PField_std);
-      DataBucketGetDataFieldByName(user->materialpoint_db, MPntPStokes_classname , &PField_stokes);
-
-      DataBucketGetSizes(user->materialpoint_db,&npoints,NULL,NULL);
-      DataFieldGetEntries(PField_std,(void**)&mp_std);
-      DataFieldGetEntries(PField_stokes,(void**)&mp_stokes);
-      
-      ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,mgctx.nlevels,mgctx.interpolation_eta,mgctx.dav_hierarchy,mgctx.volQ);CHKERRQ(ierr);
-
-#if 0
-      /* START OF DEBUG PART*/
-      PetscInt   np_points=0;
-      DataField  PField_energy;
-      
-      DataFieldGetAccess(PField_std);
-      DataFieldVerifyAccess(PField_std,sizeof(MPntStd));
-      
-      DataFieldGetAccess(PField_stokes);
-      DataFieldVerifyAccess(PField_stokes,sizeof(MPntPStokes));
-      
-      DataBucketGetDataFieldByName(user->materialpoint_db,MPntPEnergy_classname,&PField_energy);
-      DataFieldGetAccess(PField_energy);
-      DataFieldVerifyAccess(PField_energy,sizeof(MPntPEnergy));
-      
-      for (np_points=0;np_points < npoints; np_points++) {
-        MPntStd           *material_point;
-        MPntPStokes       *material_point_stokes;
-        MPntPEnergy       *material_point_energy;
-        
-        DataFieldAccessPoint(PField_std,np_points,(void**)&material_point);
-        DataFieldAccessPoint(PField_stokes,np_points,(void**)&material_point_stokes);
-        DataFieldAccessPoint(PField_energy,np_points,(void**)&material_point_energy);
-        
-        PetscPrintf(PETSC_COMM_WORLD,"density on mp_stokes[%d] = %1.4e; mp_energy diffusivity = %1.4e\n",np_points,material_point_stokes->rho,material_point_energy->diffusivity);
-        
-        
-      }
-      DataFieldRestoreAccess(PField_std);
-      DataFieldRestoreAccess(PField_stokes);
-      DataFieldRestoreAccess(PField_energy);
-      /* END OF DEBUG PART */
-#endif
-      DataFieldRestoreEntries(PField_std,(void**)&mp_std);
-      DataFieldRestoreEntries(PField_stokes,(void**)&mp_stokes);
-    }
-    
-    /* Solve lithostatic pressure and apply on the surface quadrature points for Stokes */
-    ierr = ModelApplyTractionFromLithoPressure(user);CHKERRQ(ierr);
-    
-    /* Update boundary conditions */
-    /* Fine level setup */
-    ierr = pTatinModel_ApplyBoundaryCondition(model,user);CHKERRQ(ierr);
-    /* Coarse grid setup: Configure boundary conditions */
-    ierr = pTatinModel_ApplyBoundaryConditionMG(mgctx.nlevels,mgctx.u_bclist,mgctx.dav_hierarchy,model,user);CHKERRQ(ierr);
     
     /* solve energy equation with FV + ALE */
     // [FV EXTENSION] (1) Evaluate thermal properties on material points, project onto FV cell / cell faces
@@ -2814,16 +2784,6 @@ PetscErrorCode Run_NonLinearFV(pTatinCtx user,Vec v1,Vec v2)
       }
     }
     
-    /* FV: update mesh coordinates */
-    if (active_energy) {
-      Vec fv_vertex_coor_geometry;
-      
-      ierr = FVDAGetGeometryCoordinates(energyfv->fv,&fv_vertex_coor_geometry);CHKERRQ(ierr);
-      ierr = VecCopy(fv_coor_k,fv_vertex_coor_geometry);CHKERRQ(ierr);
-      
-      ierr = PhysCompEnergyFVUpdateGeometry(energyfv,stokes);CHKERRQ(ierr);
-    }
-    
     /* (i) solve energy equation */
     if (active_energy) {
       PetscReal *dt;
@@ -2858,6 +2818,114 @@ PetscErrorCode Run_NonLinearFV(pTatinCtx user,Vec v1,Vec v2)
         ierr = pTatinLogBasicCPUtime(user,"EnergyFV-Solve",time[1]-time[0]);CHKERRQ(ierr);
       } 
     }
+    
+    /* update marker time dependent terms */
+    /* e.g. e_plastic^1 = e_plastic^0 + dt * [ strain_rate_inv(u^0) ] */
+    /*
+     NOTE: for a consistent forward difference time integration we evaluate u^0 at x^0
+     - thus this update is performed BEFORE we advect the markers
+     */
+    ierr = pTatin_UpdateCoefficientTemporalDependence_Stokes(user,X);CHKERRQ(ierr);
+    
+    /* update marker positions */
+    ierr = DMCompositeGetAccess(user->pack,X,&velocity,&pressure);CHKERRQ(ierr);
+    ierr = MaterialPointStd_UpdateGlobalCoordinates(user->materialpoint_db,dav,velocity,user->dt);CHKERRQ(ierr);
+    ierr = DMCompositeRestoreAccess(user->pack,X,&velocity,&pressure);CHKERRQ(ierr);
+    
+    /* Q2: update mesh coordinates */
+    {
+      Vec q2_coor;
+      
+      ierr = DMGetCoordinates(dav,&q2_coor);CHKERRQ(ierr);
+      
+      ierr = VecCopy(q2_coor_k,q2_coor);CHKERRQ(ierr);
+      ierr = DMDAUpdateGhostedCoordinates(dav);CHKERRQ(ierr);
+    }
+    
+    /* FV: update mesh coordinates */
+    if (active_energy) {
+      Vec fv_vertex_coor_geometry;
+      
+      ierr = FVDAGetGeometryCoordinates(energyfv->fv,&fv_vertex_coor_geometry);CHKERRQ(ierr);
+      ierr = VecCopy(fv_coor_k,fv_vertex_coor_geometry);CHKERRQ(ierr);
+      
+      ierr = PhysCompEnergyFVUpdateGeometry(energyfv,stokes);CHKERRQ(ierr);
+    }
+    
+    /* update mesh coordinate hierarchy */
+    ierr = DMDARestrictCoordinatesHierarchy(mgctx.dav_hierarchy,mgctx.nlevels);CHKERRQ(ierr);
+
+    /* 3 Update local coordinates and communicate */
+    ierr = MaterialPointStd_UpdateCoordinates(user->materialpoint_db,dav,user->materialpoint_ex);CHKERRQ(ierr);
+
+    /* 3a - Add material */
+    ierr = pTatinModel_ApplyMaterialBoundaryCondition(model,user);CHKERRQ(ierr);
+
+    /* add / remove points if cells are over populated or depleted of points */
+    ierr = MaterialPointPopulationControl_v1(user);CHKERRQ(ierr);
+
+    /* update markers = >> gauss points */
+    {
+      int               npoints;
+      DataField         PField_std;
+      DataField         PField_stokes;
+      MPntStd           *mp_std;
+      MPntPStokes       *mp_stokes;
+
+      DataBucketGetDataFieldByName(user->materialpoint_db, MPntStd_classname     , &PField_std);
+      DataBucketGetDataFieldByName(user->materialpoint_db, MPntPStokes_classname , &PField_stokes);
+
+      DataBucketGetSizes(user->materialpoint_db,&npoints,NULL,NULL);
+      DataFieldGetEntries(PField_std,(void**)&mp_std);
+      DataFieldGetEntries(PField_stokes,(void**)&mp_stokes);
+      
+      ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,mgctx.nlevels,mgctx.interpolation_eta,mgctx.dav_hierarchy,mgctx.volQ);CHKERRQ(ierr);
+
+#if 0
+      /* START OF DEBUG PART*/
+      PetscInt   np_points=0;
+      DataField  PField_energy;
+      
+      DataFieldGetAccess(PField_std);
+      DataFieldVerifyAccess(PField_std,sizeof(MPntStd));
+      
+      DataFieldGetAccess(PField_stokes);
+      DataFieldVerifyAccess(PField_stokes,sizeof(MPntPStokes));
+      
+      DataBucketGetDataFieldByName(user->materialpoint_db,MPntPEnergy_classname,&PField_energy);
+      DataFieldGetAccess(PField_energy);
+      DataFieldVerifyAccess(PField_energy,sizeof(MPntPEnergy));
+      
+      for (np_points=0;np_points < npoints; np_points++) {
+        MPntStd           *material_point;
+        MPntPStokes       *material_point_stokes;
+        MPntPEnergy       *material_point_energy;
+        
+        DataFieldAccessPoint(PField_std,np_points,(void**)&material_point);
+        DataFieldAccessPoint(PField_stokes,np_points,(void**)&material_point_stokes);
+        DataFieldAccessPoint(PField_energy,np_points,(void**)&material_point_energy);
+        
+        PetscPrintf(PETSC_COMM_WORLD,"density on mp_stokes[%d] = %1.4e; mp_energy diffusivity = %1.4e\n",np_points,material_point_stokes->rho,material_point_energy->diffusivity);
+        
+        
+      }
+      DataFieldRestoreAccess(PField_std);
+      DataFieldRestoreAccess(PField_stokes);
+      DataFieldRestoreAccess(PField_energy);
+      /* END OF DEBUG PART */
+#endif
+      DataFieldRestoreEntries(PField_std,(void**)&mp_std);
+      DataFieldRestoreEntries(PField_stokes,(void**)&mp_stokes);
+    }
+    
+    /* Solve lithostatic pressure and apply on the surface quadrature points for Stokes */
+    ierr = ModelApplyTractionFromLithoPressure(user);CHKERRQ(ierr);
+    
+    /* Update boundary conditions */
+    /* Fine level setup */
+    ierr = pTatinModel_ApplyBoundaryCondition(model,user);CHKERRQ(ierr);
+    /* Coarse grid setup: Configure boundary conditions */
+    ierr = pTatinModel_ApplyBoundaryConditionMG(mgctx.nlevels,mgctx.u_bclist,mgctx.dav_hierarchy,model,user);CHKERRQ(ierr);
     
     /* (ii) solve stokes */
     {
