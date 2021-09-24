@@ -627,14 +627,32 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
     ierr = MatSetFromOptions(Spp);CHKERRQ(ierr);
 
     /* A12 */
+    /*
     ierr = StokesQ2P1CreateMatrix_MFOperator_A12(StkCtx,&Aup);CHKERRQ(ierr);
     ierr = MatSetOptionsPrefix(Aup,"Bup_");CHKERRQ(ierr);
     ierr = MatSetFromOptions(Aup);CHKERRQ(ierr);
+    */
+    //
+    ierr = StokesQ2P1CreateMatrix_A12(stokes_ctx,&Aup);CHKERRQ(ierr);
+    ierr = MatAssemble_StokesA_A12(Aup,stokes_ctx->dav,stokes_ctx->dap,stokes_ctx->u_bclist,stokes_ctx->p_bclist,stokes_ctx->volQ);CHKERRQ(ierr);
+    ierr = MatZeroEntries(Aup);CHKERRQ(ierr);
+    ierr = MatSetOptionsPrefix(Aup,"Bup_");CHKERRQ(ierr);
+    ierr = MatSetFromOptions(Aup);CHKERRQ(ierr);
+    //
 
     /* A21 */
+    /*
     ierr = StokesQ2P1CreateMatrix_MFOperator_A21(StkCtx,&Apu);CHKERRQ(ierr);
     ierr = MatSetOptionsPrefix(Apu,"Bpu_");CHKERRQ(ierr);
     ierr = MatSetFromOptions(Apu);CHKERRQ(ierr);
+    */
+    //
+    ierr = StokesQ2P1CreateMatrix_A21(stokes_ctx,&Apu);CHKERRQ(ierr);
+    ierr = MatSetOptionsPrefix(Apu,"Bpu_");CHKERRQ(ierr);
+    ierr = MatSetFromOptions(Apu);CHKERRQ(ierr);
+    ierr = MatAssemble_StokesA_A21(Apu,stokes_ctx->dav,stokes_ctx->dap,stokes_ctx->u_bclist,stokes_ctx->p_bclist,stokes_ctx->volQ);CHKERRQ(ierr);
+    ierr = MatZeroEntries(Apu);CHKERRQ(ierr);
+    //
 
     /* nest */
     bA[0][0] = NULL; bA[0][1] = Aup;
@@ -989,6 +1007,7 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
   /* preconditioner operator for Jacobian */
   {
     Mat Buu,Bpp;
+    Mat Bup,Bpu;
 
     ierr = MatCreateSubMatrix(B,mlctx->is_stokes_field[0],mlctx->is_stokes_field[0],MAT_INITIAL_MATRIX,&Buu);CHKERRQ(ierr);
     ierr = MatCreateSubMatrix(B,mlctx->is_stokes_field[1],mlctx->is_stokes_field[1],MAT_INITIAL_MATRIX,&Bpp);CHKERRQ(ierr);
@@ -1050,15 +1069,88 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
     ierr = PetscObjectTypeCompare((PetscObject)Bpp,MATSHELL,&is_shell);CHKERRQ(ierr);
     if (!is_shell) {
       ierr = MatZeroEntries(Bpp);CHKERRQ(ierr);
-      ierr = MatAssemble_StokesPC_ScaledMassMatrix(Bpp,dau,dap,user->stokes_ctx->p_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
     }
 
     ierr = MatDestroy(&Buu);CHKERRQ(ierr);
     ierr = MatDestroy(&Bpp);CHKERRQ(ierr);
+    
+
+    ierr = MatCreateSubMatrix(B,mlctx->is_stokes_field[0],mlctx->is_stokes_field[1],MAT_INITIAL_MATRIX,&Bup);CHKERRQ(ierr);
+    ierr = MatCreateSubMatrix(B,mlctx->is_stokes_field[1],mlctx->is_stokes_field[0],MAT_INITIAL_MATRIX,&Bpu);CHKERRQ(ierr);
+
+    is_shell = PETSC_FALSE;
+    ierr = PetscObjectTypeCompare((PetscObject)Bup,MATSHELL,&is_shell);CHKERRQ(ierr);
+    if (!is_shell) {
+      ierr = MatZeroEntries(Bup);CHKERRQ(ierr);
+      ierr = MatAssemble_StokesA_A12(Bup,dau,dap,user->stokes_ctx->u_bclist,user->stokes_ctx->p_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
+    }
+    
+    is_shell = PETSC_FALSE;
+    ierr = PetscObjectTypeCompare((PetscObject)Bpu,MATSHELL,&is_shell);CHKERRQ(ierr);
+    if (!is_shell) {
+      ierr = MatZeroEntries(Bpu);CHKERRQ(ierr);
+      ierr = MatAssemble_StokesA_A21(Bpu,dau,dap,user->stokes_ctx->u_bclist,user->stokes_ctx->p_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
+    }
+
+    ierr = MatDestroy(&Bup);CHKERRQ(ierr);
+    ierr = MatDestroy(&Bpu);CHKERRQ(ierr);
   }
   ierr = MatAssemblyBegin(B,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd  (B,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
 
+  /*
+  {
+    KSP ksp;
+    PC pc;
+    Mat Spp;
+    PCFieldSplitSchurPreType ptype;
+    
+    
+    ierr = SNESGetKSP(snes,&ksp);CHKERRQ(ierr);
+    ierr = KSPGetPC(ksp,&pc);CHKERRQ(ierr);
+    ierr = PCFieldSplitGetSchurPre(pc,&ptype,&Spp);CHKERRQ(ierr);
+    
+    ierr = MatZeroEntries(Spp);CHKERRQ(ierr);
+    //ierr = MatAssemble_StokesPC_ScaledMassMatrix(Spp,dau,dap,user->stokes_ctx->p_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
+    ierr = MatAssemble_LocalSchur(Spp,dau,dap,user->stokes_ctx->u_bclist,user->stokes_ctx->p_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
+  }
+  */
+  /*
+  {
+    KSP ksp;
+    PC pc;
+    Mat Spp,Bup;
+    PCFieldSplitSchurPreType ptype;
+    
+    ierr = MatCreateSubMatrix(B,mlctx->is_stokes_field[0],mlctx->is_stokes_field[1],MAT_INITIAL_MATRIX,&Bup);CHKERRQ(ierr);
+
+    
+    SNESGetKSP(snes,&ksp);
+    KSPGetPC(ksp,&pc);
+    ierr = PCFieldSplitGetSchurPre(pc,&ptype,&Spp);CHKERRQ(ierr);
+    
+    ierr = MatZeroEntries(Spp);CHKERRQ(ierr);
+    ierr = MatAssemble_LocalSchur2(Spp,Bup,dau,dap,user->stokes_ctx->u_bclist,user->stokes_ctx->p_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
+    
+    ierr = MatDestroy(&Bup);CHKERRQ(ierr);
+  }
+  */
+  {
+    KSP ksp,*sub_ksp;
+    PC pc,pc_lsc;
+    PetscInt nsplits;
+    Vec scale;
+    
+    ierr = SNESGetKSP(snes,&ksp);CHKERRQ(ierr);
+    ierr = KSPGetPC(ksp,&pc);CHKERRQ(ierr);
+    ierr = PCFieldSplitGetSubKSP(pc,&nsplits,&sub_ksp);CHKERRQ(ierr);
+    ierr = KSPGetPC(sub_ksp[1],&pc_lsc);CHKERRQ(ierr);
+    ierr = PCLSCGetScale(pc_lsc,&scale);CHKERRQ(ierr);
+    ierr = VecAssemble_SchurScale(scale,dau,dap,user->stokes_ctx->u_bclist,user->stokes_ctx->p_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
+    ierr = VecReciprocal(scale);CHKERRQ(ierr);
+  }
+
+  
   /* Buu preconditioner for all other levels in the hierarchy */
   {
     PetscBool use_low_order_geometry;
@@ -1554,7 +1646,38 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
 
     /* configure uu split for galerkin multi-grid */
     ierr = pTatin3dStokesKSPConfigureFSGMG(ksp,nlevels,operatorA11,operatorB11,interpolation_v,dav_hierarchy);CHKERRQ(ierr);
+    {
+      Mat Spp;
+      
+      ierr = DMCreateMatrix(dap,&Spp);CHKERRQ(ierr);
+      ierr = MatSetOptionsPrefix(Spp,"s_");CHKERRQ(ierr);
+      ierr = MatSetOption(Spp,MAT_IGNORE_LOWER_TRIANGULAR,PETSC_TRUE);CHKERRQ(ierr);
+      ierr = MatSetFromOptions(Spp);CHKERRQ(ierr);
+      ierr = PCFieldSplitSetSchurPre(pc,PC_FIELDSPLIT_SCHUR_PRE_USER,Spp);CHKERRQ(ierr);
+      ierr = MatDestroy(&Spp);CHKERRQ(ierr);
+    }
+    /*
+    {
+      Mat Spp,Bup,Bpu,B11;
+      
+      ierr = MatCreateSubMatrix(B,is_stokes_field[0],is_stokes_field[1],MAT_INITIAL_MATRIX,&Bup);CHKERRQ(ierr);
+      ierr = MatCreateSubMatrix(B,is_stokes_field[1],is_stokes_field[0],MAT_INITIAL_MATRIX,&Bpu);CHKERRQ(ierr);
 
+      ierr = DMCreateMatrix(dav,&B11);CHKERRQ(ierr);
+
+      ierr = MatPtAP(B11,Bup,MAT_INITIAL_MATRIX,PETSC_DEFAULT,&Spp);CHKERRQ(ierr);
+      ierr = MatSetOptionsPrefix(Spp,"s_");CHKERRQ(ierr);
+     
+      ierr = MatDestroy(&Bup);CHKERRQ(ierr);
+      ierr = MatDestroy(&Bpu);CHKERRQ(ierr);
+      ierr = MatDestroy(&B11);CHKERRQ(ierr);
+
+      
+      ierr = PCFieldSplitSetSchurPre(pc,PC_FIELDSPLIT_SCHUR_PRE_SELFP,NULL);CHKERRQ(ierr);
+      ierr = MatDestroy(&Spp);CHKERRQ(ierr);
+    }
+    */
+    
     ierr = pTatinLogBasic(user);CHKERRQ(ierr);
 
     /* --------------------------------------------------------- */
@@ -1631,6 +1754,17 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
     ierr = PCFieldSplitSetIS(pc,"p",is_stokes_field[1]);CHKERRQ(ierr);
     /* mg */
     ierr = pTatin3dStokesKSPConfigureFSGMG(ksp,nlevels,operatorA11,operatorB11,interpolation_v,dav_hierarchy);CHKERRQ(ierr);
+    {
+      Mat Spp;
+      
+      ierr = DMCreateMatrix(dap,&Spp);CHKERRQ(ierr);
+      ierr = MatSetOptionsPrefix(Spp,"s_");CHKERRQ(ierr);
+      ierr = MatSetOption(Spp,MAT_IGNORE_LOWER_TRIANGULAR,PETSC_TRUE);CHKERRQ(ierr);
+      ierr = MatSetFromOptions(Spp);CHKERRQ(ierr);
+      ierr = PCFieldSplitSetSchurPre(pc,PC_FIELDSPLIT_SCHUR_PRE_USER,Spp);CHKERRQ(ierr);
+      ierr = MatDestroy(&Spp);CHKERRQ(ierr);
+    }
+
     ierr = pTatinLogBasic(user);CHKERRQ(ierr);
 
     /* --------------------------------------------------------- */
@@ -1704,6 +1838,16 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
 
     /* configure uu split for galerkin multi-grid */
     ierr = pTatin3dStokesKSPConfigureFSGMG(ksp,nlevels,operatorA11,operatorB11,interpolation_v,dav_hierarchy);CHKERRQ(ierr);
+    {
+      Mat Spp;
+      
+      ierr = DMCreateMatrix(dap,&Spp);CHKERRQ(ierr);
+      ierr = MatSetOptionsPrefix(Spp,"s_");CHKERRQ(ierr);
+      ierr = MatSetOption(Spp,MAT_IGNORE_LOWER_TRIANGULAR,PETSC_TRUE);CHKERRQ(ierr);
+      ierr = MatSetFromOptions(Spp);CHKERRQ(ierr);
+      ierr = PCFieldSplitSetSchurPre(pc,PC_FIELDSPLIT_SCHUR_PRE_USER,Spp);CHKERRQ(ierr);
+      ierr = MatDestroy(&Spp);CHKERRQ(ierr);
+    }
 
     SNESSetTolerances(snes_newton,PETSC_DEFAULT,PETSC_DEFAULT,PETSC_DEFAULT,newton_its,PETSC_DEFAULT);
     PetscPrintf(PETSC_COMM_WORLD,"   --------- NEWTON STAGE ---------\n");
@@ -2091,6 +2235,16 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
 
     /* configure uu split for galerkin multi-grid */
     ierr = pTatin3dStokesKSPConfigureFSGMG(ksp,nlevels,operatorA11,operatorB11,interpolation_v,dav_hierarchy);CHKERRQ(ierr);
+    {
+      Mat Spp;
+      
+      ierr = DMCreateMatrix(dap,&Spp);CHKERRQ(ierr);
+      ierr = MatSetOptionsPrefix(Spp,"s_");CHKERRQ(ierr);
+      ierr = MatSetOption(Spp,MAT_IGNORE_LOWER_TRIANGULAR,PETSC_TRUE);CHKERRQ(ierr);
+      ierr = MatSetFromOptions(Spp);CHKERRQ(ierr);
+      ierr = PCFieldSplitSetSchurPre(pc,PC_FIELDSPLIT_SCHUR_PRE_USER,Spp);CHKERRQ(ierr);
+      ierr = MatDestroy(&Spp);CHKERRQ(ierr);
+    }
 
     /* insert boundary conditions into solution vector */
     ierr = DMCompositeGetAccess(user->pack,X,&velocity,&pressure);CHKERRQ(ierr);
