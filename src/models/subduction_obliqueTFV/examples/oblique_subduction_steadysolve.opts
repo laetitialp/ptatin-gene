@@ -10,9 +10,9 @@
 -output_path TEST_LP_3D
 -lattice_layout_N 10,10,1
 ########## BASIC NUMERICS ##############
--mx 22 # Number of elements along x
--my 22 # Number of elements along y
--mz 1 # Number of elements along z
+-mx 8 # Number of elements along x
+-my 8 # Number of elements along y
+-mz 8 # Number of elements along z
 -nsteps 600000001 # Max number of steps
 #-dt_max 1e-3 # Max timestep allowed
 #-dt_min 1e-8
@@ -22,9 +22,9 @@
 ########### Box Geometry ################
 -model_subduction_oblique_Lx 10.0e+5  # Max length along x
 -model_subduction_oblique_Ly 15.0e+3 # Origin for y axis
--model_subduction_oblique_Lz 1.0e+3 # Max length along z
+-model_subduction_oblique_Lz 600.0e+3 # Max length along z
 -model_subduction_oblique_Ox 0.0e+5 # Origin for x axis
--model_subduction_oblique_Oy -2.0e+5 # Max depth along y axis
+-model_subduction_oblique_Oy -680.0e+3 # Max depth along y axis
 -model_subduction_oblique_Oz 0.0e+5 # Origin for z axis
 ################ BCs ##################
 #-model_subduction_oblique_IC
