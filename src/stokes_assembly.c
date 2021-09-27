@@ -1543,3 +1543,160 @@ PetscErrorCode VecAssemble_SchurScale(Vec scale,DM dau,DM dap,BCList u_bclist,BC
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode VecAssemble_SchurScaleLeft(Vec scale,DM dau,DM dap,BCList u_bclist,BCList p_bclist,Quadrature volQ)
+{
+  PetscErrorCode ierr;
+  PetscInt       p,ngp;
+  DM             cda;
+  Vec            gcoords;
+  PetscReal      *LA_gcoords;
+  PetscInt       nel,e,ii,jj;
+  PetscInt       nen_u,nen_p;
+  PetscInt       vel_el_lidx[3*U_BASIS_FUNCTIONS];
+  PetscInt       p_el_lidx[P_BASIS_FUNCTIONS];
+  const PetscInt *elnidx_u;
+  const PetscInt *elnidx_p;
+  PetscReal      elcoords[3*Q2_NODES_PER_EL_3D];
+  ISLocalToGlobalMapping ltog;
+  const PetscInt *GINDICES_p;
+  const PetscInt *GINDICES_u;
+  PetscInt       NUM_GINDICES_p,ge_eqnums_p[P_BASIS_FUNCTIONS];
+  PetscInt       NUM_GINDICES_u,ge_eqnums_u[3*Q2_NODES_PER_EL_3D];
+  PetscReal      Ae[3*Q2_NODES_PER_EL_3D * 3*Q2_NODES_PER_EL_3D];
+  PetscReal      fac;
+  QPntVolCoefStokes *all_gausspoints,*cell_gausspoints;
+  PetscReal WEIGHT[NQP],XI[NQP][3],NI[NQP][NPE],GNI[NQP][3][NPE],NIp[NQP][P_BASIS_FUNCTIONS];
+  PetscReal detJ[NQP],dNudx[NQP][NPE],dNudy[NQP][NPE],dNudz[NQP][NPE];
+  Mat A11;
+  PetscReal *elmask;
+  PetscReal bc_scale_factor = 16.0;
+
+  PetscFunctionBegin;
+  
+  
+  ierr = DMCreateMatrix(dau,&A11);CHKERRQ(ierr);
+  
+  /* quadrature */
+  ngp = volQ->npoints;
+  P3D_prepare_elementQ2(ngp,WEIGHT,XI,NI,GNI);
+  
+  /* setup for coords */
+  ierr = DMGetCoordinateDM(dau,&cda);CHKERRQ(ierr);
+  ierr = DMGetCoordinatesLocal(dau,&gcoords);CHKERRQ(ierr);
+  ierr = VecGetArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
+  
+  ierr = DMGetLocalToGlobalMapping(dau, &ltog);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetSize(ltog, &NUM_GINDICES_u);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetIndices(ltog, &GINDICES_u);CHKERRQ(ierr);
+  ierr = DMGetLocalToGlobalMapping(dap, &ltog);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetSize(ltog, &NUM_GINDICES_p);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetIndices(ltog, &GINDICES_p);CHKERRQ(ierr);
+  
+  ierr = DMDAGetElements_pTatinQ2P1(dau,&nel,&nen_u,&elnidx_u);CHKERRQ(ierr);
+  ierr = DMDAGetElements_pTatinQ2P1(dap,&nel,&nen_p,&elnidx_p);CHKERRQ(ierr);
+  
+  ierr = VolumeQuadratureGetAllCellData_Stokes(volQ,&all_gausspoints);CHKERRQ(ierr);
+  
+  
+  {
+    ierr = PetscCalloc1(nel,&elmask);CHKERRQ(ierr);
+    ierr = BCListApplyDirichletMask(NUM_GINDICES_u,(PetscInt*)GINDICES_u,u_bclist);CHKERRQ(ierr);
+
+    for (e=0; e<nel; e++) {
+      PetscInt ii;
+      
+      elmask[e] = 1.0;
+      
+      for (ii=0; ii<27; ii++) {
+        const int NID = elnidx_u[27*e + ii];
+        
+        ge_eqnums_u[3*ii  ] = GINDICES_u[ 3*NID   ];
+        ge_eqnums_u[3*ii+1] = GINDICES_u[ 3*NID+1 ];
+        ge_eqnums_u[3*ii+2] = GINDICES_u[ 3*NID+2 ];
+      }
+      
+      for (ii=0; ii<3*27; ii++) {
+        if (ge_eqnums_u[ii] < 0) {
+          elmask[e] = bc_scale_factor;
+          break;
+        }
+      }
+    }
+
+    ierr = BCListRemoveDirichletMask(NUM_GINDICES_u,(PetscInt*)GINDICES_u,u_bclist);CHKERRQ(ierr);
+  }
+  
+  for (e=0; e<nel; e++) {
+    
+    /* get local indices */
+    ierr = StokesVelocity_GetElementLocalIndices(vel_el_lidx,(PetscInt*)&elnidx_u[nen_u*e]);CHKERRQ(ierr);
+    ierr = StokesPressure_GetElementLocalIndices(p_el_lidx,(PetscInt*)&elnidx_p[nen_p*e]);CHKERRQ(ierr);
+    
+    /* get global indices */
+    // U
+    for (ii=0; ii<NPE; ii++) {
+      const int NID = elnidx_u[nen_u*e + ii];
+      ge_eqnums_u[3*ii  ] = GINDICES_u[ 3*NID   ];
+      ge_eqnums_u[3*ii+1] = GINDICES_u[ 3*NID+1 ];
+      ge_eqnums_u[3*ii+2] = GINDICES_u[ 3*NID+2 ];
+    }
+    // P
+    for (ii=0; ii<P_BASIS_FUNCTIONS; ii++) {
+      const int NID = elnidx_p[nen_p*e + ii];
+      ge_eqnums_p[ii] = GINDICES_p[ NID ];
+    }
+    
+    ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx_u[nen_u*e],LA_gcoords);CHKERRQ(ierr);
+    
+    ierr = VolumeQuadratureGetCellData_Stokes(volQ,all_gausspoints,e,&cell_gausspoints);CHKERRQ(ierr);
+    
+    for (p=0; p<ngp; p++) {
+      PetscScalar xip[] = { XI[p][0], XI[p][1], XI[p][2] };
+      ConstructNi_pressure(xip,elcoords,NIp[p]);
+    }
+    
+    P3D_evaluate_geometry_elementQ2(ngp,elcoords,GNI,detJ,dNudx,dNudy,dNudz);
+    
+    /* Assemble local Ae */
+    PetscMemzero( Ae, sizeof(PetscScalar)* 3*Q2_NODES_PER_EL_3D * 3*Q2_NODES_PER_EL_3D );
+    
+    /* insert Ae += epsilon 2.0 eta Me */
+    for (p=0; p<ngp; p++) {
+      PetscReal el_eta = cell_gausspoints[p].eta;
+      
+      //el_eta = cell_eta;
+      fac = WEIGHT[p] * detJ[p];
+      
+      for (ii = 0; ii < 27; ii++) {
+        for (jj = 0; jj < 27; jj++) {
+          PetscReal me,scale_factor;
+          
+          scale_factor = elmask[e];
+          me = scale_factor * sqrt(2.0 * el_eta) * NI[p][ii] * NI[p][jj] * fac;
+          
+          Ae[(3*ii + 0)*81 + (3*jj + 0)] += me;
+          Ae[(3*ii + 1)*81 + (3*jj + 1)] += me;
+          Ae[(3*ii + 2)*81 + (3*jj + 2)] += me;
+        }
+      }
+    }
+    
+    ierr = MatSetValues(A11,3*Q2_NODES_PER_EL_3D,ge_eqnums_u,3*Q2_NODES_PER_EL_3D,ge_eqnums_u,Ae,ADD_VALUES);CHKERRQ(ierr);
+  }
+  
+  ierr = MatAssemblyBegin(A11,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  ierr = MatAssemblyEnd(A11,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  
+  ierr = ISLocalToGlobalMappingRestoreIndices(ltog, &GINDICES_u);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingRestoreIndices(ltog, &GINDICES_p);CHKERRQ(ierr);
+  
+  ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
+  
+  ierr = MatGetDiagonal(A11,scale);CHKERRQ(ierr);
+  
+  ierr = MatDestroy(&A11);CHKERRQ(ierr);
+  ierr = PetscFree(elmask);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
