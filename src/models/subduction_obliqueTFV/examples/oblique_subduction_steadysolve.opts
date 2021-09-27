@@ -34,9 +34,9 @@
 -model_subduction_oblique_Ttop 0.0
 -model_subduction_oblique_Tbottom 1400.0
 
--model_subduction_oblique_y_continent -25.0e3,-35.0e3,-120.0e3
+#-model_subduction_oblique_y_continent -25.0e3,-35.0e3,-120.0e3
 #-model_subduction_oblique_y_ocean -1.0e3,-5.0e3,-10.0e3,-80.0e3
--model_subduction_oblique_y_ocean -0.0e3,-25.0e3,-35.0e3,-120.0e3
+#-model_subduction_oblique_y_ocean -0.0e3,-25.0e3,-35.0e3,-120.0e3
 -model_subduction_oblique_theta_subd 90.0
 
 #-shear_heating_factor 1

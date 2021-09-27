@@ -9,9 +9,9 @@
 -model_subduction_oblique_output_markers
 #-lattice_layout_N 8,8,8
 ########## BASIC NUMERICS ##############
--mx 512 # Number of elements along x
--my 128 # Number of elements along y
--mz 256 # Number of elements along z
+-mx 8 # Number of elements along x
+-my 8 # Number of elements along y
+-mz 8 # Number of elements along z
 -nsteps 600000001 # Max number of steps
 -dt_max 1e-3 # Max timestep allowed
 #-dt_min 1e-8
@@ -335,7 +335,7 @@
 
 
 #### THERMAL SOLVER
--ptatin_energyfv_nsub 2,2,2
+-ptatin_energyfv_nsub 3,3,3
 -energyfv_ksp_monitor
 -energyfv_ksp_type fgmres
 -energyfv_mg_coarse_pc_type redundant
