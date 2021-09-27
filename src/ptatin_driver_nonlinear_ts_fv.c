@@ -1139,15 +1139,100 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
     KSP ksp,*sub_ksp;
     PC pc,pc_lsc;
     PetscInt nsplits;
-    Vec scale;
+    Vec scale,scale_left;
     
     ierr = SNESGetKSP(snes,&ksp);CHKERRQ(ierr);
     ierr = KSPGetPC(ksp,&pc);CHKERRQ(ierr);
     ierr = PCFieldSplitGetSubKSP(pc,&nsplits,&sub_ksp);CHKERRQ(ierr);
     ierr = KSPGetPC(sub_ksp[1],&pc_lsc);CHKERRQ(ierr);
-    ierr = PCLSCGetScale(pc_lsc,&scale);CHKERRQ(ierr);
+    //ierr = PCLSCGetScale(pc_lsc,&scale);CHKERRQ(ierr);
+    ierr = PCLSCGetLeftRightScale(pc_lsc,&scale_left,&scale);CHKERRQ(ierr);
     ierr = VecAssemble_SchurScale(scale,dau,dap,user->stokes_ctx->u_bclist,user->stokes_ctx->p_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
-    ierr = VecReciprocal(scale);CHKERRQ(ierr);
+    
+    
+    {
+      PetscReal bc_scale_factor = 16.0,bc_scale_factor_e[3*U_BASIS_FUNCTIONS];
+      Vec bcscale;
+      ISLocalToGlobalMapping ltog;
+      const PetscInt *GINDICES;
+      PetscInt       NUM_GINDICES,ge_eqnums[3*Q2_NODES_PER_EL_3D];
+      PetscInt       nel,nen_u,e;
+      const PetscInt *elnidx_u;
+      PetscInt *elmask;
+      
+      ierr = VecDuplicate(scale,&bcscale);CHKERRQ(ierr);
+      ierr = VecSet(bcscale,1.0);CHKERRQ(ierr);
+      
+      ierr = DMGetLocalToGlobalMapping(dau, &ltog);CHKERRQ(ierr);
+      ierr = ISLocalToGlobalMappingGetSize(ltog, &NUM_GINDICES);CHKERRQ(ierr);
+      ierr = ISLocalToGlobalMappingGetIndices(ltog, &GINDICES);CHKERRQ(ierr);
+      ierr = BCListApplyDirichletMask(NUM_GINDICES,(PetscInt*)GINDICES,user->stokes_ctx->u_bclist);CHKERRQ(ierr);
+      
+      ierr = DMDAGetElements_pTatinQ2P1(dau,&nel,&nen_u,&elnidx_u);CHKERRQ(ierr);
+
+      ierr = PetscCalloc1(nel,&elmask);CHKERRQ(ierr);
+      for (e=0; e<nel; e++) {
+        PetscInt ii;
+        for (ii=0; ii<27; ii++) {
+          const int NID = elnidx_u[27*e + ii];
+          
+          ge_eqnums[3*ii  ] = GINDICES[ 3*NID   ];
+          ge_eqnums[3*ii+1] = GINDICES[ 3*NID+1 ];
+          ge_eqnums[3*ii+2] = GINDICES[ 3*NID+2 ];
+        }
+
+        for (ii=0; ii<3*27; ii++) {
+          if (ge_eqnums[ii] < 0) {
+            elmask[e] = 1;
+            break;
+          }
+        }
+      }
+      
+      ierr = BCListRemoveDirichletMask(NUM_GINDICES,(PetscInt*)GINDICES,user->stokes_ctx->u_bclist);CHKERRQ(ierr);
+      
+      {
+        PetscInt ii;
+        for (ii=0; ii<27*3; ii++) {
+          bc_scale_factor_e[ii] = bc_scale_factor;
+        }
+      }
+      
+      for (e=0; e<nel; e++) {
+        PetscInt ii;
+        
+        if (elmask[e] == 1) {
+
+          for (ii=0; ii<27; ii++) {
+            const int NID = elnidx_u[27*e + ii];
+            
+            ge_eqnums[3*ii  ] = GINDICES[ 3*NID   ];
+            ge_eqnums[3*ii+1] = GINDICES[ 3*NID+1 ];
+            ge_eqnums[3*ii+2] = GINDICES[ 3*NID+2 ];
+          }
+          
+          ierr = VecSetValues(bcscale,27*3,ge_eqnums,bc_scale_factor_e,INSERT_VALUES);CHKERRQ(ierr);
+        }
+      }
+
+      ierr = VecAssemblyBegin(bcscale);CHKERRQ(ierr);
+      ierr = VecAssemblyEnd(bcscale);CHKERRQ(ierr);
+      
+      
+      ierr = ISLocalToGlobalMappingRestoreIndices(ltog, &GINDICES);CHKERRQ(ierr);
+      
+      ierr = PetscFree(elmask);CHKERRQ(ierr);
+      
+      ierr = VecCopy(scale,scale_left);CHKERRQ(ierr);
+      ierr = VecPointwiseMult(scale_left,scale_left,bcscale);CHKERRQ(ierr);
+      
+      ierr = VecReciprocal(scale);CHKERRQ(ierr);
+      ierr = VecReciprocal(scale_left);CHKERRQ(ierr);
+
+      ierr = VecDestroy(&bcscale);CHKERRQ(ierr);
+    }
+    
+    
   }
 
   
