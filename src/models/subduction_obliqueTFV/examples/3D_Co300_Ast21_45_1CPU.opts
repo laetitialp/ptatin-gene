@@ -14,7 +14,7 @@
 -mx 8 # Number of elements along x
 -my 8 # Number of elements along y
 -mz 8 # Number of elements along z
--nsteps 4 #000000 # Max number of steps
+-nsteps 2 #000000 # Max number of steps
 #-dt_max 1e-3 # Max timestep allowed
 #-dt_min 1e-8
 -output_frequency 1
