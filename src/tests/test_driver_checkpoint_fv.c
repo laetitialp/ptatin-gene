@@ -2360,6 +2360,8 @@ PetscErrorCode GenerateICStateFromModelDefinition_FV(pTatinCtx *pctx)
  /* Generate physics modules */
   ierr = pTatin3d_PhysCompStokesCreate(user);CHKERRQ(ierr);
   ierr = pTatinGetStokesContext(user,&stokes);CHKERRQ(ierr);
+  ierr = PhysCompStokesGetDMComposite(stokes,&multipys_pack);CHKERRQ(ierr);
+  ierr = PhysCompStokesGetDMs(stokes,&dav,&dap);CHKERRQ(ierr);
   PetscPrintf(PETSC_COMM_WORLD,"Generated vel/pressure mesh --> ");
   pTatinGetRangeCurrentMemoryUsage(NULL);
 
@@ -2367,11 +2369,6 @@ PetscErrorCode GenerateICStateFromModelDefinition_FV(pTatinCtx *pctx)
   /* Here it's simple, we don't need a DM for this, just assign the pack DM to be equal to the stokes DM */
   ierr = PetscObjectReference((PetscObject)stokes->stokes_pack);CHKERRQ(ierr);
   user->pack = stokes->stokes_pack;
-
-  /* fetch some local variables */
-  multipys_pack = user->pack;
-  dav           = stokes->dav;
-  dap           = stokes->dap;
 
   /* IF I DON'T DO THIS, THE IS's OBTAINED FROM DMCompositeGetGlobalISs() are wrong !! */
   {
@@ -2400,7 +2397,6 @@ PetscErrorCode GenerateICStateFromModelDefinition_FV(pTatinCtx *pctx)
   
   if (active_energy) {
     ierr = pTatinGetContext_EnergyFV(user,&energyfv);CHKERRQ(ierr);
-
     ierr = FVDAGetDM(energyfv->fv,&dmfv);CHKERRQ(ierr);
     ierr = pTatinLogBasicDMDA(user,"EnergyFV",dmfv);CHKERRQ(ierr);
     X_e  = energyfv->T;
@@ -3054,6 +3050,7 @@ int main(int argc,char *argv[])
 
     ierr = VecDestroy(&Xup);CHKERRQ(ierr);
     ierr = VecDestroy(&Xt);CHKERRQ(ierr);
+    ierr = pTatin3dDestroyContext(&pctx);
   }
 
   if (pctx) { ierr = pTatin3dDestroyContext(&pctx); }
