@@ -2209,7 +2209,7 @@ PetscErrorCode LoadStateFromModelDefinitionFV(pTatinCtx *pctx,Vec *v1,Vec *v2,Pe
                                     X_s,X_e,NULL,NULL);CHKERRQ(ierr);
   }
 
-  if (v1) { *v2 = X_e; }
+  if (v2) { *v2 = X_e; }
   else    { ierr = VecDestroy(&X_e);CHKERRQ(ierr); }
   if (v1) { *v1 = X_s; }
   else    { ierr = VecDestroy(&X_s);CHKERRQ(ierr); }
