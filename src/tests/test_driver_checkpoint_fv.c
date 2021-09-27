@@ -1639,7 +1639,7 @@ PetscErrorCode CheckpointWrite_EnergyFV(PhysCompEnergyFV energyfv,PetscBool writ
     jso_file = cJSON_CreateObject();
 
     jso_energy = cJSON_CreateObject();
-    cJSON_AddItemToObject(jso_file,"PhysCompEnergy",jso_energy);
+    cJSON_AddItemToObject(jso_file,"PhysCompEnergyFV",jso_energy);
 
     content = cJSON_CreateInt((int)fv->Mi[0]);    cJSON_AddItemToObject(jso_energy,"mx",content);
     content = cJSON_CreateInt((int)fv->Mi[1]);    cJSON_AddItemToObject(jso_energy,"my",content);
@@ -1722,7 +1722,7 @@ PetscErrorCode PhysCompLoad_EnergyFV(pTatinCtx user,DM dav,const char jfilename[
   if (rank == 0) {
     cJSON_FileView(jfilename,&jfile);
     if (!jfile) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open JSON file \"%s\"",jfilename);
-    jphys = cJSON_GetObjectItem(jfile,"PhysCompEnergy");
+    jphys = cJSON_GetObjectItem(jfile,"PhysCompEnergyFV");
   }
   
   /* query JSON file for input parameters */
@@ -1967,7 +1967,7 @@ PetscErrorCode pTatinCtxCheckpointWriteFV(pTatinCtx ctx,const char path[],const 
     if (energy_activated) {
       jso_object = cJSON_CreateObject();
       cJSON_AddItemToObject(jso_ptat,"energy",jso_object);
-      content = cJSON_CreateString("PhysCompEnergy");      cJSON_AddItemToObject(jso_object,"ctype",content);
+      content = cJSON_CreateString("PhysCompEnergyFV");      cJSON_AddItemToObject(jso_object,"ctype",content);
       content = cJSON_CreateString("json-meta");           cJSON_AddItemToObject(jso_object,"dataFormat",content);
       //content = cJSON_CreateString(path);  cJSON_AddItemToObject(jso_object,"prefix",content);
       PetscSNPrintf(relpathtofile,PETSC_MAX_PATH_LEN-1,"%s/physcomp_energy_fvda.json",path);
@@ -2641,7 +2641,15 @@ PetscErrorCode Run_NonLinearFV(pTatinCtx user,Vec v1,Vec v2)
   
   ierr = HMG_SetUp(&mgctx,user);CHKERRQ(ierr);
   step0 = user->step + 1;
-  //user->step = step0;
+  
+  /* Timestep 0 forces a supersmall dt (computed dt * 1e-10)
+     However, the JSON file does not support to write a number that small
+     This result in a dt = 0.0 and produces a division by 0.0 in the EnergyFV solver
+     To prevent this I introduce the following test */
+  if (user->dt <= 1.0e-17) {
+    user->dt = 1.0e-17;
+  }
+  
   for (step=step0; step<=user->nsteps; step++) {
     char stepname[PETSC_MAX_PATH_LEN];
     Vec  fv_coor_k,q2_coor_k;
