@@ -1569,7 +1569,7 @@ PetscErrorCode VecAssemble_SchurScaleLeft(Vec scale,DM dau,DM dap,BCList u_bclis
   PetscReal detJ[NQP],dNudx[NQP][NPE],dNudy[NQP][NPE],dNudz[NQP][NPE];
   Mat A11;
   PetscReal *elmask;
-  PetscReal bc_scale_factor = 16.0;
+  PetscReal bc_scale_factor = 16.0*4;
 
   PetscFunctionBegin;
   
@@ -1695,6 +1695,75 @@ PetscErrorCode VecAssemble_SchurScaleLeft(Vec scale,DM dau,DM dap,BCList u_bclis
   ierr = MatGetDiagonal(A11,scale);CHKERRQ(ierr);
   
   ierr = MatDestroy(&A11);CHKERRQ(ierr);
+  ierr = PetscFree(elmask);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode VecAssemble_BFBtScale(Vec scale,DM dau,BCList u_bclist,PetscReal bc_scale_factor)
+{
+  PetscErrorCode ierr;
+  PetscInt       nel,e,ii;
+  PetscInt       nen_u;
+  const PetscInt *elnidx_u;
+  ISLocalToGlobalMapping ltog;
+  const PetscInt *GINDICES_u;
+  PetscInt       NUM_GINDICES_u,ge_eqnums_u[3*Q2_NODES_PER_EL_3D];
+  PetscReal      Se[3*Q2_NODES_PER_EL_3D];
+  PetscReal *elmask;
+  
+  PetscFunctionBegin;
+  
+  ierr = VecSet(scale,1.0);CHKERRQ(ierr);
+  ierr = DMGetLocalToGlobalMapping(dau, &ltog);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetSize(ltog, &NUM_GINDICES_u);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetIndices(ltog, &GINDICES_u);CHKERRQ(ierr);
+  
+  ierr = DMDAGetElements_pTatinQ2P1(dau,&nel,&nen_u,&elnidx_u);CHKERRQ(ierr);
+  ierr = PetscCalloc1(nel,&elmask);CHKERRQ(ierr);
+  
+  ierr = BCListApplyDirichletMask(NUM_GINDICES_u,(PetscInt*)GINDICES_u,u_bclist);CHKERRQ(ierr);
+  
+  for (e=0; e<nel; e++) {
+    PetscInt ii;
+    
+    elmask[e] = 1.0;
+    
+    for (ii=0; ii<Q2_NODES_PER_EL_3D; ii++) {
+      const int NID = elnidx_u[nen_u*e + ii];
+      ge_eqnums_u[3*ii  ] = GINDICES_u[ 3*NID   ];
+      ge_eqnums_u[3*ii+1] = GINDICES_u[ 3*NID+1 ];
+      ge_eqnums_u[3*ii+2] = GINDICES_u[ 3*NID+2 ];
+    }
+    
+    for (ii=0; ii<3*Q2_NODES_PER_EL_3D; ii++) {
+      if (ge_eqnums_u[ii] < 0) {
+        elmask[e] = bc_scale_factor;
+        break;
+      }
+    }
+  }
+  ierr = BCListRemoveDirichletMask(NUM_GINDICES_u,(PetscInt*)GINDICES_u,u_bclist);CHKERRQ(ierr);
+  
+  for (e=0; e<nel; e++) {
+    if (elmask[e] > 1.0) {
+      for (ii=0; ii<Q2_NODES_PER_EL_3D; ii++) {
+        const int NID = elnidx_u[nen_u*e + ii];
+        ge_eqnums_u[3*ii  ] = GINDICES_u[ 3*NID   ];
+        ge_eqnums_u[3*ii+1] = GINDICES_u[ 3*NID+1 ];
+        ge_eqnums_u[3*ii+2] = GINDICES_u[ 3*NID+2 ];
+      }
+      
+      for (ii=0; ii<3*Q2_NODES_PER_EL_3D; ii++) {
+        Se[ii] = elmask[e];
+      }
+      ierr = VecSetValues(scale,3*Q2_NODES_PER_EL_3D,ge_eqnums_u,Se,INSERT_VALUES);CHKERRQ(ierr);
+    }
+  }
+  
+  ierr = VecAssemblyBegin(scale);CHKERRQ(ierr);
+  
+  ierr = ISLocalToGlobalMappingRestoreIndices(ltog, &GINDICES_u);CHKERRQ(ierr);
   ierr = PetscFree(elmask);CHKERRQ(ierr);
   
   PetscFunctionReturn(0);
