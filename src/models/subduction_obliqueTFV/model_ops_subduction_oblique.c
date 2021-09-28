@@ -627,8 +627,6 @@ static PetscErrorCode RemeshSurfaceIsostaticTopography(pTatinCtx user,ModelSubdu
   ierr = DMGetCoordinates(da,&coord);CHKERRQ(ierr);
   ierr = VecGetArray(coord,&LA_coords);CHKERRQ(ierr);
   
-  PetscPrintf(PETSC_COMM_SELF,"si=%d, sj=%d, sk=%d, nx=%d, ny=%d, nz=%d, M=%d, N=%d, P=%d\n",si,sj,sk,nx,ny,nz,M,N,P);
-  
   xc = (data->Lx + data->Ox)/2.0;
   /* Trench located at centre of the model in x direction */
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-xtrench_offset",&x_offset,NULL);CHKERRQ(ierr);
