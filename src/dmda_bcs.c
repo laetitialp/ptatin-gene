@@ -1061,3 +1061,124 @@ PetscErrorCode BCListInsertScaling(Mat A,PetscInt N_EQNS, PetscInt gidx[],BCList
 
   PetscFunctionReturn(0);
 }
+
+
+
+PetscErrorCode DMDABCListNormalConstraints(BCList list,DM da,Vec flag)
+{
+  PetscInt       i,j,k,si,sj,sk,m,n,p,M,N,P,ndof,dof_idx;
+  PetscInt       L,*idx;
+  PetscReal      *_flag;
+  PetscErrorCode ierr;
+  
+  ierr = VecZeroEntries(flag);CHKERRQ(ierr);
+  ierr = VecGetArray(flag,&_flag);CHKERRQ(ierr);
+  ierr = DMDAGetInfo(da,NULL, &M,&N,&P, NULL,NULL,NULL, &ndof,NULL, NULL,NULL,NULL, NULL);CHKERRQ(ierr);
+  
+  ierr = DMDAGetCorners(da,&si,&sj,&sk,&m,&n,&p);CHKERRQ(ierr);
+  
+  ierr = BCListGetGlobalIndices(list,&L,&idx);
+  
+  /* i=0 plane (left) */
+  //case DMDABCList_IMIN_LOC:
+  dof_idx = 0;
+  if (si == 0) {
+    i = 0;
+    for (k=sk; k<sk+p; k++) {
+      for (j=sj; j<sj+n; j++) {
+        PetscInt blockloc = (i-si) + (j-sj)*m + (k-sk)*m*n;
+        PetscInt loc = blockloc*ndof+dof_idx;
+        if (idx[loc] == BCList_DIRICHLET) {
+          _flag[loc] = 1.0;
+        }
+      }
+    }
+  }
+  
+  /* i=si+m == M plane (right) */
+  //case DMDABCList_IMAX_LOC:
+  dof_idx = 0;
+  if ((si+m) == M) {
+    i = si+m-1;
+    for (k=sk; k<sk+p; k++) {
+      for (j=sj; j<sj+n; j++) {
+        PetscInt blockloc = (i-si) + (j-sj)*m + (k-sk)*m*n;
+        PetscInt loc = blockloc*ndof+dof_idx;
+        if (idx[loc] == BCList_DIRICHLET) {
+          _flag[loc] = 1.0;
+        }
+      }
+    }
+  }
+  
+  /* j=0 plane (bottom) */
+  //case DMDABCList_JMIN_LOC:
+  dof_idx = 1;
+  if (sj == 0) {
+    j = 0;
+    for (k=sk; k<sk+p; k++) {
+      for (i=si; i<si+m; i++) {
+        PetscInt blockloc = (i-si) + (j-sj)*m + (k-sk)*m*n;
+        PetscInt loc = blockloc*ndof+dof_idx;
+        if (idx[loc] == BCList_DIRICHLET) {
+          _flag[loc] = 1.0;
+        }
+      }
+    }
+  }
+  
+  /* j=sj+n == N plane (top) */
+  //case DMDABCList_JMAX_LOC:
+  dof_idx = 1;
+  if ((sj+n) == N) {
+    j = sj+n-1;
+    for (k=sk; k<sk+p; k++) {
+      for (i=si; i<si+m; i++) {
+        PetscInt blockloc = (i-si) + (j-sj)*m + (k-sk)*m*n;
+        PetscInt loc = blockloc*ndof+dof_idx;
+        if (idx[loc] == BCList_DIRICHLET) {
+          _flag[loc] = 1.0;
+        }
+      }
+    }
+  }
+  
+  
+  /* k=0 plane (back) */
+  //case DMDABCList_KMIN_LOC:
+  dof_idx = 2;
+  if (sk == 0) {
+    k = 0;
+    for (j=sj; j<sj+n; j++) {
+      for (i=si; i<si+m; i++) {
+        PetscInt blockloc = (i-si) + (j-sj)*m + (k-sk)*m*n;
+        PetscInt loc = blockloc*ndof+dof_idx;
+        if (idx[loc] == BCList_DIRICHLET) {
+          _flag[loc] = 1.0;
+        }
+      }
+    }
+  }
+  
+  /* k=sk+p == P plane (front) */
+  //case DMDABCList_KMAX_LOC:
+  dof_idx = 2;
+  if ((sk+p) == P) {
+    k = sk+p-1;
+    for (j=sj; j<sj+n; j++) {
+      for (i=si; i<si+m; i++) {
+        PetscInt blockloc = (i-si) + (j-sj)*m + (k-sk)*m*n;
+        PetscInt loc = blockloc*ndof+dof_idx;
+        if (idx[loc] == BCList_DIRICHLET) {
+          _flag[loc] = 1.0;
+        }
+      }
+    }
+  }
+  ierr = VecRestoreArray(flag,&_flag);CHKERRQ(ierr);
+  ierr = BCListRestoreGlobalIndices(list,&L,&idx);
+  
+  PetscFunctionReturn(0);
+}
+
+
