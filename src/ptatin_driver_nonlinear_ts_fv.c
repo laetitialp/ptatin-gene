@@ -1147,12 +1147,115 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
     ierr = KSPGetPC(sub_ksp[1],&pc_lsc);CHKERRQ(ierr);
     //ierr = PCLSCGetScale(pc_lsc,&scale);CHKERRQ(ierr);
     ierr = PCLSCGetLeftRightScale(pc_lsc,&scale_left,&scale);CHKERRQ(ierr);
+
+    /*
+    ierr = VecAssemble_SchurScale(scale,dau,dap,user->stokes_ctx->u_bclist,user->stokes_ctx->p_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
+    ierr = VecCopy(scale,scale_left);CHKERRQ(ierr);
+    */
+    
+    /*
+    // w-bfbt
     ierr = VecAssemble_SchurScale(scale,dau,dap,user->stokes_ctx->u_bclist,user->stokes_ctx->p_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
     ierr = VecAssemble_SchurScaleLeft(scale_left,dau,dap,user->stokes_ctx->u_bclist,user->stokes_ctx->p_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
-    //ierr = VecCopy(scale,scale_left);CHKERRQ(ierr);
-    
+
     ierr = VecReciprocal(scale);CHKERRQ(ierr);
     ierr = VecReciprocal(scale_left);CHKERRQ(ierr);
+    */
+
+    /*
+    // elman
+    {
+      Vec weighting;
+      
+      ierr = VecAssemble_SchurScale(scale,dau,dap,user->stokes_ctx->u_bclist,user->stokes_ctx->p_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
+      ierr = VecReciprocal(scale);CHKERRQ(ierr);
+      ierr = VecCopy(scale,scale_left);CHKERRQ(ierr);
+      
+      ierr = VecDuplicate(scale,&weighting);CHKERRQ(ierr);
+      ierr = VecAssemble_BFBtScale(weighting,dau,user->stokes_ctx->u_bclist,1.0e-2);CHKERRQ(ierr);
+      
+      ierr = VecPointwiseMult(scale,scale,weighting);CHKERRQ(ierr);
+      ierr = VecPointwiseMult(scale_left,scale_left,weighting);CHKERRQ(ierr);
+      
+      ierr = VecDestroy(&weighting);CHKERRQ(ierr);
+    }
+    */
+
+    /*
+    // dave-elman
+    {
+      Vec weighting,weighting_normal;
+      
+      ierr = VecAssemble_SchurScale(scale,dau,dap,user->stokes_ctx->u_bclist,user->stokes_ctx->p_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
+      ierr = VecReciprocal(scale);CHKERRQ(ierr);
+      ierr = VecCopy(scale,scale_left);CHKERRQ(ierr);
+      
+      ierr = VecDuplicate(scale,&weighting);CHKERRQ(ierr);
+      ierr = VecDuplicate(scale,&weighting_normal);CHKERRQ(ierr);
+      ierr = DMDABCListNormalConstraints(user->stokes_ctx->u_bclist,dau,weighting_normal);CHKERRQ(ierr);
+      ierr = VecSet(weighting,1.0);CHKERRQ(ierr);
+      ierr = VecAXPY(weighting,-1.0,weighting_normal);CHKERRQ(ierr); // w = 1 for tangents, 0 for normals
+      ierr = VecAXPY(weighting,1.0e-2,weighting_normal);CHKERRQ(ierr); // w = 1 for tangents, eps for normals
+      //VecView(weighting,PETSC_VIEWER_STDOUT_WORLD);
+      
+      //ierr = VecPointwiseMult(scale,scale,weighting);CHKERRQ(ierr);
+      ierr = VecPointwiseMult(scale_left,scale_left,weighting);CHKERRQ(ierr);
+      
+      ierr = VecDestroy(&weighting);CHKERRQ(ierr);
+      ierr = VecDestroy(&weighting_normal);CHKERRQ(ierr);
+    }
+    */
+
+    
+    //
+    // diag-bfbt
+    {
+      Mat Buu;
+      
+      ierr = MatCreateSubMatrix(B,mlctx->is_stokes_field[0],mlctx->is_stokes_field[0],MAT_INITIAL_MATRIX,&Buu);CHKERRQ(ierr);
+      ierr = MatGetDiagonal(Buu,scale);CHKERRQ(ierr);
+      ierr = MatGetDiagonal(Buu,scale_left);CHKERRQ(ierr);
+      ierr = MatDestroy(&Buu);CHKERRQ(ierr);
+     
+     ierr = VecReciprocal(scale);CHKERRQ(ierr);
+     ierr = VecReciprocal(scale_left);CHKERRQ(ierr);
+    }
+    //
+    
+    /*
+    // bc-diag-bfbt
+    // (G' Qv^{-1} G)^{-1} (G' Qv^{-1} F H G) (G' H G)^{-1}
+    // H = W^{1/2} Qv^{-1} W^{1/2}
+    {
+      Mat Buu;
+      Vec weighting;
+
+      ierr = MatCreateSubMatrix(B,mlctx->is_stokes_field[0],mlctx->is_stokes_field[0],MAT_INITIAL_MATRIX,&Buu);CHKERRQ(ierr);
+      ierr = MatGetDiagonal(Buu,scale);CHKERRQ(ierr);
+      ierr = MatGetDiagonal(Buu,scale_left);CHKERRQ(ierr);
+      ierr = VecReciprocal(scale);CHKERRQ(ierr);
+      ierr = VecReciprocal(scale_left);CHKERRQ(ierr);
+      ierr = MatDestroy(&Buu);CHKERRQ(ierr);
+
+      ierr = VecDuplicate(scale,&weighting);CHKERRQ(ierr);
+      ierr = VecAssemble_BFBtScale(weighting,dau,user->stokes_ctx->u_bclist,1.0e-2);CHKERRQ(ierr);
+      
+      //ierr = VecPointwiseMult(scale,scale,weighting);CHKERRQ(ierr);
+      ierr = VecPointwiseMult(scale_left,scale_left,weighting);CHKERRQ(ierr);
+      
+      ierr = VecDestroy(&weighting);CHKERRQ(ierr);
+    }
+    */
+    
+    {
+      Mat SchurA,SchurB;
+      ierr = KSPGetOperators(sub_ksp[1],&SchurA,&SchurB);CHKERRQ(ierr);
+      ierr = MatAssemblyBegin(SchurA,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+      ierr = MatAssemblyEnd  (SchurA,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+      ierr = MatAssemblyBegin(SchurB,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+      ierr = MatAssemblyEnd  (SchurB,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+      ierr = KSPSetOperators(sub_ksp[1],SchurA,SchurB);CHKERRQ(ierr);
+    }
   }
 
   
