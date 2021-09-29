@@ -50,6 +50,7 @@
 #include "ptatin_std_dirichlet_boundary_conditions.h"
 #include "dmda_iterator.h"
 #include "mesh_update.h"
+#include "dmda_update_coords.h"
 #include "dmda_remesh.h"
 #include "ptatin3d_stokes.h"
 #include "ptatin3d_energy.h"
