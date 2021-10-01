@@ -42,5 +42,7 @@ PetscErrorCode MatCreateStokesJux(pTatinCtx ctx,void *Jctx,Mat *_Jux);
 PetscErrorCode MatCreateStokesJpx(pTatinCtx ctx,void *Jctx,Mat *_Jpx);
 PetscErrorCode MatCreateStokesJuu(pTatinCtx ctx,void *Jctx,Mat *_Juu);
 
+PetscErrorCode FormFunction_StokesU(SNES snes,Vec X,Vec F,void *ctx);
+
 #endif
 
