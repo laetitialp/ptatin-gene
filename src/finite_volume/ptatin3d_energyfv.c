@@ -14,7 +14,6 @@
 #include <finite_volume/fvda_private.h>
 #include <finite_volume/kdtree.h>
 
-PetscErrorCode fvgeometry_dmda3d_create_from_element_partition(MPI_Comm comm,PetscInt target_decomp[],const PetscInt m[],DM *dm);
 PetscErrorCode _cart_convert_index_to_ijk(PetscInt r,const PetscInt mp[],PetscInt rijk[]);
 PetscErrorCode _cart_convert_ijk_to_index(const PetscInt rijk[],const PetscInt mp[],PetscInt *r);
 
@@ -40,6 +39,7 @@ PetscErrorCode PhysCompEnergyFVDestroy(PhysCompEnergyFV *energy)
   ierr = VecDestroy(&e->Told);CHKERRQ(ierr);
   ierr = VecDestroy(&e->Xold);CHKERRQ(ierr);
   ierr = VecDestroy(&e->F);CHKERRQ(ierr);
+  ierr = VecDestroy(&e->G);CHKERRQ(ierr);
   ierr = MatDestroy(&e->J);CHKERRQ(ierr);
   ierr = SNESDestroy(&e->snes);CHKERRQ(ierr);
   ierr = FVDADestroy(&e->fv);CHKERRQ(ierr);
@@ -202,6 +202,7 @@ PetscErrorCode PhysCompEnergyFVSetUp(PhysCompEnergyFV energy,pTatinCtx pctx)
   ierr = PetscObjectSetName((PetscObject)energy->T,"T");CHKERRQ(ierr);
   ierr = DMCreateGlobalVector(energy->fv->dm_fv,&energy->Told);CHKERRQ(ierr);
   ierr = DMCreateGlobalVector(energy->fv->dm_fv,&energy->F);CHKERRQ(ierr);
+  ierr = DMCreateGlobalVector(energy->fv->dm_fv,&energy->G);CHKERRQ(ierr);
   /*ierr = DMCreateMatrix(energy->fv->dm_fv,&energy->J);CHKERRQ(ierr);*/
   ierr = FVDACreateMatrix(energy->fv,DMDA_STENCIL_STAR,&energy->J);CHKERRQ(ierr);
   {
@@ -1080,7 +1081,7 @@ PetscErrorCode EnergyFVEvaluateCoefficients_MaterialPoints(pTatinCtx user,PetscR
     diffusivity_mp = conductivity_mp / (rho_mp * Cp);
     
     H_mp = H_mp / (rho_mp * Cp);
-    
+
     MPntPEnergySetField_diffusivity(mpp_energy,diffusivity_mp);
     MPntPEnergySetField_heat_source(mpp_energy,H_mp);
   }
@@ -1598,6 +1599,43 @@ PetscErrorCode pTatinPhysCompEnergyFV_ComputeAdvectiveTimestep(PhysCompEnergyFV 
   PetscFunctionReturn(0);
 }
 
-
+PetscErrorCode EvalRHS_HeatProd(FVDA fv,Vec F)
+{
+  PetscErrorCode  ierr;
+  PetscReal       dV;
+  const PetscReal *H;
+  PetscReal       cell_coor[3 * DACELL3D_Q1_SIZE];
+  Vec             coorl;
+  const PetscReal *_geom_coor;
+  PetscReal       *_F;
+  PetscInt        c,dm_nel,dm_nen;
+  const PetscInt  *dm_element,*element;
+  
+  PetscFunctionBegin;
+  
+  ierr = VecZeroEntries(F);CHKERRQ(ierr);
+  ierr = VecGetArray(F,&_F);CHKERRQ(ierr);
+  
+  ierr = DMDAGetElements(fv->dm_geometry,&dm_nel,&dm_nen,&dm_element);CHKERRQ(ierr);
+  ierr = DMCreateLocalVector(fv->dm_geometry,&coorl);CHKERRQ(ierr);
+  ierr = DMGlobalToLocal(fv->dm_geometry,fv->vertex_coor_geometry,INSERT_VALUES,coorl);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(coorl,&_geom_coor);CHKERRQ(ierr);
+  
+  ierr = FVDAGetCellPropertyByNameArrayRead(fv,"H",&H);CHKERRQ(ierr);
+  
+  for (c=0; c<fv->ncells; c++) {
+    element = (const PetscInt*)&dm_element[DACELL3D_Q1_SIZE * c];
+    
+    ierr = DACellGeometry3d_GetCoordinates(element,_geom_coor,cell_coor);CHKERRQ(ierr);
+    _EvaluateCellVolume3d(cell_coor,&dV);
+    
+    _F[c] = H[c] * dV;
+  }
+  ierr = VecRestoreArray(F,&_F);CHKERRQ(ierr);
+  ierr = VecRestoreArrayRead(coorl,&_geom_coor);CHKERRQ(ierr);
+  ierr = VecDestroy(&coorl);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
 
 
