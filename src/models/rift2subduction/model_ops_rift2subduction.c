@@ -162,13 +162,18 @@ PetscErrorCode ModelInitialize_RiftSubd(pTatinCtx c,void *ctx)
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME_RS,"-wz_width",     &data->wz,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME_RS,"-Ttop",         &data->Ttop,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME_RS,"-Tbottom",      &data->Tbottom,NULL);CHKERRQ(ierr);
+  nn = 10;
   ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME_RS,"-bc_time",data->BC_time,&nn,&found);CHKERRQ(ierr);
-  nn = 4;
   if (found) {
     if (nn != 4) {
       SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 4 values for -bc_time. Found %d",nn);
     }
   }
+  
+  for (i=0;i<4;i++){
+    PetscPrintf(PETSC_COMM_WORLD,"BC time [%d] = %1.3e Myr\n",i,data->BC_time[i]);
+  }
+  
   data->output_markers  = PETSC_FALSE;
   data->is_2D           = PETSC_FALSE;
   data->open_base       = PETSC_FALSE;
@@ -208,7 +213,7 @@ PetscErrorCode ModelInitialize_RiftSubd(pTatinCtx c,void *ctx)
   
   ierr = ModelSetMaterialParameters(c,data);CHKERRQ(ierr);
   
-  PetscPrintf(PETSC_COMM_WORLD,"[subduction_oblique]:  during the solve scaling is done using \n");
+  PetscPrintf(PETSC_COMM_WORLD,"[rift2subd]:  during the solve scaling is done using \n");
   PetscPrintf(PETSC_COMM_WORLD,"  L*    : %1.4e [m]\n",       data->length_bar );
   PetscPrintf(PETSC_COMM_WORLD,"  U*    : %1.4e [m.s^-1]\n",  data->velocity_bar );
   PetscPrintf(PETSC_COMM_WORLD,"  t*    : %1.4e [s]\n",       data->time_bar );
