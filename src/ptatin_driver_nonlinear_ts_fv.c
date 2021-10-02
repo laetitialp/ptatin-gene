@@ -627,11 +627,11 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
     ierr = MatSetFromOptions(Spp);CHKERRQ(ierr);
 
     /* A12 */
-    /*
+    
     ierr = StokesQ2P1CreateMatrix_MFOperator_A12(StkCtx,&Aup);CHKERRQ(ierr);
     ierr = MatSetOptionsPrefix(Aup,"Bup_");CHKERRQ(ierr);
     ierr = MatSetFromOptions(Aup);CHKERRQ(ierr);
-    */
+    
     //
     ierr = StokesQ2P1CreateMatrix_A12(stokes_ctx,&Aup);CHKERRQ(ierr);
     ierr = MatAssemble_StokesA_A12(Aup,stokes_ctx->dav,stokes_ctx->dap,stokes_ctx->u_bclist,stokes_ctx->p_bclist,stokes_ctx->volQ);CHKERRQ(ierr);
@@ -641,11 +641,11 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
     //
 
     /* A21 */
-    /*
+    
     ierr = StokesQ2P1CreateMatrix_MFOperator_A21(StkCtx,&Apu);CHKERRQ(ierr);
     ierr = MatSetOptionsPrefix(Apu,"Bpu_");CHKERRQ(ierr);
     ierr = MatSetFromOptions(Apu);CHKERRQ(ierr);
-    */
+    
     //
     ierr = StokesQ2P1CreateMatrix_A21(stokes_ctx,&Apu);CHKERRQ(ierr);
     ierr = MatSetOptionsPrefix(Apu,"Bpu_");CHKERRQ(ierr);
@@ -1069,12 +1069,13 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
     ierr = PetscObjectTypeCompare((PetscObject)Bpp,MATSHELL,&is_shell);CHKERRQ(ierr);
     if (!is_shell) {
       ierr = MatZeroEntries(Bpp);CHKERRQ(ierr);
+      ierr = MatAssemble_StokesPC_ScaledMassMatrix(Bpp,dau,dap,user->stokes_ctx->p_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
     }
 
     ierr = MatDestroy(&Buu);CHKERRQ(ierr);
     ierr = MatDestroy(&Bpp);CHKERRQ(ierr);
     
-
+    /*
     ierr = MatCreateSubMatrix(B,mlctx->is_stokes_field[0],mlctx->is_stokes_field[1],MAT_INITIAL_MATRIX,&Bup);CHKERRQ(ierr);
     ierr = MatCreateSubMatrix(B,mlctx->is_stokes_field[1],mlctx->is_stokes_field[0],MAT_INITIAL_MATRIX,&Bpu);CHKERRQ(ierr);
 
@@ -1094,6 +1095,7 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
 
     ierr = MatDestroy(&Bup);CHKERRQ(ierr);
     ierr = MatDestroy(&Bpu);CHKERRQ(ierr);
+    */
   }
   ierr = MatAssemblyBegin(B,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd  (B,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
@@ -1135,6 +1137,7 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
     ierr = MatDestroy(&Bup);CHKERRQ(ierr);
   }
   */
+  /*
   {
     KSP ksp,*sub_ksp;
     PC pc,pc_lsc;
@@ -1149,7 +1152,7 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
     ierr = VecAssemble_SchurScale(scale,dau,dap,user->stokes_ctx->u_bclist,user->stokes_ctx->p_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
     ierr = VecReciprocal(scale);CHKERRQ(ierr);
   }
-
+  */
   
   /* Buu preconditioner for all other levels in the hierarchy */
   {
@@ -1646,6 +1649,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
 
     /* configure uu split for galerkin multi-grid */
     ierr = pTatin3dStokesKSPConfigureFSGMG(ksp,nlevels,operatorA11,operatorB11,interpolation_v,dav_hierarchy);CHKERRQ(ierr);
+    /*
     {
       Mat Spp;
       
@@ -1656,6 +1660,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
       ierr = PCFieldSplitSetSchurPre(pc,PC_FIELDSPLIT_SCHUR_PRE_USER,Spp);CHKERRQ(ierr);
       ierr = MatDestroy(&Spp);CHKERRQ(ierr);
     }
+    */
     /*
     {
       Mat Spp,Bup,Bpu,B11;
@@ -1743,7 +1748,10 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
     /* configure KSP */
     //ierr = SNESGetKSP(snes,&ksp);CHKERRQ(ierr);
     ierr = SNESGetKSP(snes,&ksp);CHKERRQ(ierr);
-
+    
+    /* Solve lithostatic pressure and apply on the surface quadrature points for Stokes */
+    ierr = ModelApplyTractionFromLithoPressure(user);CHKERRQ(ierr);
+    
     /* monitors */
     ierr = pTatin_Stokes_ActivateMonitors(user,snes);CHKERRQ(ierr);
 
@@ -1754,6 +1762,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
     ierr = PCFieldSplitSetIS(pc,"p",is_stokes_field[1]);CHKERRQ(ierr);
     /* mg */
     ierr = pTatin3dStokesKSPConfigureFSGMG(ksp,nlevels,operatorA11,operatorB11,interpolation_v,dav_hierarchy);CHKERRQ(ierr);
+    /*
     {
       Mat Spp;
       
@@ -1764,7 +1773,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
       ierr = PCFieldSplitSetSchurPre(pc,PC_FIELDSPLIT_SCHUR_PRE_USER,Spp);CHKERRQ(ierr);
       ierr = MatDestroy(&Spp);CHKERRQ(ierr);
     }
-
+    */
     ierr = pTatinLogBasic(user);CHKERRQ(ierr);
 
     /* --------------------------------------------------------- */
@@ -1838,6 +1847,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
 
     /* configure uu split for galerkin multi-grid */
     ierr = pTatin3dStokesKSPConfigureFSGMG(ksp,nlevels,operatorA11,operatorB11,interpolation_v,dav_hierarchy);CHKERRQ(ierr);
+    /*
     {
       Mat Spp;
       
@@ -1848,7 +1858,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
       ierr = PCFieldSplitSetSchurPre(pc,PC_FIELDSPLIT_SCHUR_PRE_USER,Spp);CHKERRQ(ierr);
       ierr = MatDestroy(&Spp);CHKERRQ(ierr);
     }
-
+    */
     SNESSetTolerances(snes_newton,PETSC_DEFAULT,PETSC_DEFAULT,PETSC_DEFAULT,newton_its,PETSC_DEFAULT);
     PetscPrintf(PETSC_COMM_WORLD,"   --------- NEWTON STAGE ---------\n");
     PetscTime(&time[0]);
@@ -2180,7 +2190,8 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
       ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,nlevels,interpolation_eta,dav_hierarchy,volQ);CHKERRQ(ierr);
     }
     
-    
+    /* Solve lithostatic pressure and apply on the surface quadrature points for Stokes */
+    ierr = ModelApplyTractionFromLithoPressure(user);CHKERRQ(ierr);
     
     
     
@@ -2239,6 +2250,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
 
     /* configure uu split for galerkin multi-grid */
     ierr = pTatin3dStokesKSPConfigureFSGMG(ksp,nlevels,operatorA11,operatorB11,interpolation_v,dav_hierarchy);CHKERRQ(ierr);
+    /*
     {
       Mat Spp;
       
@@ -2249,7 +2261,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
       ierr = PCFieldSplitSetSchurPre(pc,PC_FIELDSPLIT_SCHUR_PRE_USER,Spp);CHKERRQ(ierr);
       ierr = MatDestroy(&Spp);CHKERRQ(ierr);
     }
-
+    */
     /* insert boundary conditions into solution vector */
     ierr = DMCompositeGetAccess(user->pack,X,&velocity,&pressure);CHKERRQ(ierr);
     ierr = BCListInsert(stokes->u_bclist,velocity);CHKERRQ(ierr);
@@ -2300,7 +2312,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
         ierr = DMCompositeRestoreAccess(user->pack,X,&velocity,&pressure);CHKERRQ(ierr);
       }
       
-      ierr = pTatin_SetTimestep(user,"AdvDiffCourant",timestep);CHKERRQ(ierr);
+      //ierr = pTatin_SetTimestep(user,"AdvDiffCourant",timestep);CHKERRQ(ierr);
       PetscPrintf(PETSC_COMM_WORLD,"  timestep_advdiff[%D] dt_courant = %1.4e \n", step,user->dt );
       
       energyfv->dt   = user->dt;
