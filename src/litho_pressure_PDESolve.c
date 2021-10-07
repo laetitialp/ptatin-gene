@@ -770,8 +770,8 @@ PetscErrorCode AverageVolumeQuadraturePointsToSurfaceQuadraturePointsStokes(pTat
   /* Get Volume Quadrature Stokes data */
   ierr = VolumeQuadratureGetAllCellData_Stokes(volQ,&all_gausspoints);CHKERRQ(ierr);
   
-  HexElementFace face_location[] = {HEX_FACE_Neta, HEX_FACE_Pxi, HEX_FACE_Nxi, HEX_FACE_Pzeta, HEX_FACE_Nzeta};
-  face_list_n = 5;
+  HexElementFace face_location[] = {HEX_FACE_Nxi, HEX_FACE_Pxi, HEX_FACE_Neta, HEX_FACE_Peta, HEX_FACE_Nzeta, HEX_FACE_Pzeta};
+  face_list_n = 6;
   
   for (f=0; f<face_list_n; f++) {
     ierr = PhysCompStokesGetSurfaceQuadrature(user->stokes_ctx,face_location[f],&surfQ_face);CHKERRQ(ierr);
@@ -784,7 +784,7 @@ PetscErrorCode AverageVolumeQuadraturePointsToSurfaceQuadraturePointsStokes(pTat
       PetscReal avg_el_eta,avg_el_rho;
       /* Get the element index */
       eidx = element_list[c];
-      /* Get the volume quadrature data of the element */       // c or eidx ??
+      /* Get the volume quadrature data of the element */
       ierr = VolumeQuadratureGetCellData_Stokes(volQ,all_gausspoints,eidx,&cell_gausspoints);CHKERRQ(ierr);
       /* Get the surface quadrature data of the element */
       ierr = SurfaceQuadratureGetCellData_Stokes(surfQ_face,surfQ_coeff,c,&surfQ_cell_coeff);CHKERRQ(ierr);
