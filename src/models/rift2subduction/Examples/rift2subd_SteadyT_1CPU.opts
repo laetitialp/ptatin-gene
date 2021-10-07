@@ -104,9 +104,9 @@
 -model_RiftSubd_conductivity_2 3.3
 #### Asthenosphere phase number 3 ####
 #### Dry peridotite Ranalli 1997 ####
--model_RiftSubd_preexpA_3 1e-21 #2.5e4
+-model_RiftSubd_preexpA_3 1e-20 #2.5e4
 -model_RiftSubd_Ascale_3 1.0 #0.5e+6
--model_RiftSubd_entalpy_3 0.0 #532.0e3
+-model_RiftSubd_entalpy_3 3.0e4 #532.0e3
 -model_RiftSubd_Vmol_3 0.0
 -model_RiftSubd_nexp_3 1.0 #3.5
 -model_RiftSubd_Tref_3 273.15
