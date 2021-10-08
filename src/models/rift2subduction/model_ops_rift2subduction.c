@@ -969,7 +969,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_RiftSubd(pTatinCtx c,Vec X,void *ctx
   DM              stokes_pack,dav,dap;
   Vec             velocity,pressure;
   PetscInt        npoints,dir;
-  PetscReal       step;
+  PetscReal       dt,Kero;
   PetscReal       *xref,*xnat;
   PetscErrorCode  ierr;
   
@@ -977,15 +977,20 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_RiftSubd(pTatinCtx c,Vec X,void *ctx
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
 
   /* fully lagrangian update */
-  ierr = pTatinGetTimestep(c,&step);CHKERRQ(ierr);
+  ierr = pTatinGetTimestep(c,&dt);CHKERRQ(ierr);
   ierr = pTatinGetStokesContext(c,&stokes);CHKERRQ(ierr);
 
   stokes_pack = stokes->stokes_pack;
   ierr = DMCompositeGetEntries(stokes_pack,&dav,&dap);CHKERRQ(ierr);
   ierr = DMCompositeGetAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
 
- /* SURFACE REMESHING */
-  ierr = UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX(dav,velocity,NULL,step);
+  /* SURFACE REMESHING */
+  Kero = 1.0e-6;
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_RS,"-Kero",&Kero,NULL);CHKERRQ(ierr);
+  Kero = Kero / (data->length_bar*data->length_bar/data->time_bar);
+  
+  ierr = UpdateMeshGeometry_ApplyDiffusionJMAX(dav,Kero,dt,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE,PETSC_FALSE);CHKERRQ(ierr);
+  ierr = UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX(dav,velocity,NULL,dt);
   ierr = DMCompositeRestoreAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
  
   /* Update Mesh Refinement */
