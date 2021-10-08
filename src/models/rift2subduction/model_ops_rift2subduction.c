@@ -181,6 +181,11 @@ PetscErrorCode ModelInitialize_RiftSubd(pTatinCtx c,void *ctx)
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-is_2D",&data->is_2D,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-open_base",&data->open_base,NULL);CHKERRQ(ierr);
   
+  /* Surface diffusion */
+  data->Kero = 1.0e-6;
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_RS,"-Kero",&data->Kero,NULL);CHKERRQ(ierr);
+  data->Kero = data->Kero / (data->length_bar*data->length_bar/data->time_bar);
+  
   /* Compute additional scaling parameters */
   data->time_bar         = data->length_bar / data->velocity_bar;
   data->pressure_bar     = data->viscosity_bar/data->time_bar;
@@ -473,6 +478,7 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_RiftSubd(pTatinCtx c,void *ctx)
   DataBucket                db;
   DataField                 PField_std,PField_pls;
   PetscInt                  p;
+  PetscReal                 x0,z0,sigma_x,sigma_z;
   int                       n_mp_points;
   
   PetscFunctionBegin;
@@ -488,10 +494,17 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_RiftSubd(pTatinCtx c,void *ctx)
   DataFieldGetAccess(PField_pls);
   DataFieldVerifyAccess(PField_pls,sizeof(MPntPStokesPl));
   
+  /* Parameters for the gaussian weak zone */
+  x0 = 0.2*data->Lx;
+  z0 = 0.0/data->length_bar;
+  sigma_x = 1.8;
+  sigma_z = 1.0e-1;
+  
   DataBucketGetSizes(db,&n_mp_points,0,0);
   for (p=0; p<n_mp_points; p++) {
     MPntStd       *material_point;
     MPntPStokesPl *mpprop_pls;
+    PetscReal     a,b;
     int           region_idx;
     double        *position;
     float         pls;
@@ -513,8 +526,11 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_RiftSubd(pTatinCtx c,void *ctx)
     if (position[1] <= data->y_continent[1]) { region_idx = 2; }
     if (position[1] <= data->y_continent[2]) { region_idx = 3; }
     /* Set an initial plastic strain as a weak zone */
-    if (position[0] >= 0.1*data->Lx && position[0] <= 0.3*data->Lx) {
-      pls = ptatin_RandomNumberGetDouble(0.05,0.6);
+    if (position[1] >= data->y_continent[2]) {
+      a = position[0]-x0;
+      b = position[2]-z0;
+      pls += ptatin_RandomNumberGetDouble(0.0,0.6) * PetscExpReal( -( PetscPowReal(a,2)/2.0*PetscPowReal(sigma_x,2) +
+                                                                      PetscPowReal(b,2)/2.0*PetscPowReal(sigma_z,2) ) );
     }
     MPntStdSetField_phase_index(material_point,region_idx);
     MPntPStokesPlSetField_yield_indicator(mpprop_pls,yield);
@@ -965,17 +981,19 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_RiftSubd(pTatinCtx c,void *ct
 
 PetscErrorCode ModelApplyUpdateMeshGeometry_RiftSubd(pTatinCtx c,Vec X,void *ctx)
 {
-  PhysCompStokes  stokes;
-  DM              stokes_pack,dav,dap;
-  Vec             velocity,pressure;
-  PetscInt        npoints,dir;
-  PetscReal       dt,Kero;
-  PetscReal       *xref,*xnat;
-  PetscErrorCode  ierr;
+  ModelRiftSubdCtx *data;
+  PhysCompStokes   stokes;
+  DM               stokes_pack,dav,dap;
+  Vec              velocity,pressure;
+  PetscInt         npoints,dir;
+  PetscReal        dt;
+  PetscReal        *xref,*xnat;
+  PetscErrorCode   ierr;
   
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
-
+  data = (ModelRiftSubdCtx*)ctx;
+  
   /* fully lagrangian update */
   ierr = pTatinGetTimestep(c,&dt);CHKERRQ(ierr);
   ierr = pTatinGetStokesContext(c,&stokes);CHKERRQ(ierr);
@@ -985,11 +1003,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_RiftSubd(pTatinCtx c,Vec X,void *ctx
   ierr = DMCompositeGetAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
 
   /* SURFACE REMESHING */
-  Kero = 1.0e-6;
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_RS,"-Kero",&Kero,NULL);CHKERRQ(ierr);
-  Kero = Kero / (data->length_bar*data->length_bar/data->time_bar);
-  
-  ierr = UpdateMeshGeometry_ApplyDiffusionJMAX(dav,Kero,dt,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE,PETSC_FALSE);CHKERRQ(ierr);
+  ierr = UpdateMeshGeometry_ApplyDiffusionJMAX(dav,data->Kero,dt,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE,PETSC_FALSE);CHKERRQ(ierr);
   ierr = UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX(dav,velocity,NULL,dt);
   ierr = DMCompositeRestoreAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
  

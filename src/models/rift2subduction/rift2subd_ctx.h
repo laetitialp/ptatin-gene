@@ -36,7 +36,7 @@ typedef struct {
   PetscReal Lx, Ly, Lz, Ox, Oy, Oz;
   PetscReal y_continent[3];
   PetscReal BC_time[4];
-  PetscReal wz;
+  PetscReal wz,Kero;
   PetscReal normV, angle_v, v_extension;
   PetscReal Ttop, Tbottom;
   PetscBool output_markers,is_2D,open_base;
