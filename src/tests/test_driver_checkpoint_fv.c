@@ -2485,7 +2485,7 @@ PetscErrorCode GenerateICStateFromModelDefinition_FV(pTatinCtx *pctx)
     
     /* Solve lithostatic pressure and apply on the surface quadrature points for Stokes */
     /* Check if required to do it again before Picard solve */
-    ierr = ModelApplyTractionFromLithoPressure(user);CHKERRQ(ierr);
+    ierr = ModelApplyTractionFromLithoPressure(user,X_s);CHKERRQ(ierr);
     
     /* configure as a linear solve */
     init_rheology_type = user->rheology_constants.rheology_type;
@@ -2946,7 +2946,7 @@ PetscErrorCode Run_NonLinearFV(pTatinCtx user,Vec v1,Vec v2)
     }
     
     /* Solve lithostatic pressure and apply on the surface quadrature points for Stokes */
-    ierr = ModelApplyTractionFromLithoPressure(user);CHKERRQ(ierr);
+    ierr = ModelApplyTractionFromLithoPressure(user,X);CHKERRQ(ierr);
     
     /* Update boundary conditions */
     /* Fine level setup */
