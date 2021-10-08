@@ -761,6 +761,7 @@ PetscErrorCode AverageVolumeQuadraturePointsToSurfaceQuadraturePointsStokes(pTat
   Quadrature         volQ;
   PetscInt           VolQ_ngp,SurfQ_nqp,p,q,f,c,nfaces;
   PetscInt           *element_list,face_list_n;
+  HexElementFace     face_location[] = {HEX_FACE_Nxi, HEX_FACE_Pxi, HEX_FACE_Neta, HEX_FACE_Peta, HEX_FACE_Nzeta, HEX_FACE_Pzeta};
   PetscErrorCode     ierr;
   
   PetscFunctionBegin;
@@ -769,8 +770,6 @@ PetscErrorCode AverageVolumeQuadraturePointsToSurfaceQuadraturePointsStokes(pTat
   VolQ_ngp = volQ->npoints;
   /* Get Volume Quadrature Stokes data */
   ierr = VolumeQuadratureGetAllCellData_Stokes(volQ,&all_gausspoints);CHKERRQ(ierr);
-  
-  HexElementFace face_location[] = {HEX_FACE_Nxi, HEX_FACE_Pxi, HEX_FACE_Neta, HEX_FACE_Peta, HEX_FACE_Nzeta, HEX_FACE_Pzeta};
   face_list_n = 6;
   
   for (f=0; f<face_list_n; f++) {
@@ -1045,7 +1044,6 @@ PetscErrorCode ApplyNormalStress_SurfQuadratureStokes_FullFace(PhysCompStokes st
         traction[0] = (-tau_n - litho_pressure_qp) * (normal[0]);
         traction[1] = (-tau_n - litho_pressure_qp) * (normal[1]);
         traction[2] = (-tau_n - litho_pressure_qp) * (normal[2]);
-        
       }
     }
   }
@@ -1065,6 +1063,7 @@ PetscErrorCode ModelApplyTractionFromLithoPressure(pTatinCtx user, Vec X_stokes)
   PetscReal      val_P;
   Mat            J = NULL;
   PetscInt       face_list_n;
+  HexElementFace face_list[] = {HEX_FACE_Neta, HEX_FACE_Pxi, HEX_FACE_Nxi, HEX_FACE_Pzeta, HEX_FACE_Nzeta};
   PetscErrorCode ierr;
   
   PetscFunctionBegin;
@@ -1080,8 +1079,6 @@ PetscErrorCode ModelApplyTractionFromLithoPressure(pTatinCtx user, Vec X_stokes)
   ierr = MatSetFromOptions(J);CHKERRQ(ierr);
   
   ierr = SNESSolve_LithoPressure(LP,J,LP->X,LP->F,user);CHKERRQ(ierr);
-  
-  HexElementFace face_list[] = {HEX_FACE_Neta, HEX_FACE_Pxi, HEX_FACE_Nxi, HEX_FACE_Pzeta, HEX_FACE_Nzeta};
   face_list_n = 5;
   /* Apply the lithostatic pressure on surface quadrature points */
   //ierr = ApplyLithostaticPressure_SurfQuadratureStokes_FullFace(user->stokes_ctx,LP->da,LP->X,face_list,face_list_n);CHKERRQ(ierr);
