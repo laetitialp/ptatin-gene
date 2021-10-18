@@ -1068,7 +1068,7 @@ PetscErrorCode ComputeLambdaFromStep(pTatinCtx user,
   *lambda = lambda_min;
   if (user->step > start_step && user->step <= end_step) {
     *lambda = (user->step - start_step) * (lambda_max - lambda_min)/(end_step-start_step) + lambda_min;
-  } else {
+  } else if (user->step > end_step) {
     *lambda = lambda_max;
   }
   PetscFunctionReturn(0);
