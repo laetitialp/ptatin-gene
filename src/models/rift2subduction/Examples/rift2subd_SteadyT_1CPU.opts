@@ -9,12 +9,12 @@
 -checkpoint_every_nsteps 1 
 -checkpoint_every_ncpumins 720 
 #-model_RiftSubd_output_markers
--output_path TEST_INT_SIGMA_2
+-output_path TEST_Lambda
 -model_RiftSubd_temperature_ic_from_file
 ########## BASIC NUMERICS ##############
--mx 64 #8 # Number of elements along x
--my 64 #8 # Number of elements along y
--mz 64 #8 # Number of elements along z
+-mx 16 #8 # Number of elements along x
+-my 16 #8 # Number of elements along y
+-mz 16 #8 # Number of elements along z
 -nsteps 10 #000000 # Max number of steps
 #-dt_max 1e-3 # Max timestep allowed
 #-dt_min 1e-8
@@ -26,7 +26,7 @@
 -model_RiftSubd_Ly 0.0e+3 # Origin for y axis
 -model_RiftSubd_Lz 6.0e+5 # Max length along z
 -model_RiftSubd_Ox 0.0e+5 # Origin for x axis
--model_RiftSubd_Oy -2.5e+5 #-6.8e+5 # Max depth along y axis
+-model_RiftSubd_Oy -6.8e+5 # Max depth along y axis
 -model_RiftSubd_Oz 0.0e+5 # Origin for z axis
 ################ BCs ##################
 #-model_RiftSubd_open_base
@@ -35,7 +35,7 @@
 -model_RiftSubd_angle_v 30.0 #45.0
 -model_RiftSubd_bc_time 0.01,0.02,0.03,0.04
 -model_RiftSubd_Ttop 0.0
--model_RiftSubd_Tbottom 1400.0 #1600.0
+-model_RiftSubd_Tbottom 1600.0
 ############### Geometry ###############
 #-model_RiftSubd_wz_width
 ############ Phases Parameters #############

@@ -8,12 +8,12 @@
 -checkpoint_every_nsteps 1 
 -checkpoint_every_ncpumins 720 
 #-model_RiftSubd_output_markers
--output_path TEST_INT_SIGMA_2
+-output_path TEST_Lambda
 -model_RiftSubd_temperature_ic_from_file
 ########## BASIC NUMERICS ##############
--mx 64 #8 # Number of elements along x
--my 64 #8 # Number of elements along y
--mz 64 #8 # Number of elements along z
+-mx 16 #8 # Number of elements along x
+-my 16 #8 # Number of elements along y
+-mz 16 #8 # Number of elements along z
 -nsteps 20 #000000 # Max number of steps
 #-dt_max 5.0e-8 # Max timestep allowed
 #-dt_min 1e-8
@@ -36,8 +36,8 @@
 -model_RiftSubd_Ttop 0.0
 -model_RiftSubd_Tbottom 1600.0
 ############### Geometry ###############
--model_RiftSubd_wz_width 200.0e3
--model_RiftSubd_notches 
+#-model_RiftSubd_wz_width 200.0e3
+#-model_RiftSubd_notches 
 ############ Phases Parameters #############
 #### Continental upper crust phase number 0 ####
 #### Quartzite Ranalli 1997 ####
