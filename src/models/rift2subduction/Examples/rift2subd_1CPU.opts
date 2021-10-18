@@ -8,14 +8,14 @@
 -checkpoint_every_nsteps 1 
 -checkpoint_every_ncpumins 720 
 #-model_RiftSubd_output_markers
--output_path SUBDUCTION
+-output_path TEST_INT_SIGMA_2
 -model_RiftSubd_temperature_ic_from_file
 ########## BASIC NUMERICS ##############
--mx 16 #8 # Number of elements along x
--my 16 #8 # Number of elements along y
--mz 16 #8 # Number of elements along z
--nsteps 10 #000000 # Max number of steps
-#-dt_max 1e-3 # Max timestep allowed
+-mx 64 #8 # Number of elements along x
+-my 64 #8 # Number of elements along y
+-mz 64 #8 # Number of elements along z
+-nsteps 20 #000000 # Max number of steps
+#-dt_max 5.0e-8 # Max timestep allowed
 #-dt_min 1e-8
 -output_frequency 1
 -dt_max_surface_displacement 5.0e-4
@@ -32,11 +32,12 @@
 -model_RiftSubd_v_extension 1.0
 -model_RiftSubd_normV 3.0
 -model_RiftSubd_angle_v 30.0 #45.0
--model_RiftSubd_bc_time 1.2e-3,3.5e-3,5.9e-3,8.0e-3
+#-model_RiftSubd_bc_time 1.2e-3,3.5e-3,5.9e-3,8.0e-3
 -model_RiftSubd_Ttop 0.0
 -model_RiftSubd_Tbottom 1600.0
 ############### Geometry ###############
-#-model_RiftSubd_wz_width
+-model_RiftSubd_wz_width 200.0e3
+-model_RiftSubd_notches 
 ############ Phases Parameters #############
 #### Continental upper crust phase number 0 ####
 #### Quartzite Ranalli 1997 ####
@@ -141,9 +142,9 @@
 -stk_velocity_da_refine_hierarchy_z 2,2
 #---- SNES ----#
 -newton_its 0
--snes_atol 1e-3
--snes_max_it 1
--snes_rtol 1e-3
+-snes_atol 1e-6
+-snes_max_it 5
+-snes_rtol 1e-12
 -snes_monitor
 -snes_converged_reason
 -snes_linesearch_type basic
