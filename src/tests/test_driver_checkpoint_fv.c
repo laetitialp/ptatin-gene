@@ -867,7 +867,7 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
 
   /* nonlinearitiers: markers => quad points */
   ierr = pTatin_EvaluateRheologyNonlinearities(user,dau,LA_Uloc,dap,LA_Ploc);CHKERRQ(ierr);
-
+  
   /* interpolate coefficients */
   {
     int               npoints;
@@ -1568,6 +1568,7 @@ PetscErrorCode ProjectStokesVariablesOnQuadraturePoints(pTatinCtx user)
   DataFieldRestoreEntries(PField_stokes,(void**)&mp_stokes);
   DataFieldRestoreEntries(PField_std,(void**)&mp_std);
   
+  ierr = AverageVolumeQuadraturePointsToSurfaceQuadraturePointsStokes(user);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
