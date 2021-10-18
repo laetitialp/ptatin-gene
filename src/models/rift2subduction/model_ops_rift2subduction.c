@@ -177,9 +177,13 @@ PetscErrorCode ModelInitialize_RiftSubd(pTatinCtx c,void *ctx)
   data->output_markers  = PETSC_FALSE;
   data->is_2D           = PETSC_FALSE;
   data->open_base       = PETSC_FALSE;
+  data->freeslip_z      = PETSC_FALSE;
+  data->notches         = PETSC_FALSE;
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-output_markers",&data->output_markers,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-is_2D",&data->is_2D,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-open_base",&data->open_base,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-is_2D",         &data->is_2D,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-open_base",     &data->open_base,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-freeslip_z",    &data->freeslip_z,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-notches",       &data->notches,NULL);CHKERRQ(ierr);
   
   /* Surface diffusion */
   data->Kero = 1.0e-6;
@@ -472,9 +476,8 @@ PetscErrorCode ModelApplyInitialMeshGeometry_RiftSubd(pTatinCtx c,void *ctx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ModelApplyInitialMaterialGeometry_RiftSubd(pTatinCtx c,void *ctx)
+static PetscErrorCode ModelApplyInitialMaterialGeometry_RiftSubd_LeftWZ(pTatinCtx c,ModelRiftSubdCtx *data)
 {
-  ModelRiftSubdCtx *data = (ModelRiftSubdCtx*)ctx;
   DataBucket                db;
   DataField                 PField_std,PField_pls;
   PetscInt                  p;
@@ -541,6 +544,107 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_RiftSubd(pTatinCtx c,void *ctx)
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ModelApplyInitialMaterialGeometry_RiftSubd_Notch(pTatinCtx c,ModelRiftSubdCtx *data)
+{
+  DataBucket                db;
+  DataField                 PField_std,PField_pls;
+  PetscInt                  p;
+  PetscReal                 x0,z0,x1,z1,xc,sigma_x,sigma_z;
+  int                       n_mp_points;
+  
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+  
+  /* define properties on material points */
+  db = c->materialpoint_db;
+  DataBucketGetDataFieldByName(db,MPntStd_classname,&PField_std);
+  DataFieldGetAccess(PField_std);
+  DataFieldVerifyAccess(PField_std,sizeof(MPntStd));
+
+  DataBucketGetDataFieldByName(db,MPntPStokesPl_classname,&PField_pls);
+  DataFieldGetAccess(PField_pls);
+  DataFieldVerifyAccess(PField_pls,sizeof(MPntPStokesPl));
+  
+  /* Parameters for the gaussian weak zone */
+  xc = data->Ox + (data->Lx - data->Ox)/2.0;
+  x0 = xc - data->wz/2.0;
+  x1 = xc + data->wz/2.0;
+  
+  z0 = 100.0e+3/data->length_bar;
+  z1 = 500.0e+3/data->length_bar;
+  
+  sigma_x = 2.1;
+  sigma_z = 1.0e-1;
+  
+  DataBucketGetSizes(db,&n_mp_points,0,0);
+  for (p=0; p<n_mp_points; p++) {
+    MPntStd       *material_point;
+    MPntPStokesPl *mpprop_pls;
+    PetscReal     a,b,n0,n1;
+    int           region_idx;
+    double        *position;
+    float         pls;
+    short         yield;
+
+    DataFieldAccessPoint(PField_std,p,(void**)&material_point);
+    DataFieldAccessPoint(PField_pls,p,(void**)&mpprop_pls);
+
+    /* Access using the getter function */
+    MPntStdGetField_global_coord(material_point,&position);
+    /* Set an initial small random noise on plastic strain */
+    pls = ptatin_RandomNumberGetDouble(0.0,0.03);
+    /* Set yield to none */
+    yield = 0;
+    /* Set default region index to 0 */
+    region_idx = 0;
+    /* Attribute region index to layers */
+    if (position[1] <= data->y_continent[0]) { region_idx = 1; }
+    if (position[1] <= data->y_continent[1]) { region_idx = 2; }
+    if (position[1] <= data->y_continent[2]) { region_idx = 3; }
+    /* Set an initial plastic strain as a weak zone */
+    if (position[1] >= data->y_continent[2]) {
+      if (position[2] <= z0) {
+        a  = position[0]-x0;
+        b  = position[2]-z0;
+        n0 = ptatin_RandomNumberGetDouble(0.0,0.6) * PetscExpReal( -( PetscPowReal(a,2)/2.0*PetscPowReal(sigma_x,2) +
+                                                                      PetscPowReal(b,2)/2.0*PetscPowReal(sigma_z,2) ) );
+      } else {
+        n0 = 0.0;
+      }
+      if (position[2] >= z1) {
+        a  = position[0]-x1;
+        b  = position[2]-z0;
+        n1 = ptatin_RandomNumberGetDouble(0.0,0.6) * PetscExpReal( -( PetscPowReal(a,2)/2.0*PetscPowReal(sigma_x,2) +
+                                                                      PetscPowReal(b,2)/2.0*PetscPowReal(sigma_z,2) ) );
+      } else {
+        n1 = 0.0;
+      }
+      pls += n0 + n1;
+    }
+    MPntStdSetField_phase_index(material_point,region_idx);
+    MPntPStokesPlSetField_yield_indicator(mpprop_pls,yield);
+    MPntPStokesPlSetField_plastic_strain(mpprop_pls,pls);
+  }
+  DataFieldRestoreAccess(PField_std);
+  DataFieldRestoreAccess(PField_pls);
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ModelApplyInitialMaterialGeometry_RiftSubd(pTatinCtx c,void *ctx)
+{
+  ModelRiftSubdCtx *data = (ModelRiftSubdCtx*)ctx;
+  PetscErrorCode   ierr;
+  PetscFunctionBegin;
+  
+  if (!data->notches) {
+    ierr = ModelApplyInitialMaterialGeometry_RiftSubd_LeftWZ(c,data);CHKERRQ(ierr);
+  } else {
+    ierr = ModelApplyInitialMaterialGeometry_RiftSubd_Notch(c,data);CHKERRQ(ierr);
+  }
+  
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode ModelApplyInitialSolution_RiftSubd(pTatinCtx c,Vec X,void *ctx)
 {
   ModelRiftSubdCtx                             *data;
@@ -567,6 +671,7 @@ PetscErrorCode ModelApplyInitialSolution_RiftSubd(pTatinCtx c,Vec X,void *ctx)
   ierr = DMCompositeGetAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
   
   ierr = VecZeroEntries(velocity);CHKERRQ(ierr);
+  
   ierr = DMDAVecTraverse3d_InterpCtxSetUp_X(&IntpCtx,(vxr-vxl)/(data->Lx-data->Ox),vxl,0.0);CHKERRQ(ierr);
   ierr = DMDAVecTraverse3d(dau,velocity,0,DMDAVecTraverse3d_Interp,(void*)&IntpCtx);CHKERRQ(ierr);
   ierr = DMDAVecTraverse3d_InterpCtxSetUp_Y(&IntpCtx,0.0,0.0,0.0);CHKERRQ(ierr);
@@ -588,7 +693,7 @@ PetscErrorCode ModelApplyInitialSolution_RiftSubd(pTatinCtx c,Vec X,void *ctx)
   ierr = DMDAVecTraverseIJK(dap,pressure,0,DMDAVecTraverseIJK_HydroStaticPressure_v2,     (void*)&HPctx);CHKERRQ(ierr);
   ierr = DMDAVecTraverseIJK(dap,pressure,2,DMDAVecTraverseIJK_HydroStaticPressure_dpdy_v2,(void*)&HPctx);CHKERRQ(ierr);
   ierr = DMCompositeRestoreAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
-
+  
   /* Temperature IC */
   ierr = pTatinContextValid_EnergyFV(c,&active_energy);CHKERRQ(ierr);
   if (active_energy) {
@@ -617,6 +722,7 @@ PetscErrorCode ModelApplyInitialSolution_RiftSubd(pTatinCtx c,Vec X,void *ctx)
       }
     }
   }
+  
   PetscFunctionReturn(0);
 }
 
@@ -693,7 +799,9 @@ static PetscErrorCode ModelApplyBoundaryCondition_OrthogonalExtension(BCList bcl
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,1,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
   
   if (!data->open_base) {
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
     ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
   }
   ierr = PetscFree(bcdata);CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -806,6 +914,99 @@ static PetscErrorCode ModelApplyBoundaryCondition_ObliqueCompression(BCList bcli
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ModelApplyBoundaryCondition_OrthogonalExtension_Freeslip(BCList bclist,DM dav,pTatinCtx c,ModelRiftSubdCtx *data)
+{
+  PetscReal      vxl,vxr,vy,zero=0.0;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+  
+  vxl = -data->v_extension;
+  vxr =  data->v_extension;
+  /* Extension on faces of normal x */
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_constant,(void*)&vxr);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_constant,(void*)&vxl);CHKERRQ(ierr);
+  /* Free slip on faces of normal z */
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  /* Inflow on bottom face */
+  vy = 2.0*data->v_extension*((data->Ly - data->Oy)*(data->Lz - data->Oz))/((data->Lx - data->Ox)*(data->Lz - data->Oz));
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&vy);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelApplyBoundaryCondition_Transition_Freeslip(BCList bclist,DM dav,pTatinCtx c,ModelRiftSubdCtx *data)
+{
+  PetscReal      time,zero=0.0;
+  PetscReal      vx,vxl,vxr,vy;
+  PetscErrorCode ierr;
+  
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+  
+  ierr = pTatinGetTime(c,&time);
+  
+  if (time >= data->BC_time[0] && time < data->BC_time[1]) {
+    PetscPrintf(PETSC_COMM_WORLD,"[[ DECREASING VELOCITY ]]\n");
+    vx = ((0.0-data->v_extension)/(data->BC_time[1]-data->BC_time[0])) * (time-data->BC_time[1]);
+    vxl = -vx;
+    vxr =  vx;
+    vy = 2.0*data->v_extension*((data->Ly - data->Oy)*(data->Lz - data->Oz))/((data->Lx - data->Ox)*(data->Lz - data->Oz));
+  } else if (time >= data->BC_time[1] && time < data->BC_time[2]) {
+    PetscPrintf(PETSC_COMM_WORLD,"[[ RELAXING ]]\n");
+    vxl = 0.0;
+    vxr = 0.0;
+    vy  = 0.0;
+  } else if (time >= data->BC_time[2] && time < data->BC_time[3]) {
+    // Increase velocity to reach compression velocity
+    PetscPrintf(PETSC_COMM_WORLD,"[[ INCREASING VELOCITY ]]\n");
+    vx = ((0.0-data->normV)/(data->BC_time[2]-data->BC_time[3])) * (time-data->BC_time[2]);
+    vxl = vx; 
+    vxr = -vx;
+    vy = -2.0*data->normV*((data->Ly - data->Oy)*(data->Lz - data->Oz))/((data->Lx - data->Ox)*(data->Lz - data->Oz));
+  }
+  
+  /* Apply the velocities */
+  /* Faces of normal x */
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_constant,(void*)&vxl);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_constant,(void*)&vxr);CHKERRQ(ierr);
+  /* Freeslip on faces of normal z */
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  /* Flow on bottom face */
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&vy);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelApplyBoundaryCondition_OrthogonalCompression_Freeslip(BCList bclist,DM dav,pTatinCtx c,ModelRiftSubdCtx *data)
+{
+  PetscReal      vx,vy,vxl,vxr;
+  PetscReal      zero = 0.0;
+  PetscErrorCode ierr;
+  
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+  
+  vx = data->normV;
+  vy = -2.0*data->normV*((data->Ly - data->Oy)*(data->Lz - data->Oz))/((data->Lx - data->Ox)*(data->Lz - data->Oz));
+  /* Left face */  
+  vxl = vx;
+  /* Right face */
+  vxr = -vx;
+  /* Compression on faces of normal x */
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_constant,(void*)&vxl);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_constant,(void*)&vxr);CHKERRQ(ierr);
+  /* Freeslip on faces of normal z */
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  /* Outflow at the base */
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&vy);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode ModelApplyBoundaryConditionVelocity_RiftSubd(BCList bclist,DM dav,pTatinCtx c,ModelRiftSubdCtx *data)
 {
   /* BC_time:                                            t3________ velocity
@@ -823,11 +1024,23 @@ PetscErrorCode ModelApplyBoundaryConditionVelocity_RiftSubd(BCList bclist,DM dav
   ierr = pTatinGetTime(c,&time);CHKERRQ(ierr);
   /* Depending on time, apply the corresponding BC function */
   if (time < data->BC_time[0]) {
-    ierr = ModelApplyBoundaryCondition_OrthogonalExtension(bclist,dav,c,data);CHKERRQ(ierr);
+    if (data->freeslip_z) {
+      ierr = ModelApplyBoundaryCondition_OrthogonalExtension_Freeslip(bclist,dav,c,data);CHKERRQ(ierr);
+    } else {
+      ierr = ModelApplyBoundaryCondition_OrthogonalExtension(bclist,dav,c,data);CHKERRQ(ierr);
+    }
   } else if (time >= data->BC_time[3]) {
-    ierr = ModelApplyBoundaryCondition_ObliqueCompression(bclist,dav,c,data);CHKERRQ(ierr);
+    if (data->freeslip_z) {
+      ierr = ModelApplyBoundaryCondition_OrthogonalCompression_Freeslip(bclist,dav,c,data);CHKERRQ(ierr);
+    } else {
+      ierr = ModelApplyBoundaryCondition_ObliqueCompression(bclist,dav,c,data);CHKERRQ(ierr);
+    }
   } else {
-    ierr = ModelApplyBoundaryCondition_Transition(bclist,dav,c,data);CHKERRQ(ierr);
+    if (data->freeslip_z) {
+      ierr = ModelApplyBoundaryCondition_Transition_Freeslip(bclist,dav,c,data);CHKERRQ(ierr);
+    } else {
+      ierr = ModelApplyBoundaryCondition_Transition(bclist,dav,c,data);CHKERRQ(ierr);
+    }
   }
   PetscFunctionReturn(0);
 }
