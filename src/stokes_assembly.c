@@ -1050,7 +1050,7 @@ PetscErrorCode MatAssemble_LocalSchur(Mat A,DM dau,DM dap,BCList u_bclist,BCList
     /* Copy */
     ierr = PetscMemcpy(Xe, Ge, sizeof(PetscReal)*(3*Q2_NODES_PER_EL_3D * P_BASIS_FUNCTIONS));CHKERRQ(ierr);
 
-    dpotrf_("L", &mA, Ae, &ldaA, &info); // A = L L^T
+      //dpotrf_("L", &mA, Ae, &ldaA, &info); // A = L L^T
     if (info != 0) {
       printf("info %d\n",info);
       printf("cell %d\n",e);
@@ -1060,12 +1060,12 @@ PetscErrorCode MatAssemble_LocalSchur(Mat A,DM dau,DM dap,BCList u_bclist,BCList
     /* X = L^{-1} B */
     SIDE = 'L'; UPLO = 'L'; TRANSA = 'N', DIAG = 'N';
     alpha = 1.0;
-    dtrsm_(&SIDE, &UPLO, &TRANSA, &DIAG, &mB, &nB, &alpha, Ae, &ldaA, Xe, &ldaB);
+      //dtrsm_(&SIDE, &UPLO, &TRANSA, &DIAG, &mB, &nB, &alpha, Ae, &ldaA, Xe, &ldaB);
     
     /* X = L^{-T} L^{-1} B */
     SIDE = 'L'; UPLO = 'L'; TRANSA = 'T', DIAG = 'N';
     alpha = 1.0;
-    dtrsm_(&SIDE, &UPLO, &TRANSA, &DIAG, &mB, &nB, &alpha, Ae, &ldaA, Xe, &ldaB);
+      //dtrsm_(&SIDE, &UPLO, &TRANSA, &DIAG, &mB, &nB, &alpha, Ae, &ldaA, Xe, &ldaB);
 
     
     /* Form Z = -Ge^T inv(Ae) Ge */
@@ -1074,7 +1074,7 @@ PetscErrorCode MatAssemble_LocalSchur(Mat A,DM dau,DM dap,BCList u_bclist,BCList
     /* Z = -B^T X = -B^T L^{-T} L^{-1} B */
     TRANSA = 'T'; TRANSB = 'N';
     alpha = -1.0;
-    dgemm_(&TRANSA, &TRANSB, &nB, &nB, &mA, &alpha, Ge, &ldaA, Xe, &ldaB, &beta, Ze, &nB);
+      //dgemm_(&TRANSA, &TRANSB, &nB, &nB, &mA, &alpha, Ge, &ldaA, Xe, &ldaB, &beta, Ze, &nB);
 
     
     ierr = MatSetValues(A,P_BASIS_FUNCTIONS,ge_eqnums_p,P_BASIS_FUNCTIONS,ge_eqnums_p,Ze,ADD_VALUES);CHKERRQ(ierr);
@@ -1351,7 +1351,7 @@ PetscErrorCode MatAssemble_LocalSchur2(Mat A,Mat A12,DM dau,DM dap,BCList u_bcli
 #endif
     
     
-    dpotrf_("L", &mA, Ae, &ldaA, &info); // A = L L^T
+      //dpotrf_("L", &mA, Ae, &ldaA, &info); // A = L L^T
     if (info != 0) {
       printf("info %d\n",info);
       printf("cell %d\n",e);
@@ -1361,12 +1361,13 @@ PetscErrorCode MatAssemble_LocalSchur2(Mat A,Mat A12,DM dau,DM dap,BCList u_bcli
     /* X = L^{-1} I */
     SIDE = 'L'; UPLO = 'L'; TRANSA = 'N', DIAG = 'N';
     alpha = 1.0;
-    dtrsm_(&SIDE, &UPLO, &TRANSA, &DIAG, &mB, &nB, &alpha, Ae, &ldaA, Ie, &ldaB);
-    
+      //dtrsm_(&SIDE, &UPLO, &TRANSA, &DIAG, &mB, &nB, &alpha, Ae, &ldaA, Ie, &ldaB);
+
+      
     /* X = L^{-T} L^{-1} I */
     SIDE = 'L'; UPLO = 'L'; TRANSA = 'T', DIAG = 'N';
     alpha = 1.0;
-    dtrsm_(&SIDE, &UPLO, &TRANSA, &DIAG, &mB, &nB, &alpha, Ae, &ldaA, Ie, &ldaB);
+      //dtrsm_(&SIDE, &UPLO, &TRANSA, &DIAG, &mB, &nB, &alpha, Ae, &ldaA, Ie, &ldaB);
     
     
     ierr = MatSetValues(A11,3*Q2_NODES_PER_EL_3D,ge_eqnums_u,3*Q2_NODES_PER_EL_3D,ge_eqnums_u,Ie,ADD_VALUES);CHKERRQ(ierr);
