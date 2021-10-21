@@ -10,13 +10,13 @@
 -output_path SUBDUCTION
 -model_subduction_oblique_temperature_ic_from_file
 ########## BASIC NUMERICS ##############
--mx 512 # Number of elements along x
--my 128 # Number of elements along y
--mz 256 # Number of elements along z
+-mx 16 # Number of elements along x
+-my 16 # Number of elements along y
+-mz 16 # Number of elements along z
 -nsteps 5 #000000 # Max number of steps
 #-dt_max 1e-3 # Max timestep allowed
 #-dt_min 1e-8
--output_frequency 10
+-output_frequency 1
 -dt_max_surface_displacement 5.0e-4
 #-use_quasi_newton_coordinate_update
 ########### Box Geometry ################
@@ -36,19 +36,12 @@
 -model_subduction_oblique_angle_v 90.0 #45.0
 -model_subduction_oblique_Ttop 0.0
 -model_subduction_oblique_Tbottom 1600.0
-#-model_subduction_oblique_ic_steady_state
-#-model_subduction_oblique_qm_init 20.0e-3
-#-model_subduction_oblique_k_init 3.3
-#-model_subduction_oblique_y_prod_init -40.0e3
-#-model_subduction_oblique_Tlitho_init 1300.0
-#-model_subduction_oblique_age_init 100.0
-#-shear_heating_factor 1
 ############### Geometry ###############
 #-model_subduction_oblique_alpha_trench 45.0
-#-model_subduction_oblique_theta_subd
+#-model_subduction_oblique_theta_subd 30.0
 #-model_subduction_oblique_wz_width
 ############ Phases Parameters #############
--model_subduction_oblique_air_rho 1000.0
+-model_subduction_oblique_no_air
 #### Oceanic upper crust phase number 0 ####
 #### Plagioclase An75 Ranalli 1997 ####
 -model_subduction_oblique_preexpA_0 3.3e-4
@@ -262,7 +255,7 @@
 -snes_monitor
 -snes_converged_reason
 -snes_linesearch_type basic
--snes_view
+#-snes_view
 #---- KSP ----#
 -ksp_max_it 200
 -ksp_rtol 1.0e-4
@@ -307,9 +300,9 @@
 				# 16 x 4 x 8 #
 				-fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_pc_type telescope
 				-fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_telescope_pc_type cholesky
-				-fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_pc_telescope_reduction_factor 64
+				-fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_pc_telescope_reduction_factor 1
 #### THERMAL SOLVER
--ptatin_energyfv_nsub 2,2,2
+-ptatin_energyfv_nsub 3,3,3
 #-energyfv_ksp_monitor
 -energyfv_snes_converged_reason
 -energyfv_ksp_type fgmres
