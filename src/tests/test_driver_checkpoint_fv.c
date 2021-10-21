@@ -2620,7 +2620,7 @@ PetscErrorCode Run_NonLinearFV(pTatinCtx user,Vec v1,Vec v2)
   PetscReal          surface_displacement_max = 1.0e32;
   PetscLogDouble     time[4];
   AuuMultiLevelCtx   mgctx;
-  PetscReal          timestep,dt_factor = 10.0;
+  PetscReal          timestep,dt_factor = 1.0;
   PetscMPIInt        rank;
   
   PetscFunctionBegin;
@@ -2630,6 +2630,7 @@ PetscErrorCode Run_NonLinearFV(pTatinCtx user,Vec v1,Vec v2)
   ierr = PetscOptionsGetBool(NULL,NULL,"-monitor_stages",&monitor_stages,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,NULL,"-use_quasi_newton_coordinate_update",&activate_quasi_newton_coord_update,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetReal(NULL,NULL,"-dt_max_surface_displacement",&surface_displacement_max,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,NULL,"-dt_factor",&dt_factor,NULL);CHKERRQ(ierr);
 
   ierr = pTatinGetModel(user,&model);CHKERRQ(ierr);
   ierr = pTatinGetStokesContext(user,&stokes);CHKERRQ(ierr);
@@ -2977,10 +2978,11 @@ PetscErrorCode Run_NonLinearFV(pTatinCtx user,Vec v1,Vec v2)
     user->dt = 1.0e32;
     ierr = DMCompositeGetAccess(user->pack,X,&velocity,&pressure);CHKERRQ(ierr);
     ierr = SwarmUpdatePosition_ComputeCourantStep(dav,velocity,&timestep);CHKERRQ(ierr);
-    timestep = timestep/dt_factor;
+    timestep = timestep * dt_factor;
     ierr = pTatin_SetTimestep(user,"StkCourant",timestep);CHKERRQ(ierr);
 
     ierr = UpdateMeshGeometry_ComputeSurfaceCourantTimestep(dav,velocity,surface_displacement_max,&timestep);CHKERRQ(ierr);
+    timestep = timestep * dt_factor;
     ierr = pTatin_SetTimestep(user,"StkSurfaceCourant",timestep);CHKERRQ(ierr);
     ierr = DMCompositeRestoreAccess(user->pack,X,&velocity,&pressure);CHKERRQ(ierr);
 
