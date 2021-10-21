@@ -140,7 +140,7 @@ PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
   data->y_continent[0] = -25.0e3; // Conrad
   data->y_continent[1] = -35.0e3; // Moho
   data->y_continent[2] = -120.0e3; // LAB
-  data->y_ocean[0] = -1.0e3; // Top basement
+  data->y_ocean[0] = -2.0e3; // Top basement
   data->y_ocean[1] = -5.0e3; // Conrad
   data->y_ocean[2] = -10.0e3; // Moho
   data->y_ocean[3] = -80.0e3; // LAB
@@ -951,7 +951,7 @@ PetscErrorCode ModelApplyInitialMaterialGeometryNoAir_ObliqueBC(pTatinCtx c,void
       region_idx = 4; // Oceanic lithosphere mantle
     } else if (position[0] >= (x_subd-data->wz)  && 
                position[0] <= (x_subd+data->wz)  &&
-               position[1] < data->y_ocean[2]-dy && 
+               //position[1] < data->y_ocean[2]-dy && 
                position[1] >= data->y_continent[2]) {
       region_idx = 7; // Weak zone
     } else if (position[0] > x_subd && position[1] >= data->y_continent[0]) {
@@ -1191,8 +1191,6 @@ PetscErrorCode SubductionOblique_VelocityBC_Oblique(BCList bclist,DM dav,pTatinC
   ierr = PetscMalloc(sizeof(struct _p_BC_Lithosphere),&bcdata);CHKERRQ(ierr);
 
   /* Computing of the 2 velocity component required to get a vector of norm normV and angle angle_v */
-  //vx = data->normV*tan(data->angle_v)/sqrt(1+tan(data->angle_v)*tan(data->angle_v));
-  //vz = sqrt(data->normV*data->normV-vx*vx);
   vz = data->normV*PetscCosReal(data->angle_v);
   vx = PetscSqrtReal(data->normV*data->normV - vz*vz);
 
@@ -1210,10 +1208,6 @@ PetscErrorCode SubductionOblique_VelocityBC_Oblique(BCList bclist,DM dav,pTatinC
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,2,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
   
-  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_constant,(void*)&vxl);CHKERRQ(ierr);
-  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,2,BCListEvaluator_constant,(void*)&vzl);CHKERRQ(ierr);
-  
-  
   bcdata->y_lab = data->y_continent[2];
   bcdata->v = vxr;
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
@@ -1221,21 +1215,17 @@ PetscErrorCode SubductionOblique_VelocityBC_Oblique(BCList bclist,DM dav,pTatinC
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,2,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
   
-  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
-  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
-  
   if (data->is_2D) {
     ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
     ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
   }
-  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMAX_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
   
   /* Free slip bottom */
-  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
   if (!data->open_base) {
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
     ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
   }
-  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
 
   ierr = PetscFree(bcdata);CHKERRQ(ierr);
   
