@@ -32,6 +32,7 @@
 #include "private/ptatin_impl.h"
 #include "dmda_bcs.h"
 #include "element_utils_q1.h"
+#include "element_utils_q2.h"
 #include "dmda_element_q1.h"
 #include "dmda_element_q2p1.h"
 #include "quadrature.h"
@@ -751,6 +752,70 @@ PetscErrorCode SNESSolve_LithoPressure(PDESolveLithoP LP,Mat J,Vec X, Vec F, pTa
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode AverageVolumeQuadraturePointsToSurfaceQuadraturePointsStokes(pTatinCtx user)
+{
+  QPntVolCoefStokes  *all_gausspoints,*cell_gausspoints;
+  SurfaceQuadrature  surfQ_face;
+  QPntSurfCoefStokes *surfQ_coeff,*surfQ_cell_coeff;
+  QPoint3d           *qp3d;
+  Quadrature         volQ;
+  PetscInt           VolQ_ngp,SurfQ_nqp,p,q,f,c,nfaces;
+  PetscInt           *element_list,face_list_n;
+  HexElementFace     face_location[] = {HEX_FACE_Nxi, HEX_FACE_Pxi, HEX_FACE_Neta, HEX_FACE_Peta, HEX_FACE_Nzeta, HEX_FACE_Pzeta};
+  PetscErrorCode     ierr;
+  
+  PetscFunctionBegin;
+  volQ = user->stokes_ctx->volQ;
+  /* Number of Volume quadrature points */
+  VolQ_ngp = volQ->npoints;
+  /* Get Volume Quadrature Stokes data */
+  ierr = VolumeQuadratureGetAllCellData_Stokes(volQ,&all_gausspoints);CHKERRQ(ierr);
+  face_list_n = 6;
+  
+  for (f=0; f<face_list_n; f++) {
+    ierr = PhysCompStokesGetSurfaceQuadrature(user->stokes_ctx,face_location[f],&surfQ_face);CHKERRQ(ierr);
+    ierr = SurfaceQuadratureGetQuadratureInfo(surfQ_face,&SurfQ_nqp,NULL,&qp3d);CHKERRQ(ierr);
+    ierr = SurfaceQuadratureGetFaceInfo(surfQ_face,NULL,&nfaces,&element_list);CHKERRQ(ierr);
+    ierr = SurfaceQuadratureGetAllCellData_Stokes(surfQ_face,&surfQ_coeff);CHKERRQ(ierr);
+
+    for (c=0; c<nfaces; c++) {
+      PetscInt  eidx;
+      PetscReal avg_el_eta,avg_el_rho;
+      /* Get the element index */
+      eidx = element_list[c];
+      /* Get the volume quadrature data of the element */
+      ierr = VolumeQuadratureGetCellData_Stokes(volQ,all_gausspoints,eidx,&cell_gausspoints);CHKERRQ(ierr);
+      /* Get the surface quadrature data of the element */
+      ierr = SurfaceQuadratureGetCellData_Stokes(surfQ_face,surfQ_coeff,c,&surfQ_cell_coeff);CHKERRQ(ierr);
+
+      /* Average the viscosity laying on the volume quadrature points */
+      avg_el_eta = 0.0;
+      avg_el_rho = 0.0;
+      for (p=0; p<VolQ_ngp; p++) {
+        avg_el_eta += cell_gausspoints[p].eta;
+        avg_el_rho += cell_gausspoints[p].rho;
+      }
+      avg_el_eta = avg_el_eta/VolQ_ngp;
+      avg_el_rho = avg_el_rho/VolQ_ngp;
+      /* Loop over surface quadrature points */
+      for (q=0; q<SurfQ_nqp; q++) {
+        PetscReal viscosity,rho;
+        /* Get viscosity and density at surface quadrature point */
+        QPntSurfCoefStokesGetField_viscosity(&surfQ_cell_coeff[q],&viscosity);
+        QPntSurfCoefStokesGetField_density(&surfQ_cell_coeff[q],&rho);
+        /* Apply the averaged value */
+        viscosity = avg_el_eta;
+        rho = avg_el_rho;
+        /* Set viscosity and density at surface quadrature point */
+        QPntSurfCoefStokesSetField_viscosity(&surfQ_cell_coeff[q],viscosity);
+        QPntSurfCoefStokesSetField_density(&surfQ_cell_coeff[q],rho);
+      }
+    }
+  }
+  
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode ApplyLithostaticPressure_SurfQuadratureStokes_FullFace(PhysCompStokes stokes,
                                                                       DM da,
                                                                       Vec X,
@@ -834,12 +899,403 @@ PetscErrorCode ApplyLithostaticPressure_SurfQuadratureStokes_FullFace(PhysCompSt
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ModelApplyTractionFromLithoPressure(pTatinCtx user)
+PetscErrorCode ApplyNormalStress_SurfQuadratureStokes_FullFace(PhysCompStokes stokes,
+                                                               DM da,
+                                                               Vec X,
+                                                               Vec X_stokes,
+                                                               HexElementFace face_location[],
+                                                               PetscInt face_list_n)
+{
+  SurfaceQuadrature  surfQ_face;
+  QPntSurfCoefStokes *surfQ_coeff,*surfQ_cell_coeff;
+  PetscInt           c,q,n,f,k,i,j,nqp,nfaces,*element_list;
+  QPoint3d           *qp3d;
+  DM                 stokes_pack,dau,dap,cda;
+  Vec                LP_local,Uloc,Ploc,gcoords;
+  PetscReal          *LA_LP_local;
+  PetscReal          *LA_Uloc,*LA_Ploc;
+  PetscReal          *LA_gcoords;
+  PetscInt           nel_lp,nen_lp,nel_u,nen_u;
+  const PetscInt     *elnidx_lp;
+  const PetscInt     *elnidx_u;
+  PetscReal          el_lithop[Q1_NODES_PER_EL_3D];
+  PetscReal          elcoords[3*Q2_NODES_PER_EL_3D];
+  PetscReal          elu[3*Q2_NODES_PER_EL_3D];
+  PetscReal          ux[Q2_NODES_PER_EL_3D],uy[Q2_NODES_PER_EL_3D],uz[Q2_NODES_PER_EL_3D];
+  PetscErrorCode     ierr;
+  
+  PetscFunctionBegin;
+  
+  /* Get Q1 elements connectivity table */
+  ierr = DMDAGetElements(da,&nel_lp,&nen_lp,&elnidx_lp);CHKERRQ(ierr);
+
+  /* Get the values of the lithostatic pressure solution vector at local rank */
+  ierr = DMGetLocalVector(da,&LP_local);CHKERRQ(ierr);
+  ierr = VecZeroEntries(LP_local);CHKERRQ(ierr);
+  ierr = DMGlobalToLocalBegin(da,X,INSERT_VALUES,LP_local);CHKERRQ(ierr);
+  ierr = DMGlobalToLocalEnd  (da,X,INSERT_VALUES,LP_local);CHKERRQ(ierr);
+  ierr = VecGetArray(LP_local,&LA_LP_local);CHKERRQ(ierr);
+  
+  /* Get the values of the velocity solution vector at local rank */
+  stokes_pack = stokes->stokes_pack;
+  ierr = DMCompositeGetEntries(stokes_pack,&dau,&dap);CHKERRQ(ierr);
+  ierr = DMCompositeGetLocalVectors(stokes_pack,&Uloc,&Ploc);CHKERRQ(ierr);
+  ierr = DMCompositeScatter(stokes_pack,X_stokes,Uloc,Ploc);CHKERRQ(ierr);
+  ierr = VecGetArray(Uloc,&LA_Uloc);CHKERRQ(ierr);
+  ierr = VecGetArray(Ploc,&LA_Ploc);CHKERRQ(ierr);
+  
+  /* setup for coords */
+  ierr = DMGetCoordinateDM(dau,&cda);CHKERRQ(ierr);
+  ierr = DMGetCoordinatesLocal(dau,&gcoords);CHKERRQ(ierr);
+  ierr = VecGetArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
+  /* Get Q2 elements connectivity table */
+  ierr = DMDAGetElements_pTatinQ2P1(dau,&nel_u,&nen_u,&elnidx_u);CHKERRQ(ierr);
+  
+  for (f=0; f<face_list_n; f++) {
+    ierr = PhysCompStokesGetSurfaceQuadrature(stokes,face_location[f],&surfQ_face);CHKERRQ(ierr);
+    ierr = SurfaceQuadratureGetQuadratureInfo(surfQ_face,&nqp,NULL,&qp3d);CHKERRQ(ierr);
+    ierr = SurfaceQuadratureGetFaceInfo(surfQ_face,NULL,&nfaces,&element_list);CHKERRQ(ierr);
+    
+    ierr = SurfaceQuadratureGetAllCellData_Stokes(surfQ_face,&surfQ_coeff);CHKERRQ(ierr);
+
+    for (c=0; c<nfaces; c++) {
+      PetscInt  eidx;
+      
+      /* Get the element index */
+      eidx = element_list[c];
+      /* Get coordinates of the element */
+      ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx_u[nen_u*eidx],LA_gcoords);CHKERRQ(ierr);
+      /* Get the lithostatic pressure in the element */
+      ierr = DMDAEQ1_GetScalarElementField_3D(el_lithop,(PetscInt*)&elnidx_lp[nen_lp*eidx],LA_LP_local);CHKERRQ(ierr);
+      /* Get the velocity in the element */
+      ierr = DMDAGetVectorElementFieldQ2_3D(elu,(PetscInt*)&elnidx_u[nen_u*eidx],(PetscScalar*)LA_Uloc);CHKERRQ(ierr);
+    
+      /* get velocity components */
+      for (k=0; k<Q2_NODES_PER_EL_3D; k++) {
+        ux[k] = elu[3*k  ];
+        uy[k] = elu[3*k+1];
+        uz[k] = elu[3*k+2];
+      }
+      /* Get the surface quadrature data of the element */
+      ierr = SurfaceQuadratureGetCellData_Stokes(surfQ_face,surfQ_coeff,c,&surfQ_cell_coeff);CHKERRQ(ierr);
+      
+      /* Loop over quadrature points */
+      for (q=0; q<nqp; q++) {
+        PetscReal litho_pressure_qp;
+        PetscReal NiQ1[Q1_NODES_PER_EL_3D];
+        PetscReal qp_xi[NSD];
+        PetscReal GNiQ2[NSD][Q2_NODES_PER_EL_3D];
+        PetscReal dNudx[Q2_NODES_PER_EL_3D],dNudy[Q2_NODES_PER_EL_3D],dNudz[Q2_NODES_PER_EL_3D];
+        PetscReal exx,exy,exz,eyy,eyz,ezz;
+        PetscReal E[NSD][NSD],E_n,tau_n;
+        double    *normal,*traction,viscosity,rho;
+        
+        /* Get normal and traction arrays at quadrature point (3 components) */
+        QPntSurfCoefStokesGetField_surface_normal(&surfQ_cell_coeff[q],&normal);
+        QPntSurfCoefStokesGetField_surface_traction(&surfQ_cell_coeff[q],&traction);
+        /* Get viscosity at quadrature point */
+        QPntSurfCoefStokesGetField_viscosity(&surfQ_cell_coeff[q],&viscosity);
+        QPntSurfCoefStokesGetField_density(&surfQ_cell_coeff[q],&rho);
+        /* Get local coords of quadrature point */
+        qp_xi[0] = qp3d[q].xi;
+        qp_xi[1] = qp3d[q].eta;
+        qp_xi[2] = qp3d[q].zeta;
+        /* Evaluate NiQ1 for interpolation on quadrature point */
+        EvaluateBasis_Q1_3D(qp_xi,NiQ1);
+        /* Interpolate lithostatic pressure at quadrature point */
+        litho_pressure_qp = 0.0;
+        for (n=0; n<Q1_NODES_PER_EL_3D; n++) {
+          litho_pressure_qp += NiQ1[n]*el_lithop[n];
+        }
+        
+        /* Evaluate grad.NiQ2 to compute strain rate */
+        P3D_ConstructGNi_Q2_3D(qp_xi,GNiQ2);
+        /* Get shape function global derivatives */
+        P3D_evaluate_global_derivatives_Q2(elcoords,GNiQ2,dNudx,dNudy,dNudz);
+        /* Compute strain rate */
+        exx=0.0;  eyy=0.0;  ezz=0.0;
+        exy=0.0;  exz=0.0;  eyz=0.0;
+        for (k=0; k<Q2_NODES_PER_EL_3D; k++) {
+          exx += (dNudx[k] * ux[k]);
+          eyy += (dNudy[k] * uy[k]);
+          ezz += (dNudz[k] * uz[k]);
+
+          exy += dNudy[k] * ux[k] + dNudx[k] * uy[k];
+          exz += dNudz[k] * ux[k] + dNudx[k] * uz[k];
+          eyz += dNudz[k] * uy[k] + dNudy[k] * uz[k];
+        }
+        exy = 0.5*exy;
+        exz = 0.5*exz;
+        eyz = 0.5*eyz;
+        /* Build the tensor */
+        E[0][0] = exx; E[0][1] = exy; E[0][2] = exz;
+        E[1][0] = exy; E[1][1] = eyy; E[1][2] = eyz;
+        E[2][0] = exz; E[2][1] = eyz; E[2][2] = ezz;
+        /* Compute the normal strain rate: n[i]*E[i][j]*n[j] */
+        E_n = 0.0;
+        for (i=0;i<3;i++) {
+          for (j=0;j<3;j++) {
+            E_n += normal[i]*E[i][j]*normal[j];
+          }
+        }
+        /* Compute the normal stress */
+        tau_n = 2.0*viscosity*E_n;
+        /* Set traction as t = (tau-lp).n (colinear vector of opposite direction and scale tau - lp) */
+        traction[0] = (-tau_n - litho_pressure_qp) * (normal[0]);
+        traction[1] = (-tau_n - litho_pressure_qp) * (normal[1]);
+        traction[2] = (-tau_n - litho_pressure_qp) * (normal[2]);
+      }
+    }
+  }
+  ierr = VecRestoreArray(LP_local,&LA_LP_local);CHKERRQ(ierr);
+  ierr = DMRestoreLocalVector(da,&LP_local);CHKERRQ(ierr);
+  ierr = VecRestoreArray(Uloc,&LA_Uloc);CHKERRQ(ierr);
+  ierr = VecRestoreArray(Ploc,&LA_Ploc);CHKERRQ(ierr);
+  ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
+  ierr = DMDARestoreElements(da,&nel_lp,&nen_lp,&elnidx_lp);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ComputeLambdaFromStep(pTatinCtx user,
+                                     PetscInt start_step, 
+                                     PetscInt end_step,
+                                     PetscReal lambda_min,
+                                     PetscReal lambda_max, 
+                                     PetscReal *lambda)
+{
+  PetscFunctionBegin;
+  *lambda = lambda_min;
+  if (user->step > start_step && user->step <= end_step) {
+    *lambda = (user->step - start_step) * (lambda_max - lambda_min)/(end_step-start_step) + lambda_min;
+  } else if (user->step > end_step) {
+    *lambda = lambda_max;
+  }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ModelApplyTractionFromLithoPressureStokesVolumeQuadrature(pTatinCtx user,
+                                                                         PhysCompStokes stokes,
+                                                                         DM da,
+                                                                         Vec X,
+                                                                         Vec X_stokes,
+                                                                         HexElementFace face_location[],
+                                                                         PetscInt face_list_n)
+{
+  DM                 stokes_pack,dau,dap,cda;
+  Vec                LP_local,Uloc,Ploc,gcoords;
+  PetscReal          *LA_Uloc,*LA_Ploc;
+  PetscReal          *LA_gcoords;
+  PetscReal          *LA_LP_local;
+  QPntVolCoefStokes  *all_gausspoints,*cell_gausspoints;
+  SurfaceQuadrature  surfQ_face;
+  QPntSurfCoefStokes *surfQ_coeff,*surfQ_cell_coeff;
+  QPoint3d           *qp3d;
+  Quadrature         volQ;
+  PetscInt           VolQ_ngp,SurfQ_nqp,p,q,f,k,c,n,i,j,nfaces,nqp;
+  PetscReal          VolQ_weight[NQP],VolQ_xi[NQP][3],VolQ_NiQ2[NQP][NPE],VolQ_GNiQ2[NQP][3][NPE];
+  PetscReal          detJ[NQP],dNudx[NQP][NPE],dNudy[NQP][NPE],dNudz[NQP][NPE];
+  PetscInt           *element_list;
+  PetscInt           nel_u,nen_u,nen_p,nel_lp,nen_lp;
+  const PetscInt     *elnidx_u;
+  const PetscInt     *elnidx_p;
+  const PetscInt     *elnidx_lp;
+  PetscReal          elcoords[3*Q2_NODES_PER_EL_3D];
+  PetscReal          elu[3*Q2_NODES_PER_EL_3D],elp[P_BASIS_FUNCTIONS];
+  PetscReal          el_lithop[Q1_NODES_PER_EL_3D];
+  PetscReal          el_eta[MAX_QUAD_PNTS];
+  PetscReal          int_sxx,int_syy,int_szz,int_sxy,int_sxz,int_syz;
+  PetscReal          el_volume;
+  PetscInt           start_step,end_step;
+  PetscReal          lambda,lambda_min,lambda_max;
+  PetscErrorCode     ierr;
+  
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+  /* Get volume quadrature structure */
+  volQ = stokes->volQ;
+  /* Number of Volume quadrature points */
+  VolQ_ngp = volQ->npoints;
+  /* Get Volume Quadrature Stokes data */
+  ierr = VolumeQuadratureGetAllCellData_Stokes(volQ,&all_gausspoints);CHKERRQ(ierr);
+  
+  P3D_prepare_elementQ2(VolQ_ngp,VolQ_weight,VolQ_xi,VolQ_NiQ2,VolQ_GNiQ2);
+  /* Get the values of the velocity solution vector at local rank */
+  stokes_pack = stokes->stokes_pack;
+  ierr = DMCompositeGetEntries(stokes_pack,&dau,&dap);CHKERRQ(ierr);
+  ierr = DMCompositeGetLocalVectors(stokes_pack,&Uloc,&Ploc);CHKERRQ(ierr);
+  ierr = DMCompositeScatter(stokes_pack,X_stokes,Uloc,Ploc);CHKERRQ(ierr);
+  ierr = VecGetArray(Uloc,&LA_Uloc);CHKERRQ(ierr);
+  ierr = VecGetArray(Ploc,&LA_Ploc);CHKERRQ(ierr);
+  
+  /* setup for coords */
+  ierr = DMGetCoordinateDM(dau,&cda);CHKERRQ(ierr);
+  ierr = DMGetCoordinatesLocal(dau,&gcoords);CHKERRQ(ierr);
+  ierr = VecGetArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
+  /* Get Q2 elements connectivity table for u,p */
+  ierr = DMDAGetElements_pTatinQ2P1(dau,&nel_u,&nen_u,&elnidx_u);CHKERRQ(ierr);
+  ierr = DMDAGetElements_pTatinQ2P1(dap,&nel_u,&nen_p,&elnidx_p);CHKERRQ(ierr);
+  
+  /* Get Q1 elements connectivity table */
+  ierr = DMDAGetElements(da,&nel_lp,&nen_lp,&elnidx_lp);CHKERRQ(ierr);
+  /* Get the values of the lithostatic pressure solution vector at local rank */
+  ierr = DMGetLocalVector(da,&LP_local);CHKERRQ(ierr);
+  ierr = VecZeroEntries(LP_local);CHKERRQ(ierr);
+  ierr = DMGlobalToLocalBegin(da,X,INSERT_VALUES,LP_local);CHKERRQ(ierr);
+  ierr = DMGlobalToLocalEnd  (da,X,INSERT_VALUES,LP_local);CHKERRQ(ierr);
+  ierr = VecGetArray(LP_local,&LA_LP_local);CHKERRQ(ierr);
+  
+  start_step = 10;
+  end_step   = 20;
+  lambda_min = 0.0;
+  lambda_max = 1.0;
+  ierr = ComputeLambdaFromStep(user,start_step,end_step,lambda_min,lambda_max,&lambda);CHKERRQ(ierr);
+  
+  for (f=0; f<face_list_n; f++) {
+    ierr = PhysCompStokesGetSurfaceQuadrature(stokes,face_location[f],&surfQ_face);CHKERRQ(ierr);
+    ierr = SurfaceQuadratureGetQuadratureInfo(surfQ_face,&nqp,NULL,&qp3d);CHKERRQ(ierr);
+    ierr = SurfaceQuadratureGetFaceInfo(surfQ_face,NULL,&nfaces,&element_list);CHKERRQ(ierr);
+    
+    ierr = SurfaceQuadratureGetAllCellData_Stokes(surfQ_face,&surfQ_coeff);CHKERRQ(ierr);
+
+    for (c=0; c<nfaces; c++) {
+      PetscInt  eidx;
+      PetscReal sigma[NSD][NSD];
+      PetscReal ux[Q2_NODES_PER_EL_3D],uy[Q2_NODES_PER_EL_3D],uz[Q2_NODES_PER_EL_3D];
+      
+      /* Get the element index */
+      eidx = element_list[c];
+      /* Get coordinates of the element */
+      ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx_u[nen_u*eidx],LA_gcoords);CHKERRQ(ierr);
+      /* Get the velocity in the element */
+      ierr = DMDAGetVectorElementFieldQ2_3D(elu,(PetscInt*)&elnidx_u[nen_u*eidx],(PetscScalar*)LA_Uloc);CHKERRQ(ierr);
+      /* Get the lithostatic pressure in the element */
+      ierr = DMDAEQ1_GetScalarElementField_3D(el_lithop,(PetscInt*)&elnidx_lp[nen_lp*eidx],LA_LP_local);CHKERRQ(ierr);
+      /* Get the volume quadrature data of the element */
+      ierr = VolumeQuadratureGetCellData_Stokes(volQ,all_gausspoints,eidx,&cell_gausspoints);CHKERRQ(ierr);
+      
+      /* get velocity components */
+      for (k=0; k<Q2_NODES_PER_EL_3D; k++) {
+        ux[k] = elu[3*k  ];
+        uy[k] = elu[3*k+1];
+        uz[k] = elu[3*k+2];
+      }
+      /* Evaluate geometry of the Q2 element */
+      P3D_evaluate_geometry_elementQ2(VolQ_ngp,elcoords,VolQ_GNiQ2,detJ,dNudx,dNudy,dNudz);
+      /* Get the viscosity at volume quadrature points */
+      for (p=0; p<VolQ_ngp; p++) {
+        el_eta[p] = cell_gausspoints[p].eta;
+      }
+      
+      int_sxx = int_syy = int_szz = 0.0;
+      int_sxy = int_sxz = int_syz = 0.0;
+      el_volume = 0.0;
+      /* Loop over volume quadrature points */
+      for (p=0; p<VolQ_ngp; p++) {
+        PetscReal fac;
+        PetscReal exx,eyy,ezz,exy,exz,eyz;
+        PetscReal sxx,syy,szz,sxy,sxz,syz;
+        
+        fac = VolQ_weight[p] * detJ[p];
+        
+        /* Compute the strain rate tensor */
+        exx=0.0;  eyy=0.0;  ezz=0.0;
+        exy=0.0;  exz=0.0;  eyz=0.0;
+        for (k=0; k<Q2_NODES_PER_EL_3D; k++) {
+          exx += (dNudx[p][k] * ux[k]);
+          eyy += (dNudy[p][k] * uy[k]);
+          ezz += (dNudz[p][k] * uz[k]);
+
+          exy += dNudy[p][k] * ux[k] + dNudx[p][k] * uy[k];
+          exz += dNudz[p][k] * ux[k] + dNudx[p][k] * uz[k];
+          eyz += dNudz[p][k] * uy[k] + dNudy[p][k] * uz[k];
+        }
+        exy = 0.5*exy;
+        exz = 0.5*exz;
+        eyz = 0.5*eyz;
+        /* Compute the Stress tensor components */
+        sxx = 2.0*el_eta[p]*exx;
+        syy = 2.0*el_eta[p]*eyy;
+        szz = 2.0*el_eta[p]*ezz;
+        
+        sxy = 2.0*el_eta[p]*exy;
+        sxz = 2.0*el_eta[p]*exz;
+        syz = 2.0*el_eta[p]*eyz;
+        /* Integrate the Stress tensor components over the volume */
+        int_sxx += sxx * fac;
+        int_syy += syy * fac;
+        int_szz += szz * fac;
+        int_sxy += sxy * fac;
+        int_sxz += sxz * fac;
+        int_syz += syz * fac;
+        /* Compute the volume of the element */
+        el_volume += 1.0 * fac;
+      }
+      /* Construct the stress tensor */
+      sigma[0][0] = int_sxx / el_volume;
+      sigma[1][1] = int_syy / el_volume;
+      sigma[2][2] = int_szz / el_volume;
+      
+      sigma[0][1] = int_sxy / el_volume;
+      sigma[0][2] = int_sxz / el_volume;
+      sigma[1][2] = int_syz / el_volume;
+      
+      sigma[1][0] = sigma[0][1];
+      sigma[2][0] = sigma[0][2];
+      sigma[2][1] = sigma[1][2];
+      
+      /* Get the surface quadrature data of the element */
+      ierr = SurfaceQuadratureGetCellData_Stokes(surfQ_face,surfQ_coeff,c,&surfQ_cell_coeff);CHKERRQ(ierr);
+
+      /* Loop over surface quadrature points */
+      for (q=0; q<nqp; q++) {
+        PetscReal litho_pressure_qp,tau_n;
+        PetscReal NiQ1[Q1_NODES_PER_EL_3D];
+        PetscReal qp_xi[NSD];
+        double    *normal,*traction;
+        
+        /* Get normal and traction arrays at quadrature point (3 components) */
+        QPntSurfCoefStokesGetField_surface_normal(&surfQ_cell_coeff[q],&normal);
+        QPntSurfCoefStokesGetField_surface_traction(&surfQ_cell_coeff[q],&traction);
+        /* Get local coords of quadrature point */
+        qp_xi[0] = qp3d[q].xi;
+        qp_xi[1] = qp3d[q].eta;
+        qp_xi[2] = qp3d[q].zeta;
+        /* Evaluate NiQ1 for interpolation on quadrature point */
+        EvaluateBasis_Q1_3D(qp_xi,NiQ1);
+        /* Interpolate lithostatic pressure at quadrature point */
+        litho_pressure_qp = 0.0;
+        for (n=0; n<Q1_NODES_PER_EL_3D; n++) {
+          litho_pressure_qp += NiQ1[n]*el_lithop[n];
+        }
+        /* Compute the normal stress: n[i]*sigma[i][j]*n[j] */
+        tau_n = 0.0;
+        for (i=0; i<NSD; i++) {
+          for (j=0; j<NSD; j++) {
+            tau_n += normal[i]*sigma[i][j]*normal[j];
+          }
+        }
+        /* Set traction as t = (tau-lp).n (colinear vector of opposite direction and scale tau - lp) */
+        traction[0] = (-lambda*tau_n - litho_pressure_qp) * (normal[0]);
+        traction[1] = (-lambda*tau_n - litho_pressure_qp) * (normal[1]);
+        traction[2] = (-lambda*tau_n - litho_pressure_qp) * (normal[2]);
+      }
+    }
+  }
+  ierr = VecRestoreArray(Uloc,&LA_Uloc);CHKERRQ(ierr);
+  ierr = VecRestoreArray(Ploc,&LA_Ploc);CHKERRQ(ierr);
+  ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ModelApplyTractionFromLithoPressure(pTatinCtx user, Vec X_stokes)
 {
   PDESolveLithoP LP;
   PetscReal      val_P;
   Mat            J = NULL;
   PetscInt       face_list_n;
+  HexElementFace face_list[] = {HEX_FACE_Neta, HEX_FACE_Pxi, HEX_FACE_Nxi, HEX_FACE_Pzeta, HEX_FACE_Nzeta};
   PetscErrorCode ierr;
   
   PetscFunctionBegin;
@@ -855,15 +1311,208 @@ PetscErrorCode ModelApplyTractionFromLithoPressure(pTatinCtx user)
   ierr = MatSetFromOptions(J);CHKERRQ(ierr);
   
   ierr = SNESSolve_LithoPressure(LP,J,LP->X,LP->F,user);CHKERRQ(ierr);
-  
-  HexElementFace face_list[] = {HEX_FACE_Neta, HEX_FACE_Pxi, HEX_FACE_Nxi, HEX_FACE_Pzeta, HEX_FACE_Nzeta};
   face_list_n = 5;
   /* Apply the lithostatic pressure on surface quadrature points */
-  ierr = ApplyLithostaticPressure_SurfQuadratureStokes_FullFace(user->stokes_ctx,LP->da,LP->X,face_list,face_list_n);CHKERRQ(ierr);
-
+  //ierr = ApplyLithostaticPressure_SurfQuadratureStokes_FullFace(user->stokes_ctx,LP->da,LP->X,face_list,face_list_n);CHKERRQ(ierr);
+  //ierr = ApplyNormalStress_SurfQuadratureStokes_FullFace(user->stokes_ctx,LP->da,LP->X,X_stokes,face_list,face_list_n);CHKERRQ(ierr);
+  ierr = ModelApplyTractionFromLithoPressureStokesVolumeQuadrature(user,user->stokes_ctx,LP->da,LP->X,X_stokes,face_list,face_list_n);CHKERRQ(ierr);
   ierr = MatDestroy(&J);CHKERRQ(ierr);
   ierr = PhysCompDestroy_LithoP(&LP);CHKERRQ(ierr);
   user->litho_p_ctx = NULL;
+  
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ModelApplyTractionFromStokesVolumeQuadrature(pTatinCtx user, Vec X_stokes)
+{
+  PhysCompStokes     stokes;
+  DM                 stokes_pack,dau,dap,cda;
+  Vec                Uloc,Ploc,gcoords;
+  PetscReal          *LA_Uloc,*LA_Ploc;
+  PetscReal          *LA_gcoords;
+  QPntVolCoefStokes  *all_gausspoints,*cell_gausspoints;
+  SurfaceQuadrature  surfQ_face;
+  QPntSurfCoefStokes *surfQ_coeff,*surfQ_cell_coeff;
+  QPoint3d           *qp3d;
+  Quadrature         volQ;
+  PetscInt           VolQ_ngp,SurfQ_nqp,p,q,f,k,c,n,i,j,nfaces,nqp;
+  PetscReal          VolQ_weight[NQP],VolQ_xi[NQP][3],VolQ_NiQ2[NQP][NPE],VolQ_GNiQ2[NQP][3][NPE];
+  PetscReal          detJ[NQP],dNudx[NQP][NPE],dNudy[NQP][NPE],dNudz[NQP][NPE];
+  PetscInt           *element_list;
+  PetscInt           nel_u,nen_u,nen_p;
+  const PetscInt     *elnidx_u;
+  const PetscInt     *elnidx_p;
+  PetscReal          elcoords[3*Q2_NODES_PER_EL_3D];
+  PetscReal          elu[3*Q2_NODES_PER_EL_3D],elp[P_BASIS_FUNCTIONS];
+  PetscReal          el_lithop[Q1_NODES_PER_EL_3D];
+  PetscReal          el_eta[MAX_QUAD_PNTS];
+  PetscReal          int_sxx,int_syy,int_szz,int_sxy,int_sxz,int_syz;
+  PetscReal          el_volume;
+  HexElementFace     face_location[] = {HEX_FACE_Nxi, HEX_FACE_Pxi, HEX_FACE_Neta, HEX_FACE_Nzeta, HEX_FACE_Pzeta};
+  PetscInt           face_list_n = 5;
+  PetscErrorCode     ierr;
+  
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+  /* Get volume quadrature structure */
+  volQ = user->stokes_ctx->volQ;
+  /* Number of Volume quadrature points */
+  VolQ_ngp = volQ->npoints;
+  /* Get Volume Quadrature Stokes data */
+  ierr = VolumeQuadratureGetAllCellData_Stokes(volQ,&all_gausspoints);CHKERRQ(ierr);
+  
+  P3D_prepare_elementQ2(VolQ_ngp,VolQ_weight,VolQ_xi,VolQ_NiQ2,VolQ_GNiQ2);
+  /* Get the values of the velocity solution vector at local rank */
+  ierr = pTatinGetStokesContext(user,&stokes);CHKERRQ(ierr);
+  stokes_pack = stokes->stokes_pack;
+  ierr = DMCompositeGetEntries(stokes_pack,&dau,&dap);CHKERRQ(ierr);
+  ierr = DMCompositeGetLocalVectors(stokes_pack,&Uloc,&Ploc);CHKERRQ(ierr);
+  ierr = DMCompositeScatter(stokes_pack,X_stokes,Uloc,Ploc);CHKERRQ(ierr);
+  ierr = VecGetArray(Uloc,&LA_Uloc);CHKERRQ(ierr);
+  ierr = VecGetArray(Ploc,&LA_Ploc);CHKERRQ(ierr);
+  
+  /* setup for coords */
+  ierr = DMGetCoordinateDM(dau,&cda);CHKERRQ(ierr);
+  ierr = DMGetCoordinatesLocal(dau,&gcoords);CHKERRQ(ierr);
+  ierr = VecGetArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
+  /* Get Q2 elements connectivity table for u,p */
+  ierr = DMDAGetElements_pTatinQ2P1(dau,&nel_u,&nen_u,&elnidx_u);CHKERRQ(ierr);
+  ierr = DMDAGetElements_pTatinQ2P1(dap,&nel_u,&nen_p,&elnidx_p);CHKERRQ(ierr);
+  
+  for (f=0; f<face_list_n; f++) {
+    ierr = PhysCompStokesGetSurfaceQuadrature(stokes,face_location[f],&surfQ_face);CHKERRQ(ierr);
+    ierr = SurfaceQuadratureGetQuadratureInfo(surfQ_face,&nqp,NULL,&qp3d);CHKERRQ(ierr);
+    ierr = SurfaceQuadratureGetFaceInfo(surfQ_face,NULL,&nfaces,&element_list);CHKERRQ(ierr);
+    
+    ierr = SurfaceQuadratureGetAllCellData_Stokes(surfQ_face,&surfQ_coeff);CHKERRQ(ierr);
+
+    for (c=0; c<nfaces; c++) {
+      PetscInt  eidx;
+      PetscReal sigma[NSD][NSD];
+      PetscReal ux[Q2_NODES_PER_EL_3D],uy[Q2_NODES_PER_EL_3D],uz[Q2_NODES_PER_EL_3D];
+      
+      /* Get the element index */
+      eidx = element_list[c];
+      /* Get coordinates of the element */
+      ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx_u[nen_u*eidx],LA_gcoords);CHKERRQ(ierr);
+      /* Get the velocity in the element */
+      ierr = DMDAGetVectorElementFieldQ2_3D(elu,(PetscInt*)&elnidx_u[nen_u*eidx],(PetscScalar*)LA_Uloc);CHKERRQ(ierr);
+      /* Get the pressure in the element */
+      ierr = DMDAGetScalarElementField(elp,nen_p,(PetscInt*)&elnidx_p[nen_p*eidx],(PetscScalar*)LA_Ploc);CHKERRQ(ierr);
+      /* Get the volume quadrature data of the element */
+      ierr = VolumeQuadratureGetCellData_Stokes(volQ,all_gausspoints,eidx,&cell_gausspoints);CHKERRQ(ierr);
+      
+      /* get velocity components */
+      for (k=0; k<Q2_NODES_PER_EL_3D; k++) {
+        ux[k] = elu[3*k  ];
+        uy[k] = elu[3*k+1];
+        uz[k] = elu[3*k+2];
+      }
+      /* Evaluate geometry of the Q2 element */
+      P3D_evaluate_geometry_elementQ2(VolQ_ngp,elcoords,VolQ_GNiQ2,detJ,dNudx,dNudy,dNudz);
+      /* Get the viscosity at volume quadrature points */
+      for (p=0; p<VolQ_ngp; p++) {
+        el_eta[p] = cell_gausspoints[p].eta;
+      }
+      
+      int_sxx = int_syy = int_szz = 0.0;
+      int_sxy = int_sxz = int_syz = 0.0;
+      el_volume = 0.0;
+      /* Loop over volume quadrature points */
+      for (p=0; p<VolQ_ngp; p++) {
+        PetscReal fac;
+        PetscReal exx,eyy,ezz,exy,exz,eyz;
+        PetscReal sxx,syy,szz,sxy,sxz,syz;
+        
+        fac = VolQ_weight[p] * detJ[p];
+        
+        /* Compute the strain rate tensor */
+        exx=0.0;  eyy=0.0;  ezz=0.0;
+        exy=0.0;  exz=0.0;  eyz=0.0;
+        for (k=0; k<Q2_NODES_PER_EL_3D; k++) {
+          exx += (dNudx[p][k] * ux[k]);
+          eyy += (dNudy[p][k] * uy[k]);
+          ezz += (dNudz[p][k] * uz[k]);
+
+          exy += dNudy[p][k] * ux[k] + dNudx[p][k] * uy[k];
+          exz += dNudz[p][k] * ux[k] + dNudx[p][k] * uz[k];
+          eyz += dNudz[p][k] * uy[k] + dNudy[p][k] * uz[k];
+        }
+        exy = 0.5*exy;
+        exz = 0.5*exz;
+        eyz = 0.5*eyz;
+        /* Compute the Stress tensor components */
+        sxx = 2.0*el_eta[p]*exx;
+        syy = 2.0*el_eta[p]*eyy;
+        szz = 2.0*el_eta[p]*ezz;
+        
+        sxy = 2.0*el_eta[p]*exy;
+        sxz = 2.0*el_eta[p]*exz;
+        syz = 2.0*el_eta[p]*eyz;
+        /* Integrate the Stress tensor components over the volume */
+        int_sxx += sxx * fac;
+        int_syy += syy * fac;
+        int_szz += szz * fac;
+        int_sxy += sxy * fac;
+        int_sxz += sxz * fac;
+        int_syz += syz * fac;
+        /* Compute the volume of the element */
+        el_volume += 1.0 * fac;
+      }
+      /* Construct the stress tensor */
+      sigma[0][0] = int_sxx / el_volume;
+      sigma[1][1] = int_syy / el_volume;
+      sigma[2][2] = int_szz / el_volume;
+      
+      sigma[0][1] = int_sxy / el_volume;
+      sigma[0][2] = int_sxz / el_volume;
+      sigma[1][2] = int_syz / el_volume;
+      
+      sigma[1][0] = sigma[0][1];
+      sigma[2][0] = sigma[0][2];
+      sigma[2][1] = sigma[1][2];
+      
+      /* Get the surface quadrature data of the element */
+      ierr = SurfaceQuadratureGetCellData_Stokes(surfQ_face,surfQ_coeff,c,&surfQ_cell_coeff);CHKERRQ(ierr);
+
+      /* Loop over surface quadrature points */
+      for (q=0; q<nqp; q++) {
+        PetscReal pressure,tau_n;
+        PetscReal Nip[P_BASIS_FUNCTIONS];
+        PetscReal qp_xi[NSD];
+        double    *normal,*traction;
+        
+        /* Get normal and traction arrays at quadrature point (3 components) */
+        QPntSurfCoefStokesGetField_surface_normal(&surfQ_cell_coeff[q],&normal);
+        QPntSurfCoefStokesGetField_surface_traction(&surfQ_cell_coeff[q],&traction);
+        /* Get local coords of quadrature point */
+        qp_xi[0] = qp3d[q].xi;
+        qp_xi[1] = qp3d[q].eta;
+        qp_xi[2] = qp3d[q].zeta;
+        /* Evaluate Nip for interpolation on quadrature point */
+        ConstructNi_pressure(qp_xi,elcoords,Nip);
+        /* Interpolate pressure at quadrature point */
+        pressure = 0.0;
+        for (n=0; n<P_BASIS_FUNCTIONS; n++) {
+          pressure += Nip[n]*elp[n];
+        }
+        /* Compute the normal stress: n[i]*sigma[i][j]*n[j] */
+        tau_n = 0.0;
+        for (i=0; i<NSD; i++) {
+          for (j=0; j<NSD; j++) {
+            tau_n += normal[i]*sigma[i][j]*normal[j];
+          }
+        }
+        /* Set traction as t = (tau-lp).n (colinear vector of opposite direction and scale tau - lp) */
+        traction[0] = (-tau_n - pressure) * (normal[0]);
+        traction[1] = (-tau_n - pressure) * (normal[1]);
+        traction[2] = (-tau_n - pressure) * (normal[2]);
+      }
+    }
+  }
+  ierr = VecRestoreArray(Uloc,&LA_Uloc);CHKERRQ(ierr);
+  ierr = VecRestoreArray(Ploc,&LA_Ploc);CHKERRQ(ierr);
+  ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
   
   PetscFunctionReturn(0);
 }

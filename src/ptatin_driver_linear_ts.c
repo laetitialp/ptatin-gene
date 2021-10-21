@@ -1066,7 +1066,7 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
     ierr = pTatinModel_Output(user->model,user,X,"icbc");CHKERRQ(ierr);
   }
 
-  ierr = ModelApplyTractionFromLithoPressure(user);
+  ierr = ModelApplyTractionFromLithoPressure(user,X);
 
   ierr = SNESCreate(PETSC_COMM_WORLD,&snes);CHKERRQ(ierr);
   ierr = SNESSetFunction(snes,F,FormFunction_Stokes,user);CHKERRQ(ierr);
@@ -1208,7 +1208,7 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
     ierr = pTatinModel_ApplyBoundaryCondition(model,user);CHKERRQ(ierr);
     /* Coarse grid setup: Configure boundary conditions */
     ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,dav_hierarchy,model,user);CHKERRQ(ierr);
-    ierr = ModelApplyTractionFromLithoPressure(user);
+    ierr = ModelApplyTractionFromLithoPressure(user,X);
     /* solve */
     /* a) configure stokes opertors */
     ierr = pTatin3dCreateStokesOperators(user->stokes_ctx,is_stokes_field,
