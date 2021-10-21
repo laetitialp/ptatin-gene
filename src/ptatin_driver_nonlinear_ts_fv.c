@@ -1739,7 +1739,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
     ierr = SNESGetKSP(snes,&ksp);CHKERRQ(ierr);
     
     /* Solve lithostatic pressure and apply on the surface quadrature points for Stokes */
-    ierr = ModelApplyTractionFromLithoPressure(user);CHKERRQ(ierr);
+    ierr = ModelApplyTractionFromLithoPressure(user,X);CHKERRQ(ierr);
     /*
        Set non-zero initial guess as we only perform 1 non-linear iteration and the
        user may have provided a initial guess for velocity, pressure in their model
@@ -2291,7 +2291,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
     }
     
     /* Solve lithostatic pressure and apply on the surface quadrature points for Stokes */
-    ierr = ModelApplyTractionFromLithoPressure(user);CHKERRQ(ierr);
+    ierr = ModelApplyTractionFromLithoPressure(user,X);CHKERRQ(ierr);
     
     
     
