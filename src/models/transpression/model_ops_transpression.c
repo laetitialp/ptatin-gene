@@ -690,12 +690,14 @@ static PetscErrorCode ModelApplyBoundaryCondition_OrthogonalCompression(BCList b
   
   bcdata->y_lab = data->Oy;
   bcdata->v = vxl;
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_Lithosphere_transpression,(void*)bcdata);CHKERRQ(ierr);
+  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_Lithosphere_transpression,(void*)bcdata);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_constant,(void*)&vxr);CHKERRQ(ierr);
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
   
   bcdata->y_lab = data->Oy;
   bcdata->v = vxr;
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_Lithosphere_transpression,(void*)bcdata);CHKERRQ(ierr);
+  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_Lithosphere_transpression,(void*)bcdata);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_constant,(void*)&vxr);CHKERRQ(ierr);
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
   
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
