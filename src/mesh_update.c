@@ -421,8 +421,8 @@ PetscErrorCode UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX_Interpola
           //PetscPrintf(PETSC_COMM_SELF,"  pos(x,z) %1.8e %1.8e\n",mp.coor[0],mp.coor[1]);
 
           index = -1;
-          sep2 = 0.0;
           for (n=0; n<ni*nk; n++) {
+            sep2 = 0.0;
             sep2 = sep2 + (msurf_coords_2d[2*n+0]-mp.coor[0])*(msurf_coords_2d[2*n+0]-mp.coor[0]);
             sep2 = sep2 + (msurf_coords_2d[2*n+1]-mp.coor[1])*(msurf_coords_2d[2*n+1]-mp.coor[1]);
             if (sep2 < min_sep2) {
