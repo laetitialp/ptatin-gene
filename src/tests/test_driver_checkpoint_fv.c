@@ -2887,11 +2887,11 @@ PetscErrorCode Run_NonLinearFV(pTatinCtx user,Vec v1,Vec v2)
     /* 3 Update local coordinates and communicate */
     ierr = MaterialPointStd_UpdateCoordinates(user->materialpoint_db,dav,user->materialpoint_ex);CHKERRQ(ierr);
 
-    /* 3a - Add material */
-    ierr = pTatinModel_ApplyMaterialBoundaryCondition(model,user);CHKERRQ(ierr);
-
     /* add / remove points if cells are over populated or depleted of points */
     ierr = MaterialPointPopulationControl_v1(user);CHKERRQ(ierr);
+
+    /* 3a - Add material */
+    ierr = pTatinModel_ApplyMaterialBoundaryCondition(model,user);CHKERRQ(ierr);
 
     /* update markers = >> gauss points */
     {
