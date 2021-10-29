@@ -1498,8 +1498,8 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_SubductionOblique(pTatinCtx c
 
     /* traverse */
     /* [0,1/east,west] ; [2,3/north,south] ; [4,5/front,back] */
-    Nxp[0]  = 1;
-    Nxp[1]  = 1;
+    Nxp[0]  = 4;
+    Nxp[1]  = 4;
     perturb = 0.1;
 
     /* reset size */
@@ -1533,10 +1533,9 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_SubductionOblique(pTatinCtx c
 
   PetscFunctionReturn(0);
 }
-/* Currently not call in the ModelRegister function*/
-PetscErrorCode ModelApplyUpdateMeshGeometry_SubductionOblique(pTatinCtx c,Vec X,void *ctx)
+
+PetscErrorCode ModelApplyUpdateMeshGeometry_SubductionOblique_Noair(pTatinCtx c,Vec X,ModelSubductionObliqueCtx *data)
 {
-  ModelSubductionObliqueCtx *data;
   PhysCompStokes  stokes;
   DM              stokes_pack,dav,dap;
   Vec             velocity,pressure;
@@ -1547,7 +1546,6 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_SubductionOblique(pTatinCtx c,Vec X,
   
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
-  data = (ModelSubductionObliqueCtx*)ctx;
   /* fully lagrangian update */
   ierr = pTatinGetTimestep(c,&dt);CHKERRQ(ierr);
   ierr = pTatinGetStokesContext(c,&stokes);CHKERRQ(ierr);
@@ -1556,7 +1554,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_SubductionOblique(pTatinCtx c,Vec X,
   ierr = DMCompositeGetEntries(stokes_pack,&dav,&dap);CHKERRQ(ierr);
   ierr = DMCompositeGetAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
 
- /* SURFACE REMESHING */
+  /* SURFACE REMESHING */
   Kero = 1.0e-6;
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-Kero",&Kero,NULL);CHKERRQ(ierr);
   Kero = Kero / (data->length_bar*data->length_bar/data->time_bar);
@@ -1588,6 +1586,21 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_SubductionOblique(pTatinCtx c,Vec X,
   ierr = PetscFree(xref);CHKERRQ(ierr);
   ierr = PetscFree(xnat);CHKERRQ(ierr);
   
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ModelApplyUpdateMeshGeometry_SubductionOblique(pTatinCtx c,Vec X,void *ctx)
+{
+  ModelSubductionObliqueCtx *data;
+  PetscErrorCode            ierr;
+
+  PetscFunctionBegin;
+  data = (ModelSubductionObliqueCtx*)ctx;
+
+  if (data->no_air) {
+    ierr = ModelApplyUpdateMeshGeometry_SubductionOblique_Noair(c,X,data);CHKERRQ(ierr);
+  }
+  /* else: do nothing */
   PetscFunctionReturn(0);
 }
 
@@ -1720,11 +1733,7 @@ PetscErrorCode pTatinModelRegister_SubductionOblique(void)
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_BC,              (void (*)(void))ModelApplyBoundaryCondition_SubductionOblique);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_BCMG,            (void (*)(void))ModelApplyBoundaryConditionMG_SubductionOblique);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_MAT_BC,          (void (*)(void))ModelApplyMaterialBoundaryCondition_SubductionOblique);CHKERRQ(ierr);
-  if (data->no_air) {
-    ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_UPDATE_MESH_GEOM,(void (*)(void))ModelApplyUpdateMeshGeometry_SubductionOblique);CHKERRQ(ierr);
-  } else {
-    ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_UPDATE_MESH_GEOM,(void (*)(void))NULL);CHKERRQ(ierr);
-  }
+  ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_UPDATE_MESH_GEOM,(void (*)(void))ModelApplyUpdateMeshGeometry_SubductionOblique);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_OUTPUT,                (void (*)(void))ModelOutput_SubductionOblique);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_DESTROY,               (void (*)(void))ModelDestroy_SubductionOblique);CHKERRQ(ierr);
 
@@ -1884,7 +1893,7 @@ PetscErrorCode SwarmMPntStd_CoordAssignment_FaceLatticeLayout3d_epsilon(DM da,Pe
         if (ek != 0) { continue; }
         break;
     }
-
+    
     for (pj=0; pj<Nxp[1]; pj++) {
       for (pi=0; pi<Nxp[0]; pi++) {
         MPntStd *marker;
