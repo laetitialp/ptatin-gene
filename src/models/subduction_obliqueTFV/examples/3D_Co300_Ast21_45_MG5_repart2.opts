@@ -4,25 +4,26 @@
 ### Model ###
 -ptatin_model subduction_oblique # Used model
 -log_summary
--checkpoint_every_nsteps 50 
+-checkpoint_every_nsteps 10 
 -checkpoint_every_ncpumins 720 
-#-model_subduction_oblique_output_markers
--output_path SUBDUCTION
+-model_subduction_oblique_output_markers
+-output_path markers_test
 -model_subduction_oblique_temperature_ic_from_file
 ########## BASIC NUMERICS ##############
--mx 16 # Number of elements along x
--my 16 # Number of elements along y
--mz 16 # Number of elements along z
--nsteps 5 #000000 # Max number of steps
+-mx 8 #128 # Number of elements along x
+-my 8 #32 # Number of elements along y
+-mz 8 #64 # Number of elements along z
+-nsteps 5000000 # Max number of steps
 #-dt_max 1e-3 # Max timestep allowed
 #-dt_min 1e-8
 -output_frequency 1
 -dt_max_surface_displacement 5.0e-4
 #-use_quasi_newton_coordinate_update
+-dt_factor 2.0
 ########### Box Geometry ################
 #-model_subduction_oblique_is_2D
 -model_subduction_oblique_Lx 10.0e+5  # Max length along x
--model_subduction_oblique_Ly 15.0e+3 # Origin for y axis
+-model_subduction_oblique_Ly 0.0e+3 # Origin for y axis
 -model_subduction_oblique_Lz 6.0e+5 # Max length along z
 -model_subduction_oblique_Ox 0.0e+5 # Origin for x axis
 -model_subduction_oblique_Oy -6.8e+5 # Max depth along y axis
@@ -233,8 +234,8 @@
 -model_subduction_oblique_conductivity_8 2.5
 ################ SOLVERS ################
 ###### MG
--A11_operator_type 2,2,2,3,1
--dau_nlevels 5
+-A11_operator_type 2,3,1 #2,2,2,3,1
+-dau_nlevels 3 #5
 -stk_velocity_dm_mat_type aij
 -a11_op avx
 #---- 5 MG lvl ----#
@@ -244,9 +245,9 @@
 #| 64 x 16 x 32 |
 #| 32 x 8 x 16 |
 #------------------#
--stk_velocity_da_refine_hierarchy_x 2,2,2,2
--stk_velocity_da_refine_hierarchy_y 2,2,2,2
--stk_velocity_da_refine_hierarchy_z 2,2,2,2
+-stk_velocity_da_refine_hierarchy_x 2,2 #2,2,2,2
+-stk_velocity_da_refine_hierarchy_y 2,2 #2,2,2,2
+-stk_velocity_da_refine_hierarchy_z 2,2 #2,2,2,2
 #---- SNES ----#
 -newton_its 0
 -snes_atol 1e-3
@@ -268,8 +269,8 @@
 	-fieldsplit_p_pc_type bjacobi
 	#---- Fieldsplit u ----#
 	-fieldsplit_u_ksp_max_it 100
-	-fieldsplit_u_ksp_monitor_true_residual
-	#-fieldsplit_u_ksp_monitor
+	#-fieldsplit_u_ksp_monitor_true_residual
+	-fieldsplit_u_ksp_monitor
 	-fieldsplit_u_ksp_converged_reason
 	-fieldsplit_u_ksp_rtol 1.0e-2
 	-fieldsplit_u_ksp_type fgmres
