@@ -30,4 +30,5 @@ libptatin3dmodels-y.c += $(call thisdir, \
   analytics_vv/SolKxSolution.c analytics_vv/SolCxSolution.c analytics_vv/analytics_vv.c \
   subduction_obliqueTFV/model_ops_subduction_oblique.c \
   Steady_TFV/model_steady_TFV.c \
+  debug_model/model_ops_debug.c \
 )
