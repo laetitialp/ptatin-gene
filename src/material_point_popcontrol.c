@@ -2019,8 +2019,8 @@ PetscErrorCode MaterialPointRegionAssignment_KDTree(DataBucket db,PetscBool clon
         KDTreeFindNearest(kdtree,target,&nearest,NULL);
         
         /* copy coords, labels */
-        pid_orig = marker_p->pid;
-        wil_orig = marker_p->wil;
+        pid_orig = all_points[p].pid;
+        wil_orig = all_points[p].wil;
         for (d=0; d<3; d++) {
           coor_orig[d] = all_points[p].coor[d];
           xi_orig[d]   = all_points[p].xi[d];
