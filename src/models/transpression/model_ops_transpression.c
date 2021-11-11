@@ -508,6 +508,9 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_Transpression(pTatinCtx c,void 
   z0 = 0.0/data->length_bar;
   sigma_x = 1.8;
   sigma_z = 1.0e-1;
+
+  /* set a random seed, to avoid pattern repetition for each rank */
+  ptatin_RandomNumberSetSeedRank(PETSC_COMM_WORLD);
   
   DataBucketGetSizes(db,&n_mp_points,0,0);
   for (p=0; p<n_mp_points; p++) {
