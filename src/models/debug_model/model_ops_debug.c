@@ -67,6 +67,8 @@
 #include "element_type_Q2.h"
 #include "dmda_element_q2p1.h"
 
+#define MPPLOG 0
+
 static const char MODEL_NAME_DB[] = "model_debug_";
 
 PetscErrorCode Debug_SwarmMPntStd_CoordAssignment_FaceLatticeLayout3d_epsilon(DM da,PetscInt Nxp[],PetscReal perturb, PetscReal epsilon, PetscInt face_idx,DataBucket db);
@@ -132,18 +134,15 @@ PetscErrorCode ModelInitialize_Debug(pTatinCtx c,void *ctx)
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME_DB,"-normV",  &data->normV,NULL);CHKERRQ(ierr);  
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME_DB,"-angle_v",&data->angle_v,NULL);CHKERRQ(ierr);
   
-  data->viscous = PETSC_FALSE;
-  data->vp_std  = PETSC_FALSE;
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_DB,"-rheology_viscous",&data->viscous,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_DB,"-rheology_vp_std", &data->vp_std,NULL);CHKERRQ(ierr);
+  data->viscous   = PETSC_FALSE;
+  data->vp_std    = PETSC_FALSE;
+  data->viscous_z = PETSC_FALSE;
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_DB,"-rheology_viscous",   &data->viscous,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_DB,"-rheology_vp_std",    &data->vp_std,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_DB,"-rheology_viscous_z", &data->viscous_z,NULL);CHKERRQ(ierr);
 
   data->output_markers = PETSC_FALSE;
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_DB,"-output_markers", &data->output_markers,NULL);CHKERRQ(ierr);  
-
-  if(!data->viscous && !data->vp_std) {
-    PetscPrintf(PETSC_COMM_WORLD,"**** NO RHEOLOGY SELECTED: USING DEFAULT RHEOLOGY_VISCOUS ****\n");CHKERRQ(ierr);
-    data->viscous = PETSC_TRUE;
-  }
 
   /* Material constants */
   ierr = pTatinGetMaterialConstants(c,&materialconstants);CHKERRQ(ierr);
@@ -161,8 +160,13 @@ PetscErrorCode Model_SetRheology_VP_STD(RheologyConstants *rheology, DataBucket 
   EnergySourceConst         *data_Q;
   EnergyMaterialConstants   *matconstants_e;
   DataField                 PField,PField_k,PField_Q;
+  PetscReal                 preexpA,Ascale,entalpy,Vmol,nexp,Tref;
+  PetscReal                 phi,phi_inf,Co,Co_inf,Tens_cutoff,Hst_cutoff,eps_min,eps_max;
+  PetscReal                 beta,alpha,rho,heat_source,conductivity;
+  PetscReal                 phi_rad,phi_inf_rad,Cp;
   PetscInt                  region_idx;
   int                       source_type[7] = {0, 0, 0, 0, 0, 0, 0};
+  char                      *option_name;
   PetscErrorCode            ierr;
 
   PetscFunctionBegin;
@@ -189,13 +193,161 @@ PetscErrorCode Model_SetRheology_VP_STD(RheologyConstants *rheology, DataBucket 
   DataBucketGetDataFieldByName(materialconstants,EnergySourceConst_classname,&PField_Q);
   DataFieldGetEntries(PField_Q,(void**)&data_Q);
   
-  // HERE ASSIGN RHEOLOGY PARAMETERS FOR VP_STD
-  SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"RHEOLOGY VP_STD NOT IMPLEMENTED FOR THAT MODEL\n");CHKERRQ(ierr);
+  source_type[0] = ENERGYSOURCE_CONSTANT;
+  Cp             = 800.0;
+
+  for (region_idx=0; region_idx<rheology->nphases_active;region_idx++) {
+    /* Set material constitutive laws */
+    MaterialConstantsSetValues_MaterialType(materialconstants,region_idx,VISCOUS_ARRHENIUS_2,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_BOUSSINESQ);
+
+    /* VISCOUS PARAMETERS */
+    preexpA = 6.3e-6;
+    if (asprintf (&option_name, "-preexpA_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_DB, option_name,&preexpA,NULL);CHKERRQ(ierr);
+    free (option_name);
+    Ascale = 1.0e6;
+    if (asprintf (&option_name, "-Ascale_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_DB, option_name,&Ascale,NULL);CHKERRQ(ierr);
+    free (option_name);
+    entalpy = 156.0e3;
+    if (asprintf (&option_name, "-entalpy_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_DB, option_name,&entalpy,NULL);CHKERRQ(ierr);
+    free (option_name);
+    Vmol = 0.0; 
+    if (asprintf (&option_name, "-Vmol_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_DB, option_name,&Vmol,NULL);CHKERRQ(ierr);
+    free (option_name);
+    nexp = 3.0;
+    if (asprintf (&option_name, "-nexp_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_DB, option_name,&nexp,NULL);CHKERRQ(ierr);
+    free (option_name);
+    Tref = 273.0; 
+    if (asprintf (&option_name, "-Tref_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_DB, option_name,&Tref,NULL);CHKERRQ(ierr);
+    free (option_name);
+    /* Set viscous params for region_idx */
+    MaterialConstantsSetValues_ViscosityArrh(materialconstants,region_idx,preexpA,Ascale,entalpy,Vmol,nexp,Tref);  
+
+    /* PLASTIC PARAMETERS */
+    phi = 30.0;
+    if (asprintf (&option_name, "-phi_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_DB, option_name,&phi,NULL);CHKERRQ(ierr);
+    free (option_name);
+    phi_inf = 5.0;
+    if (asprintf (&option_name, "-phi_inf_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_DB, option_name,&phi_inf,NULL);CHKERRQ(ierr);
+    free (option_name);
+    Co = 2.0e+7;
+    if (asprintf (&option_name, "-Co_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_DB, option_name,&Co,NULL);CHKERRQ(ierr);
+    free (option_name);
+    Co_inf = 1.0e+6;
+    if (asprintf (&option_name, "-Co_inf_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_DB, option_name,&Co_inf,NULL);CHKERRQ(ierr);
+    free (option_name);
+    Tens_cutoff = 1.0e+7;
+    if (asprintf (&option_name, "-Tens_cutoff_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_DB, option_name,&Tens_cutoff,NULL);CHKERRQ(ierr);
+    free (option_name);
+    Hst_cutoff = 400.0e+6;
+    if (asprintf (&option_name, "-Hst_cutoff_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_DB, option_name,&Hst_cutoff,NULL);CHKERRQ(ierr);
+    free (option_name);
+    eps_min = 0.0;
+    if (asprintf (&option_name, "-eps_min_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_DB, option_name,&eps_min,NULL);CHKERRQ(ierr);
+    free (option_name);
+    eps_max = 1.0;
+    if (asprintf (&option_name, "-eps_max_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_DB, option_name,&eps_max,NULL);CHKERRQ(ierr);
+    free (option_name);
+
+    phi_rad     = M_PI * phi/180.0;
+    phi_inf_rad = M_PI * phi_inf/180.0;
+    /* Set plastic params for region_idx */
+    MaterialConstantsSetValues_PlasticDP(materialconstants,region_idx,phi_rad,phi_inf_rad,Co,Co_inf,Tens_cutoff,Hst_cutoff);
+    MaterialConstantsSetValues_SoftLin(materialconstants,region_idx,eps_min,eps_max);
+
+    /* ENERGY PARAMETERS */
+    alpha = 3.0e-5;
+    if (asprintf (&option_name, "-alpha_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_DB, option_name,&alpha,NULL);CHKERRQ(ierr);
+    free (option_name);
+    beta = 1.0e-11;
+    if (asprintf (&option_name, "-beta_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_DB, option_name,&beta,NULL);CHKERRQ(ierr);
+    free (option_name);
+    rho = 3000.0;
+    if (asprintf (&option_name, "-rho_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_DB, option_name,&rho,NULL);CHKERRQ(ierr);
+    free (option_name);
+    heat_source = 0.0;
+    if (asprintf (&option_name, "-heat_source_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_DB, option_name,&heat_source,NULL);CHKERRQ(ierr);
+    free (option_name);
+    conductivity = 3.0;
+    if (asprintf (&option_name, "-conductivity_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_DB, option_name,&conductivity,NULL);CHKERRQ(ierr);
+    free (option_name);
+    
+    /* Set energy params for region_idx */
+    MaterialConstantsSetValues_EnergyMaterialConstants(region_idx,matconstants_e,alpha,beta,rho,Cp,ENERGYDENSITY_CONSTANT,ENERGYCONDUCTIVITY_CONSTANT,source_type);
+    MaterialConstantsSetValues_DensityBoussinesq(materialconstants,region_idx,rho,alpha,beta);
+    EnergySourceConstSetField_HeatSource(&data_Q[region_idx],heat_source);
+    EnergyConductivityConstSetField_k0(&data_k[region_idx],conductivity);
+  } 
+
 
   /* Report all material parameters values */
   for (region_idx=0; region_idx<rheology->nphases_active;region_idx++) {
     MaterialConstantsPrintAll(materialconstants,region_idx);
     MaterialConstantsEnergyPrintAll(materialconstants,region_idx);
+  }
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode Model_SetRheology_VISCOUS_Z(RheologyConstants *rheology, DataBucket materialconstants, ModelDebugCtx *data)
+{
+  PetscInt       region_idx;
+  PetscReal      eta0,zeta,zref,density;
+  char           *option_name;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+
+  rheology->rheology_type = RHEOLOGY_VP_STD;
+
+  for (region_idx=0; region_idx<rheology->nphases_active; region_idx++) {
+    /* Set viscous parameters */
+    MaterialConstantsSetValues_MaterialType(materialconstants,region_idx,VISCOUS_Z,PLASTIC_NONE,SOFTENING_NONE,DENSITY_CONSTANT);
+    eta0 = 1.0e+23;
+    if (asprintf (&option_name, "-eta0_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_DB, option_name,&eta0,NULL);CHKERRQ(ierr); 
+    free (option_name);
+
+    zref = 0.0e+3;
+    if (asprintf (&option_name, "-zref_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_DB, option_name,&zref,NULL);CHKERRQ(ierr); 
+    free (option_name);
+
+    zeta = 1.0e+4;
+    if (asprintf (&option_name, "-zeta_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_DB, option_name,&zeta,NULL);CHKERRQ(ierr); 
+    free (option_name);
+    ierr = MaterialConstantsSetValues_ViscosityZ(materialconstants,region_idx,eta0,zeta,zref);CHKERRQ(ierr); 
+
+    /* Set region density */
+    density = 2700.0;
+    if (asprintf (&option_name, "-rho0_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_DB, option_name,&density,NULL);CHKERRQ(ierr);
+    free (option_name);
+    ierr = MaterialConstantsSetValues_DensityConst(materialconstants,region_idx,density);CHKERRQ(ierr);
+  }
+
+  for (region_idx=0; region_idx<rheology->nphases_active;region_idx++) {
+    MaterialConstantsPrintAll(materialconstants,region_idx);
   }
 
   PetscFunctionReturn(0);
@@ -239,7 +391,7 @@ PetscErrorCode Model_SetRheology_VISCOUS(RheologyConstants *rheology, DataBucket
 
 PetscErrorCode Model_SetParameters_Debug(RheologyConstants *rheology, DataBucket materialconstants, ModelDebugCtx *data)
 {
-  PetscInt       region_idx;
+  PetscInt       region_idx,rheology_viscous_type;
   PetscReal      cm_per_yer2m_per_sec = 1.0e-2 / ( 365.0 * 24.0 * 60.0 * 60.0 );
   PetscErrorCode ierr;
 
@@ -278,18 +430,63 @@ PetscErrorCode Model_SetParameters_Debug(RheologyConstants *rheology, DataBucket
   data->normV = data->normV*cm_per_yer2m_per_sec/data->velocity_bar;
   data->angle_v = data->angle_v*M_PI/180.0;
 
-  if(data->vp_std) {
-    ierr = Model_SetRheology_VP_STD(rheology,materialconstants,data);CHKERRQ(ierr);
-    /* scale material properties */
-    for (region_idx=0; region_idx<rheology->nphases_active;region_idx++) {
-      MaterialConstantsScaleAll(materialconstants,region_idx,data->length_bar,data->velocity_bar,data->time_bar,data->viscosity_bar,data->density_bar,data->pressure_bar);
-      MaterialConstantsEnergyScaleAll(materialconstants,region_idx,data->length_bar,data->time_bar,data->pressure_bar);
+  if (data->viscous) {
+    rheology_viscous_type = 0;
+    PetscPrintf(PETSC_COMM_WORLD,"**** RHEOLOGY VISCOUS_CONSTANT SELECTED ****\n");
+  } else if (data->viscous_z) {
+    rheology_viscous_type = 1;
+    PetscPrintf(PETSC_COMM_WORLD,"**** RHEOLOGY VISCOUS_Z SELECTED ****\n");
+  } else if (data->vp_std) {
+    rheology_viscous_type = 2;
+    PetscPrintf(PETSC_COMM_WORLD,"**** RHEOLOGY VISCOUS_ARRHENIUS_2 SELECTED ****\n");
+  } else {
+    rheology_viscous_type = 0;
+    PetscPrintf(PETSC_COMM_WORLD,"**** NO RHEOLOGY SELECTED, USING DEFAULT VISCOUS_CONSTANT ****\n");
+  }
+
+  switch(rheology_viscous_type)
+  {
+    case 0:
+    {
+      /* Default viscosity constant */
+      ierr = Model_SetRheology_VISCOUS(rheology,materialconstants,data);CHKERRQ(ierr);
+      for (region_idx=0; region_idx<rheology->nphases_active;region_idx++) {
+        MaterialConstantsScaleAll(materialconstants,region_idx,data->length_bar,data->velocity_bar,data->time_bar,data->viscosity_bar,data->density_bar,data->pressure_bar);
+      }
     }
-  } else if (data->viscous) {
-    ierr = Model_SetRheology_VISCOUS(rheology,materialconstants,data);CHKERRQ(ierr);
-    for (region_idx=0; region_idx<rheology->nphases_active;region_idx++) {
-      MaterialConstantsScaleAll(materialconstants,region_idx,data->length_bar,data->velocity_bar,data->time_bar,data->viscosity_bar,data->density_bar,data->pressure_bar);
+      break;
+
+    case 1:
+    {
+      /* nonlinear depth dependent viscosity */
+      ierr = Model_SetRheology_VISCOUS_Z(rheology,materialconstants,data);CHKERRQ(ierr);
+      for (region_idx=0; region_idx<rheology->nphases_active;region_idx++) {
+        MaterialConstantsScaleAll(materialconstants,region_idx,data->length_bar,data->velocity_bar,data->time_bar,data->viscosity_bar,data->density_bar,data->pressure_bar);
+      }
     }
+      break;
+
+    case 2:
+    {
+      /* nonlinear viscosity with plasticity, and temperature + strain rate dependence */
+      ierr = Model_SetRheology_VP_STD(rheology,materialconstants,data);CHKERRQ(ierr);
+      /* scale material properties */
+      for (region_idx=0; region_idx<rheology->nphases_active;region_idx++) {
+        MaterialConstantsScaleAll(materialconstants,region_idx,data->length_bar,data->velocity_bar,data->time_bar,data->viscosity_bar,data->density_bar,data->pressure_bar);
+        MaterialConstantsEnergyScaleAll(materialconstants,region_idx,data->length_bar,data->time_bar,data->pressure_bar);
+      }
+    }
+      break;
+
+    default:
+    {
+      /* Default viscosity constant */
+      ierr = Model_SetRheology_VISCOUS(rheology,materialconstants,data);CHKERRQ(ierr);
+      for (region_idx=0; region_idx<rheology->nphases_active;region_idx++) {
+        MaterialConstantsScaleAll(materialconstants,region_idx,data->length_bar,data->velocity_bar,data->time_bar,data->viscosity_bar,data->density_bar,data->pressure_bar);
+      }
+    }
+      break;
   }
 
   PetscFunctionReturn(0);
@@ -368,13 +565,7 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_Debug(pTatinCtx c,void *ctx)
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
   
-  if (data->viscous) {
-    ierr = ModelApplyInitialMaterialGeometry_VISCOUS(c,data);CHKERRQ(ierr);
-  } else if (data->vp_std) {
-    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"RHEOLOGY VP_STD NOT IMPLEMENTED FOR THAT MODEL\n");
-  } else {
-    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"A RHEOLOGY MUST BE SET, use -viscous or -vp_std\n");
-  }
+  ierr = ModelApplyInitialMaterialGeometry_VISCOUS(c,data);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -545,14 +736,16 @@ PetscErrorCode Debug_VelocityBC_Oblique(BCList bclist,DM dav,pTatinCtx c,ModelDe
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_Lithosphere_DEBUG,(void*)bcdata);CHKERRQ(ierr);
   bcdata->v = vzl;
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,2,BCListEvaluator_Lithosphere_DEBUG,(void*)bcdata);CHKERRQ(ierr);
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  bcdata->v = 0.0;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,1,BCListEvaluator_Lithosphere_DEBUG,(void*)bcdata);CHKERRQ(ierr);
   
   bcdata->y_lab = data->layer2;
   bcdata->v = vxr;
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_Lithosphere_DEBUG,(void*)bcdata);CHKERRQ(ierr);
   bcdata->v = vzr;
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,2,BCListEvaluator_Lithosphere_DEBUG,(void*)bcdata);CHKERRQ(ierr);
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  bcdata->v = 0.0;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,1,BCListEvaluator_Lithosphere_DEBUG,(void*)bcdata);CHKERRQ(ierr);
   
   if (data->is_2D) {
     ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
@@ -682,14 +875,14 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_Debug(pTatinCtx c,void *ctx)
   ierr = DMCompositeGetEntries(stokes_pack,&dav,&dap);CHKERRQ(ierr);
 
   ierr = pTatinGetMaterialPoints(c,&material_point_db,NULL);CHKERRQ(ierr);
-
+#if (MPPLOG >= 1)
   if (data->output_markers)
   {
     sprintf(prefix,"step%1.6d",(int)c->step);
     sprintf(mp_file_prefix,"%s_mpoints_bfr_injection",prefix);
     ierr = SwarmViewGeneric_ParaView(material_point_db,nf,mp_prop_list,c->outputpath,mp_file_prefix);CHKERRQ(ierr);
   }
-
+#endif
   /* create face storage for markers */
   DataBucketDuplicateFields(material_point_db,&material_point_face_db);
   
@@ -722,7 +915,7 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_Debug(pTatinCtx c,void *ctx)
     epsilon = 1.0e-6;
     //ierr = SwarmMPntStd_CoordAssignment_FaceLatticeLayout3d(dav,Nxp,perturb, face_list[f], material_point_face_db);CHKERRQ(ierr);
     ierr = Debug_SwarmMPntStd_CoordAssignment_FaceLatticeLayout3d_epsilon(dav,Nxp,perturb,epsilon,face_list[f],material_point_face_db);CHKERRQ(ierr);
-
+#if (MPPLOG >= 1)
     if (data->output_markers)
     {
       sprintf(stepprefix,"step%1.6d",(int)c->step);
@@ -730,7 +923,7 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_Debug(pTatinCtx c,void *ctx)
       sprintf(mp_file_prefix,"%s_mpoints_bfr_region",prefix);
       ierr = SwarmViewGeneric_ParaView(material_point_face_db,nf,mp_prop_list,c->outputpath,mp_file_prefix);CHKERRQ(ierr);
     }
-
+#endif
     /* assign values */
     DataBucketGetSizes(material_point_face_db,&n_mp_points,0,0);
     ierr = MaterialPointGetAccess(material_point_face_db,&mpX);CHKERRQ(ierr);
@@ -738,7 +931,7 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_Debug(pTatinCtx c,void *ctx)
       ierr = MaterialPointSet_phase_index(mpX,p,MATERIAL_POINT_PHASE_UNASSIGNED);CHKERRQ(ierr);
     }
     ierr = MaterialPointRestoreAccess(material_point_face_db,&mpX);CHKERRQ(ierr);
-
+#if (MPPLOG >= 1)
     if (data->output_markers)
     {
       sprintf(stepprefix,"step%1.6d",(int)c->step);
@@ -746,25 +939,29 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_Debug(pTatinCtx c,void *ctx)
       sprintf(mp_file_prefix,"%s_mpoints_bfr_assignement",prefix);
       ierr = SwarmViewGeneric_ParaView(material_point_face_db,nf,mp_prop_list,c->outputpath,mp_file_prefix);CHKERRQ(ierr);
     }
-
+#endif
     /* insert into volume bucket */
     DataBucketInsertValues(material_point_db,material_point_face_db);
   }
+#if (MPPLOG >= 1)
   if (data->output_markers)
   { 
     sprintf(prefix,"step%1.6d",(int)c->step);
     sprintf(mp_file_prefix,"%s_mpoints_aftr_db_insrt",prefix);
     ierr = SwarmViewGeneric_ParaView(material_point_db,nf,mp_prop_list,c->outputpath,mp_file_prefix);CHKERRQ(ierr);
   }
+#endif
   /* Copy ALL values from nearest markers to newly inserted markers except (xi,xip,pid) */
   //ierr = MaterialPointRegionAssignment_v1(material_point_db,dav);CHKERRQ(ierr);
   ierr = MaterialPointRegionAssignment_KDTree(material_point_db,PETSC_TRUE);CHKERRQ(ierr);
+#if (MPPLOG >= 1)
   if (data->output_markers)
   { 
     sprintf(prefix,"step%1.6d",(int)c->step);
     sprintf(mp_file_prefix,"%s_mpoints_aftr_assignement",prefix);
     ierr = SwarmViewGeneric_ParaView(material_point_db,nf,mp_prop_list,c->outputpath,mp_file_prefix);CHKERRQ(ierr);
   }
+#endif
   /* delete */
   DataBucketDestroy(&material_point_face_db);
   

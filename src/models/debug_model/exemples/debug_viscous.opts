@@ -8,6 +8,11 @@
 -checkpoint_every_ncpumins 720 
 -model_debug_output_markers
 -output_path markers_test
+-lattice_layout_Nx 12
+-lattice_layout_Ny 3
+-lattice_layout_Nz 8
+-mp_popctrl_np_lower 32
+-mp_popctrl_np_upper 200
 ########## BASIC NUMERICS ##############
 -mx 8 # Number of elements along x
 -my 8 # Number of elements along y
@@ -15,7 +20,7 @@
 -nsteps 2000 # Max number of steps
 #-dt_max 1e-3 # Max timestep allowed
 #-dt_min 1e-8
--output_frequency 1
+-output_frequency 50
 -dt_max_surface_displacement 5.0e-4
 #-use_quasi_newton_coordinate_update
 -dt_factor 1.0

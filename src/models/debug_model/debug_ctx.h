@@ -37,7 +37,7 @@ typedef struct {
   PetscReal normV, angle_v;
   PetscReal layer1,layer2;
   PetscReal Ttop,Tbottom;
-  PetscBool is_2D,viscous,vp_std,output_markers,open_base;
+  PetscBool is_2D,viscous,viscous_z,vp_std,output_markers,open_base;
   PetscInt  n_phases;
   
 } ModelDebugCtx;
