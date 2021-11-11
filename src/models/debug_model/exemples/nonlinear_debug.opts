@@ -1,0 +1,149 @@
+##  Using driver: 
+## ===============================================================
+-nonlinear_driver_v1
+### Model ###
+-ptatin_model debug # Used model
+-log_summary
+-checkpoint_every_nsteps 50 
+-checkpoint_every_ncpumins 720 
+-model_debug_output_markers
+-output_path markers_test
+######### MARKERS LAYOUT ###########
+-lattice_layout_Nx 12
+-lattice_layout_Ny 3
+-lattice_layout_Nz 8
+-mp_popctrl_np_lower 32
+-mp_popctrl_np_upper 200
+########## BASIC NUMERICS ##############
+-mx 8 # Number of elements along x
+-my 8 # Number of elements along y
+-mz 8 # Number of elements along z
+-nsteps 2000 # Max number of steps
+#-dt_max 1e-3 # Max timestep allowed
+#-dt_min 1e-8
+-output_frequency 50
+-dt_max_surface_displacement 5.0e-4
+#-use_quasi_newton_coordinate_update
+-dt_factor 1.0
+########### Box Geometry ################
+#-model_debug_is_2D
+-model_debug_Lx 10.0e+5  # Max length along x
+-model_debug_Ly 0.0e+3 # Origin for y axis
+-model_debug_Lz 6.0e+5 # Max length along z
+-model_debug_Ox 0.0e+5 # Origin for x axis
+-model_debug_Oy -2.5e+5 # Max depth along y axis
+-model_debug_Oz 0.0e+5 # Origin for z axis
+################ BCs ##################
+#-model_debug_open_base
+-model_debug_BC
+-model_debug_normV 3.0
+-model_debug_angle_v 90.0 #45.0
+############### Geometry ###############
+-model_debug_layer1 -50.0e3
+-model_debug_layer2 -100.0e3
+############ Phases Parameters #############
+-model_debug_rheology_viscous_z
+# Viscosity
+-model_debug_eta0_0 1.0e+24
+-model_debug_zref_0 0.0
+-model_debug_zeta_0 1.0e+4
+
+-model_debug_eta0_1 1.0e+23
+-model_debug_zref_1 -50.0e+3
+-model_debug_zeta_1 2.0e+4
+
+-model_debug_eta0_2 1.0e+22
+-model_debug_zref_2 -100.0e+3
+-model_debug_zeta_2 2.0e+4
+
+# Density
+-model_debug_rho0_0 2700.0
+-model_debug_rho0_1 3300.0
+-model_debug_rho0_2 3300.0
+################ SOLVERS ################
+###### MG
+-A11_operator_type 2,3,1 #2,2,2,3,1
+-dau_nlevels 3 #5
+-stk_velocity_dm_mat_type aij
+#-a11_op avx
+#---- 5 MG lvl ----#
+#| 512 x 128 x 256 |
+#| 256 x 64 x 128 |
+#| 128 x 32 x 64 |
+#| 64 x 16 x 32 |
+#| 32 x 8 x 16 |
+#------------------#
+-stk_velocity_da_refine_hierarchy_x 2,2 #2,2,2,2
+-stk_velocity_da_refine_hierarchy_y 2,2 #2,2,2,2
+-stk_velocity_da_refine_hierarchy_z 2,2 #2,2,2,2
+#---- SNES ----#
+-newton_its 0
+-snes_atol 1e-3
+-snes_max_it 5
+-snes_rtol 1e-3
+-snes_monitor
+-snes_converged_reason
+-snes_linesearch_type basic
+#-snes_view
+#---- KSP ----#
+-ksp_max_it 200
+-ksp_rtol 1.0e-4
+-ksp_type fgmres
+-pc_type fieldsplit
+-pc_fieldsplit_schur_fact_type upper
+-pc_fieldsplit_type schur
+  #---- Fieldsplit p ----#
+  -fieldsplit_p_ksp_type preonly
+  -fieldsplit_p_pc_type bjacobi
+  #---- Fieldsplit u ----#
+  -fieldsplit_u_ksp_max_it 100
+  #-fieldsplit_u_ksp_monitor_true_residual
+  -fieldsplit_u_ksp_monitor
+  -fieldsplit_u_ksp_converged_reason
+  -fieldsplit_u_ksp_rtol 1.0e-2
+  -fieldsplit_u_ksp_type fgmres
+  -fieldsplit_u_pc_type mg
+  -fieldsplit_u_pc_mg_levels 5
+        -fieldsplit_u_pc_mg_cycle_type v
+  -fieldsplit_u_mg_levels_ksp_type gmres
+  -fieldsplit_u_mg_levels_pc_type jacobi
+  -fieldsplit_u_mg_levels_ksp_max_it 8
+  -fieldsplit_u_mg_levels_ksp_norm_type NONE
+    #---- Coarse Grid ----#
+    # 32 x 8 x 16 #
+    -fieldsplit_u_mg_coarse_pc_type dmdarepart
+    -fieldsplit_u_mg_coarse_ksp_type preonly
+      #---- Coarse Grid KSP ----#
+      # 16 x 4 x 8 #
+      -fieldsplit_u_mg_coarse_pc_dmdarepart_factor 16
+      # From 1024 MPI ranks, now there are 1024/16 = 64 MPI ranks
+      -fieldsplit_u_mg_coarse_dmdarepart_pc_type mg
+      -fieldsplit_u_mg_coarse_dmdarepart_pc_mg_cycle_type v
+      -fieldsplit_u_mg_coarse_dmdarepart_ksp_type preonly
+      -fieldsplit_u_mg_coarse_dmdarepart_pc_mg_levels 2
+      -fieldsplit_u_mg_coarse_dmdarepart_pc_mg_galerkin
+      -fieldsplit_u_mg_coarse_dmdarepart_mg_levels_ksp_type gmres
+      -fieldsplit_u_mg_coarse_dmdarepart_mg_levels_pc_type jacobi
+      -fieldsplit_u_mg_coarse_dmdarepart_mg_levels_ksp_max_it 6
+        #---- Coarse Coarse Grid ----#
+        # 16 x 4 x 8 #
+        -fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_pc_type telescope
+        -fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_telescope_pc_type cholesky
+        -fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_pc_telescope_reduction_factor 1
+### Solver for lithostatic pressure
+-LP_snes_atol 1.0e-6
+-LP_snes_rtol 1.0e-6
+#-LP_snes_max_it 10
+-LP_snes_monitor
+#-LP_ksp_monitor
+-LP_ksp_atol 1.0e-6
+-LP_ksp_rtol 1.0e-6
+-LP_ksp_type fgmres
+#-LP_snes_mf_operator
+-LP_pc_type bjacobi #gamg #lu not parallel
+#-LP_snes_type ksponly
+-LP_snes_ksp_ew
+-LP_snes_ksp_ew_rtol0 1.0e-2
+-LP_snes_ksp_ew_version 1
+-LP_snes_lag_preconditioner -2
+
