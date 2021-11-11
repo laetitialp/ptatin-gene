@@ -908,7 +908,7 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_Debug(pTatinCtx c,void *ctx)
     /* [0,1/east,west] ; [2,3/north,south] ; [4,5/front,back] */
     Nxp[0]  = 4;
     Nxp[1]  = 4;
-    perturb = 0.1;
+    perturb = 0.0;
 
     /* reset size */
     DataBucketSetSizes(material_point_face_db,0,-1);
@@ -956,14 +956,14 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_Debug(pTatinCtx c,void *ctx)
   /* Copy ALL values from nearest markers to newly inserted markers except (xi,xip,pid) */
   //ierr = MaterialPointRegionAssignment_v1(material_point_db,dav);CHKERRQ(ierr);
 
-  ierr = MaterialPointRegionAssignment_KDTree(material_point_db,PETSC_TRUE);CHKERRQ(ierr);
-  /*
+  //ierr = MaterialPointRegionAssignment_KDTree(material_point_db,PETSC_TRUE);CHKERRQ(ierr);
+  
   {
     PetscBool active_energy = PETSC_FALSE;
     ierr = pTatinContextValid_EnergyFV(c,&active_energy);CHKERRQ(ierr);
     ierr = AssignNearestMarkerProperties_BruteForce(material_point_db,active_energy);CHKERRQ(ierr);
   }
-  */
+  
 #if (MPPLOG >= 1)
   if (data->output_markers)
   { 
