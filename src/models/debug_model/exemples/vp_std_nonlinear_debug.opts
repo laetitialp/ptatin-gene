@@ -23,7 +23,7 @@
 -nsteps 2000 # Max number of steps
 #-dt_max 1e-3 # Max timestep allowed
 #-dt_min 1e-8
--output_frequency 50
+-output_frequency 1
 -dt_max_surface_displacement 5.0e-4
 #-use_quasi_newton_coordinate_update
 -dt_factor 1.0
