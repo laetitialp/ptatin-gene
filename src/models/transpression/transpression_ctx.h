@@ -40,9 +40,9 @@ typedef struct {
   PetscReal wz,Kero;
   PetscReal normV, angle_v, v_compression;
   PetscReal Ttop, Tbottom;
-  PetscBool output_markers,is_2D,open_base;
+  PetscBool output_markers,is_2D,open_base,iso_border;
   PetscInt  n_phases;
-  
+  PSwarm    pswarm;
 } ModelTranspressionCtx;
 
 typedef struct _p_BC_Lithosphere *BC_Lithosphere;

@@ -9,22 +9,22 @@
 -checkpoint_every_nsteps 1 
 -checkpoint_every_ncpumins 720 
 #-model_Transpression_output_markers
--output_path Transpression_64_32_64
+-output_path Transpression_1core
 -model_Transpression_temperature_ic_from_file
 ########## BASIC NUMERICS ##############
--mx 64 #8 # Number of elements along x
--my 32 #8 # Number of elements along y
--mz 64 #8 # Number of elements along z
--nsteps 100 #000000 # Max number of steps
+-mx 16 #8 # Number of elements along x
+-my 8 #8 # Number of elements along y
+-mz 16 #8 # Number of elements along z
+-nsteps 10 #000000 # Max number of steps
 #-dt_max 1e-3 # Max timestep allowed
 #-dt_min 1e-8
 -output_frequency 1
 -dt_max_surface_displacement 5.0e-4
 ########### Box Geometry ################
 #-model_Transpression_is_2D
--model_Transpression_Lx 512e+3  # Max length along x
+-model_Transpression_Lx 256e+3  # Max length along x
 -model_Transpression_Ly 0.0e+3 # Origin for y axis
--model_Transpression_Lz 512e+3 # Max length along z
+-model_Transpression_Lz 256e+3 # Max length along z
 -model_Transpression_Ox 0.0e+3 # Origin for x axis
 -model_Transpression_Oy -128e+3 # Max depth along y axis
 -model_Transpression_Oz 0.0e+3 # Origin for z axis
@@ -37,7 +37,7 @@
 -model_Transpression_Ttop 0.0
 -model_Transpression_Tbottom 1350.0
 ############### Geometry ###############
--model_Transpression_wz_width 200.0e3
+-model_Transpression_wz_width 100.0e3
 -model_Transpression_beta 45.0
 -model_Transpression_weak_base -70e3
 ############ Phases Parameters #############
@@ -125,6 +125,16 @@
 -model_Transpression_rho_3 3300.0
 -model_Transpression_heat_source_3 0.0
 -model_Transpression_conductivity_3 3.3
+#### Passive grid #####
+-passive_pswarm_box_max 2.0,-0.01,2.0
+-passive_pswarm_box_min 0.5,-1.01,0.5
+-passive_pswarm_box_nx 15,10,15
+-passive_pswarm_coord_layout 2
+-passive_pswarm_pressure
+#-passive_pswarm_temperature
+-passive_pswarm_region_index 1
+
+
 ################ SOLVERS ################
 ###### MG
 -A11_operator_type 2,3,1
@@ -236,7 +246,7 @@
 #-fieldsplit_p_ksp_rtol 1.0e-1
 #-fieldsplit_p_ksp_max_it 20
 #-fieldsplit_p_ksp_converged_reason
-#-fieldsplit_p_ksp_monitor_true_residual
+#-fieldsplit_p_ksp_monitor
 #-fieldsplit_p_pc_type lsc
 #-fieldsplit_p_pc_lsc_scale_wbfbt
 #-fieldsplit_p_lsc_ksp_type gmres

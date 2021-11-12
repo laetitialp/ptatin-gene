@@ -61,11 +61,13 @@
 #include "geometry_object.h"
 #include <material_constants_energy.h>
 #include "model_utils.h"
+#include "pswarm.h"
 #include "transpression_ctx.h"
 
 #include "element_utils_q1.h"
 #include "element_type_Q2.h"
 #include "dmda_element_q2p1.h"
+
 
 static const char MODEL_NAME_RS[] = "model_Transpression_";
 
@@ -77,6 +79,7 @@ PetscErrorCode ModelInitialize_Transpression(pTatinCtx c,void *ctx)
   ModelTranspressionCtx  *data;
   RheologyConstants *rheology;
   PetscInt          nn,i;
+  PSwarm            pswarm;
   PetscReal         cm_per_yer2m_per_sec = 1.0e-2 / ( 365.0 * 24.0 * 60.0 * 60.0 );
   PetscReal         Myr2sec = 1.0e6*3600.0*24.0*365.0;
   PetscBool         flg,found;
@@ -96,6 +99,20 @@ PetscErrorCode ModelInitialize_Transpression(pTatinCtx c,void *ctx)
   rheology->apply_viscosity_cutoff_global = PETSC_TRUE;
   rheology->eta_upper_cutoff_global = 1.e+25;
   rheology->eta_lower_cutoff_global = 1.e+19;
+
+  /* Particle Swarm */
+
+  // PSwarm create
+  ierr = PSwarmCreate(PETSC_COMM_WORLD,&pswarm);CHKERRQ(ierr);
+  ierr = PSwarmSetOptionsPrefix(pswarm,"passive_");CHKERRQ(ierr);
+  ierr = PSwarmSetPtatinCtx(pswarm,c);CHKERRQ(ierr);
+  ierr = PSwarmSetTransportModeType(pswarm,PSWARM_TM_LAGRANGIAN);CHKERRQ(ierr);
+  //ierr = PSwarmSetFieldUpdateType(pswarm,PSWARM_FU_PTT);CHKERRQ(ierr);
+
+  ierr = PSwarmSetFromOptions(pswarm);CHKERRQ(ierr);
+
+  /* Copy reference into model data for later use in different functions */
+  data->pswarm = pswarm;
   
   /* set the deffault values of the material constant for this particular model */
   /* scaling */
@@ -150,6 +167,11 @@ PetscErrorCode ModelInitialize_Transpression(pTatinCtx c,void *ctx)
   
   data->Ttop = 0.0; // Top temperature BC
   data->Tbottom = 1350.0; // Bottom temperature BC
+
+  /* Z-bcs adding viscous borders */
+  data->iso_border   = 0;
+  ierr = PetscOptionsGetInt(NULL,MODEL_NAME_RS,"-iso_border",&data->iso_border,&flg);CHKERRQ(ierr);
+
   
   nn = 3;
   ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME_RS,"-y_continent",data->y_continent,&nn,&found);CHKERRQ(ierr);
@@ -452,22 +474,21 @@ PetscErrorCode ModelApplyInitialMeshGeometry_Transpression(pTatinCtx c,void *ctx
     ierr = pTatin3d_DefineVelocityMeshGeometryQuasi2D(c);CHKERRQ(ierr);
   }
   dir = 1; // 0 = x; 1 = y; 2 = z;
-  npoints = 4;
+  npoints = 3;
 
   ierr = PetscMalloc1(npoints,&xref);CHKERRQ(ierr); 
   ierr = PetscMalloc1(npoints,&xnat);CHKERRQ(ierr); 
 
   xref[0] = 0.0;
-  xref[1] = 0.28; //0.375;
-  xref[2] = 0.65; //0.75;
-  xref[3] = 1.0;
+  xref[1] = 0.1; 
+  xref[2] = 1.0; 
 
   xnat[0] = 0.0;
-  xnat[1] = 0.8;
-  xnat[2] = 0.935;//0.95;
-  xnat[3] = 1.0;
+  xnat[1] = 0.2;
+  xnat[2] = 1.0;
 
-  //ierr = DMDACoordinateRefinementTransferFunction(dav,dir,PETSC_TRUE,npoints,xref,xnat);CHKERRQ(ierr);
+
+  ierr = DMDACoordinateRefinementTransferFunction(dav,dir,PETSC_TRUE,npoints,xref,xnat);CHKERRQ(ierr);
   ierr = DMDABilinearizeQ2Elements(dav);CHKERRQ(ierr);
   
   PetscReal gvec[] = { 0.0, -9.8, 0.0 };
@@ -476,6 +497,8 @@ PetscErrorCode ModelApplyInitialMeshGeometry_Transpression(pTatinCtx c,void *ctx
 
   ierr = PetscFree(xref);CHKERRQ(ierr);
   ierr = PetscFree(xnat);CHKERRQ(ierr);
+
+  ierr = PSwarmSetUp(data->pswarm);CHKERRQ(ierr);
   
   PetscFunctionReturn(0);
 }
@@ -527,7 +550,8 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_Transpression(pTatinCtx c,void 
     /* Access using the getter function */
     MPntStdGetField_global_coord(material_point,&position);
     /* Set an initial small random noise on plastic strain */
-    pls = ptatin_RandomNumberGetDouble(0.0,0.03);
+    //pls = ptatin_RandomNumberGetDouble(0.0,0.03);
+    pls = 0.0;
     /* Set yield to none */
     yield = 0;
     /* Set default region index to 0 */
@@ -630,6 +654,11 @@ PetscErrorCode ModelApplyInitialSolution_Transpression(pTatinCtx c,Vec X,void *c
       }
     }
   }
+  
+  /* set swarm velocity and pressure vector, then temperature once*/
+  ierr = PSwarmAttachStateVecVelocityPressure(data->pswarm,X);CHKERRQ(ierr);
+  //ierr = PSwarmAttachStateVecTemperature(data->pswarm,energy->T);CHKERRQ(ierr);
+  
   PetscFunctionReturn(0);
 }
 
@@ -1023,26 +1052,29 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_Transpression(pTatinCtx c,Vec X,void
  
   /* Update Mesh Refinement */
   dir = 1; // 0 = x; 1 = y; 2 = z;
-  npoints = 4;
+  npoints = 3;
 
   ierr = PetscMalloc1(npoints,&xref);CHKERRQ(ierr); 
   ierr = PetscMalloc1(npoints,&xnat);CHKERRQ(ierr); 
 
   xref[0] = 0.0;
-  xref[1] = 0.28; //0.375;
-  xref[2] = 0.65; //0.75;
-  xref[3] = 1.0;
+  xref[1] = 0.1; 
+  xref[2] = 1.0; 
 
   xnat[0] = 0.0;
-  xnat[1] = 0.8;
-  xnat[2] = 0.935;//0.95;
-  xnat[3] = 1.0;
+  xnat[1] = 0.2;
+  xnat[2] = 1.0;
 
-  //ierr = DMDACoordinateRefinementTransferFunction(dav,dir,PETSC_TRUE,npoints,xref,xnat);CHKERRQ(ierr);
+  ierr = DMDACoordinateRefinementTransferFunction(dav,dir,PETSC_TRUE,npoints,xref,xnat);CHKERRQ(ierr);
   ierr = DMDABilinearizeQ2Elements(dav);CHKERRQ(ierr);
   
   ierr = PetscFree(xref);CHKERRQ(ierr);
   ierr = PetscFree(xnat);CHKERRQ(ierr);
+
+  /* PSwarm update */
+  //ierr = PSwarmFieldUpdate_PressTempTime(data->pswarm);CHKERRQ(ierr);
+  ierr = PSwarmFieldUpdateAll(data->pswarm);CHKERRQ(ierr);
+
   PetscFunctionReturn(0);
 }
 
@@ -1121,6 +1153,12 @@ PetscErrorCode ModelOutput_Transpression(pTatinCtx c,Vec X,const char prefix[],v
     }
   }
   been_here = PETSC_TRUE;
+
+  /* Output the PSwarm */
+
+  ierr = PSwarmView(data->pswarm,PSW_VT_SINGLETON);CHKERRQ(ierr);
+  ierr = PSwarmViewInfo(data->pswarm);CHKERRQ(ierr);
+
   PetscFunctionReturn(0);
 }
 
@@ -1134,6 +1172,8 @@ PetscErrorCode ModelDestroy_Transpression(pTatinCtx c,void *ctx)
   data = (ModelTranspressionCtx*)ctx;
 
   /* Free contents of structure */
+  /* destroy PSwarm*/
+  ierr = PSwarmDestroy(&data->pswarm);CHKERRQ(ierr);
 
   /* Free structure */
   ierr = PetscFree(data);CHKERRQ(ierr);
