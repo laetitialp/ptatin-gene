@@ -12,8 +12,8 @@
 -lattice_layout_Nx 12
 -lattice_layout_Ny 3
 -lattice_layout_Nz 8
--mp_popctrl_np_lower 32
--mp_popctrl_np_upper 200
+-mp_popctrl_np_lower 0
+-mp_popctrl_np_upper 600
 ########## BASIC NUMERICS ##############
 -mx 8 # Number of elements along x
 -my 8 # Number of elements along y

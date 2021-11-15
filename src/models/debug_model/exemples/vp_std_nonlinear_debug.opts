@@ -11,11 +11,11 @@
 -model_debug_output_markers
 -output_path markers_test
 ######### MARKERS LAYOUT ###########
--lattice_layout_Nx 12
+-lattice_layout_Nx 24
 -lattice_layout_Ny 3
--lattice_layout_Nz 8
+-lattice_layout_Nz 16
 -mp_popctrl_np_lower 32
--mp_popctrl_np_upper 200
+-mp_popctrl_np_upper 1500
 ########## BASIC NUMERICS ##############
 -mx 8 # Number of elements along x
 -my 8 # Number of elements along y
