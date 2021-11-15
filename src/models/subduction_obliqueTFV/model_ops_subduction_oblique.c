@@ -62,6 +62,7 @@
 #include <material_constants_energy.h>
 #include "model_utils.h"
 #include "subduction_oblique_ctx.h"
+#include "material_point_popcontrol.h"
 
 #include "element_utils_q1.h"
 #include "element_type_Q2.h"
@@ -1453,9 +1454,8 @@ PetscErrorCode ModelApplyBoundaryConditionMG_SubductionOblique(PetscInt nl,BCLis
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ModelApplyMaterialBoundaryCondition_SubductionOblique(pTatinCtx c,void *ctx)
+PetscErrorCode ModelApplyMaterialBoundaryCondition_SubductionOblique(pTatinCtx c,ModelSubductionObliqueCtx *data)
 {
-  ModelSubductionObliqueCtx *data;
   PhysCompStokes  stokes;
   DM              stokes_pack,dav,dap;
   PetscInt        Nxp[2];
@@ -1469,7 +1469,6 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_SubductionOblique(pTatinCtx c
 
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
-  data = (ModelSubductionObliqueCtx*)ctx;
   
   ierr = pTatinGetStokesContext(c,&stokes);CHKERRQ(ierr);
   stokes_pack = stokes->stokes_pack;
@@ -1530,6 +1529,23 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_SubductionOblique(pTatinCtx c
   DataBucketDestroy(&material_point_face_db);
   
   ierr = PetscFree(face_list);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ModelAdaptMaterialPointResolution_SubductionOblique(pTatinCtx c,void *ctx)
+{
+  ModelSubductionObliqueCtx *data;
+
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+  data = (ModelSubductionObliqueCtx*)ctx;
+
+  /* Particles injection on faces */
+  ierr = ModelApplyMaterialBoundaryCondition_SubductionOblique(c,data);CHKERRQ(ierr);
+
+  /* Population control */
+  ierr = MaterialPointPopulationControl_v1(c);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -1732,7 +1748,7 @@ PetscErrorCode pTatinModelRegister_SubductionOblique(void)
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_INIT_SOLUTION,   (void (*)(void))ModelApplyInitialSolution_SubductionOblique);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_BC,              (void (*)(void))ModelApplyBoundaryCondition_SubductionOblique);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_BCMG,            (void (*)(void))ModelApplyBoundaryConditionMG_SubductionOblique);CHKERRQ(ierr);
-  ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_MAT_BC,          (void (*)(void))ModelApplyMaterialBoundaryCondition_SubductionOblique);CHKERRQ(ierr);
+  ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_ADAPT_MP_RESOLUTION,   (void (*)(void))ModelAdaptMaterialPointResolution_SubductionOblique);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_UPDATE_MESH_GEOM,(void (*)(void))ModelApplyUpdateMeshGeometry_SubductionOblique);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_OUTPUT,                (void (*)(void))ModelOutput_SubductionOblique);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_DESTROY,               (void (*)(void))ModelDestroy_SubductionOblique);CHKERRQ(ierr);
