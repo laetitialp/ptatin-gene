@@ -9,12 +9,12 @@
 -checkpoint_every_nsteps 1 
 -checkpoint_every_ncpumins 720 
 #-model_Transpression_output_markers
--output_path Transpression
+-output_path Transpression_1core
 -model_Transpression_temperature_ic_from_file
 ########## BASIC NUMERICS ##############
--mx 64 #8 # Number of elements along x
--my 32 #8 # Number of elements along y
--mz 64 #8 # Number of elements along z
+-mx 16 #8 # Number of elements along x
+-my 16 #8 # Number of elements along y
+-mz 16 #8 # Number of elements along z
 -nsteps 10 #000000 # Max number of steps
 #-dt_max 1e-3 # Max timestep allowed
 #-dt_min 1e-8
