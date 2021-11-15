@@ -58,6 +58,7 @@
 #include <material_constants_energy.h>
 #include <ptatin3d_energyfv.h>
 #include <ptatin3d_energyfv_impl.h>
+#include "material_point_popcontrol.h"
 
 #include "rift3D_T_ctx.h"
 
@@ -68,7 +69,7 @@ PetscErrorCode GeometryObjectSetFromOptions_InfLayer(GeometryObject go);
 PetscErrorCode GeometryObjectSetFromOptions_EllipticCylinder(GeometryObject go);
 
 static PetscErrorCode ModelApplyUpdateMeshGeometry_Rift3D_T_semi_eulerian(pTatinCtx c,Vec X,void *ctx);
-static PetscErrorCode ModelApplyMaterialBoundaryCondition_Rift3D_T_semi_eulerian(pTatinCtx c,void *ctx);
+static PetscErrorCode ModelAdaptMaterialPointResolution_Rift3D_T_semi_eulerian(pTatinCtx c,void *ctx);
 
 static PetscErrorCode ModelApplyInitialMaterialGeometry_Notchtest(pTatinCtx c,void *ctx);
 
@@ -340,7 +341,7 @@ static PetscErrorCode ModelInitialize_Rift3D_T(pTatinCtx c,void *ctx)
     PetscPrintf(PETSC_COMM_WORLD,"rift3D_T: activating semi Eulerian mesh advection\n");
     ierr = pTatinGetModel(c,&model);CHKERRQ(ierr);
     ierr = pTatinModelSetFunctionPointer(model,PTATIN_MODEL_APPLY_UPDATE_MESH_GEOM,(void (*)(void))ModelApplyUpdateMeshGeometry_Rift3D_T_semi_eulerian);CHKERRQ(ierr);
-    ierr = pTatinModelSetFunctionPointer(model,PTATIN_MODEL_APPLY_MAT_BC,          (void (*)(void))ModelApplyMaterialBoundaryCondition_Rift3D_T_semi_eulerian);CHKERRQ(ierr);
+    ierr = pTatinModelSetFunctionPointer(model,PTATIN_MODEL_ADAPT_MP_RESOLUTION,   (void (*)(void))ModelAdaptMaterialPointResolution_Rift3D_T_semi_eulerian);CHKERRQ(ierr);
   }
 
   data->output_markers = PETSC_FALSE;
@@ -609,14 +610,18 @@ static PetscErrorCode ModelApplyBoundaryConditionMG_Rift3D_T(PetscInt nl,BCList 
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ModelApplyMaterialBoundaryCondition_Rift3D_T(pTatinCtx c,void *ctx)
+static PetscErrorCode ModelAdaptMaterialPointResolution_Rift3D_T(pTatinCtx c,void *ctx)
 {
+  PetscErrorCode ierr;
   PetscFunctionBegin;
-  PetscPrintf(PETSC_COMM_WORLD,"[[%s]] - Not implemented \n", PETSC_FUNCTION_NAME);
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]] - MARKER INJECTION IGNORED\n", PETSC_FUNCTION_NAME);
+
+  ierr = MaterialPointPopulationControl_v1(c);CHKERRQ(ierr);
+
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ModelApplyMaterialBoundaryCondition_Rift3D_T_semi_eulerian(pTatinCtx c,void *ctx)
+static PetscErrorCode ModelAdaptMaterialPointResolution_Rift3D_T_semi_eulerian(pTatinCtx c,void *ctx)
 {
   PhysCompStokes  stokes;
   DM              stokes_pack,dav,dap;
@@ -689,6 +694,8 @@ static PetscErrorCode ModelApplyMaterialBoundaryCondition_Rift3D_T_semi_eulerian
   DataBucketDestroy(&material_point_face_db);
 
 #endif
+
+  ierr = MaterialPointPopulationControl_v1(c);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -1176,7 +1183,7 @@ PetscErrorCode pTatinModelRegister_Rift3D_TFV(void)
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_INIT_MAT_GEOM,   (void (*)(void))ModelApplyInitialMaterialGeometry_Rift3D_T);CHKERRQ(ierr);
 
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_UPDATE_MESH_GEOM,(void (*)(void))ModelApplyUpdateMeshGeometry_Rift3D_T);CHKERRQ(ierr);
-  ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_MAT_BC,          (void (*)(void))ModelApplyMaterialBoundaryCondition_Rift3D_T);CHKERRQ(ierr);
+  ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_ADAPT_MP_RESOLUTION,   (void (*)(void))ModelAdaptMaterialPointResolution_Rift3D_T);CHKERRQ(ierr);
 
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_OUTPUT,                (void (*)(void))ModelOutput_Rift3D_T);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_DESTROY,               (void (*)(void))ModelDestroy_Rift3D_T);CHKERRQ(ierr);
