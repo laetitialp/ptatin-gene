@@ -560,8 +560,8 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_Transpression(pTatinCtx c,void 
     if (position[1] <= data->y_continent[0]) { region_idx = 1; }
     if (position[1] <= data->y_continent[1]) { region_idx = 2; }
     if (position[1] <= data->y_continent[2]) { region_idx = 3; }
+    
     /* Set an initial plastic strain in the oblique weak zone */
-
     if (position[1] >= data->weak_base) {
       if ((position[0] >=  (0.5 * data->Lz - position[2])*tan(data->beta) + (0.5 * data->Lx - 0.5*data->wz/cos(data->beta))) &&
                   (position[0] <= (0.5 * data->Lz - position[2])*tan(data->beta) + (0.5 * data->Lx  + 0.5*data->wz/cos(data->beta)))) {
@@ -733,7 +733,7 @@ static PetscErrorCode ModelApplyBoundaryCondition_OrthogonalCompression(BCList b
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
   
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
 
   if (!data->open_base) {
     ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
@@ -984,19 +984,19 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_Transpression(pTatinCtx c,voi
     face_list[0] = 0;
     face_list[1] = 1;
   } else {
-    n_face_list = 2;
+    n_face_list = 3;
     ierr = PetscMalloc1(n_face_list,&face_list);CHKERRQ(ierr);
     face_list[0] = 0;
     face_list[1] = 1;
-    //face_list[2] = 4;
+    face_list[2] = 4;
     //face_list[3] = 5;
   }
   
   for (f=0; f<n_face_list; f++) {
     /* traverse */
     /* [0,1/east,west] ; [2,3/north,south] ; [4,5/front,back] */
-    Nxp[0]  = 1;
-    Nxp[1]  = 1;
+    Nxp[0]  = 4;
+    Nxp[1]  = 4;
     perturb = 0.1;
     /* reset size */
     DataBucketSetSizes(material_point_face_db,0,-1);
