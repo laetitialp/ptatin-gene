@@ -67,7 +67,7 @@
 #include "element_type_Q2.h"
 #include "dmda_element_q2p1.h"
 
-#define MPPLOG 1
+#define MPPLOG 0
 
 static const char MODEL_NAME_DB[] = "model_debug_";
 
@@ -75,6 +75,7 @@ PetscErrorCode Debug_SwarmMPntStd_CoordAssignment_FaceLatticeLayout3d_epsilon(DM
 PetscErrorCode Model_SetParameters_Debug(RheologyConstants *rheology, DataBucket materialconstants, ModelDebugCtx *data);
 
 PetscErrorCode AssignNearestMarkerProperties_BruteForce(DataBucket db,PetscBool energy);
+PetscErrorCode AssignNearestMarkerPropertiesAlongDim_BruteForce(DataBucket db, PetscInt dim, PetscBool energy);
 
 PetscErrorCode ModelInitialize_Debug(pTatinCtx c,void *ctx)
 {
@@ -850,6 +851,41 @@ PetscErrorCode ModelApplyBoundaryConditionMG_Debug(PetscInt nl,BCList bclist[],D
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode RegionAssignment_Dirichlet(pTatinCtx c, DataBucket db, ModelDebugCtx *data)
+{
+  DataField      PField_std;
+  PetscInt       p;
+  int            n_mp_points;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  DataBucketGetDataFieldByName(db,MPntStd_classname,&PField_std);
+  DataFieldGetAccess(PField_std);
+  DataFieldVerifyAccess(PField_std,sizeof(MPntStd));
+
+  DataBucketGetSizes(db,&n_mp_points,0,0);
+  for (p=0; p<n_mp_points; p++) {
+    MPntStd       *material_point;
+    int           region_idx;
+    double        *position;
+
+    DataFieldAccessPoint(PField_std,p,(void**)&material_point);
+
+    /* Access using the getter function */
+    MPntStdGetField_global_coord(material_point,&position);
+
+    region_idx = 0;
+    if (position[1] < data->layer1) { region_idx = 1; }
+    if (position[1] < data->layer2) { region_idx = 2; }
+        
+    MPntStdSetField_phase_index(material_point,region_idx);
+  }
+  DataFieldRestoreAccess(PField_std);
+
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode ModelApplyMaterialBoundaryCondition_Debug(pTatinCtx c,void *ctx)
 {
   ModelDebugCtx *data;
@@ -942,8 +978,29 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_Debug(pTatinCtx c,void *ctx)
       ierr = SwarmViewGeneric_ParaView(material_point_face_db,nf,mp_prop_list,c->outputpath,mp_file_prefix);CHKERRQ(ierr);
     }
 #endif
+
+    if (f == 0 || f == 1) {
+      ierr = RegionAssignment_Dirichlet(c,material_point_face_db,data);CHKERRQ(ierr);
+    }
     /* insert into volume bucket */
     DataBucketInsertValues(material_point_db,material_point_face_db);
+    /*
+    {
+      PetscBool active_energy = PETSC_FALSE;
+      PetscInt dim;
+
+      if (f == 0 || f == 1) {
+        dim = 0;
+      } else if (f == 2 || f == 3) {
+        dim = 1;
+      } else {
+        dim = 2;
+      }
+
+      ierr = pTatinContextValid_EnergyFV(c,&active_energy);CHKERRQ(ierr);
+      ierr = AssignNearestMarkerPropertiesAlongDim_BruteForce(material_point_db,dim,active_energy);CHKERRQ(ierr);
+    }
+    */
   }
 #if (MPPLOG >= 1)
   if (data->output_markers)
@@ -956,14 +1013,15 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_Debug(pTatinCtx c,void *ctx)
   /* Copy ALL values from nearest markers to newly inserted markers except (xi,xip,pid) */
   //ierr = MaterialPointRegionAssignment_v1(material_point_db,dav);CHKERRQ(ierr);
 
-  //ierr = MaterialPointRegionAssignment_KDTree(material_point_db,PETSC_TRUE);CHKERRQ(ierr);
-  
+  ierr = MaterialPointRegionAssignment_KDTree(material_point_db,PETSC_TRUE);CHKERRQ(ierr);
+  /*
   {
     PetscBool active_energy = PETSC_FALSE;
     ierr = pTatinContextValid_EnergyFV(c,&active_energy);CHKERRQ(ierr);
     ierr = AssignNearestMarkerProperties_BruteForce(material_point_db,active_energy);CHKERRQ(ierr);
   }
-  
+  */
+
 #if (MPPLOG >= 1)
   if (data->output_markers)
   { 
@@ -1411,7 +1469,6 @@ PetscErrorCode Debug_SwarmMPntStd_CoordAssignment_FaceLatticeLayout3d_epsilon(DM
   PetscFunctionReturn(0);
 }
 
-
 PetscErrorCode AssignNearestMarkerProperties_BruteForce(DataBucket db,PetscBool energy)
 {
   int npoints,p,np;
@@ -1499,4 +1556,98 @@ PetscErrorCode AssignNearestMarkerProperties_BruteForce(DataBucket db,PetscBool 
     DataFieldRestoreAccess(PField_Energy);
   }
   PetscFunctionReturn(0);
+}
+
+PetscErrorCode AssignNearestMarkerPropertiesAlongDim_BruteForce(DataBucket db, PetscInt dim, PetscBool energy)
+{
+  int npoints,p,np;
+  DataField PField,PField_Stokes,PField_StokesPl,PField_Energy;
+  PetscReal sep,sep2,min_sep,min_sep2,dx,dy,dz;
+
+  DataBucketGetSizes(db,&npoints,NULL,NULL);
+
+  DataBucketGetDataFieldByName(db,MPntStd_classname,&PField);
+  DataFieldGetAccess(PField);
+
+  DataBucketGetDataFieldByName(db,MPntPStokes_classname,&PField_Stokes);
+  DataFieldGetAccess(PField_Stokes);
+
+  DataBucketGetDataFieldByName(db,MPntPStokesPl_classname,&PField_StokesPl);
+  DataFieldGetAccess(PField_StokesPl);
+
+  if (energy) {
+    DataBucketGetDataFieldByName(db,MPntPEnergy_classname,&PField_Energy);
+    DataFieldGetAccess(PField_Energy);  
+  }
+
+  for (p=0; p<npoints; p++) {
+    MPntStd *marker_target;
+
+    DataFieldAccessPoint(PField,p,(void**)&marker_target);
+    if (marker_target->phase == MATERIAL_POINT_PHASE_UNASSIGNED) {
+      MPntPStokes   *marker_target_stokes;
+      MPntPStokesPl *marker_target_pl;
+      MPntPEnergy   *marker_target_energy;
+
+      min_sep  = 1.0e+32;
+      min_sep2 = 1.0e+32;
+      DataFieldAccessPoint(PField_Stokes,p,(void**)&marker_target_stokes);
+      DataFieldAccessPoint(PField_StokesPl,p,(void**)&marker_target_pl);
+      if (energy) {
+        DataFieldAccessPoint(PField_Energy,p,(void**)&marker_target_energy);
+      } 
+      /* We compare ALL markers that have a phase assigned with the marker that do not */
+      for (np=0; np<npoints; np++) {
+        MPntStd *marker_source;
+
+        DataFieldAccessPoint(PField,np,(void**)&marker_source);
+        if (marker_source->phase != MATERIAL_POINT_PHASE_UNASSIGNED) {
+          MPntPStokes   *marker_source_stokes;
+          MPntPStokesPl *marker_source_pl;
+          MPntPEnergy   *marker_source_energy;
+
+          DataFieldAccessPoint(PField_Stokes,np,(void**)&marker_source_stokes);
+          DataFieldAccessPoint(PField_StokesPl,np,(void**)&marker_source_pl);
+          if (energy) {
+            DataFieldAccessPoint(PField_Energy,np,(void**)&marker_source_energy);
+          } 
+
+          dx = marker_source->coor[0] - marker_target->coor[0];
+          dy = marker_source->coor[1] - marker_target->coor[1];
+          dz = marker_source->coor[2] - marker_target->coor[2];
+
+          if (dim == 0) {
+            sep = dy*dy + dz*dz;
+          } else {
+            sep = dx*dx + dy*dy;
+          }
+
+          if (sep < min_sep) {
+            min_sep = sep;
+            /* Std: copy only the phase */
+            marker_target->phase = marker_source->phase;
+            /* Stokes */
+            marker_target_stokes->rho = marker_source_stokes->rho;
+            marker_target_stokes->eta = marker_source_stokes->eta;
+            /* Plastic */
+            marker_target_pl->e_plastic   = marker_source_pl->e_plastic;
+            marker_target_pl->is_yielding = marker_source_pl->is_yielding;
+            /* Energy */
+            if(energy) {
+              marker_target_energy->diffusivity = marker_source_energy->diffusivity;
+              marker_target_energy->heat_source = marker_source_energy->heat_source;
+            }            
+          }
+        }
+      }
+    }
+  }
+  DataFieldRestoreAccess(PField);
+  DataFieldRestoreAccess(PField_Stokes);
+  DataFieldRestoreAccess(PField_StokesPl);
+  if (energy) {
+    DataFieldRestoreAccess(PField_Energy);
+  }
+  PetscFunctionReturn(0);
+
 }
