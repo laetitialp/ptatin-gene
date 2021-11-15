@@ -72,6 +72,7 @@ static const char MODEL_NAME_SO[] = "model_subduction_oblique_";
 
 PetscErrorCode SwarmMPntStd_CoordAssignment_FaceLatticeLayout3d_epsilon(DM da,PetscInt Nxp[],PetscReal perturb, PetscReal epsilon, PetscInt face_idx,DataBucket db);
 static PetscErrorCode RemeshSurfaceIsostaticTopography(pTatinCtx user,ModelSubductionObliqueCtx *data, DM da);
+PetscLogEvent   PTATIN_MaterialPointPopulationControlRemove;
 
 PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
 {
@@ -1533,9 +1534,249 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_SubductionOblique(pTatinCtx c
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode MaterialPointResolutionMask_BoundaryFaces(DM dav, pTatinCtx ctx, PetscBool *popctrl_mask)
+{
+  PetscInt        nel,nen,el;
+  const PetscInt  *elnidx;
+  PetscInt        mx,my,mz;
+  PetscInt        esi,esj,esk,lmx,lmy,lmz,e;
+  PetscInt        iel,kel,jel;
+  PetscErrorCode  ierr;
+  
+  PetscFunctionBegin;
+  /* Get Q2 elements information */ 
+  ierr = DMDAGetElements_pTatinQ2P1(dav,&nel,&nen,&elnidx);CHKERRQ(ierr);
+  ierr = DMDAGetSizeElementQ2(dav,&mx,&my,&mz);CHKERRQ(ierr);
+  ierr = DMDAGetCornersElementQ2(dav,&esi,&esj,&esk,&lmx,&lmy,&lmz);CHKERRQ(ierr);
+
+  /* Set all to TRUE */
+  for (el=0; el<nel; el++) {
+    popctrl_mask[el] = PETSC_TRUE;
+  }
+  
+  esi = esi/2;
+  esj = esj/2;
+  esk = esk/2;
+
+  /* max(x) face */
+  if (esi + lmx == mx) { 
+    iel = lmx-1;
+    for (kel=0; kel<lmz; kel++) {
+      for (jel=0; jel<lmy; jel++) {
+        e = iel + jel*lmx + kel*lmx*lmy;
+        popctrl_mask[e] = PETSC_FALSE;
+      }
+    }
+  }
+
+  /* min(x) face */
+  if (esi == 0) {
+    iel = 0;
+    for (kel=0; kel<lmz; kel++) {
+      for (jel=0; jel<lmy; jel++) {
+        e = iel + jel*lmx + kel*lmx*lmy;
+        popctrl_mask[e] = PETSC_FALSE;
+      }
+    }
+  }
+
+  /* max(z) face */
+  if (esk + lmz == mz) {
+    kel = lmz-1;
+    for (jel=0; jel<lmy; jel++) {
+      for (iel=0; iel<lmx; iel++) {  
+        e = iel + jel*lmx + kel*lmx*lmy;
+        popctrl_mask[e] = PETSC_FALSE;
+      }
+    }
+  }
+
+  /* min(z) face */
+  if (esk == 0) {
+    kel = 0;
+    for (jel=0; jel<lmy; jel++) {
+      for (iel=0; iel<lmx; iel++) {  
+        e = iel + jel*lmx + kel*lmx*lmy;
+        popctrl_mask[e] = PETSC_FALSE;
+      }
+    }
+  }
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode MPPC_SimpleRemoval_Mask(PetscInt np_upper,DM da,DataBucket db,PetscBool reverse_order_removal, PetscBool *popctrl_mask)
+{
+  PetscInt        *cell_count,count;
+  int             p32,npoints32;
+  PetscInt        c,nel,nen;
+  const PetscInt  *elnidx;
+  DataField       PField;
+  PetscLogDouble  t0,t1;
+  PetscErrorCode  ierr;
+
+  PetscFunctionBegin;
+  ierr = PetscLogEventBegin(PTATIN_MaterialPointPopulationControlRemove,0,0,0,0);CHKERRQ(ierr);
+
+  ierr = DMDAGetElements_pTatinQ2P1(da,&nel,&nen,&elnidx);CHKERRQ(ierr);
+
+  ierr = PetscMalloc( sizeof(PetscInt)*(nel),&cell_count );CHKERRQ(ierr);
+  ierr = PetscMemzero( cell_count, sizeof(PetscInt)*(nel) );CHKERRQ(ierr);
+
+  DataBucketGetSizes(db,&npoints32,NULL,NULL);
+
+  /* compute number of points per cell */
+  DataBucketGetDataFieldByName(db, MPntStd_classname ,&PField);
+  DataFieldGetAccess(PField);
+  for (p32=0; p32<npoints32; p32++) {
+    MPntStd *marker_p;
+
+    DataFieldAccessPoint(PField,p32,(void**)&marker_p);
+    if (marker_p->wil < 0) { continue; }
+
+    cell_count[ marker_p->wil ]++;
+  }
+  DataFieldRestoreAccess(PField);
+
+  count = 0;
+  for (c=0; c<nel; c++) {
+    if (cell_count[c] > np_upper) {
+      count++;
+    }
+  }
+
+  if (count == 0) {
+    ierr = PetscFree(cell_count);CHKERRQ(ierr);
+    ierr = PetscLogEventEnd(PTATIN_MaterialPointPopulationControlRemove,0,0,0,0);CHKERRQ(ierr);
+    PetscFunctionReturn(0);
+  }
+
+  PetscTime(&t0);
+
+  if (!reverse_order_removal) {
+    /* remove points from cells with excessive number */
+    DataFieldGetAccess(PField);
+    for (p32=0; p32<npoints32; p32++) {
+      MPntStd *marker_p;
+      int wil;
+
+      DataFieldAccessPoint(PField,p32,(void**)&marker_p);
+      wil = marker_p->wil;
+      if (popctrl_mask[wil] == PETSC_TRUE) {
+        if (cell_count[wil] > np_upper) {
+          DataBucketRemovePointAtIndex(db,p32);
+
+          DataBucketGetSizes(db,&npoints32,0,0); /* you need to update npoints as the list size decreases! */
+          p32--; /* check replacement point */
+          cell_count[wil]--;
+        }
+      }
+    }
+    DataFieldRestoreAccess(PField);
+  }
+
+  if (reverse_order_removal) {
+    MPntStd *mp_std;
+    int     wil;
+
+    DataBucketGetDataFieldByName(db,MPntStd_classname,&PField);
+    mp_std = PField->data;
+
+    for (p32=npoints32-1; p32>=0; p32--) {
+
+      wil = mp_std[p32].wil;
+      if (wil < 0) { continue; }
+  
+      if (popctrl_mask[wil] == PETSC_TRUE) {
+        if (cell_count[wil] > np_upper) {
+          mp_std[p32].wil = -2;
+          cell_count[wil]--;
+        }
+      }
+    }
+
+    for (p32=0; p32<npoints32; p32++) {
+      wil = mp_std[p32].wil;
+      if (wil == -2) {
+
+        DataBucketRemovePointAtIndex(db,p32);
+        DataBucketGetSizes(db,&npoints32,0,0); /* you need to update npoints as the list size decreases! */
+        p32--; /* check replacement point */
+        mp_std = PField->data;
+      }
+    }
+  }
+
+  PetscTime(&t1);
+
+  ierr = PetscFree(cell_count);CHKERRQ(ierr);
+  ierr = PetscLogEventEnd(PTATIN_MaterialPointPopulationControlRemove,0,0,0,0);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode AdaptMaterialPointResolution_Mask(pTatinCtx ctx)
+{
+  PetscErrorCode ierr;
+  PetscInt       np_lower,np_upper,patch_extent,nxp,nyp,nzp;
+  PetscReal      perturb;
+  PetscBool      flg;
+  PetscBool      *popctrl_mask; 
+  DataBucket     db;
+  PetscBool      reverse_order_removal;
+  PetscInt       nel,nen;
+  const PetscInt *elnidx;
+  MPI_Comm       comm;
+
+  PetscFunctionBegin;
+
+  /* options for control number of points per cell */
+  np_lower = 0;
+  np_upper = 60;
+  ierr = PetscOptionsGetInt(NULL,NULL,"-mp_popctrl_np_lower",&np_lower,&flg);CHKERRQ(ierr);
+  ierr = PetscOptionsGetInt(NULL,NULL,"-mp_popctrl_np_upper",&np_upper,&flg);CHKERRQ(ierr);
+
+  /* options for injection of markers */
+  nxp = 2;
+  nyp = 2;
+  nzp = 2;
+  ierr = PetscOptionsGetInt(NULL,NULL,"-mp_popctrl_nxp",&nxp,&flg);CHKERRQ(ierr);
+  ierr = PetscOptionsGetInt(NULL,NULL,"-mp_popctrl_nyp",&nyp,&flg);CHKERRQ(ierr);
+  ierr = PetscOptionsGetInt(NULL,NULL,"-mp_popctrl_nzp",&nzp,&flg);CHKERRQ(ierr);
+
+  perturb = 0.1;
+  ierr = PetscOptionsGetReal(NULL,NULL,"-mp_popctrl_perturb",&perturb,&flg);CHKERRQ(ierr);
+  patch_extent = 1;
+  ierr = PetscOptionsGetInt(NULL,NULL,"-mp_popctrl_patch_extent",&patch_extent,&flg);CHKERRQ(ierr);
+
+  ierr = pTatinGetMaterialPoints(ctx,&db,NULL);CHKERRQ(ierr);
+  ierr = PetscObjectGetComm((PetscObject)ctx->stokes_ctx->dav,&comm);CHKERRQ(ierr);
+
+  /* Get element number (nel)*/
+  ierr = DMDAGetElements_pTatinQ2P1(ctx->stokes_ctx->dav,&nel,&nen,&elnidx);CHKERRQ(ierr);
+  /* Allocate memory for the array */
+  ierr = PetscMalloc1(nel,&popctrl_mask);CHKERRQ(ierr);
+  
+  ierr = MaterialPointResolutionMask_BoundaryFaces(ctx->stokes_ctx->dav,ctx,popctrl_mask);CHKERRQ(ierr);
+  
+  /* insertion */
+  ierr = MPPC_NearestNeighbourPatch(np_lower,np_upper,patch_extent,nxp,nyp,nzp,perturb,ctx->stokes_ctx->dav,db);CHKERRQ(ierr);
+
+  /* removal */
+  if (np_upper != -1) {
+    reverse_order_removal = PETSC_TRUE;
+  ierr = MPPC_SimpleRemoval_Mask(np_upper,ctx->stokes_ctx->dav,db,reverse_order_removal,popctrl_mask);CHKERRQ(ierr);
+  }
+
+  ierr = PetscFree(popctrl_mask);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode ModelAdaptMaterialPointResolution_SubductionOblique(pTatinCtx c,void *ctx)
 {
   ModelSubductionObliqueCtx *data;
+  PetscErrorCode ierr;
 
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
@@ -1545,7 +1786,8 @@ PetscErrorCode ModelAdaptMaterialPointResolution_SubductionOblique(pTatinCtx c,v
   ierr = ModelApplyMaterialBoundaryCondition_SubductionOblique(c,data);CHKERRQ(ierr);
 
   /* Population control */
-  ierr = MaterialPointPopulationControl_v1(c);CHKERRQ(ierr);
+  //ierr = MaterialPointPopulationControl_v1(c);CHKERRQ(ierr);
+  ierr = AdaptMaterialPointResolution_Mask(c);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
