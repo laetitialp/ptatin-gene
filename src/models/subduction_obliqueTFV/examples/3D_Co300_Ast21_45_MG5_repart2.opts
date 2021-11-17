@@ -9,6 +9,12 @@
 -model_subduction_oblique_output_markers
 -output_path markers_test
 -model_subduction_oblique_temperature_ic_from_file
+########## MARKERS #############
+-lattice_layout_Nx 24
+-lattice_layout_Ny 3
+-lattice_layout_Nz 16
+-mp_popctrl_np_lower 0
+-mp_popctrl_np_upper 60
 ########## BASIC NUMERICS ##############
 -mx 8 #128 # Number of elements along x
 -my 8 #32 # Number of elements along y
