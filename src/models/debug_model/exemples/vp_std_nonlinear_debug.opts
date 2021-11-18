@@ -23,7 +23,7 @@
 -nsteps 2000 # Max number of steps
 #-dt_max 1e-3 # Max timestep allowed
 #-dt_min 1e-8
--output_frequency 1
+-output_frequency 10
 -dt_max_surface_displacement 5.0e-4
 #-use_quasi_newton_coordinate_update
 -dt_factor 1.0
@@ -37,7 +37,7 @@
 -model_debug_Oy -2.5e+5 # Max depth along y axis
 -model_debug_Oz 0.0e+5 # Origin for z axis
 ################ BCs ##################
-#-model_debug_open_base
+-model_debug_open_base
 -model_debug_BC
 -model_debug_normV 3.0
 -model_debug_angle_v 90.0 #45.0
@@ -47,11 +47,11 @@
 ############ Phases Parameters #############
 -model_debug_rheology_vp_std
 #### Plagioclase An75 Ranalli 1997 ####
--model_debug_preexpA_0 3.3e-4
+-model_debug_preexpA_0 2.5e4 #3.3e-4
 -model_debug_Ascale_0 1.0e+6
--model_debug_entalpy_0 238.0e+3
+-model_debug_entalpy_0 532.0e3 #238.0e+3
 -model_debug_Vmol_0 0.0
--model_debug_nexp_0 3.2
+-model_debug_nexp_0 3.5
 -model_debug_Tref_0 273.15
 -model_debug_phi_0 0.0
 -model_debug_phi_inf_0 0.0
@@ -63,16 +63,16 @@
 -model_debug_eps_max_0 1.0
 -model_debug_alpha_0 3.0e-5
 -model_debug_beta_0 1.0e-11
--model_debug_rho_0 3000.0
--model_debug_heat_source_0 1.5e-6
--model_debug_conductivity_0 3.0
+-model_debug_rho_0 3300.0 #3000.0
+-model_debug_heat_source_0 0.0 #1.5e-6
+-model_debug_conductivity_0 3.3
 #### Oceanic lower crust phase number 1 ####
 #### Diabase Ranalli 1997 ####
--model_debug_preexpA_1 2.0e-4
+-model_debug_preexpA_1 2.5e4 #2.0e-4
 -model_debug_Ascale_1 1.0e+6
--model_debug_entalpy_1 260.0e3
+-model_debug_entalpy_1 532.0e3 #260.0e3
 -model_debug_Vmol_1 0.0
--model_debug_nexp_1 3.4
+-model_debug_nexp_1 3.5 #3.4
 -model_debug_Tref_1 273.15
 -model_debug_phi_1 0.0
 -model_debug_phi_inf_1 0.0
@@ -84,9 +84,9 @@
 -model_debug_eps_max_1 1.0
 -model_debug_alpha_1 3.0e-5
 -model_debug_beta_1 1.0e-11
--model_debug_rho_1 3000.0
+-model_debug_rho_1 3300.0
 -model_debug_heat_source_1 0.0
--model_debug_conductivity_1 3.0
+-model_debug_conductivity_1 3.3
 #### Continental upper crust phase number 2 ####
 #### Quartzite Ranalli 1997 ####
 -model_debug_preexpA_2 2.5e4
@@ -104,7 +104,7 @@
 -model_debug_eps_min_2 0.0
 -model_debug_eps_max_2 1.0
 -model_debug_alpha_2 3.0e-5
--model_debug_beta_2 0.0
+-model_debug_beta_2 1.0e-11
 -model_debug_rho_2 3300.0
 -model_debug_heat_source_2 0.0
 -model_debug_conductivity_2 3.3
