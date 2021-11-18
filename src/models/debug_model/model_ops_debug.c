@@ -146,6 +146,9 @@ PetscErrorCode ModelInitialize_Debug(pTatinCtx c,void *ctx)
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_DB,"-rheology_vp_std",    &data->vp_std,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_DB,"-rheology_viscous_z", &data->viscous_z,NULL);CHKERRQ(ierr);
 
+  data->open_base = PETSC_FALSE;
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_DB,"-open_base", &data->open_base,NULL);CHKERRQ(ierr);  
+
   data->output_markers = PETSC_FALSE;
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_DB,"-output_markers", &data->output_markers,NULL);CHKERRQ(ierr);  
 
@@ -890,7 +893,6 @@ PetscErrorCode RegionAssignment_Dirichlet(pTatinCtx c, DataBucket db, ModelDebug
 
 PetscErrorCode ModelApplyMaterialBoundaryCondition_Debug(pTatinCtx c,ModelDebugCtx *data)
 {
-  ModelDebugCtx *data;
   PhysCompStokes  stokes;
   DM              stokes_pack,dav,dap;
   PetscInt        Nxp[2];
@@ -908,7 +910,6 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_Debug(pTatinCtx c,ModelDebugC
 
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
-  data = (ModelDebugCtx*)ctx;
   
   ierr = pTatinGetStokesContext(c,&stokes);CHKERRQ(ierr);
   stokes_pack = stokes->stokes_pack;
@@ -944,8 +945,8 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_Debug(pTatinCtx c,ModelDebugC
 
     /* traverse */
     /* [0,1/east,west] ; [2,3/north,south] ; [4,5/front,back] */
-    Nxp[0]  = 4;
-    Nxp[1]  = 4;
+    Nxp[0]  = 8;
+    Nxp[1]  = 8;
     perturb = 0.0;
 
     /* reset size */
@@ -1051,6 +1052,7 @@ PetscErrorCode MaterialPointResolutionMask_BoundaryFaces_Debug(DM dav, pTatinCtx
   PetscErrorCode  ierr;
   
   PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
   /* Get Q2 elements information */ 
   ierr = DMDAGetElements_pTatinQ2P1(dav,&nel,&nen,&elnidx);CHKERRQ(ierr);
   ierr = DMDAGetSizeElementQ2(dav,&mx,&my,&mz);CHKERRQ(ierr);
@@ -1123,6 +1125,7 @@ PetscErrorCode MPPC_SimpleRemoval_Mask_Debug(PetscInt np_upper,DM da,DataBucket 
   PetscErrorCode  ierr;
 
   PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
   ierr = PetscLogEventBegin(PTATIN_MaterialPointPopulationControlRemove,0,0,0,0);CHKERRQ(ierr);
 
   ierr = DMDAGetElements_pTatinQ2P1(da,&nel,&nen,&elnidx);CHKERRQ(ierr);
@@ -1236,6 +1239,7 @@ PetscErrorCode AdaptMaterialPointResolution_Mask_Debug(pTatinCtx ctx)
   MPI_Comm       comm;
 
   PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
 
   /* options for control number of points per cell */
   np_lower = 0;
