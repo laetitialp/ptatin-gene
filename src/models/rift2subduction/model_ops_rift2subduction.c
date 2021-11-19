@@ -498,7 +498,7 @@ static PetscErrorCode ModelApplyInitialMaterialGeometry_RiftSubd_LeftWZ(pTatinCt
   DataFieldVerifyAccess(PField_pls,sizeof(MPntPStokesPl));
   
   /* Parameters for the gaussian weak zone */
-  x0 = 0.2*data->Lx;
+  x0 = 0.5*data->Lx;
   z0 = 0.0/data->length_bar;
   sigma_x = 1.8;
   sigma_z = 1.0e-1;
@@ -1165,8 +1165,8 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_RiftSubd(pTatinCtx c,void *ct
   for (f=0; f<n_face_list; f++) {
     /* traverse */
     /* [0,1/east,west] ; [2,3/north,south] ; [4,5/front,back] */
-    Nxp[0]  = 1;
-    Nxp[1]  = 1;
+    Nxp[0]  = 8;
+    Nxp[1]  = 8;
     perturb = 0.1;
     /* reset size */
     DataBucketSetSizes(material_point_face_db,0,-1);
