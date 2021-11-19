@@ -7,9 +7,15 @@
 -log_summary
 -checkpoint_every_nsteps 1 
 -checkpoint_every_ncpumins 720 
-#-model_RiftSubd_output_markers
--output_path TEST_Lambda
+-model_RiftSubd_output_markers
+-output_path R2S_init
 -model_RiftSubd_temperature_ic_from_file
+########## MARKERS #################
+-lattice_layout_Nx 24
+-lattice_layout_Ny 3
+-lattice_layout_Nz 16
+-mp_popctrl_np_lower 0
+-mp_popctrl_np_upper 100
 ########## BASIC NUMERICS ##############
 -mx 16 #8 # Number of elements along x
 -my 16 #8 # Number of elements along y
@@ -32,7 +38,7 @@
 -model_RiftSubd_v_extension 1.0
 -model_RiftSubd_normV 3.0
 -model_RiftSubd_angle_v 30.0 #45.0
-#-model_RiftSubd_bc_time 1.2e-3,3.5e-3,5.9e-3,8.0e-3
+-model_RiftSubd_bc_time 100.0,150.0,151.0,200.0
 -model_RiftSubd_Ttop 0.0
 -model_RiftSubd_Tbottom 1600.0
 ############### Geometry ###############
