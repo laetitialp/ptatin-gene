@@ -1208,16 +1208,16 @@ PetscErrorCode SubductionOblique_VelocityBC_Oblique(BCList bclist,DM dav,pTatinC
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
   bcdata->v = vzl;
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,2,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
-  bcdata->v = 0.0;
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,1,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
+  //bcdata->v = 0.0;
+  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,1,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
   
   bcdata->y_lab = data->y_continent[2];
   bcdata->v = 0.0;//vxr;
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
   bcdata->v = 0.0;//vzr;
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,2,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
-  bcdata->v = 0.0;
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,1,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
+  //bcdata->v = 0.0;
+  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,1,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
   
   if (data->is_2D) {
     ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
@@ -1816,11 +1816,11 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_SubductionOblique_Noair(pTatinCtx c,
   ierr = DMCompositeGetAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
 
   /* SURFACE REMESHING */
-  Kero = 1.0e-6;
+  Kero = 1.0e-4;
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-Kero",&Kero,NULL);CHKERRQ(ierr);
   Kero = Kero / (data->length_bar*data->length_bar/data->time_bar);
   
-  ierr = UpdateMeshGeometry_ApplyDiffusionJMAX(dav,Kero,dt,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE,PETSC_FALSE);CHKERRQ(ierr);
+  ierr = UpdateMeshGeometry_ApplyDiffusionJMAX(dav,Kero,dt,PETSC_TRUE,PETSC_TRUE,PETSC_FALSE,PETSC_FALSE,PETSC_FALSE);CHKERRQ(ierr);
   ierr = UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX(dav,velocity,NULL,dt);
   ierr = DMCompositeRestoreAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
  

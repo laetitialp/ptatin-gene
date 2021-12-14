@@ -23,7 +23,7 @@
 #-dt_max 1e-3 # Max timestep allowed
 #-dt_min 1e-8
 -output_frequency 1
--dt_max_surface_displacement 5.0e-4
+-dt_max_surface_displacement 5.0e-3
 #-use_quasi_newton_coordinate_update
 -dt_factor 2.0
 ########### Box Geometry ################
