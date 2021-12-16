@@ -2815,6 +2815,10 @@ PetscErrorCode Run_NonLinearFV(pTatinCtx user,Vec v1,Vec v2)
       }
     }
     
+    /* Update boundary conditions */
+    /* Fine level setup */
+    ierr = pTatinModel_ApplyBoundaryCondition(model,user);CHKERRQ(ierr);
+    
     /* (i) solve energy equation */
     if (active_energy) {
       PetscReal *dt;
@@ -2954,9 +2958,6 @@ PetscErrorCode Run_NonLinearFV(pTatinCtx user,Vec v1,Vec v2)
     /* Solve lithostatic pressure and apply on the surface quadrature points for Stokes */
     ierr = ModelApplyTractionFromLithoPressure(user,X);CHKERRQ(ierr);
     
-    /* Update boundary conditions */
-    /* Fine level setup */
-    ierr = pTatinModel_ApplyBoundaryCondition(model,user);CHKERRQ(ierr);
     /* Coarse grid setup: Configure boundary conditions */
     ierr = pTatinModel_ApplyBoundaryConditionMG(mgctx.nlevels,mgctx.u_bclist,mgctx.dav_hierarchy,model,user);CHKERRQ(ierr);
     
