@@ -7,12 +7,12 @@
 -checkpoint_every_nsteps 50 
 -checkpoint_every_ncpumins 720 
 -model_subduction_oblique_output_markers
--output_path markers_test
+-output_path TEST_Projection_2
 #-lattice_layout_N 8,8,8
 ########## BASIC NUMERICS ##############
--mx 8 #128 #512 # Number of elements along x
--my 8 #32 #128 # Number of elements along y
--mz 8 #64 #256 # Number of elements along z
+-mx 16 #128 #512 # Number of elements along x
+-my 16 #32 #128 # Number of elements along y
+-mz 16 #64 #256 # Number of elements along z
 -nsteps 600000001 # Max number of steps
 -dt_max 1e-3 # Max timestep allowed
 #-dt_min 1e-8

@@ -7,7 +7,7 @@
 -checkpoint_every_nsteps 10 
 -checkpoint_every_ncpumins 720 
 -model_subduction_oblique_output_markers
--output_path markers_test
+-output_path TEST_Projection_2
 -model_subduction_oblique_temperature_ic_from_file
 ########## MARKERS #############
 -lattice_layout_Nx 24
@@ -16,16 +16,16 @@
 -mp_popctrl_np_lower 0
 -mp_popctrl_np_upper 60
 ########## BASIC NUMERICS ##############
--mx 8 #128 # Number of elements along x
--my 8 #32 # Number of elements along y
--mz 8 #64 # Number of elements along z
+-mx 16 #128 # Number of elements along x
+-my 16 #32 # Number of elements along y
+-mz 16 #64 # Number of elements along z
 -nsteps 5000000 # Max number of steps
 #-dt_max 1e-3 # Max timestep allowed
 #-dt_min 1e-8
 -output_frequency 1
 -dt_max_surface_displacement 5.0e-3
 #-use_quasi_newton_coordinate_update
--dt_factor 2.0
+-dt_factor 1.0
 ########### Box Geometry ################
 #-model_subduction_oblique_is_2D
 -model_subduction_oblique_Lx 10.0e+5  # Max length along x
@@ -39,8 +39,8 @@
 #-model_subduction_oblique_IC
 #-model_subduction_oblique_open_base
 -model_subduction_oblique_BC
--model_subduction_oblique_normV 3.0
--model_subduction_oblique_angle_v 90.0 #45.0
+-model_subduction_oblique_normV 6.0
+-model_subduction_oblique_angle_v 45.0
 -model_subduction_oblique_Ttop 0.0
 -model_subduction_oblique_Tbottom 1600.0
 ############### Geometry ###############
@@ -111,7 +111,7 @@
 -model_subduction_oblique_beta_2 0.0
 -model_subduction_oblique_rho_2 2700.0
 -model_subduction_oblique_heat_source_2 1.5e-6
--model_subduction_oblique_conductivity_2 2.7
+-model_subduction_oblique_conductivity_2 0.27 #2.7
 #### Continental lower crust phase number 3 ####
 #### Anorthite Rybacki & Dresen 2000 ####
 -model_subduction_oblique_preexpA_3 13.4637
