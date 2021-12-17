@@ -1342,10 +1342,10 @@ PetscErrorCode pTatinPhysCompEnergyFV_MPProjection_FVP0DG(PhysCompEnergyFV efv,p
     PetscTime(&st0);
     KDTreeGetPoints(kdtree,NULL,&node);
     for (p=start; p<end; p++) {
-      node[p-start].x[0]  = point[p].coor[0];
-      node[p-start].x[1]  = point[p].coor[1];
-      node[p-start].x[2]  = point[p].coor[2];
-      node[p-start].index = p;
+      node[p-start].x[0]  = point[order[p]].coor[0];
+      node[p-start].x[1]  = point[order[p]].coor[1];
+      node[p-start].x[2]  = point[order[p]].coor[2];
+      node[p-start].index = order[p];
     }
     PetscTime(&st1);
     cumtime[0] += (st1 - st0);
