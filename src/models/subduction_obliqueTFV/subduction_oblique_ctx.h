@@ -51,4 +51,10 @@ struct _p_BC_Lithosphere {
   PetscReal y_lab,v;
 };
 
+typedef struct _p_BC_LithosphereSplit *BC_LithosphereSplit;
+struct _p_BC_LithosphereSplit {
+  PetscReal y_lab,v,x_split;
+  PetscInt  dim;
+};
+
 #endif

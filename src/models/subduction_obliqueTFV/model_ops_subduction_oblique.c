@@ -1180,6 +1180,27 @@ PetscBool BCListEvaluator_Lithosphere(PetscScalar position[],PetscScalar *value,
   return impose_dirichlet;
 }
 
+PetscBool BCListEvaluator_LithosphereSplitFace(PetscScalar position[],PetscScalar *value,void *ctx)
+{
+  PetscBool impose_dirichlet;
+  BC_LithosphereSplit data_ctx = (BC_LithosphereSplit)ctx;
+
+  PetscFunctionBegin;
+
+  if (position[data_ctx->dim] <= data_ctx->x_split) {
+    if (position[1] >= data_ctx->y_lab){
+      *value = data_ctx->v;
+      impose_dirichlet = PETSC_TRUE;
+    } else {
+      impose_dirichlet = PETSC_FALSE;
+    }
+  } else {
+    impose_dirichlet = PETSC_FALSE;
+  }
+
+  return impose_dirichlet;
+}
+
 PetscErrorCode SubductionOblique_VelocityBC_Oblique(BCList bclist,DM dav,pTatinCtx c,ModelSubductionObliqueCtx *data)
 {
   BC_Lithosphere bcdata;
@@ -1219,6 +1240,27 @@ PetscErrorCode SubductionOblique_VelocityBC_Oblique(BCList bclist,DM dav,pTatinC
   //bcdata->v = 0.0;
   //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,1,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
   
+  /* Test with a dirichlet constraint on the z face with inflow */
+  {
+    BC_LithosphereSplit bcdata_split;
+    PetscReal           xc,x_offset=0.0,x_trench;
+
+    ierr = PetscMalloc(sizeof(struct _p_BC_LithosphereSplit),&bcdata_split);CHKERRQ(ierr);
+    xc = (data->Lx + data->Ox)/2.0;
+    /* Trench located at centre of the model in x direction */
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-xtrench_offset",&x_offset,NULL);CHKERRQ(ierr);
+    x_offset = x_offset / data->length_bar;
+    x_trench = xc + x_offset;
+
+    bcdata_split->x_split = x_trench;
+    bcdata_split->y_lab   = data->y_ocean[3];
+    bcdata_split->dim     = 0;
+    bcdata_split->v = vxl;
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,0,BCListEvaluator_LithosphereSplitFace,(void*)bcdata_split);CHKERRQ(ierr);
+    bcdata_split->v = vzl;
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_LithosphereSplitFace,(void*)bcdata_split);CHKERRQ(ierr);
+  }
+
   if (data->is_2D) {
     ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
     ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
