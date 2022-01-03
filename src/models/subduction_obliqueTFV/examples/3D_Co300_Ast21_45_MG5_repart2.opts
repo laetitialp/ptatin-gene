@@ -7,7 +7,7 @@
 -checkpoint_every_nsteps 10 
 -checkpoint_every_ncpumins 720 
 -model_subduction_oblique_output_markers
--output_path TEST_Projection_2
+-output_path TEST_Split
 -model_subduction_oblique_temperature_ic_from_file
 ########## MARKERS #############
 -lattice_layout_Nx 24

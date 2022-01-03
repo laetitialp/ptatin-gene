@@ -7,7 +7,7 @@
 -checkpoint_every_nsteps 50 
 -checkpoint_every_ncpumins 720 
 -model_subduction_oblique_output_markers
--output_path TEST_Projection_2
+-output_path TEST_Split
 #-lattice_layout_N 8,8,8
 ########## BASIC NUMERICS ##############
 -mx 16 #128 #512 # Number of elements along x
