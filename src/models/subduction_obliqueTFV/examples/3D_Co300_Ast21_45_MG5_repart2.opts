@@ -7,7 +7,7 @@
 -checkpoint_every_nsteps 10 
 -checkpoint_every_ncpumins 720 
 -model_subduction_oblique_output_markers
--output_path TEST_Split
+-output_path TEST_arctan
 -model_subduction_oblique_temperature_ic_from_file
 ########## MARKERS #############
 -lattice_layout_Nx 24
@@ -16,9 +16,9 @@
 -mp_popctrl_np_lower 0
 -mp_popctrl_np_upper 60
 ########## BASIC NUMERICS ##############
--mx 16 #128 # Number of elements along x
+-mx 32 #128 # Number of elements along x
 -my 16 #32 # Number of elements along y
--mz 16 #64 # Number of elements along z
+-mz 4 #64 # Number of elements along z
 -nsteps 5000000 # Max number of steps
 #-dt_max 1e-3 # Max timestep allowed
 #-dt_min 1e-8
@@ -39,6 +39,7 @@
 #-model_subduction_oblique_IC
 #-model_subduction_oblique_open_base
 -model_subduction_oblique_BC
+-model_subduction_oblique_Arctangent_KMIN
 -model_subduction_oblique_normV 6.0
 -model_subduction_oblique_angle_v 45.0
 -model_subduction_oblique_Ttop 0.0
