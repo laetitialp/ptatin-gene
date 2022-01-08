@@ -197,6 +197,8 @@ PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
   data->is_2D = PETSC_FALSE;
   data->open_base = PETSC_FALSE;
   data->no_air = PETSC_FALSE;
+  data->SplitDirichlet_KMIN = PETSC_FALSE;
+  data->Arctangent_KMIN = PETSC_FALSE;
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-IC",&data->oblique_IC,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-BC",&data->oblique_BC,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-output_markers",&data->output_markers,NULL);CHKERRQ(ierr);
@@ -204,6 +206,8 @@ PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-is_2D",&data->is_2D,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-open_base",&data->open_base,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-no_air",&data->no_air,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-SplitDirichlet_KMIN",&data->SplitDirichlet_KMIN,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-Arctangent_KMIN",&data->Arctangent_KMIN,NULL);CHKERRQ(ierr);
   
   /* Material constants */
   ierr = pTatinGetMaterialConstants(c,&materialconstants);CHKERRQ(ierr);
@@ -1201,7 +1205,109 @@ PetscBool BCListEvaluator_LithosphereSplitFace(PetscScalar position[],PetscScala
   return impose_dirichlet;
 }
 
+PetscBool BCListEvaluator_Arctan(PetscScalar position[], PetscScalar *value, void *ctx)
+{
+  PetscBool impose_dirichlet;
+  BC_Arctan data_ctx = (BC_Arctan)ctx;
+  PetscReal sharpness,angle,offset,v;
+
+  /*
+  This function creates an arctangent velocity field on the face 
+  varying both in x and y directions.
+  ================================================================== 
+  It is manually tuned to return a value between v and 0.0.
+  ==================================================================
+  Since as x-> +inf: lim arctangent(x) ->  pi/2
+           x-> -inf: lim arctangent(x) -> -pi/2
+  it is divided by pi/2 to rebound it between the open interval -1,1
+  ==================================================================
+  Since it never reaches the exact value but only aproaches it, user
+  can use x1 and x2 to impose positions from which the "exact" value 
+  is set.
+  ==================================================================
+  sharpness controls the transition from v to 0.0
+  angle     controls the vertical variation of this transition
+  x0        controls the offset in the x direction of the transition
+  */
+
+  angle     = data_ctx->angle;
+  sharpness = data_ctx->sharpness;
+  offset    = data_ctx->x0;
+  v         = data_ctx->v;
+
+  /* Only apply Dirichlet BC in the lithosphere */
+  if (position[1] >= data_ctx->y_lab) {
+    *value = -0.5*v * PetscAtanReal(sharpness*((position[0] - angle*position[1]) - offset)) / (0.5*M_PI) + 0.5*v;
+    if (position[0] <= data_ctx->x1) {
+      *value = v;
+    } else if (position[0] >= data_ctx->x2) {
+      *value = 0.0;
+    }
+    impose_dirichlet = PETSC_TRUE;
+  } else {
+    impose_dirichlet = PETSC_FALSE;
+  }
+  
+  return impose_dirichlet;
+}
+
 PetscErrorCode SubductionOblique_VelocityBC_Oblique(BCList bclist,DM dav,pTatinCtx c,ModelSubductionObliqueCtx *data)
+{
+  BC_Lithosphere bcdata;
+  PetscReal      vx,vz,vxl,vxr,vzl,vzr;
+  PetscReal      zero = 0.0;
+  PetscErrorCode ierr;
+  
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+  
+  ierr = PetscMalloc(sizeof(struct _p_BC_Lithosphere),&bcdata);CHKERRQ(ierr);
+
+  /* Computing of the 2 velocity component required to get a vector of norm normV and angle angle_v */
+  vz = data->normV*PetscCosReal(data->angle_v);
+  vx = PetscSqrtReal(data->normV*data->normV - vz*vz);
+
+  /* Left face */  
+  vxl = vx;
+  vzl = vz;
+  /* Right face */
+  vxr = -vx;
+  vzr = -vz;
+
+  bcdata->y_lab = data->y_ocean[3];
+  bcdata->v = vxl;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
+  bcdata->v = vzl;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,2,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
+  //bcdata->v = 0.0;
+  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,1,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
+  
+  bcdata->y_lab = data->y_continent[2];
+  bcdata->v = 0.0;//vxr;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
+  bcdata->v = 0.0;//vzr;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,2,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
+  //bcdata->v = 0.0;
+  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,1,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
+  
+  if (data->is_2D) {
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  }
+  
+  /* Free slip bottom */
+  if (!data->open_base) {
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  }
+
+  ierr = PetscFree(bcdata);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode SubductionOblique_VelocityBC_Oblique_KMIN_DirichletSplitNeumann(BCList bclist,DM dav,pTatinCtx c,ModelSubductionObliqueCtx *data)
 {
   BC_Lithosphere bcdata;
   PetscReal      vx,vz,vxl,vxr,vzl,vzr;
@@ -1259,6 +1365,8 @@ PetscErrorCode SubductionOblique_VelocityBC_Oblique(BCList bclist,DM dav,pTatinC
     ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,0,BCListEvaluator_LithosphereSplitFace,(void*)bcdata_split);CHKERRQ(ierr);
     bcdata_split->v = vzl;
     ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_LithosphereSplitFace,(void*)bcdata_split);CHKERRQ(ierr);
+    
+    ierr = PetscFree(bcdata_split);CHKERRQ(ierr);
   }
 
   if (data->is_2D) {
@@ -1275,6 +1383,123 @@ PetscErrorCode SubductionOblique_VelocityBC_Oblique(BCList bclist,DM dav,pTatinC
 
   ierr = PetscFree(bcdata);CHKERRQ(ierr);
   
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode SubductionOblique_VelocityBC_Oblique_KMIN_DirichletArctangent(BCList bclist,DM dav,pTatinCtx c,ModelSubductionObliqueCtx *data)
+{
+  BC_Lithosphere bcdata;
+  PetscReal      vx,vz,vxl,vxr,vzl,vzr;
+  PetscReal      zero = 0.0;
+  PetscErrorCode ierr;
+  
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+  
+  ierr = PetscMalloc(sizeof(struct _p_BC_Lithosphere),&bcdata);CHKERRQ(ierr);
+
+  /* Computing of the 2 velocity component required to get a vector of norm normV and angle angle_v */
+  vz = data->normV*PetscCosReal(data->angle_v);
+  vx = PetscSqrtReal(data->normV*data->normV - vz*vz);
+
+  /* Left face */  
+  vxl = vx;
+  vzl = vz;
+  /* Right face */
+  vxr = -vx;
+  vzr = -vz;
+
+  bcdata->y_lab = data->y_ocean[3];
+  bcdata->v = vxl;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
+  bcdata->v = vzl;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,2,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
+  //bcdata->v = 0.0;
+  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,1,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
+  
+  bcdata->y_lab = data->y_continent[2];
+  bcdata->v = 0.0;//vxr;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
+  bcdata->v = 0.0;//vzr;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,2,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
+  //bcdata->v = 0.0;
+  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,1,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
+  
+  /* Test with a dirichlet constraint on the z face with inflow */
+  {
+    BC_Arctan bcdata_atan;
+    PetscReal xc,x_offset=0.0,x_trench;
+
+    ierr = PetscMalloc(sizeof(struct _p_BC_Arctan),&bcdata_atan);CHKERRQ(ierr);
+    xc = (data->Lx + data->Ox)/2.0;
+    /* Trench located at centre of the model in x direction */
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-xtrench_offset",&x_offset,NULL);CHKERRQ(ierr);
+    x_offset = x_offset / data->length_bar;
+    x_trench = xc + x_offset;
+
+    bcdata_atan->x0        = x_trench;
+    bcdata_atan->y_lab     = data->y_ocean[3];
+    bcdata_atan->sharpness = 100.0;
+    bcdata_atan->angle     = PetscTanReal(data->theta_subd - (90.0*M_PI/180.0) );
+    bcdata_atan->x1        = 0.1*data->Lx; //100.0e3 / data->length_bar;
+    bcdata_atan->x2        = 0.9*data->Lx; //900.0e3 / data->length_bar;  
+
+    bcdata_atan->v = vxl;
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,0,BCListEvaluator_Arctan,(void*)bcdata_atan);CHKERRQ(ierr);
+    bcdata_atan->v = vzl;
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_Arctan,(void*)bcdata_atan);CHKERRQ(ierr);
+    
+    ierr = PetscFree(bcdata_atan);CHKERRQ(ierr);
+  }
+
+  if (data->is_2D) {
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  }
+  
+  /* Free slip bottom */
+  if (!data->open_base) {
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  }
+
+  ierr = PetscFree(bcdata);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ModelApplyBoundaryCondition_Velocity(BCList bclist,DM dav,pTatinCtx c,ModelSubductionObliqueCtx *data)
+{
+  PetscInt       bctype;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  bctype = 0;
+  if (data->SplitDirichlet_KMIN) {
+    bctype = 1;
+  } else if (data->Arctangent_KMIN) {
+    bctype = 2;
+  }
+
+  switch(bctype) {
+    case 0:
+      ierr = SubductionOblique_VelocityBC_Oblique(bclist,dav,c,data);CHKERRQ(ierr);
+      break;
+
+    case 1:
+      ierr = SubductionOblique_VelocityBC_Oblique_KMIN_DirichletSplitNeumann(bclist,dav,c,data);CHKERRQ(ierr);
+      break;
+
+    case 2:
+      ierr = SubductionOblique_VelocityBC_Oblique_KMIN_DirichletArctangent(bclist,dav,c,data);CHKERRQ(ierr);
+      break;
+
+    default:
+      ierr = SubductionOblique_VelocityBC_Oblique(bclist,dav,c,data);CHKERRQ(ierr);
+      break;
+  }
   PetscFunctionReturn(0);
 }
 
@@ -1461,7 +1686,7 @@ PetscErrorCode ModelApplyBoundaryCondition_SubductionOblique(pTatinCtx c,void *c
   stokes_pack = stokes->stokes_pack;
   ierr = DMCompositeGetEntries(stokes_pack,&dav,&dap);CHKERRQ(ierr);
 
-  ierr = SubductionOblique_VelocityBC_Oblique(stokes->u_bclist,dav,c,data);CHKERRQ(ierr);
+  ierr = ModelApplyBoundaryCondition_Velocity(stokes->u_bclist,dav,c,data);CHKERRQ(ierr);
   /* Insert here the litho pressure functions */
   /* The faces with litho pressure BCs are:
      -  IMIN, IMAX below the lithosphere
@@ -1493,7 +1718,7 @@ PetscErrorCode ModelApplyBoundaryConditionMG_SubductionOblique(PetscInt nl,BCLis
   data = (ModelSubductionObliqueCtx*)ctx;
   /* Define velocity boundary conditions on each level within the MG hierarchy */
   for (n=0; n<nl; n++) {
-    ierr = SubductionOblique_VelocityBC_Oblique(bclist[n],dav[n],c,data);CHKERRQ(ierr);
+    ierr = ModelApplyBoundaryCondition_Velocity(bclist[n],dav[n],c,data);CHKERRQ(ierr);
   }
 
   PetscFunctionReturn(0);

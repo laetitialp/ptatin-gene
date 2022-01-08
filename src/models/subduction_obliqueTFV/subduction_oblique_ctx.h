@@ -41,6 +41,7 @@ typedef struct {
   PetscBool oblique_IC, oblique_BC, output_markers;
   PetscInt  n_phases;
   PetscBool subduction_temp_ic_steadystate_analytics,is_2D,open_base,no_air;
+  PetscBool SplitDirichlet_KMIN,Arctangent_KMIN;
   PetscReal qm,k,h_prod,y_prod,Tlitho; /* Initial continental geotherm params */
   PetscReal age,air_rho; /* Initial oceanic geotherm params */
   
@@ -55,6 +56,12 @@ typedef struct _p_BC_LithosphereSplit *BC_LithosphereSplit;
 struct _p_BC_LithosphereSplit {
   PetscReal y_lab,v,x_split;
   PetscInt  dim;
+};
+
+typedef struct _p_BC_Arctan *BC_Arctan;
+struct _p_BC_Arctan {
+  PetscReal y_lab,v,x0,x1,x2;
+  PetscReal sharpness,angle;
 };
 
 #endif
