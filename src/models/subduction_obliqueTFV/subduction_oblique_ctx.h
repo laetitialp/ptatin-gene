@@ -36,12 +36,12 @@ typedef struct {
   PetscReal Lx, Ly, Lz, Ox, Oy, Oz;
   PetscReal y_continent[3], y_ocean[4];
   PetscReal y0, alpha_subd, theta_subd, wz;
-  PetscReal normV, angle_v;
+  PetscReal normV, angle_v, vy;
   PetscReal Ttop,Tbottom;
   PetscBool oblique_IC, oblique_BC, output_markers;
   PetscInt  n_phases;
   PetscBool subduction_temp_ic_steadystate_analytics,is_2D,open_base,no_air;
-  PetscBool SplitDirichlet_KMIN,Arctangent_KMIN;
+  PetscBool SplitDirichlet_KMIN,Arctangent_KMIN,use_v_dot_n;
   PetscReal qm,k,h_prod,y_prod,Tlitho; /* Initial continental geotherm params */
   PetscReal age,air_rho; /* Initial oceanic geotherm params */
   

@@ -156,6 +156,7 @@ PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
   data->normV = 1.0;
   /* Angle of the velocity vector with the face on which it is applied */
   data->angle_v = 30.0;
+  data->vy = 0.0;
   
   data->Ttop = 0.0;
   data->Tbottom = 1600.0;
@@ -199,6 +200,7 @@ PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
   data->no_air = PETSC_FALSE;
   data->SplitDirichlet_KMIN = PETSC_FALSE;
   data->Arctangent_KMIN = PETSC_FALSE;
+  data->use_v_dot_n = PETSC_FALSE;
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-IC",&data->oblique_IC,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-BC",&data->oblique_BC,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-output_markers",&data->output_markers,NULL);CHKERRQ(ierr);
@@ -208,6 +210,7 @@ PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-no_air",&data->no_air,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-SplitDirichlet_KMIN",&data->SplitDirichlet_KMIN,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-Arctangent_KMIN",&data->Arctangent_KMIN,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-use_v_dot_n",&data->use_v_dot_n,NULL);CHKERRQ(ierr);
   
   /* Material constants */
   ierr = pTatinGetMaterialConstants(c,&materialconstants);CHKERRQ(ierr);
@@ -408,6 +411,7 @@ PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
   /* Scale velocity */
   data->normV = data->normV*cm_per_yer2m_per_sec/data->velocity_bar;
   data->angle_v = data->angle_v*M_PI/180;
+  data->vy = data->vy*cm_per_yer2m_per_sec/data->velocity_bar;
   
   /* scale material properties */
   for (region_idx=0; region_idx<rheology->nphases_active;region_idx++) {
@@ -1251,6 +1255,37 @@ PetscBool BCListEvaluator_Arctan(PetscScalar position[], PetscScalar *value, voi
   return impose_dirichlet;
 }
 
+PetscErrorCode ModelComputeBottomFlow_VdotN(pTatinCtx c,Vec X, ModelSubductionObliqueCtx *data)
+{
+  PhysCompStokes stokes;
+  DM             dms;
+  Vec            velocity,pressure;
+  PetscReal      int_u_dot_n[HEX_EDGES];
+  PetscErrorCode ierr;
+
+  ierr = pTatinGetStokesContext(c,&stokes);CHKERRQ(ierr);
+  ierr = PhysCompStokesGetDMComposite(stokes,&dms);CHKERRQ(ierr);
+  ierr = DMCompositeGetAccess(dms,X,&velocity,&pressure);CHKERRQ(ierr);  
+  
+  ierr = StokesComputeVdotN(stokes,velocity,int_u_dot_n);CHKERRQ(ierr);
+  PetscPrintf(PETSC_COMM_WORLD,"imin: %+1.4e\n",int_u_dot_n[ WEST_FACE  -1]);
+  PetscPrintf(PETSC_COMM_WORLD,"imax: %+1.4e\n",int_u_dot_n[ EAST_FACE  -1]);
+  PetscPrintf(PETSC_COMM_WORLD,"jmin: %+1.4e\n",int_u_dot_n[ SOUTH_FACE -1]);
+  PetscPrintf(PETSC_COMM_WORLD,"jmax: [free surface] %+1.4e\n",int_u_dot_n[ NORTH_FACE -1]);
+  PetscPrintf(PETSC_COMM_WORLD,"kmin: %+1.4e\n",int_u_dot_n[ BACK_FACE  -1]);
+  PetscPrintf(PETSC_COMM_WORLD,"kmax: %+1.4e\n",int_u_dot_n[ FRONT_FACE -1]);
+
+  ierr = DMCompositeRestoreAccess(dms,X,&velocity,&pressure);CHKERRQ(ierr);
+
+  if (c->step == 0) {
+    data->vy = 0.0;
+  } else {
+    data->vy = (int_u_dot_n[WEST_FACE-1]+int_u_dot_n[EAST_FACE-1]+int_u_dot_n[BACK_FACE-1]+int_u_dot_n[FRONT_FACE-1])/((data->Lx - data->Ox)*(data->Lz - data->Oz));
+    PetscPrintf(PETSC_COMM_WORLD,"v.n = %+1.4e\n",data->vy);    
+  }
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode SubductionOblique_VelocityBC_Oblique(BCList bclist,DM dav,pTatinCtx c,ModelSubductionObliqueCtx *data)
 {
   BC_Lithosphere bcdata;
@@ -1459,9 +1494,9 @@ PetscErrorCode SubductionOblique_VelocityBC_Oblique_KMIN_DirichletArctangent(BCL
   
   /* Free slip bottom */
   if (!data->open_base) {
-    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
-    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
-    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+    //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&data->vy);CHKERRQ(ierr);
+    //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
   }
 
   ierr = PetscFree(bcdata);CHKERRQ(ierr);
@@ -1471,11 +1506,22 @@ PetscErrorCode SubductionOblique_VelocityBC_Oblique_KMIN_DirichletArctangent(BCL
 
 PetscErrorCode ModelApplyBoundaryCondition_Velocity(BCList bclist,DM dav,pTatinCtx c,ModelSubductionObliqueCtx *data)
 {
+  PhysCompStokes stokes;
+  DM             stokes_pack;
+  Vec            X = NULL;
   PetscInt       bctype;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
 
+  if (data->use_v_dot_n) {
+    ierr = pTatinGetStokesContext(c,&stokes);CHKERRQ(ierr);
+    ierr = PhysCompStokesGetDMComposite(stokes,&stokes_pack);CHKERRQ(ierr);
+    ierr = pTatinPhysCompGetData_Stokes(c,&X);CHKERRQ(ierr); 
+    /* Compute vy as int_S v.n dS */
+    ierr = ModelComputeBottomFlow_VdotN(c,X,data);CHKERRQ(ierr);
+  }
+  
   bctype = 0;
   if (data->SplitDirichlet_KMIN) {
     bctype = 1;
