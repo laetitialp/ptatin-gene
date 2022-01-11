@@ -2167,6 +2167,7 @@ PetscErrorCode LoadStateFromModelDefinitionFV(pTatinCtx *pctx,Vec *v1,Vec *v2,Pe
   
   /* work vector for solution */
   ierr = DMCreateGlobalVector(dmstokes,&X_s);CHKERRQ(ierr);
+  ierr = pTatinPhysCompAttachData_Stokes(user,X_s);CHKERRQ(ierr);
   if (activate_energy) {
     //X_e = energyfv->T;
     //ierr = pTatinCtxAttachModelData(user,"PhysCompEnergy_T",(void*)X_e);CHKERRQ(ierr);
@@ -2447,6 +2448,7 @@ PetscErrorCode GenerateICStateFromModelDefinition_FV(pTatinCtx *pctx)
 
   /* work vector for solution and residual */
   ierr = DMCreateGlobalVector(multipys_pack,&X_s);CHKERRQ(ierr);
+  ierr = pTatinPhysCompAttachData_Stokes(user,X_s);CHKERRQ(ierr);
 
   /* initial condition */
   ierr = pTatinModel_ApplyInitialSolution(model,user,X_s);CHKERRQ(ierr);
@@ -2648,6 +2650,7 @@ PetscErrorCode Run_NonLinearFV(pTatinCtx user,Vec v1,Vec v2)
     X = v1;
   } else {
     ierr = DMCreateGlobalVector(dmstokes,&X);CHKERRQ(ierr);
+    ierr = pTatinPhysCompAttachData_Stokes(user,X);CHKERRQ(ierr);
   }
   ierr = VecDuplicate(X,&F_s);CHKERRQ(ierr);
   
@@ -2658,7 +2661,7 @@ PetscErrorCode Run_NonLinearFV(pTatinCtx user,Vec v1,Vec v2)
     ierr = pTatinLogBasicDMDA(user,"EnergyFV",dmfv);CHKERRQ(ierr);
     if (v2) {
       energyfv->T = v2;
-      ierr = pTatinCtxAttachModelData(user,"PhysCompEnergy_T",(void*)energyfv->T);CHKERRQ(ierr);
+      //ierr = pTatinCtxAttachModelData(user,"PhysCompEnergy_T",(void*)energyfv->T);CHKERRQ(ierr);
     }
   }
   
