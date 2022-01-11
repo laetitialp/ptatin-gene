@@ -1003,6 +1003,7 @@ PetscErrorCode GenerateICStateFromModelDefinition(pTatinCtx *pctx)
 
   /* work vector for solution */
   ierr = DMCreateGlobalVector(dmstokes,&X_s);CHKERRQ(ierr);
+  ierr = pTatinPhysCompAttachData_Stokes(user,X_s);CHKERRQ(ierr);
   if (activate_energy) {
     ierr = DMCreateGlobalVector(dmenergy,&X_e);CHKERRQ(ierr);
     ierr = pTatinPhysCompAttachData_Energy(user,X_e,NULL);CHKERRQ(ierr);
@@ -1258,6 +1259,7 @@ PetscErrorCode LoadICStateFromModelDefinition(pTatinCtx *pctx,Vec *v1,Vec *v2,Pe
 
   /* work vector for solution */
   ierr = DMCreateGlobalVector(dmstokes,&X_s);CHKERRQ(ierr);
+  ierr = pTatinPhysCompAttachData_Stokes(user,X_s);CHKERRQ(ierr);
   if (activate_energy) {
     ierr = DMCreateGlobalVector(dmenergy,&X_e);CHKERRQ(ierr);
     ierr = pTatinPhysCompAttachData_Energy(user,X_e,NULL);CHKERRQ(ierr);
@@ -1351,6 +1353,7 @@ PetscErrorCode DummyRun(pTatinCtx pctx,Vec v1,Vec v2)
     X_s = v1;
   } else {
     ierr = DMCreateGlobalVector(dmstokes,&X_s);CHKERRQ(ierr);
+    ierr = pTatinPhysCompAttachData_Stokes(pctx,X_s);CHKERRQ(ierr);
   }
   ierr = VecDuplicate(X_s,&F_s);CHKERRQ(ierr);
 
