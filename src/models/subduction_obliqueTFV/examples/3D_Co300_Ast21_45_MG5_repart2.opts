@@ -16,9 +16,9 @@
 -mp_popctrl_np_lower 0
 -mp_popctrl_np_upper 60
 ########## BASIC NUMERICS ##############
--mx 32 #128 # Number of elements along x
--my 16 #32 # Number of elements along y
--mz 4 #64 # Number of elements along z
+-mx 8 #128 # Number of elements along x
+-my 8 #32 # Number of elements along y
+-mz 8 #64 # Number of elements along z
 -nsteps 5000000 # Max number of steps
 #-dt_max 1e-3 # Max timestep allowed
 #-dt_min 1e-8
@@ -38,6 +38,7 @@
 ################ BCs ##################
 #-model_subduction_oblique_IC
 #-model_subduction_oblique_open_base
+-model_subduction_oblique_use_v_dot_n
 -model_subduction_oblique_BC
 -model_subduction_oblique_Arctangent_KMIN
 -model_subduction_oblique_normV 6.0
