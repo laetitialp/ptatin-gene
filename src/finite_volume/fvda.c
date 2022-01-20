@@ -2462,6 +2462,7 @@ PetscErrorCode eval_F_upwind_local(FVDA fv,const PetscReal domain_geom_coor[],co
         {
           PetscReal g_D = bcvalue;
           X_p = 2.0 * g_D - X_m;
+          flux = v_n * X_p;
         }
           break;
         
@@ -2470,15 +2471,15 @@ PetscErrorCode eval_F_upwind_local(FVDA fv,const PetscReal domain_geom_coor[],co
           /* What to do with non-zero flux?? */
           PetscReal g_N = bcvalue;
           X_p = (0.0) * g_N + X_m;
+          flux = v_n * X_p;
         }
           break;
           
         default:
-          SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Must set one of Dirichlet or Neumann");
+          PetscPrintf(PETSC_COMM_SELF,"[F][inflow] face %D bc not set. Should set one of Dirichlet or Neumann. Assuming zero flux\n",f);
+          flux = 0.0;
           break;
       }
-      
-      flux = v_n * X_p;
       F[c_m] += flux * dS;
       
     }
@@ -2574,6 +2575,9 @@ PetscErrorCode eval_F_central_local(FVDA fv,const PetscReal domain_geom_coor[],c
           PetscReal g_D = bcvalue;
           
           X_p = 2.0 * g_D - X_m;
+          
+          X_avg = 0.5 * (X_p + X_m);
+          flux  = v_n * X_avg;
         }
           break;
           
@@ -2582,16 +2586,17 @@ PetscErrorCode eval_F_central_local(FVDA fv,const PetscReal domain_geom_coor[],c
           /* What to do with non-zero flux?? */
           PetscReal g_N = bcvalue;
           X_p = (0.0) * g_N + X_m;
+          
+          X_avg = 0.5 * (X_p + X_m);
+          flux  = v_n * X_avg;
         }
           break;
           
         default:
-          SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Must set one of Dirichlet or Neumann");
+          PetscPrintf(PETSC_COMM_SELF,"[F][inflow] face %D bc not set. Should set one of Dirichlet or Neumann. Assuming zero flux\n",f);
+          flux = 0.0;
           break;
       }
-      
-      X_avg = 0.5 * (X_p + X_m);
-      flux  = v_n * X_avg;
       F[c_m] += flux * dS;
       
     }
@@ -2694,6 +2699,8 @@ PetscErrorCode eval_F_diffusion_7point_local(FVDA fv,const PetscReal domain_geom
         PetscReal g_D = bcvalue;
         
         X_p = 2.0 * g_D - X_m;
+        
+        flux = k_face * (X_p - X_m) / dsn;
       }
         break;
         
@@ -2701,14 +2708,16 @@ PetscErrorCode eval_F_diffusion_7point_local(FVDA fv,const PetscReal domain_geom
       { /* Weak imposition of Neumann */
         PetscReal g_N = bcvalue;
         X_p = (dsn/k_face) * g_N + X_m;
+        
+        flux = k_face * (X_p - X_m) / dsn;
       }
         break;
 
       default:
-        SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Must set one of Dirichlet or Neumann");
+        PetscPrintf(PETSC_COMM_SELF,"[F][Diffusive flux] face %D bc not set. Should set one of Dirichlet or Neumann. Assuming zero flux\n",f);
+        flux = 0.0;
         break;
     }
-    flux = k_face * (X_p - X_m) / dsn;
     F[c_m] += flux * dS;
   }
   
@@ -2929,6 +2938,8 @@ PetscErrorCode eval_J_upwind_local(FVDA fv,const PetscReal domain_geom_coor[],co
         ierr = MatSetValue(J, c_m, c_m, 1.0 * v_n * dS * scalefactor, ADD_VALUES);CHKERRQ(ierr);
         break;
       default:
+        PetscPrintf(PETSC_COMM_SELF,"[J][inflow] face %D bc not set. Should set one of Dirichlet or Neumann. Assuming zero flux\n",f);
+        ierr = MatSetValue(J, c_m, c_m, 1.0 * v_n * dS * scalefactor, ADD_VALUES);CHKERRQ(ierr);
         break;
     }
   }
@@ -3042,6 +3053,7 @@ PetscErrorCode eval_J_diffusion_7point_local(FVDA fv,const PetscReal domain_geom
         //flux = (k_face/dsn) * (X_p - X_m) = (k_face/dsn) * ((dsn/k_face) * g_N + X_m - X_m) = 0
         break;
       default:
+        PetscPrintf(PETSC_COMM_SELF,"[J][Diffusive flux] face %D bc not set. Should set one of Dirichlet or Neumann. Assuming zero flux\n",f);
         break;
     }
   }
@@ -3324,6 +3336,8 @@ PetscErrorCode eval_F_upwind_hr_local_2reconstructions(FVDA fv,const PetscReal d
         {
           PetscReal g_D = bcvalue;
           X_p = 2.0 * g_D - X_m;
+          
+          flux = v_n * X_p;
         }
           break;
           
@@ -3332,14 +3346,16 @@ PetscErrorCode eval_F_upwind_hr_local_2reconstructions(FVDA fv,const PetscReal d
           /* What to do with non-zero flux?? */
           PetscReal g_N = bcvalue;
           X_p = (0.0) * g_N + X_m;
+          
+          flux = v_n * X_p;
         }
           break;
           
         default:
-          SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Must set one of Dirichlet or Neumann");
+          PetscPrintf(PETSC_COMM_SELF,"[F][inflow] face %D bc not set. Should set one of Dirichlet or Neumann. Assuming zero flux\n",f);
+          flux = 0.0;
           break;
       }
-      flux = v_n * X_p;
       F[c_m] += flux * dS;
     }
   }
@@ -3442,6 +3458,8 @@ PetscErrorCode eval_F_upwind_hr_local_SEQ(FVDA fv,const PetscReal domain_geom_co
         {
           PetscReal g_D = bcvalue;
           X_p = 2.0 * g_D - X_m;
+          
+          flux = v_n * X_p;
         }
           break;
           
@@ -3450,14 +3468,16 @@ PetscErrorCode eval_F_upwind_hr_local_SEQ(FVDA fv,const PetscReal domain_geom_co
           /* What to do with non-zero flux?? */
           PetscReal g_N = bcvalue;
           X_p = (0.0) * g_N + X_m;
+          
+          flux = v_n * X_p;
         }
           break;
           
         default:
-          SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Must set one of Dirichlet or Neumann");
+          PetscPrintf(PETSC_COMM_SELF,"[F][inflow] face %D bc not set. Should set one of Dirichlet or Neumann. Assuming zero flux\n",f);
+          flux = 0.0;
           break;
       }
-      flux = v_n * X_p;
       F[c_m] += flux * dS;
     }
   }
@@ -3602,6 +3622,8 @@ PetscErrorCode eval_F_upwind_hr_local_MPI(FVDA fv,const PetscReal domain_geom_co
         {
           PetscReal g_D = bcvalue;
           X_p = 2.0 * g_D - X_m;
+          
+          flux = v_n * X_p;
         }
           break;
           
@@ -3610,14 +3632,16 @@ PetscErrorCode eval_F_upwind_hr_local_MPI(FVDA fv,const PetscReal domain_geom_co
           /* What to do with non-zero flux?? */
           PetscReal g_N = bcvalue;
           X_p = (0.0) * g_N + X_m;
+          
+          flux = v_n * X_p;
         }
           break;
           
         default:
-          SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Must set one of Dirichlet or Neumann");
+          PetscPrintf(PETSC_COMM_SELF,"[F][inflow] face %D bc not set. Should set one of Dirichlet or Neumann. Assuming zero flux\n",f);
+          flux = 0.0;
           break;
       }
-      flux = v_n * X_p;
       F[c_m] += flux * dS;
     }
   }
@@ -3836,6 +3860,8 @@ PetscErrorCode eval_F_upwind_hr_bound_local(FVDA fv,const PetscReal range[],cons
         {
           PetscReal g_D = bcvalue;
           X_p = 2.0 * g_D - X_m;
+          
+          flux = v_n * X_p;
         }
           break;
           
@@ -3844,14 +3870,16 @@ PetscErrorCode eval_F_upwind_hr_bound_local(FVDA fv,const PetscReal range[],cons
           /* What to do with non-zero flux?? */
           PetscReal g_N = bcvalue;
           X_p = (0.0) * g_N + X_m;
+          
+          flux = v_n * X_p;
         }
           break;
           
         default:
-          SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Must set one of Dirichlet or Neumann");
+          PetscPrintf(PETSC_COMM_SELF,"[F][inflow] face %D bc not set. Should set one of Dirichlet or Neumann. Assuming zero flux\n",f);
+          flux = 0.0;
           break;
       }
-      flux = v_n * X_p;
       F[c_m] += flux * dS;
     }
   }
@@ -4004,6 +4032,8 @@ PetscErrorCode eval_F_diffusion_7point_hr_local(FVDA fv,const PetscReal domain_g
         PetscReal g_D = bcvalue;
         
         X_p = 2.0 * g_D - X_m;
+        
+        flux = k_face * (X_p - X_m) / dsn;
       }
         break;
         
@@ -4011,14 +4041,16 @@ PetscErrorCode eval_F_diffusion_7point_hr_local(FVDA fv,const PetscReal domain_g
       { /* Weak imposition of Neumann */
         PetscReal g_N = bcvalue;
         X_p = (dsn/k_face) * g_N + X_m;
+        
+        flux = k_face * (X_p - X_m) / dsn;
       }
         break;
         
       default:
-        SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Must set one of Dirichlet or Neumann");
+        PetscPrintf(PETSC_COMM_SELF,"[F][Diffusive flux] face %D bc not set. Should set one of Dirichlet or Neumann. Assuming zero flux\n",f);
+        flux = 0.0;
         break;
     }
-    flux = k_face * (X_p - X_m) / dsn;
     F[c_m] += flux * dS;
 
   }
@@ -4147,6 +4179,8 @@ PetscErrorCode eval_F_diffusion_7point_hr_local_store(FVDA fv,const PetscReal do
         PetscReal g_D = bcvalue;
         
         X_p = 2.0 * g_D - X_m;
+        
+        flux = k_face * (X_p - X_m) / dsn;
       }
         break;
         
@@ -4154,14 +4188,16 @@ PetscErrorCode eval_F_diffusion_7point_hr_local_store(FVDA fv,const PetscReal do
       { /* Weak imposition of Neumann */
         PetscReal g_N = bcvalue;
         X_p = (dsn/k_face) * g_N + X_m;
+        
+        flux = k_face * (X_p - X_m) / dsn;
       }
         break;
         
       default:
-        SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Must set one of Dirichlet or Neumann");
+        PetscPrintf(PETSC_COMM_SELF,"[F][Diffusive flux] face %D bc not set. Should set one of Dirichlet or Neumann. Assuming zero flux\n",f);
+        flux = 0.0;
         break;
     }
-    flux = k_face * (X_p - X_m) / dsn;
     F[c_m] += flux * dS;
     
   }
@@ -4367,6 +4403,8 @@ PetscErrorCode eval_F_diffusion_7point_hr_local_store_MPI(FVDA fv,const PetscRea
         PetscReal g_D = bcvalue;
         
         X_p = 2.0 * g_D - X_m;
+        
+        flux = k_face * (X_p - X_m) / dsn;
       }
         break;
         
@@ -4374,14 +4412,16 @@ PetscErrorCode eval_F_diffusion_7point_hr_local_store_MPI(FVDA fv,const PetscRea
       { /* Weak imposition of Neumann */
         PetscReal g_N = bcvalue;
         X_p = (dsn/k_face) * g_N + X_m;
+        
+        flux = k_face * (X_p - X_m) / dsn;
       }
         break;
         
       default:
-        SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Must set one of Dirichlet or Neumann");
+        PetscPrintf(PETSC_COMM_SELF,"[F][Diffusive flux] face %D bc not set. Should set one of Dirichlet or Neumann. Assuming zero flux\n",f);
+        flux = 0.0;
         break;
     }
-    flux = k_face * (X_p - X_m) / dsn;
     F[c_m] += flux * dS;
     
   }
