@@ -2457,7 +2457,7 @@ PetscErrorCode eval_F_upwind_local(FVDA fv,const PetscReal domain_geom_coor[],co
     } else { /* inflow */
       
       switch (bctype) {
-          
+        
         case FVFLUX_DIRICHLET_CONSTRAINT:
         {
           PetscReal g_D = bcvalue;
@@ -2474,6 +2474,7 @@ PetscErrorCode eval_F_upwind_local(FVDA fv,const PetscReal domain_geom_coor[],co
           break;
           
         default:
+          SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Must set one of Dirichlet or Neumann");
           break;
       }
       
@@ -2585,6 +2586,7 @@ PetscErrorCode eval_F_central_local(FVDA fv,const PetscReal domain_geom_coor[],c
           break;
           
         default:
+          SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Must set one of Dirichlet or Neumann");
           break;
       }
       
@@ -2703,6 +2705,7 @@ PetscErrorCode eval_F_diffusion_7point_local(FVDA fv,const PetscReal domain_geom
         break;
 
       default:
+        SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Must set one of Dirichlet or Neumann");
         break;
     }
     flux = k_face * (X_p - X_m) / dsn;
@@ -3333,6 +3336,7 @@ PetscErrorCode eval_F_upwind_hr_local_2reconstructions(FVDA fv,const PetscReal d
           break;
           
         default:
+          SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Must set one of Dirichlet or Neumann");
           break;
       }
       flux = v_n * X_p;
@@ -3450,6 +3454,7 @@ PetscErrorCode eval_F_upwind_hr_local_SEQ(FVDA fv,const PetscReal domain_geom_co
           break;
           
         default:
+          SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Must set one of Dirichlet or Neumann");
           break;
       }
       flux = v_n * X_p;
@@ -3609,6 +3614,7 @@ PetscErrorCode eval_F_upwind_hr_local_MPI(FVDA fv,const PetscReal domain_geom_co
           break;
           
         default:
+          SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Must set one of Dirichlet or Neumann");
           break;
       }
       flux = v_n * X_p;
@@ -3842,6 +3848,7 @@ PetscErrorCode eval_F_upwind_hr_bound_local(FVDA fv,const PetscReal range[],cons
           break;
           
         default:
+          SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Must set one of Dirichlet or Neumann");
           break;
       }
       flux = v_n * X_p;
@@ -4008,6 +4015,7 @@ PetscErrorCode eval_F_diffusion_7point_hr_local(FVDA fv,const PetscReal domain_g
         break;
         
       default:
+        SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Must set one of Dirichlet or Neumann");
         break;
     }
     flux = k_face * (X_p - X_m) / dsn;
@@ -4150,6 +4158,7 @@ PetscErrorCode eval_F_diffusion_7point_hr_local_store(FVDA fv,const PetscReal do
         break;
         
       default:
+        SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Must set one of Dirichlet or Neumann");
         break;
     }
     flux = k_face * (X_p - X_m) / dsn;
@@ -4369,6 +4378,7 @@ PetscErrorCode eval_F_diffusion_7point_hr_local_store_MPI(FVDA fv,const PetscRea
         break;
         
       default:
+        SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Must set one of Dirichlet or Neumann");
         break;
     }
     flux = k_face * (X_p - X_m) / dsn;
