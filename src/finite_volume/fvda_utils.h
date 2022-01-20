@@ -26,6 +26,7 @@ PetscErrorCode FVDAGetCellPropertyArrayRead(FVDA fv,PetscInt index,const PetscRe
 PetscErrorCode FVDAGetCellPropertyByNameArrayRead(FVDA fv,const char name[],const PetscReal *data[]);
 PetscErrorCode FVDAGetCellPropertyByNameArray(FVDA fv,const char name[],PetscReal *data[]);
 PetscErrorCode FVDACellPropertyGetInfo(FVDA fv,const char name[],PetscInt *index,PetscInt *len,PetscInt *bs);
+PetscErrorCode FVDACellPropertyQuery(FVDA fv,const char name[],PetscBool *found);
 
 PetscErrorCode FVDAGetFacePropertyInfo(FVDA fv,PetscInt *len,const char ***name);
 PetscErrorCode FVDARegisterFaceProperty(FVDA fv,const char name[],PetscInt blocksize);
@@ -34,6 +35,7 @@ PetscErrorCode FVDAGetFacePropertyArrayRead(FVDA fv,PetscInt index,const PetscRe
 PetscErrorCode FVDAGetFacePropertyByNameArrayRead(FVDA fv,const char name[],const PetscReal *data[]);
 PetscErrorCode FVDAGetFacePropertyByNameArray(FVDA fv,const char name[],PetscReal *data[]);
 PetscErrorCode FVDAFacePropertyGetInfo(FVDA fv,const char name[],PetscInt *index,PetscInt *len,PetscInt *bs);
+PetscErrorCode FVDAFacePropertyQuery(FVDA fv,const char name[],PetscBool *found);
 
 PetscErrorCode FVArrayCreate(FVArray *a);
 PetscErrorCode FVArrayDestroy(FVArray *a);
