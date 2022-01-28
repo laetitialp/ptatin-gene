@@ -1705,11 +1705,12 @@ static PetscErrorCode SetTimeDependantEnergy_BCs(pTatinCtx c,ModelSubductionObli
   ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_B,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
 
   /* Iterate through all boundary faces, if there is inflow redefine the bc value and bc flux method */
+  /*
   const DACellFace flist[] = { DACELL_FACE_W, DACELL_FACE_E, DACELL_FACE_B, DACELL_FACE_F };
   for (l=0; l<sizeof(flist)/sizeof(DACellFace); l++) {
     ierr = FVSetDirichletFromInflow(energy->fv,energy->T,flist[l]);CHKERRQ(ierr);
   }
-  
+  */
   PetscFunctionReturn(0);
 }
 
