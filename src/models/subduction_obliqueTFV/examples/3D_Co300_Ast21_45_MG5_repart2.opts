@@ -4,7 +4,7 @@
 ### Model ###
 -ptatin_model subduction_oblique # Used model
 -log_summary
--checkpoint_every_nsteps 10 
+-checkpoint_every_nsteps 5
 -checkpoint_every_ncpumins 720 
 -model_subduction_oblique_output_markers
 -output_path TEST_arctan
@@ -112,8 +112,8 @@
 -model_subduction_oblique_alpha_2 3.0e-5
 -model_subduction_oblique_beta_2 0.0
 -model_subduction_oblique_rho_2 2700.0
--model_subduction_oblique_heat_source_2 1.5e-6
--model_subduction_oblique_conductivity_2 0.27 #2.7
+-model_subduction_oblique_heat_source_2 0.0 #1.5e-6
+-model_subduction_oblique_conductivity_2 2.7
 #### Continental lower crust phase number 3 ####
 #### Anorthite Rybacki & Dresen 2000 ####
 -model_subduction_oblique_preexpA_3 13.4637
@@ -133,7 +133,7 @@
 -model_subduction_oblique_alpha_3 3.0e-5
 -model_subduction_oblique_beta_3 1.0e-11
 -model_subduction_oblique_rho_3 2850.0
--model_subduction_oblique_heat_source_3 0.3e-6
+-model_subduction_oblique_heat_source_3 0.0 #0.3e-6
 -model_subduction_oblique_conductivity_3 2.85
 #### Oceanic lithosphere mantle phase number 4 ####
 #### Dry peridotite Ranalli 1997 ####
@@ -259,7 +259,7 @@
 #---- SNES ----#
 -newton_its 0
 -snes_atol 1e-3
--snes_max_it 5
+-snes_max_it 1 #5
 -snes_rtol 1e-3
 -snes_monitor
 -snes_converged_reason
@@ -284,7 +284,7 @@
 	-fieldsplit_u_ksp_type fgmres
 	-fieldsplit_u_pc_type mg
 	-fieldsplit_u_pc_mg_levels 5
-        -fieldsplit_u_pc_mg_cycle_type v
+  -fieldsplit_u_pc_mg_cycle_type v
 	-fieldsplit_u_mg_levels_ksp_type gmres
 	-fieldsplit_u_mg_levels_pc_type jacobi
 	-fieldsplit_u_mg_levels_ksp_max_it 8
@@ -311,24 +311,34 @@
 				-fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_telescope_pc_type cholesky
 				-fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_pc_telescope_reduction_factor 1
 #### THERMAL SOLVER
--ptatin_energyfv_nsub 3,3,3
-#-energyfv_ksp_monitor
+-ptatin_energyfv_nsub 2,2,2
 -energyfv_snes_converged_reason
 -energyfv_ksp_type fgmres
+-energyfv_ksp_monitor
+-energyfv_snes_monitor
+-energyfv_snes_rtol 1.0e-6
 -energyfv_snes_ksp_ew
 -energyfv_snes_ksp_ew_rtol0 1.0e-2
 -energyfv_snes_ksp_ew_version 1
 -energyfv_snes_lag_preconditioner -2
--energyfv_snes_monitor
--energyfv_snes_rtol 1.0e-6
--energyfv_mg_levels_esteig_ksp_norm_type none
--energyfv_mg_levels_esteig_ksp_type cg
--energyfv_mg_levels_ksp_chebyshev_esteig 0,0.01,0,1.1
--energyfv_mg_levels_ksp_max_it 8
+
+-energyfv_pc_type jacobi
+
+#-energyfv_pc_type gamg
+#-energyfv_pc_mg_levels 3
+#-energyfv_mg_levels_pc_type jacobi
+#-energyfv_mg_levels_ksp_type fgmres #chebyshev
+#-energyfv_mg_levels_ksp_max_it 8
+#-energyfv_mg_coarse_pc_type telescope
+#-energyfv_mg_coarse_pc_telescope_reduction_factor 8
+#-energyfv_mg_coarse_telescope_pc_type cholesky
+
+
+#-energyfv_mg_levels_esteig_ksp_norm_type none
+#-energyfv_mg_levels_esteig_ksp_type cg
+#-energyfv_mg_levels_ksp_chebyshev_esteig 0,0.01,0,1.1
 #-energyfv_mg_levels_ksp_norm_type none
--energyfv_mg_levels_ksp_type gmres #chebyshev
--energyfv_mg_levels_pc_type bjacobi
--energyfv_pc_type gamg
+
 -fvpp_ksp_monitor
 -fvpp_ksp_rtol 1.0e-10
 -fvpp_ksp_type cg

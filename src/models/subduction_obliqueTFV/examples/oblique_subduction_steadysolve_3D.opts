@@ -336,7 +336,7 @@
 
 
 #### THERMAL SOLVER
--ptatin_energyfv_nsub 3,3,3
+-ptatin_energyfv_nsub 2,2,2
 -energyfv_ksp_monitor
 -energyfv_ksp_type fgmres
 -energyfv_mg_coarse_pc_type redundant
