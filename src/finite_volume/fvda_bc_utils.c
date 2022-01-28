@@ -124,8 +124,8 @@ PetscErrorCode FVSetDirichletFromInflow(FVDA fv,Vec T,DACellFace face)
     cell = fv->face_element_map[2*fvid + 0];
     // If Inflow set the BC value to the cell value
     if (vdotn[fvid] < 0.0){
-      fv->boundary_value[s + f] = _T[cell];
-      fv->boundary_flux[s + f] = FVFLUX_DIRICHLET_CONSTRAINT;
+      fv->boundary_value[s + f] = 0.0; //_T[cell];
+      fv->boundary_flux[s + f] = FVFLUX_NEUMANN_CONSTRAINT; //FVFLUX_DIRICHLET_CONSTRAINT;
     }
   }
 
