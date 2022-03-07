@@ -2935,11 +2935,11 @@ PetscErrorCode eval_J_upwind_local(FVDA fv,const PetscReal domain_geom_coor[],co
       case FVFLUX_NEUMANN_CONSTRAINT:
         //X_p   = (dL/kface) * g_N + X_m;
         //flux  = v_n * X_p = v_n ( (dL/kface) * g_N + X_m );
-        ierr = MatSetValue(J, c_m, c_m, 1.0 * v_n * dS * scalefactor, ADD_VALUES);CHKERRQ(ierr);
+        ierr = MatSetValueLocal(J, c_m, c_m, 1.0 * v_n * dS * scalefactor, ADD_VALUES);CHKERRQ(ierr);
         break;
       default:
         PetscPrintf(PETSC_COMM_SELF,"[J][inflow] face %D bc not set. Should set one of Dirichlet or Neumann. Assuming zero flux\n",f);
-        ierr = MatSetValue(J, c_m, c_m, 1.0 * v_n * dS * scalefactor, ADD_VALUES);CHKERRQ(ierr);
+        ierr = MatSetValueLocal(J, c_m, c_m, 1.0 * v_n * dS * scalefactor, ADD_VALUES);CHKERRQ(ierr);
         break;
     }
   }
