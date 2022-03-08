@@ -179,11 +179,13 @@ PetscErrorCode ModelInitialize_RiftSubd(pTatinCtx c,void *ctx)
   data->open_base       = PETSC_FALSE;
   data->freeslip_z      = PETSC_FALSE;
   data->notches         = PETSC_FALSE;
+  data->use_v_dot_n     = PETSC_FALSE;
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-output_markers",&data->output_markers,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-is_2D",         &data->is_2D,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-open_base",     &data->open_base,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-freeslip_z",    &data->freeslip_z,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-notches",       &data->notches,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-use_v_dot_n",   &data->use_v_dot_n,NULL);CHKERRQ(ierr);
   
   /* Surface diffusion */
   data->Kero = 1.0e-6;
@@ -938,7 +940,7 @@ static PetscErrorCode ModelApplyBoundaryCondition_OrthogonalExtension_Freeslip(B
 
 static PetscErrorCode ModelApplyBoundaryCondition_OrthogonalExtension_Plitho(BCList bclist,DM dav,pTatinCtx c,ModelRiftSubdCtx *data)
 {
-  PetscReal      vxl,vxr,vy,zero=0.0;
+  PetscReal      vxl,vxr,zero=0.0;
   PetscErrorCode ierr;
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
@@ -951,13 +953,42 @@ static PetscErrorCode ModelApplyBoundaryCondition_OrthogonalExtension_Plitho(BCL
   
   /* Neumann lithostatic pressure on faces of normal z */
 
-  /* Inflow on bottom face */
-  vy = 2.0*data->v_extension*((data->Ly - data->Oy)*(data->Lz - data->Oz))/((data->Lx - data->Ox)*(data->Lz - data->Oz));
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&vy);CHKERRQ(ierr);
+  /* Inflow on bottom face based on \int_Gamma v.n dS */
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&data->vy);CHKERRQ(ierr);
   
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ModelComputeBottomFlow_Vdotn(pTatinCtx c,Vec X, ModelRiftSubdCtx *data)
+{
+  PhysCompStokes stokes;
+  DM             dms;
+  Vec            velocity,pressure;
+  PetscReal      int_u_dot_n[HEX_EDGES];
+  PetscErrorCode ierr;
+
+  ierr = pTatinGetStokesContext(c,&stokes);CHKERRQ(ierr);
+  ierr = PhysCompStokesGetDMComposite(stokes,&dms);CHKERRQ(ierr);
+  ierr = DMCompositeGetAccess(dms,X,&velocity,&pressure);CHKERRQ(ierr);  
+  
+  ierr = StokesComputeVdotN(stokes,velocity,int_u_dot_n);CHKERRQ(ierr);
+  PetscPrintf(PETSC_COMM_WORLD,"imin: %+1.4e\n",int_u_dot_n[ WEST_FACE  -1]);
+  PetscPrintf(PETSC_COMM_WORLD,"imax: %+1.4e\n",int_u_dot_n[ EAST_FACE  -1]);
+  PetscPrintf(PETSC_COMM_WORLD,"jmin: %+1.4e\n",int_u_dot_n[ SOUTH_FACE -1]);
+  PetscPrintf(PETSC_COMM_WORLD,"jmax: [free surface] %+1.4e\n",int_u_dot_n[ NORTH_FACE -1]);
+  PetscPrintf(PETSC_COMM_WORLD,"kmin: %+1.4e\n",int_u_dot_n[ BACK_FACE  -1]);
+  PetscPrintf(PETSC_COMM_WORLD,"kmax: %+1.4e\n",int_u_dot_n[ FRONT_FACE -1]);
+
+  ierr = DMCompositeRestoreAccess(dms,X,&velocity,&pressure);CHKERRQ(ierr);
+
+  if (c->step == 0) {
+    data->vy = 0.0;
+  } else {
+    data->vy = (int_u_dot_n[WEST_FACE-1]+int_u_dot_n[EAST_FACE-1]+int_u_dot_n[BACK_FACE-1]+int_u_dot_n[FRONT_FACE-1])/((data->Lx - data->Ox)*(data->Lz - data->Oz));
+    PetscPrintf(PETSC_COMM_WORLD,"v.n = %+1.4e\n",data->vy);    
+  }
+  PetscFunctionReturn(0);
+}
 
 static PetscErrorCode ModelApplyBoundaryCondition_Transition_Freeslip(BCList bclist,DM dav,pTatinCtx c,ModelRiftSubdCtx *data)
 {
@@ -1050,7 +1081,8 @@ PetscErrorCode ModelApplyBoundaryConditionVelocity_RiftSubd(BCList bclist,DM dav
     if (data->freeslip_z) {
       ierr = ModelApplyBoundaryCondition_OrthogonalExtension_Freeslip(bclist,dav,c,data);CHKERRQ(ierr);
     } else {
-      ierr = ModelApplyBoundaryCondition_OrthogonalExtension(bclist,dav,c,data);CHKERRQ(ierr);
+      //ierr = ModelApplyBoundaryCondition_OrthogonalExtension(bclist,dav,c,data);CHKERRQ(ierr);
+      ierr = ModelApplyBoundaryCondition_OrthogonalExtension_Plitho(bclist,dav,c,data);CHKERRQ(ierr);
     }
   } else if (time >= data->BC_time[3]) {
     if (data->freeslip_z) {
@@ -1103,6 +1135,7 @@ PetscErrorCode ModelApplyBoundaryCondition_RiftSubd(pTatinCtx c,void *ctx)
   ModelRiftSubdCtx *data;
   PhysCompStokes   stokes;
   DM               stokes_pack,dav,dap;
+  Vec              X = NULL;
   PetscBool        active_energy;
   PetscErrorCode   ierr;
 
@@ -1116,7 +1149,12 @@ PetscErrorCode ModelApplyBoundaryCondition_RiftSubd(pTatinCtx c,void *ctx)
   ierr = pTatinGetStokesContext(c,&stokes);CHKERRQ(ierr);
   stokes_pack = stokes->stokes_pack;
   ierr = DMCompositeGetEntries(stokes_pack,&dav,&dap);CHKERRQ(ierr);
-  
+  if (data->use_v_dot_n) {
+    ierr = pTatinPhysCompGetData_Stokes(c,&X);CHKERRQ(ierr); 
+    /* Compute vy as int_S v.n dS */
+    ierr = ModelComputeBottomFlow_Vdotn(c,X,data);CHKERRQ(ierr);
+  }
+
   ierr = ModelApplyBoundaryConditionVelocity_RiftSubd(stokes->u_bclist,dav,c,data);CHKERRQ(ierr);
   
   /* Define boundary conditions for any other physics */

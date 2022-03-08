@@ -37,10 +37,10 @@ typedef struct {
   PetscReal y_continent[3];
   PetscReal BC_time[4];
   PetscReal wz,Kero;
-  PetscReal normV, angle_v, v_extension;
+  PetscReal normV, angle_v, v_extension, vy;
   PetscReal Ttop, Tbottom;
   PetscBool output_markers,is_2D,open_base;
-  PetscBool freeslip_z,notches;
+  PetscBool freeslip_z,notches,use_v_dot_n;
   PetscInt  n_phases;
   
 } ModelRiftSubdCtx;
