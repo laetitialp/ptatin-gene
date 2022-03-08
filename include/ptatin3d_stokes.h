@@ -95,6 +95,8 @@ PetscErrorCode PhysCompStokesGetSurfaceQuadrature(PhysCompStokes stokes,HexEleme
 PetscErrorCode PhysCompStokesGetSurfaceQuadratureAllCellData(PhysCompStokes stokes,HexElementFace fid,QPntSurfCoefStokes *coeffs[]);
 PetscErrorCode PhysCompStokesUpdateSurfaceQuadrature(PhysCompStokes stokes);
 PetscErrorCode PhysCompSetup_Stokes(PhysCompStokes ctx,DM dav);
+PetscErrorCode pTatinPhysCompAttachData_Stokes(pTatinCtx user,Vec X);
+PetscErrorCode pTatinPhysCompGetData_Stokes(pTatinCtx user,Vec *X);
 
 #ifdef __cplusplus
 }
