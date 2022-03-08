@@ -168,8 +168,8 @@
 	-fieldsplit_p_pc_type bjacobi
 	#---- Fieldsplit u ----#
 	-fieldsplit_u_ksp_max_it 100
-	-fieldsplit_u_ksp_monitor_true_residual
-	#-fieldsplit_u_ksp_monitor
+	#-fieldsplit_u_ksp_monitor_true_residual
+	-fieldsplit_u_ksp_monitor
 	-fieldsplit_u_ksp_converged_reason
 	-fieldsplit_u_ksp_rtol 1.0e-2
 	-fieldsplit_u_ksp_type fgmres
