@@ -2659,7 +2659,7 @@ PetscErrorCode Run_NonLinearFV(pTatinCtx user,Vec v1,Vec v2)
     ierr = pTatinLogBasicDMDA(user,"EnergyFV",dmfv);CHKERRQ(ierr);
     if (v2) {
       energyfv->T = v2;
-      ierr = pTatinCtxAttachModelData(user,"PhysCompEnergy_T",(void*)energyfv->T);CHKERRQ(ierr);
+      //ierr = pTatinCtxAttachModelData(user,"PhysCompEnergy_T",(void*)energyfv->T);CHKERRQ(ierr);
     }
   }
   
