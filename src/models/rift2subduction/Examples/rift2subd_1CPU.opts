@@ -35,6 +35,7 @@
 -model_RiftSubd_Oz 0.0e+5 # Origin for z axis
 ################ BCs ##################
 #-model_RiftSubd_open_base
+-model_RiftSubd_use_v_dot_n
 -model_RiftSubd_v_extension 1.0
 -model_RiftSubd_normV 3.0
 -model_RiftSubd_angle_v 30.0 #45.0
