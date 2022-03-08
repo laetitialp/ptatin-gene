@@ -306,6 +306,7 @@ PetscErrorCode pTatin3d_SteadyStateDiffusion_TFV_driver(int argc,char **argv)
   PhysCompEnergyFV  energyfv = NULL;
   DM                multipys_pack,dav,dap;
   PetscBool         active_energy;
+  Vec               X = NULL;
   DataBucket        materialpoint_db;
   PetscLogDouble    time[2];
   PetscBool         view_ic = PETSC_FALSE;
@@ -353,6 +354,10 @@ PetscErrorCode pTatin3d_SteadyStateDiffusion_TFV_driver(int argc,char **argv)
 
   ierr = pTatinLogBasicDMDA(user,"Velocity",dav);CHKERRQ(ierr);
   ierr = pTatinLogBasicDMDA(user,"Pressure",dap);CHKERRQ(ierr);
+
+  /* work vector for solution and residual (Not used in this driver but necessary for the BC function) */
+  ierr = DMCreateGlobalVector(multipys_pack,&X);CHKERRQ(ierr);
+  ierr = pTatinPhysCompAttachData_Stokes(user,X);CHKERRQ(ierr);
 
   /* generate energy solver */
   /* NOTE - Generating the thermal solver here will ensure that the initial geometry on the mechanical model is copied */
@@ -459,6 +464,7 @@ PetscErrorCode pTatin3d_SteadyStateDiffusion_TFV_driver(int argc,char **argv)
   }
   
   ierr = VecDestroy(&energyfv->G);CHKERRQ(ierr);
+  ierr = VecDestroy(&X);CHKERRQ(ierr);
   ierr = pTatin3dDestroyContext(&user);
 
   PetscFunctionReturn(0);
