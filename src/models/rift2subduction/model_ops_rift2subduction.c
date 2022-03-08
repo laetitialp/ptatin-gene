@@ -940,10 +940,13 @@ static PetscErrorCode ModelApplyBoundaryCondition_OrthogonalExtension_Freeslip(B
 
 static PetscErrorCode ModelApplyBoundaryCondition_OrthogonalExtension_Plitho(BCList bclist,DM dav,pTatinCtx c,ModelRiftSubdCtx *data)
 {
+  BC_Lithosphere bcdata;
   PetscReal      vxl,vxr,zero=0.0;
   PetscErrorCode ierr;
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+
+  ierr = PetscMalloc(sizeof(struct _p_BC_Lithosphere),&bcdata);CHKERRQ(ierr);
 
   vxl = -data->v_extension;
   vxr =  data->v_extension;
@@ -951,11 +954,21 @@ static PetscErrorCode ModelApplyBoundaryCondition_OrthogonalExtension_Plitho(BCL
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_constant,(void*)&vxr);CHKERRQ(ierr);
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_constant,(void*)&vxl);CHKERRQ(ierr);
   
+  bcdata->y_lab = data->y_continent[2];
+  bcdata->v = 0.0;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,2,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,2,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
+  
   /* Neumann lithostatic pressure on faces of normal z */
 
-  /* Inflow on bottom face based on \int_Gamma v.n dS */
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&data->vy);CHKERRQ(ierr);
-  
+  if (data->open_base) {
+    /* If base is opened and we have a free surface we need to set vy somewhere */
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,1,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,1,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
+  } else {
+    /* Inflow on bottom face based on \int_Gamma v.n dS */
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&data->vy);CHKERRQ(ierr);
+  }
   PetscFunctionReturn(0);
 }
 
@@ -984,8 +997,9 @@ static PetscErrorCode ModelComputeBottomFlow_Vdotn(pTatinCtx c,Vec X, ModelRiftS
   if (c->step == 0) {
     data->vy = 0.0;
   } else {
-    data->vy = (int_u_dot_n[WEST_FACE-1]+int_u_dot_n[EAST_FACE-1]+int_u_dot_n[BACK_FACE-1]+int_u_dot_n[FRONT_FACE-1])/((data->Lx - data->Ox)*(data->Lz - data->Oz));
-    PetscPrintf(PETSC_COMM_WORLD,"v.n = %+1.4e\n",data->vy);    
+    /* Compute the vy velocity, if we want inflow vy > 0 so flip the sign */
+    data->vy = -(int_u_dot_n[WEST_FACE-1]+int_u_dot_n[EAST_FACE-1]+int_u_dot_n[BACK_FACE-1]+int_u_dot_n[FRONT_FACE-1])/((data->Lx - data->Ox)*(data->Lz - data->Oz));
+    PetscPrintf(PETSC_COMM_WORLD,"Vy = %+1.4e\n",data->vy);    
   }
   PetscFunctionReturn(0);
 }
