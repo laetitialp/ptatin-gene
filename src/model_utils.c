@@ -1561,3 +1561,136 @@ PetscErrorCode MPntStdCoordinateMaxIdentifyPointIndex(DataBucket materialpoint_d
 
   PetscFunctionReturn(0);
 }
+
+/*
+ Computes
+   \int_S \vec u \cdot \vec n dS
+ over each (six) faces of the physical domain.
+
+ Collective on stokes->dau
+
+ [Notes]
+ * u_dot_n[] must be of length HEX_EDGES = 6.
+ * int_u_dot_n[] must be valid on all ranks, even those which have a sub-domain which does not intersect the physical boundary.
+ * For convienence the ordering of the output array does not follow
+     typedef enum { HEX_FACE_Pxi=0, HEX_FACE_Nxi, HEX_FACE_Peta, HEX_FACE_Neta, HEX_FACE_Pzeta, HEX_FACE_Nzeta } HexElementFace;
+   rather it uses
+     typedef enum { FRONT_FACE=1, BACK_FACE, EAST_FACE, NORTH_FACE, SOUTH_FACE, WEST_FACE } BoundaryFaceType;
+   However (unfortunately), this enum starts at 1 (rather than zero),
+   hence if you want the NORTH value of \int_S u.n dS you access it via
+     PetscReal flux = int_u_dot_n[ NORTH_FACE - 1 ].
+*/
+PetscErrorCode StokesComputeVdotN(PhysCompStokes stokes,Vec u,PetscReal int_u_dot_n[])
+{
+  PetscErrorCode     ierr;
+  DM                 dau;
+  PetscInt           q,d,k,e,edge,fe;
+  Vec                ul,gcoords;
+  PetscInt           nel,nen_u;
+  const PetscInt     *elnidx_u;
+  PetscReal          elcoords[3*Q2_NODES_PER_EL_3D];
+  PetscReal          elu[3*Q2_NODES_PER_EL_3D],elu_face[3*Q2_NODES_PER_EL_2D];
+  PetscInt           vel_el_lidx[3*U_BASIS_FUNCTIONS];
+  QPntSurfCoefStokes *quadpoints,*cell_quadpoints;
+  PetscReal          NIu_surf[NQP][Q2_NODES_PER_EL_2D];
+  SurfaceQuadrature  surfQ;
+  const PetscScalar  *_ufield,*_coords;
+  PetscReal          _int_u_dot_n[HEX_EDGES];
+
+  PetscFunctionBegin;
+  ierr = PhysCompStokesGetDMs(stokes,&dau,NULL);CHKERRQ(ierr);
+  ierr = DMGetLocalVector(dau,&ul);CHKERRQ(ierr);
+  ierr = DMGlobalToLocalBegin(dau,u,INSERT_VALUES,ul);CHKERRQ(ierr);
+  ierr = DMGlobalToLocalEnd  (dau,u,INSERT_VALUES,ul);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(ul,&_ufield);CHKERRQ(ierr);
+
+  ierr = DMGetCoordinatesLocal(dau,&gcoords);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(gcoords,&_coords);CHKERRQ(ierr);
+
+  ierr = DMDAGetElements_pTatinQ2P1(dau,&nel,&nen_u,&elnidx_u);CHKERRQ(ierr);
+
+  ierr = PetscMemzero(_int_u_dot_n,sizeof(PetscReal)*HEX_EDGES);CHKERRQ(ierr);
+  for (edge=0; edge<HEX_EDGES; edge++) {
+    ConformingElementFamily element;
+    int                     *face_local_indices;
+    PetscInt                nfaces,nqp;
+    QPoint2d                *qp2;
+
+    surfQ   = stokes->surfQ[edge];
+    element = surfQ->e;
+    nfaces  = surfQ->nfaces;
+    qp2     = surfQ->gp2;
+    nqp     = surfQ->ngp;
+    ierr = SurfaceQuadratureGetAllCellData_Stokes(surfQ,&quadpoints);CHKERRQ(ierr);
+
+    /* evaluate the quadrature points using the 1D basis for this edge */
+    for (q=0; q<nqp; q++) {
+      element->basis_NI_2D(&qp2[q],NIu_surf[q]);
+    }
+
+    face_local_indices = element->face_node_list[edge];
+
+    for (fe=0; fe<nfaces; fe++) { /* for all elements on this domain face */
+      /* get element index of the face element we want to integrate */
+      e = surfQ->element_list[fe];
+
+      ierr = StokesVelocity_GetElementLocalIndices(vel_el_lidx,(PetscInt*)&elnidx_u[nen_u*e]);CHKERRQ(ierr);
+      ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx_u[nen_u*e],(PetscScalar*)_coords);CHKERRQ(ierr);
+
+      ierr = DMDAGetVectorElementFieldQ2_3D(elu,(PetscInt*)&elnidx_u[nen_u*e],(PetscScalar*)_ufield);CHKERRQ(ierr);
+      for (k=0; k<Q2_NODES_PER_EL_2D; k++) {
+        int nidx3d;
+
+        /* map 2D index over element face to 3D element space */
+        nidx3d = face_local_indices[k];
+        elu_face[3*k  ] = elu[3*nidx3d  ];
+        elu_face[3*k+1] = elu[3*nidx3d+1];
+        elu_face[3*k+2] = elu[3*nidx3d+2];
+      }
+
+      ierr = SurfaceQuadratureGetCellData_Stokes(surfQ,quadpoints,fe,&cell_quadpoints);CHKERRQ(ierr);
+
+      for (q=0; q<nqp; q++) {
+        PetscScalar fac,surfJ_q,u_q[] = {0,0,0},u_dot_n_q = 0;
+
+        element->compute_surface_geometry_3D(
+                                             element,
+                                             elcoords,    // should contain 27 points with dimension 3 (x,y,z) //
+                                             surfQ->face_id,   // edge index 0,...,7 //
+                                             &qp2[q], // should contain 1 point with dimension 2 (xi,eta)   //
+                                             NULL,NULL, &surfJ_q ); // n0[],t0 contains 1 point with dimension 3 (x,y,z) //
+        fac = qp2[q].w * surfJ_q;
+
+        /* interpolate v to face quadrature point */
+        for (k=0; k<Q2_NODES_PER_EL_2D; k++) {
+          for (d=0; d<3; d++) {
+            u_q[d] += NIu_surf[q][k] * elu_face[3*k+d];
+          }
+        }
+
+        /* compute v.n at quadrature point */
+        for (d=0; d<3; d++) {
+          u_dot_n_q += u_q[d] * cell_quadpoints[q].normal[d];
+        }
+
+        /* accumulate integrand */
+        _int_u_dot_n[edge] += fac * u_dot_n_q;
+      }
+    }
+  }
+
+  ierr = VecRestoreArrayRead(gcoords,&_coords);CHKERRQ(ierr);
+  ierr = VecRestoreArrayRead(ul,&_ufield);CHKERRQ(ierr);
+  ierr = DMRestoreLocalVector(dau,&ul);CHKERRQ(ierr);
+
+  /* perform reduction */
+  ierr = MPI_Allreduce(MPI_IN_PLACE,_int_u_dot_n,HEX_EDGES,MPIU_REAL,MPIU_SUM,PetscObjectComm((PetscObject)dau));CHKERRQ(ierr);
+  int_u_dot_n[ NORTH_FACE -1 ] = _int_u_dot_n[ HEX_FACE_Peta  ];
+  int_u_dot_n[ EAST_FACE  -1 ] = _int_u_dot_n[ HEX_FACE_Pxi   ];
+  int_u_dot_n[ SOUTH_FACE -1 ] = _int_u_dot_n[ HEX_FACE_Neta  ];
+  int_u_dot_n[ WEST_FACE  -1 ] = _int_u_dot_n[ HEX_FACE_Nxi   ];
+  int_u_dot_n[ FRONT_FACE -1 ] = _int_u_dot_n[ HEX_FACE_Pzeta ];
+  int_u_dot_n[ BACK_FACE  -1 ] = _int_u_dot_n[ HEX_FACE_Nzeta ];
+
+  PetscFunctionReturn(0);
+}
