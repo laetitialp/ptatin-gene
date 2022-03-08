@@ -936,6 +936,29 @@ static PetscErrorCode ModelApplyBoundaryCondition_OrthogonalExtension_Freeslip(B
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ModelApplyBoundaryCondition_OrthogonalExtension_Plitho(BCList bclist,DM dav,pTatinCtx c,ModelRiftSubdCtx *data)
+{
+  PetscReal      vxl,vxr,vy,zero=0.0;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+
+  vxl = -data->v_extension;
+  vxr =  data->v_extension;
+  /* Extension on faces of normal x */
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_constant,(void*)&vxr);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_constant,(void*)&vxl);CHKERRQ(ierr);
+  
+  /* Neumann lithostatic pressure on faces of normal z */
+
+  /* Inflow on bottom face */
+  vy = 2.0*data->v_extension*((data->Ly - data->Oy)*(data->Lz - data->Oz))/((data->Lx - data->Ox)*(data->Lz - data->Oz));
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&vy);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
+
 static PetscErrorCode ModelApplyBoundaryCondition_Transition_Freeslip(BCList bclist,DM dav,pTatinCtx c,ModelRiftSubdCtx *data)
 {
   PetscReal      time,zero=0.0;
