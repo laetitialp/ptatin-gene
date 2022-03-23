@@ -998,7 +998,7 @@ static PetscErrorCode ModelComputeBottomFlow_Vdotn(pTatinCtx c,Vec X, ModelRiftS
     data->vy = 0.0;
   } else {
     /* Compute the vy velocity, if we want inflow vy > 0 so flip the sign */
-    data->vy = -(int_u_dot_n[WEST_FACE-1]+int_u_dot_n[EAST_FACE-1]+int_u_dot_n[BACK_FACE-1]+int_u_dot_n[FRONT_FACE-1])/((data->Lx - data->Ox)*(data->Lz - data->Oz));
+    data->vy = (int_u_dot_n[WEST_FACE-1]+int_u_dot_n[EAST_FACE-1]+int_u_dot_n[BACK_FACE-1]+int_u_dot_n[FRONT_FACE-1])/((data->Lx - data->Ox)*(data->Lz - data->Oz));
     PetscPrintf(PETSC_COMM_WORLD,"Vy = %+1.4e\n",data->vy);    
   }
   PetscFunctionReturn(0);
