@@ -9,12 +9,12 @@
 -checkpoint_every_nsteps 1 
 -checkpoint_every_ncpumins 720 
 #-model_RiftSubd_output_markers
--output_path TEST_Lambda
+-output_path litho_plithoKMAX_open_base
 -model_RiftSubd_temperature_ic_from_file
 ########## BASIC NUMERICS ##############
--mx 16 #8 # Number of elements along x
--my 16 #8 # Number of elements along y
--mz 16 #8 # Number of elements along z
+-mx 8 #8 # Number of elements along x
+-my 8 #8 # Number of elements along y
+-mz 8 #8 # Number of elements along z
 -nsteps 10 #000000 # Max number of steps
 #-dt_max 1e-3 # Max timestep allowed
 #-dt_min 1e-8
@@ -26,10 +26,11 @@
 -model_RiftSubd_Ly 0.0e+3 # Origin for y axis
 -model_RiftSubd_Lz 6.0e+5 # Max length along z
 -model_RiftSubd_Ox 0.0e+5 # Origin for x axis
--model_RiftSubd_Oy -6.8e+5 # Max depth along y axis
+-model_RiftSubd_Oy -2.5e+5 # Max depth along y axis
 -model_RiftSubd_Oz 0.0e+5 # Origin for z axis
 ################ BCs ##################
 #-model_RiftSubd_open_base
+-model_RiftSubd_litho_plitho_z
 -model_RiftSubd_v_extension 1.0
 -model_RiftSubd_normV 3.0
 -model_RiftSubd_angle_v 30.0 #45.0

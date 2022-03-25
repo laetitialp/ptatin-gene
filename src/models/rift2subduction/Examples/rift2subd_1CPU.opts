@@ -8,7 +8,7 @@
 -checkpoint_every_nsteps 1 
 -checkpoint_every_ncpumins 720 
 -model_RiftSubd_output_markers
--output_path R2S_init
+-output_path one_notch
 -model_RiftSubd_temperature_ic_from_file
 ########## MARKERS #################
 -lattice_layout_Nx 24
@@ -17,9 +17,9 @@
 -mp_popctrl_np_lower 0
 -mp_popctrl_np_upper 100
 ########## BASIC NUMERICS ##############
--mx 16 #8 # Number of elements along x
--my 16 #8 # Number of elements along y
--mz 16 #8 # Number of elements along z
+-mx 8 # Number of elements along x
+-my 8 # Number of elements along y
+-mz 8 # Number of elements along z
 -nsteps 20 #000000 # Max number of steps
 #-dt_max 5.0e-8 # Max timestep allowed
 #-dt_min 1e-8
@@ -31,11 +31,16 @@
 -model_RiftSubd_Ly 0.0e+3 # Origin for y axis
 -model_RiftSubd_Lz 6.0e+5 # Max length along z
 -model_RiftSubd_Ox 0.0e+5 # Origin for x axis
--model_RiftSubd_Oy -6.8e+5 # Max depth along y axis
+-model_RiftSubd_Oy -2.5e+5 # Max depth along y axis
 -model_RiftSubd_Oz 0.0e+5 # Origin for z axis
 ################ BCs ##################
-#-model_RiftSubd_open_base
--model_RiftSubd_use_v_dot_n
+#-model_RiftSubd_litho_plitho_z
+#-model_RiftSubd_full_face_plitho_z
+#-model_RiftSubd_freeslip_z
+#-model_RiftSubd_full_face_plithoKMAX
+-model_RiftSubd_litho_plithoKMAX
+-model_RiftSubd_open_base
+#-model_RiftSubd_use_v_dot_n
 -model_RiftSubd_v_extension 1.0
 -model_RiftSubd_normV 3.0
 -model_RiftSubd_angle_v 30.0 #45.0
@@ -45,6 +50,10 @@
 ############### Geometry ###############
 #-model_RiftSubd_wz_width 200.0e3
 #-model_RiftSubd_notches 
+-model_RiftSubd_one_notch
+-model_RiftSubd_notch_position 0.5,0.0
+-model_RiftSubd_sigma_x 2.0
+-model_RiftSubd_sigma_z 2.0
 ############ Phases Parameters #############
 #### Continental upper crust phase number 0 ####
 #### Quartzite Ranalli 1997 ####
