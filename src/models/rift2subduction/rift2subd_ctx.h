@@ -40,7 +40,8 @@ typedef struct {
   PetscReal normV, angle_v, v_extension, vy;
   PetscReal Ttop, Tbottom;
   PetscBool output_markers,is_2D,open_base;
-  PetscBool freeslip_z,notches,use_v_dot_n;
+  PetscBool freeslip_z,notches,use_v_dot_n,straight_wz,one_notch;
+  PetscBool litho_plitho_z,full_face_plitho_z,full_face_plithoKMAX,litho_plithoKMAX;
   PetscInt  n_phases;
   
 } ModelRiftSubdCtx;

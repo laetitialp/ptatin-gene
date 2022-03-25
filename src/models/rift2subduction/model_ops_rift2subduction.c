@@ -70,6 +70,8 @@ static const char MODEL_NAME_RS[] = "model_RiftSubd_";
 
 static PetscErrorCode ModelSetMaterialParameters(pTatinCtx c, ModelRiftSubdCtx *data);
 PetscErrorCode SwarmMPntStd_CoordAssignment_FaceLatticeLayout3d_epsilon(DM da,PetscInt Nxp[],PetscReal perturb, PetscReal epsilon, PetscInt face_idx,DataBucket db);
+static PetscReal Gaussian2D(PetscReal A, PetscReal a, PetscReal b, PetscReal c, PetscReal x, PetscReal x0, PetscReal z, PetscReal z0);
+
 
 PetscErrorCode ModelInitialize_RiftSubd(pTatinCtx c,void *ctx)
 {
@@ -174,18 +176,30 @@ PetscErrorCode ModelInitialize_RiftSubd(pTatinCtx c,void *ctx)
     PetscPrintf(PETSC_COMM_WORLD,"BC time [%d] = %1.3e Myr\n",i,data->BC_time[i]);
   }
   
-  data->output_markers  = PETSC_FALSE;
-  data->is_2D           = PETSC_FALSE;
-  data->open_base       = PETSC_FALSE;
-  data->freeslip_z      = PETSC_FALSE;
-  data->notches         = PETSC_FALSE;
-  data->use_v_dot_n     = PETSC_FALSE;
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-output_markers",&data->output_markers,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-is_2D",         &data->is_2D,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-open_base",     &data->open_base,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-freeslip_z",    &data->freeslip_z,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-notches",       &data->notches,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-use_v_dot_n",   &data->use_v_dot_n,NULL);CHKERRQ(ierr);
+  data->output_markers       = PETSC_FALSE;
+  data->is_2D                = PETSC_FALSE;
+  data->open_base            = PETSC_FALSE;
+  data->freeslip_z           = PETSC_FALSE;
+  data->litho_plitho_z       = PETSC_FALSE;
+  data->full_face_plitho_z   = PETSC_FALSE;
+  data->full_face_plithoKMAX = PETSC_FALSE;
+  data->litho_plithoKMAX     = PETSC_FALSE;
+  data->notches              = PETSC_FALSE;
+  data->straight_wz          = PETSC_FALSE;
+  data->one_notch            = PETSC_FALSE;
+  data->use_v_dot_n          = PETSC_FALSE;
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-output_markers",       &data->output_markers,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-is_2D",                &data->is_2D,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-open_base",            &data->open_base,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-freeslip_z",           &data->freeslip_z,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-litho_plitho_z",       &data->litho_plitho_z,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-full_face_plitho_z",   &data->full_face_plitho_z,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-full_face_plithoKMAX", &data->full_face_plithoKMAX,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-litho_plithoKMAX",     &data->litho_plithoKMAX,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-notches",              &data->notches,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-straight_wz",          &data->straight_wz,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-one_notch",            &data->one_notch,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-use_v_dot_n",          &data->use_v_dot_n,NULL);CHKERRQ(ierr);
   
   /* Surface diffusion */
   data->Kero = 1.0e-6;
@@ -478,7 +492,14 @@ PetscErrorCode ModelApplyInitialMeshGeometry_RiftSubd(pTatinCtx c,void *ctx)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ModelApplyInitialMaterialGeometry_RiftSubd_LeftWZ(pTatinCtx c,ModelRiftSubdCtx *data)
+static PetscReal Gaussian2D(PetscReal A, PetscReal a, PetscReal b, PetscReal c, PetscReal x, PetscReal x0, PetscReal z, PetscReal z0)
+{ 
+  PetscReal value=0.0;
+  value = A * (PetscExpReal( -( a*(x-x0)*(x-x0) + 2*b*(x-x0)*(z-z0) + c*(z-z0)*(z-z0) ) ) );
+  return value;
+}
+
+static PetscErrorCode ModelApplyInitialMaterialGeometry_RiftSubd_StraightWZ(pTatinCtx c,ModelRiftSubdCtx *data)
 {
   DataBucket                db;
   DataField                 PField_std,PField_pls;
@@ -546,7 +567,7 @@ static PetscErrorCode ModelApplyInitialMaterialGeometry_RiftSubd_LeftWZ(pTatinCt
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ModelApplyInitialMaterialGeometry_RiftSubd_Notch(pTatinCtx c,ModelRiftSubdCtx *data)
+static PetscErrorCode ModelApplyInitialMaterialGeometry_RiftSubd_2Notches(pTatinCtx c,ModelRiftSubdCtx *data)
 {
   DataBucket                db;
   DataField                 PField_std,PField_pls;
@@ -615,7 +636,7 @@ static PetscErrorCode ModelApplyInitialMaterialGeometry_RiftSubd_Notch(pTatinCtx
       }
       if (position[2] >= z1) {
         a  = position[0]-x1;
-        b  = position[2]-z0;
+        b  = position[2]-z1;
         n1 = ptatin_RandomNumberGetDouble(0.0,0.6) * PetscExpReal( -( PetscPowReal(a,2)/2.0*PetscPowReal(sigma_x,2) +
                                                                       PetscPowReal(b,2)/2.0*PetscPowReal(sigma_z,2) ) );
       } else {
@@ -632,18 +653,125 @@ static PetscErrorCode ModelApplyInitialMaterialGeometry_RiftSubd_Notch(pTatinCtx
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ModelApplyInitialMaterialGeometry_RiftSubd_1Notch(pTatinCtx c,ModelRiftSubdCtx *data)
+{
+  DataBucket                db;
+  DataField                 PField_std,PField_pls;
+  PetscInt                  p,nn;
+  PetscReal                 x0,z0,sigma_x,sigma_z,L_frac[2];
+  PetscReal                 aa,bb,cc;
+  PetscBool                 found=PETSC_FALSE;
+  int                       n_mp_points;
+  PetscErrorCode            ierr;
+  
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+  
+  /* define properties on material points */
+  db = c->materialpoint_db;
+  DataBucketGetDataFieldByName(db,MPntStd_classname,&PField_std);
+  DataFieldGetAccess(PField_std);
+  DataFieldVerifyAccess(PField_std,sizeof(MPntStd));
+
+  DataBucketGetDataFieldByName(db,MPntPStokesPl_classname,&PField_pls);
+  DataFieldGetAccess(PField_pls);
+  DataFieldVerifyAccess(PField_pls,sizeof(MPntPStokesPl));
+  
+  /* Parameters for the gaussian weak zone */
+  L_frac[0] = L_frac[1] = 0.5;
+  nn = 10;
+  ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME_RS,"-notch_position",L_frac,&nn,&found);CHKERRQ(ierr);
+  if (found) {
+    if (nn != 2) {
+      SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 2 values for -notch_position. Found %d",nn);
+    }
+  }
+  x0 = data->Ox + (data->Lx - data->Ox)*L_frac[0];
+  z0 = data->Oz + (data->Lz - data->Oz)*L_frac[1];
+  
+  sigma_x = 3.0e-1;
+  sigma_z = 3.0e-1;
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_RS,"-sigma_x",&sigma_x,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_RS,"-sigma_z",&sigma_z,NULL);CHKERRQ(ierr);
+  aa = 0.5*sigma_x*sigma_x;
+  bb = 0.0;
+  cc = 0.5*sigma_z*sigma_z;
+
+  DataBucketGetSizes(db,&n_mp_points,0,0);
+  for (p=0; p<n_mp_points; p++) {
+    MPntStd       *material_point;
+    MPntPStokesPl *mpprop_pls;
+    PetscReal     n0;
+    int           region_idx;
+    double        *position;
+    float         pls;
+    short         yield;
+
+    DataFieldAccessPoint(PField_std,p,(void**)&material_point);
+    DataFieldAccessPoint(PField_pls,p,(void**)&mpprop_pls);
+
+    /* Access using the getter function */
+    MPntStdGetField_global_coord(material_point,&position);
+    /* Set an initial small random noise on plastic strain */
+    pls = ptatin_RandomNumberGetDouble(0.0,0.03);
+    /* Set yield to none */
+    yield = 0;
+    /* Set default region index to 0 */
+    region_idx = 0;
+    /* Attribute region index to layers */
+    if (position[1] <= data->y_continent[0]) { region_idx = 1; }
+    if (position[1] <= data->y_continent[1]) { region_idx = 2; }
+    if (position[1] <= data->y_continent[2]) { region_idx = 3; }
+    /* Set an initial plastic strain as a weak zone */
+    if (position[1] >= data->y_continent[2]) {
+      /* Compute a gaussian repartition for the random value set on the plastic strain */
+      n0 = Gaussian2D(ptatin_RandomNumberGetDouble(0.0,0.8),aa,bb,cc,position[0],x0,position[2],z0);
+      pls += n0;
+    }
+    MPntStdSetField_phase_index(material_point,region_idx);
+    MPntPStokesPlSetField_yield_indicator(mpprop_pls,yield);
+    MPntPStokesPlSetField_plastic_strain(mpprop_pls,pls);
+  }
+  DataFieldRestoreAccess(PField_std);
+  DataFieldRestoreAccess(PField_pls);
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode ModelApplyInitialMaterialGeometry_RiftSubd(pTatinCtx c,void *ctx)
 {
   ModelRiftSubdCtx *data = (ModelRiftSubdCtx*)ctx;
+  PetscInt         weak_zone_type;
   PetscErrorCode   ierr;
   PetscFunctionBegin;
   
-  if (!data->notches) {
-    ierr = ModelApplyInitialMaterialGeometry_RiftSubd_LeftWZ(c,data);CHKERRQ(ierr);
-  } else {
-    ierr = ModelApplyInitialMaterialGeometry_RiftSubd_Notch(c,data);CHKERRQ(ierr);
+  weak_zone_type = -1;
+  if (data->straight_wz) {
+    weak_zone_type = 0;
+  } else if (data->notches) {
+    weak_zone_type = 1;
+  } else if (data->one_notch) {
+    weak_zone_type = 2;
   }
-  
+
+  switch(weak_zone_type) 
+  {
+    case 0:
+      ierr = ModelApplyInitialMaterialGeometry_RiftSubd_StraightWZ(c,data);CHKERRQ(ierr);
+      break;
+
+    case 1:
+      ierr = ModelApplyInitialMaterialGeometry_RiftSubd_2Notches(c,data);CHKERRQ(ierr);
+      break;
+
+    case 2:
+      ierr = ModelApplyInitialMaterialGeometry_RiftSubd_1Notch(c,data);CHKERRQ(ierr);
+      break;
+
+    default:
+      PetscPrintf(PETSC_COMM_WORLD,"[[ WARNING ]] INITIAL WEAK ZONE NOT SET, RUNNING DEFAULT STRAIGHT WZ !!!\n");
+      ierr = ModelApplyInitialMaterialGeometry_RiftSubd_StraightWZ(c,data);CHKERRQ(ierr);
+      break;
+  }
   PetscFunctionReturn(0);
 }
 
@@ -771,42 +899,6 @@ PetscBool BCListEvaluator_Lithosphere(PetscScalar position[],PetscScalar *value,
     impose_dirichlet = PETSC_FALSE;
   }
   return impose_dirichlet;
-}
-
-static PetscErrorCode ModelApplyBoundaryCondition_OrthogonalExtension(BCList bclist,DM dav,pTatinCtx c,ModelRiftSubdCtx *data)
-{
-  BC_Lithosphere bcdata;
-  PetscReal      vxl,vxr,zero=0.0;
-  PetscErrorCode ierr;
-  
-  PetscFunctionBegin;
-  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
-  ierr = PetscMalloc(sizeof(struct _p_BC_Lithosphere),&bcdata);CHKERRQ(ierr);
-  
-  vxl = -data->v_extension;
-  vxr =  data->v_extension;
-  
-  bcdata->y_lab = data->y_continent[2];
-  bcdata->v = vxl;
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
-  bcdata->v = 0.0;
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,2,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,1,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
-  
-  bcdata->y_lab = data->y_continent[2];
-  bcdata->v = vxr;
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
-  bcdata->v = 0.0;
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,2,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,1,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
-  
-  if (!data->open_base) {
-    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
-    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
-    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
-  }
-  ierr = PetscFree(bcdata);CHKERRQ(ierr);
-  PetscFunctionReturn(0);
 }
 
 static PetscErrorCode ModelApplyBoundaryCondition_Transition(BCList bclist,DM dav,pTatinCtx c,ModelRiftSubdCtx *data)
@@ -938,23 +1030,31 @@ static PetscErrorCode ModelApplyBoundaryCondition_OrthogonalExtension_Freeslip(B
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ModelApplyBoundaryCondition_OrthogonalExtension_Plitho(BCList bclist,DM dav,pTatinCtx c,ModelRiftSubdCtx *data)
+static PetscErrorCode ModelApplyBoundaryCondition_OrthogonalExtension_Plitho(BCList bclist,DM dav,pTatinCtx c,ModelRiftSubdCtx *data, PetscBool full_face_extension)
 {
   BC_Lithosphere bcdata;
-  PetscReal      vxl,vxr,zero=0.0;
+  PetscReal      vxl,vxr;
   PetscErrorCode ierr;
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
 
   ierr = PetscMalloc(sizeof(struct _p_BC_Lithosphere),&bcdata);CHKERRQ(ierr);
+  /* Depth at which Dirichlet BCs are no more applied in BCListEvaluator_Lithosphere */
+  bcdata->y_lab = data->y_continent[2];
 
   vxl = -data->v_extension;
   vxr =  data->v_extension;
   /* Extension on faces of normal x */
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_constant,(void*)&vxr);CHKERRQ(ierr);
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_constant,(void*)&vxl);CHKERRQ(ierr);
-  
-  bcdata->y_lab = data->y_continent[2];
+  if (full_face_extension) {
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_constant,(void*)&vxr);CHKERRQ(ierr);
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_constant,(void*)&vxl);CHKERRQ(ierr);
+  } else {
+    bcdata->v = vxl;
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
+    bcdata->v = vxr;
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr); 
+  }
+
   bcdata->v = 0.0;
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,2,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,2,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
@@ -966,9 +1066,60 @@ static PetscErrorCode ModelApplyBoundaryCondition_OrthogonalExtension_Plitho(BCL
     ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,1,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
     ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,1,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
   } else {
-    /* Inflow on bottom face based on \int_Gamma v.n dS */
+    /* Inflow on bottom face based on \int_Gamma v.n dS 
+       If v.n not computed, vy = 0.0 */
     ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&data->vy);CHKERRQ(ierr);
   }
+  ierr = PetscFree(bcdata);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelApplyBoundaryCondition_OrthogonalExtension_PlithoKMAXFreeslipKMIN(BCList bclist,DM dav,pTatinCtx c,ModelRiftSubdCtx *data, PetscBool full_face_extension)
+{
+  BC_Lithosphere bcdata;
+  PetscReal      vxl,vxr,zero=0.0;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+
+  ierr = PetscMalloc(sizeof(struct _p_BC_Lithosphere),&bcdata);CHKERRQ(ierr);
+  /* Depth at which Dirichlet BCs are no more applied in BCListEvaluator_Lithosphere */
+  bcdata->y_lab = data->y_continent[2];
+
+  vxl = -data->v_extension;
+  vxr =  data->v_extension;
+  /* Extension on faces of normal x */
+  if (full_face_extension) {
+    PetscPrintf(PETSC_COMM_WORLD,"Applying extension on the whole face\n");
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_constant,(void*)&vxr);CHKERRQ(ierr);
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_constant,(void*)&vxl);CHKERRQ(ierr); 
+  } else {
+    PetscPrintf(PETSC_COMM_WORLD,"Applying extension in the lithosphere only\n");
+    bcdata->v = vxr;
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
+    bcdata->v = vxl;
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr); 
+  }
+
+  /* Free-slip KMIN */
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  /* Plitho KMAX */
+  
+  /* Base */
+  if (data->open_base) {
+    PetscPrintf(PETSC_COMM_WORLD,"Bottom boundary is open\n");
+    /* If base is opened and we have a free surface we need to set vy somewhere */
+    bcdata->v = 0.0;
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,1,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,1,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
+  } else {
+    /* Inflow on bottom face based on \int_Gamma v.n dS 
+       If v.n not computed, vy = 0.0 */
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&data->vy);CHKERRQ(ierr);
+  }
+  /* Free-surface */
+
+  ierr = PetscFree(bcdata);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -1075,6 +1226,81 @@ static PetscErrorCode ModelApplyBoundaryCondition_OrthogonalCompression_Freeslip
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode ModelApplyBoundaryConditionVelocity_RiftOnly(BCList bclist,DM dav,pTatinCtx c,ModelRiftSubdCtx *data)
+{ 
+  PetscInt       BC_case;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  BC_case = -1;
+  if (data->litho_plitho_z) {
+    BC_case = 0;
+  } else if (data->full_face_plitho_z) {
+    BC_case = 1;
+  } else if (data->freeslip_z) {
+    BC_case = 2;
+  } else if (data->full_face_plithoKMAX) {
+    BC_case = 3;
+  } else if (data->litho_plithoKMAX) {
+    BC_case = 4;
+  }
+
+  /* This function will apply BCs only for the rift case */
+  switch(BC_case)
+  {
+    case 0:
+      /* normal x faces: vx = v or -v, vy = 0, vz = 0 in the lithosphere plitho below
+         normal z faces: plitho
+         bottom:         vy inflow OR plitho (open base)
+         surface:        free-surface */
+      ierr = ModelApplyBoundaryCondition_OrthogonalExtension_Plitho(bclist,dav,c,data,PETSC_FALSE);CHKERRQ(ierr);
+      break;
+
+    case 1:
+      /* normal x faces: vx = v or -v on the whole face
+                         vz = 0 in the lithosphere
+                         vy = 0 in the lithosphere if open base
+         normal z faces: plitho
+         bottom:         vy inflow OR plitho (open base)
+         surface:        free-surface */
+      ierr = ModelApplyBoundaryCondition_OrthogonalExtension_Plitho(bclist,dav,c,data,PETSC_TRUE);CHKERRQ(ierr);
+      break;
+
+    case 2:
+      /* normal x faces: vx = v or -v on the whole face
+         normal z faces: free-slip
+         bottom:         vy inflow
+         surface:        free-surface */
+      ierr = ModelApplyBoundaryCondition_OrthogonalExtension_Freeslip(bclist,dav,c,data);CHKERRQ(ierr);
+      break;
+
+    case 3:
+      /* normal x faces: vx = v or -v on the whole face
+         normal z faces: zmin: free-slip
+                         zmax: plitho
+         bottom:         vy inflow OR plitho (open base)
+         surface:        free-surface */
+      ierr = ModelApplyBoundaryCondition_OrthogonalExtension_PlithoKMAXFreeslipKMIN(bclist,dav,c,data,PETSC_TRUE);CHKERRQ(ierr);
+      break;
+
+    case 4:
+      /* normal x faces: vx = v or -v in the lithosphere, plitho below
+         normal z faces: zmin: free-slip
+                         zmax: plitho
+         bottom:         vy inflow OR plitho (open base)
+         surface:        free-surface */
+      ierr = ModelApplyBoundaryCondition_OrthogonalExtension_PlithoKMAXFreeslipKMIN(bclist,dav,c,data,PETSC_FALSE);CHKERRQ(ierr);
+      break;
+
+    default:
+      SETERRQ(PetscObjectComm((PetscObject)dav),PETSC_ERR_USER,"Unknown BC type");
+      break;
+  }
+
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode ModelApplyBoundaryConditionVelocity_RiftSubd(BCList bclist,DM dav,pTatinCtx c,ModelRiftSubdCtx *data)
 {
   /* BC_time:                                            t3________ velocity
@@ -1092,12 +1318,7 @@ PetscErrorCode ModelApplyBoundaryConditionVelocity_RiftSubd(BCList bclist,DM dav
   ierr = pTatinGetTime(c,&time);CHKERRQ(ierr);
   /* Depending on time, apply the corresponding BC function */
   if (time < data->BC_time[0]) {
-    if (data->freeslip_z) {
-      ierr = ModelApplyBoundaryCondition_OrthogonalExtension_Freeslip(bclist,dav,c,data);CHKERRQ(ierr);
-    } else {
-      //ierr = ModelApplyBoundaryCondition_OrthogonalExtension(bclist,dav,c,data);CHKERRQ(ierr);
-      ierr = ModelApplyBoundaryCondition_OrthogonalExtension_Plitho(bclist,dav,c,data);CHKERRQ(ierr);
-    }
+    ierr = ModelApplyBoundaryConditionVelocity_RiftOnly(bclist,dav,c,data);CHKERRQ(ierr);
   } else if (time >= data->BC_time[3]) {
     if (data->freeslip_z) {
       ierr = ModelApplyBoundaryCondition_OrthogonalCompression_Freeslip(bclist,dav,c,data);CHKERRQ(ierr);
@@ -1167,6 +1388,9 @@ PetscErrorCode ModelApplyBoundaryCondition_RiftSubd(pTatinCtx c,void *ctx)
     ierr = pTatinPhysCompGetData_Stokes(c,&X);CHKERRQ(ierr); 
     /* Compute vy as int_S v.n dS */
     ierr = ModelComputeBottomFlow_Vdotn(c,X,data);CHKERRQ(ierr);
+  } else {
+    /* Assume free-slip base */
+    data->vy = 0.0;
   }
 
   ierr = ModelApplyBoundaryConditionVelocity_RiftSubd(stokes->u_bclist,dav,c,data);CHKERRQ(ierr);
