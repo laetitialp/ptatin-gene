@@ -9,7 +9,7 @@
 -checkpoint_every_nsteps 1 
 -checkpoint_every_ncpumins 720 
 #-model_RiftSubd_output_markers
--output_path litho_plithoKMAX_open_base
+-output_path one_notch
 -model_RiftSubd_temperature_ic_from_file
 ########## BASIC NUMERICS ##############
 -mx 8 #8 # Number of elements along x

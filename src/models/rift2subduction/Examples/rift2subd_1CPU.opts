@@ -39,7 +39,7 @@
 #-model_RiftSubd_freeslip_z
 #-model_RiftSubd_full_face_plithoKMAX
 -model_RiftSubd_litho_plithoKMAX
--model_RiftSubd_open_base
+#-model_RiftSubd_open_base
 #-model_RiftSubd_use_v_dot_n
 -model_RiftSubd_v_extension 1.0
 -model_RiftSubd_normV 3.0
