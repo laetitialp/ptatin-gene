@@ -361,6 +361,256 @@ PetscErrorCode FormFunctionLocal_U_tractionBC(PhysCompStokes user,DM dau,PetscSc
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode FormFunctionLocal_U_FSSA(PhysCompStokes user,DM dau,PetscReal theta,PetscReal dt,const PetscScalar ufield[],PetscScalar Ru[])
+{
+  PetscErrorCode     ierr;
+  PetscInt           p,d,k,e,edge,fe,nel,nen_u;
+  Vec                gcoords;
+  const PetscReal    *coords;
+  const PetscInt     *elnidx_u;
+  PetscReal          elcoords[3*Q2_NODES_PER_EL_3D];
+  PetscReal          elu[3*Q2_NODES_PER_EL_3D],elu_face[3*Q2_NODES_PER_EL_2D];
+  PetscReal          Fe[3*Q2_NODES_PER_EL_3D],Be[3*Q2_NODES_PER_EL_2D];
+  PetscInt           vel_el_lidx[3*U_BASIS_FUNCTIONS];
+  QPntSurfCoefStokes *s_quadpoints,*face_quadpoints;
+  PetscReal          NIu_surf[NQP][Q2_NODES_PER_EL_2D];
+  Quadrature         volQ;
+  SurfaceQuadrature  surfQ;
+  PetscReal          rho_cell;
+  QPntVolCoefStokes  *v_quadpoints,*cell_quadpoints;
+  
+  PetscFunctionBegin;
+  ierr = DMGetCoordinatesLocal(dau,&gcoords);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(gcoords,&coords);CHKERRQ(ierr);
+  ierr = DMDAGetElements_pTatinQ2P1(dau,&nel,&nen_u,&elnidx_u);CHKERRQ(ierr);
+
+  volQ = user->volQ;
+  ierr = VolumeQuadratureGetAllCellData_Stokes(volQ,&v_quadpoints);CHKERRQ(ierr);
+
+  for (edge=0; edge<HEX_EDGES; edge++) {
+    ConformingElementFamily element;
+    int                     *face_local_indices;
+    PetscInt                nfaces,ngp;
+    QPoint2d                *gp2;
+    
+    surfQ   = user->surfQ[edge];
+    element = surfQ->e;
+    nfaces  = surfQ->nfaces;
+    gp2     = surfQ->gp2;
+    ngp     = surfQ->ngp;
+    ierr = SurfaceQuadratureGetAllCellData_Stokes(surfQ,&s_quadpoints);CHKERRQ(ierr);
+    
+    /* evaluate the quadrature points using the 1D basis for this edge */
+    for (p=0; p<ngp; p++) {
+      element->basis_NI_2D(&gp2[p],NIu_surf[p]);
+    }
+    
+    face_local_indices = element->face_node_list[edge];
+    
+    for (fe=0; fe<nfaces; fe++) { /* for all elements on this domain face */
+      /* get element index of the face element we want to integrate */
+      e = surfQ->element_list[fe];
+      
+      ierr = StokesVelocity_GetElementLocalIndices(vel_el_lidx,(PetscInt*)&elnidx_u[nen_u*e]);CHKERRQ(ierr);
+      ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx_u[nen_u*e],(PetscScalar*)coords);CHKERRQ(ierr);
+      ierr = DMDAGetVectorElementFieldQ2_3D(elu,(PetscInt*)&elnidx_u[nen_u*e],(PetscScalar*)ufield);CHKERRQ(ierr);
+      for (k=0; k<Q2_NODES_PER_EL_2D; k++) {
+        int nidx3d;
+        
+        /* map 2D index over element face to 3D element space */
+        nidx3d = face_local_indices[k];
+        elu_face[3*k  ] = elu[3*nidx3d  ];
+        elu_face[3*k+1] = elu[3*nidx3d+1];
+        elu_face[3*k+2] = elu[3*nidx3d+2];
+      }
+      
+      ierr = SurfaceQuadratureGetCellData_Stokes(surfQ,s_quadpoints,fe,&face_quadpoints);CHKERRQ(ierr);
+
+      /* compute average density in the cell */
+      rho_cell = 0;
+      ierr = VolumeQuadratureGetCellData_Stokes(volQ,v_quadpoints,e,&cell_quadpoints);CHKERRQ(ierr);
+      for (p=0; p<volQ->npoints; p++) {
+        rho_cell += cell_quadpoints[p].rho;
+      }
+      rho_cell = (rho_cell) / ((PetscReal)volQ->npoints);
+      
+      /* assign constant to face quadrature */
+      for (p=0; p<ngp; p++) {
+        face_quadpoints[p].rho = rho_cell;
+      }
+
+      ierr = PetscMemzero(Fe,sizeof(PetscScalar)*Q2_NODES_PER_EL_3D*3);CHKERRQ(ierr);
+      ierr = PetscMemzero(Be,sizeof(PetscScalar)*Q2_NODES_PER_EL_2D*3);CHKERRQ(ierr);
+      
+      for (p=0; p<ngp; p++) {
+        PetscScalar fac,surfJ_p,v_q[] = {0,0,0},v_dot_n_q = 0;
+        
+        element->compute_surface_geometry_3D(
+                                             element,
+                                             elcoords,    // should contain 27 points with dimension 3 (x,y,z) //
+                                             surfQ->face_id,   // edge index 0,...,7 //
+                                             &gp2[p], // should contain 1 point with dimension 2 (xi,eta)   //
+                                             NULL,NULL, &surfJ_p ); // n0[],t0 contains 1 point with dimension 3 (x,y,z) //
+        
+        fac = gp2[p].w * surfJ_p * theta * dt * face_quadpoints[p].rho;
+
+        for (k=0; k<Q2_NODES_PER_EL_2D; k++) {
+          for (d=0; d<3; d++) {
+            v_q[d] += NIu_surf[p][k] * elu_face[3 * k + d];
+          }
+        }
+        for (d=0; d<3; d++) {
+          v_dot_n_q += v_q[d] * face_quadpoints[p].normal[d];
+        }
+        
+        for (k=0; k<Q2_NODES_PER_EL_2D; k++) {
+          Be[3*k  ] = Be[3*k  ] - fac * NIu_surf[p][k] * v_dot_n_q * user->gravity_vector[0];
+          Be[3*k+1] = Be[3*k+1] - fac * NIu_surf[p][k] * v_dot_n_q * user->gravity_vector[1];
+          Be[3*k+2] = Be[3*k+2] - fac * NIu_surf[p][k] * v_dot_n_q * user->gravity_vector[2];
+        }
+      }
+      
+      for (k=0; k<Q2_NODES_PER_EL_2D; k++) {
+        int nidx3d;
+        
+        nidx3d = face_local_indices[k];
+        Fe[3*nidx3d  ] = Be[3*k  ];
+        Fe[3*nidx3d+1] = Be[3*k+1];
+        Fe[3*nidx3d+2] = Be[3*k+2];
+      }
+      ierr = DMDASetValuesLocalStencil_AddValues_Stokes_Velocity(Ru,vel_el_lidx,Fe);CHKERRQ(ierr);
+    }
+  }
+  ierr = VecRestoreArrayRead(gcoords,&coords);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode FormFunctionLocal_U_FSSA_diag(PhysCompStokes user,DM dau,PetscReal theta,PetscReal dt,const PetscScalar ufield[],PetscScalar Ru[])
+{
+  PetscErrorCode     ierr;
+  PetscInt           p,d,k,e,edge,fe,nel,nen_u;
+  Vec                gcoords;
+  const PetscReal    *coords;
+  const PetscInt     *elnidx_u;
+  PetscReal          elcoords[3*Q2_NODES_PER_EL_3D];
+  PetscReal          elu[3*Q2_NODES_PER_EL_3D],elu_face[3*Q2_NODES_PER_EL_2D];
+  PetscReal          Fe[3*Q2_NODES_PER_EL_3D],Be[3*Q2_NODES_PER_EL_2D];
+  PetscInt           vel_el_lidx[3*U_BASIS_FUNCTIONS];
+  QPntSurfCoefStokes *s_quadpoints,*face_quadpoints;
+  PetscReal          NIu_surf[NQP][Q2_NODES_PER_EL_2D];
+  Quadrature         volQ;
+  SurfaceQuadrature  surfQ;
+  PetscReal          rho_cell;
+  QPntVolCoefStokes  *v_quadpoints,*cell_quadpoints;
+  
+  PetscFunctionBegin;
+  ierr = DMGetCoordinatesLocal(dau,&gcoords);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(gcoords,&coords);CHKERRQ(ierr);
+  ierr = DMDAGetElements_pTatinQ2P1(dau,&nel,&nen_u,&elnidx_u);CHKERRQ(ierr);
+  
+  volQ = user->volQ;
+  ierr = VolumeQuadratureGetAllCellData_Stokes(volQ,&v_quadpoints);CHKERRQ(ierr);
+  
+  for (edge=0; edge<HEX_EDGES; edge++) {
+    ConformingElementFamily element;
+    int                     *face_local_indices;
+    PetscInt                nfaces,ngp;
+    QPoint2d                *gp2;
+    
+    surfQ   = user->surfQ[edge];
+    element = surfQ->e;
+    nfaces  = surfQ->nfaces;
+    gp2     = surfQ->gp2;
+    ngp     = surfQ->ngp;
+    ierr = SurfaceQuadratureGetAllCellData_Stokes(surfQ,&s_quadpoints);CHKERRQ(ierr);
+    
+    /* evaluate the quadrature points using the 1D basis for this edge */
+    for (p=0; p<ngp; p++) {
+      element->basis_NI_2D(&gp2[p],NIu_surf[p]);
+    }
+    
+    face_local_indices = element->face_node_list[edge];
+    
+    for (fe=0; fe<nfaces; fe++) { /* for all elements on this domain face */
+      /* get element index of the face element we want to integrate */
+      e = surfQ->element_list[fe];
+      
+      ierr = StokesVelocity_GetElementLocalIndices(vel_el_lidx,(PetscInt*)&elnidx_u[nen_u*e]);CHKERRQ(ierr);
+      ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx_u[nen_u*e],(PetscScalar*)coords);CHKERRQ(ierr);
+      ierr = DMDAGetVectorElementFieldQ2_3D(elu,(PetscInt*)&elnidx_u[nen_u*e],(PetscScalar*)ufield);CHKERRQ(ierr);
+      for (k=0; k<Q2_NODES_PER_EL_2D; k++) {
+        int nidx3d;
+        
+        /* map 2D index over element face to 3D element space */
+        nidx3d = face_local_indices[k];
+        elu_face[3*k  ] = elu[3*nidx3d  ];
+        elu_face[3*k+1] = elu[3*nidx3d+1];
+        elu_face[3*k+2] = elu[3*nidx3d+2];
+      }
+      
+      ierr = SurfaceQuadratureGetCellData_Stokes(surfQ,s_quadpoints,fe,&face_quadpoints);CHKERRQ(ierr);
+      
+      /* compute average density in the cell */
+      rho_cell = 0;
+      ierr = VolumeQuadratureGetCellData_Stokes(volQ,v_quadpoints,e,&cell_quadpoints);CHKERRQ(ierr);
+      for (p=0; p<volQ->npoints; p++) {
+        rho_cell += cell_quadpoints[p].rho;
+      }
+      rho_cell = (rho_cell) / ((PetscReal)volQ->npoints);
+      
+      /* assign constant to face quadrature */
+      for (p=0; p<ngp; p++) {
+        face_quadpoints[p].rho = rho_cell;
+      }
+      
+      ierr = PetscMemzero(Fe,sizeof(PetscScalar)*Q2_NODES_PER_EL_3D*3);CHKERRQ(ierr);
+      ierr = PetscMemzero(Be,sizeof(PetscScalar)*Q2_NODES_PER_EL_2D*3);CHKERRQ(ierr);
+      
+      for (p=0; p<ngp; p++) {
+        PetscScalar fac,surfJ_p,v_q[] = {0,0,0},vj_nj_q[] = {0,0,0};
+        
+        element->compute_surface_geometry_3D(
+                                             element,
+                                             elcoords,    // should contain 27 points with dimension 3 (x,y,z) //
+                                             surfQ->face_id,   // edge index 0,...,7 //
+                                             &gp2[p], // should contain 1 point with dimension 2 (xi,eta)   //
+                                             NULL,NULL, &surfJ_p ); // n0[],t0 contains 1 point with dimension 3 (x,y,z) //
+        
+        fac = gp2[p].w * surfJ_p * theta * dt * face_quadpoints[p].rho;
+        
+        for (k=0; k<Q2_NODES_PER_EL_2D; k++) {
+          for (d=0; d<3; d++) {
+            v_q[d] += NIu_surf[p][k] * elu_face[3 * k + d];
+          }
+        }
+        for (d=0; d<3; d++) {
+          vj_nj_q[d] = v_q[d] * face_quadpoints[p].normal[d];
+        }
+        
+        for (k=0; k<Q2_NODES_PER_EL_2D; k++) {
+          Be[3*k  ] = Be[3*k  ] - fac * NIu_surf[p][k] * vj_nj_q[0] * user->gravity_vector[0];
+          Be[3*k+1] = Be[3*k+1] - fac * NIu_surf[p][k] * vj_nj_q[1] * user->gravity_vector[1];
+          Be[3*k+2] = Be[3*k+2] - fac * NIu_surf[p][k] * vj_nj_q[2] * user->gravity_vector[2];
+        }
+      }
+      
+      for (k=0; k<Q2_NODES_PER_EL_2D; k++) {
+        int nidx3d;
+        
+        nidx3d = face_local_indices[k];
+        Fe[3*nidx3d  ] = Be[3*k  ];
+        Fe[3*nidx3d+1] = Be[3*k+1];
+        Fe[3*nidx3d+2] = Be[3*k+2];
+      }
+      ierr = DMDASetValuesLocalStencil_AddValues_Stokes_Velocity(Ru,vel_el_lidx,Fe);CHKERRQ(ierr);
+    }
+  }
+  ierr = VecRestoreArrayRead(gcoords,&coords);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode FormFunctionLocal_P(PhysCompStokes user,DM dau,PetscScalar ufield[],DM dap,PetscScalar pfield[],PetscScalar Rp[])
 {
   PetscErrorCode ierr;
@@ -528,6 +778,9 @@ PetscErrorCode FormFunction_Stokes(SNES snes,Vec X,Vec F,void *ctx)
   /* momentum */
   ierr = FormFunctionLocal_U(stokes,dau,LA_Uloc,dap,LA_Ploc,LA_FUloc);CHKERRQ(ierr);
   ierr = FormFunctionLocal_U_tractionBC(stokes,dau,LA_Uloc,dap,LA_Ploc,LA_FUloc);CHKERRQ(ierr);
+  ierr = FormFunctionLocal_U_FSSA(stokes,dau,0.5,ptatin->dt,(const PetscScalar*)LA_Uloc,LA_FUloc);CHKERRQ(ierr);
+  //ierr = FormFunctionLocal_U_FSSA_diag(stokes,dau,0.5,ptatin->dt,(const PetscScalar*)LA_Uloc,LA_FUloc);CHKERRQ(ierr);
+  
 
   /* continuity */
   ierr = FormFunctionLocal_P(stokes,dau,LA_Uloc,dap,LA_Ploc,LA_FPloc);CHKERRQ(ierr);
