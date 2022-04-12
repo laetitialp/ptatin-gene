@@ -169,8 +169,8 @@ PetscErrorCode ModelInitialize_Transpression(pTatinCtx c,void *ctx)
   data->Tbottom = 1350.0; // Bottom temperature BC
 
   /* Z-bcs adding viscous borders */
-  data->iso_border   = 0;
-  ierr = PetscOptionsGetInt(NULL,MODEL_NAME_RS,"-iso_border",&data->iso_border,&flg);CHKERRQ(ierr);
+  data->iso_border   = PETSC_FALSE;
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_RS,"-iso_border",&data->iso_border,&flg);CHKERRQ(ierr);
 
   
   nn = 3;
