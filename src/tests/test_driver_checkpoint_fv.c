@@ -867,7 +867,7 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
 
   /* nonlinearitiers: markers => quad points */
   ierr = pTatin_EvaluateRheologyNonlinearities(user,dau,LA_Uloc,dap,LA_Ploc);CHKERRQ(ierr);
-  ierr = ModelApplyTractionFromLithoPressure(user,X);CHKERRQ(ierr);
+  ierr = ModelApplyTractionFromLithoPressure(user,X_s);CHKERRQ(ierr);
 
 
   /* interpolate coefficients */
