@@ -13,13 +13,13 @@
 -model_Transpression_temperature_ic_from_file
 ########## BASIC NUMERICS ##############
 -mx 16 #8 # Number of elements along x
--my 8 #8 # Number of elements along y
+-my 16 #8 # Number of elements along y
 -mz 16 #8 # Number of elements along z
 -nsteps 10 #000000 # Max number of steps
 #-dt_max 1e-3 # Max timestep allowed
 #-dt_min 1e-8
 -output_frequency 1
--dt_max_surface_displacement 5.0e-4
+-dt_max_surface_displacement 1.0e-3
 ########### Box Geometry ################
 #-model_Transpression_is_2D
 -model_Transpression_Lx 256e+3  # Max length along x
