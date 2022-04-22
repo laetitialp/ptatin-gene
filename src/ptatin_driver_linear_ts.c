@@ -53,6 +53,7 @@ static const char help[] = "Stokes solver using Q2-Pm1 mixed finite elements.\n"
 #include "mesh_update.h"
 #include "mp_advection.h"
 #include "material_point_popcontrol.h"
+#include "litho_pressure_PDESolve.h"
 
 #include "dmda_element_q2p1.h"
 #include "element_utils_q2.h"
@@ -1065,6 +1066,8 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
     ierr = pTatinModel_Output(user->model,user,X,"icbc");CHKERRQ(ierr);
   }
 
+  ierr = ModelApplyTractionFromLithoPressure(user,X);
+
   ierr = SNESCreate(PETSC_COMM_WORLD,&snes);CHKERRQ(ierr);
   ierr = SNESSetFunction(snes,F,FormFunction_Stokes,user);CHKERRQ(ierr);
   ierr = SNESSetJacobian(snes,A,B,FormJacobian_Stokes,user);CHKERRQ(ierr);
@@ -1205,7 +1208,7 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
     ierr = pTatinModel_ApplyBoundaryCondition(model,user);CHKERRQ(ierr);
     /* Coarse grid setup: Configure boundary conditions */
     ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,dav_hierarchy,model,user);CHKERRQ(ierr);
-
+    ierr = ModelApplyTractionFromLithoPressure(user,X);
     /* solve */
     /* a) configure stokes opertors */
     ierr = pTatin3dCreateStokesOperators(user->stokes_ctx,is_stokes_field,

@@ -616,6 +616,7 @@ PetscErrorCode pTatin3dCreateContext(pTatinCtx *ctx)
   /* init */
   user->stokes_ctx = NULL;
   user->energy_ctx = NULL;
+  user->litho_p_ctx = NULL;
 //  user->coords_ctx = NULL;
 
   user->pack     = NULL; /* DM composite for velocity and pressure */
@@ -694,6 +695,7 @@ PetscErrorCode pTatin3dDestroyContext(pTatinCtx *ctx)
 
   ierr = PetscContainerDestroy(&user->model_data);CHKERRQ(ierr);
 
+  PetscLogDefaultBegin();
   {
     char  logfile[PETSC_MAX_PATH_LEN];
     PetscViewer viewer;
