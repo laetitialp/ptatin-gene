@@ -19,6 +19,7 @@ static const char help[] = "Prototype pTatin3D driver using finite volume transp
 #include "stokes_assembly.h"
 #include "dmda_element_q2p1.h"
 #include "dmda_duplicate.h"
+#include "dmda_redundant.h"
 #include "dmda_project_coords.h"
 #include "dmda_update_coords.h"
 #include "monitors.h"
@@ -32,7 +33,7 @@ static const char help[] = "Prototype pTatin3D driver using finite volume transp
 
 #define MAX_MG_LEVELS 20
 
-typedef enum { OP_TYPE_REDISC_ASM=0, OP_TYPE_REDISC_MF, OP_TYPE_GALERKIN } OperatorType;
+typedef enum { OP_TYPE_REDISC_ASM=0, OP_TYPE_REDISC_MF, OP_TYPE_GALERKIN, OP_TYPE_MFGALERKIN, OP_TYPE_SNESFD } OperatorType;
 
 typedef struct {
   PetscInt     nlevels;
@@ -46,6 +47,330 @@ typedef struct {
   BCList       *u_bclist;
   IS           *is_stokes_field;
 } AuuMultiLevelCtx;
+
+PetscErrorCode MatAssembleMFGalerkin(DM dav_fine,BCList u_bclist_fine,Quadrature volQ_fine,DM dav_coarse,Mat Ac)
+{
+  PetscInt    refi,refj,refk,nni,nnj,nnk,n,sei,sej,sek;
+  PetscInt    ic,jc,kc,iif,jjf,kkf;
+  PetscInt    lmk,lmj,lmi;
+  PetscInt    lmk_coarse,lmj_coarse,lmi_coarse;
+  DM          daf,dac,cda;
+  DMBoundaryType wrap[] = { DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE };
+  Mat         Acell,Ac_el,P;
+  Vec              gcoords;
+  PetscReal        *LA_gcoords;
+  PetscInt         q,nqp,ii,jj;
+  PetscReal         WEIGHT[NQP],XI[NQP][3];
+  QPntVolCoefStokes *quadrature_points,*cell_quadrature_points;
+  PetscReal      NI[NQP][NPE],GNI[NQP][3][NPE];
+  PetscReal      detJ[NQP],dNudx[NQP][NPE],dNudy[NQP][NPE],dNudz[NQP][NPE];
+  PetscInt       nel,nen_v;
+  const PetscInt *elnidx_v;
+  PetscInt       nel_cell,nen_v_cell;
+  const PetscInt *elnidx_v_cell;
+  PetscInt       nel_coarse,nen_v_coarse;
+  const PetscInt *elnidx_v_coarse;
+  PetscReal      el_coords[3*Q2_NODES_PER_EL_3D],el_eta[MAX_QUAD_PNTS];
+  PetscReal      Ae[Q2_NODES_PER_EL_3D * Q2_NODES_PER_EL_3D * U_DOFS * U_DOFS];
+  PetscReal      fac,diagD[NSTRESS];
+  PetscInt       NUM_GINDICES,ge_eqnums[3*Q2_NODES_PER_EL_3D];
+  ISLocalToGlobalMapping ltog;
+  const PetscInt *GINDICES;
+  const PetscInt *GINDICES_cell;
+  const PetscInt *GINDICES_coarse;
+  PetscInt       NUM_GINDICES_cell,ge_eqnums_cell[3*Q2_NODES_PER_EL_3D];
+  PetscInt       NUM_GINDICES_coarse,ge_eqnums_coarse[3*Q2_NODES_PER_EL_3D];
+  PetscScalar    *Ac_entries;
+  PetscLogDouble t0,t1,t[6];
+  PetscErrorCode ierr;
+  
+  
+  ierr = MatZeroEntries(Ac);CHKERRQ(ierr);
+  
+  ierr = DMDAGetLocalSizeElementQ2(dav_fine,&lmi,&lmj,&lmk);CHKERRQ(ierr);
+  ierr = DMDAGetLocalSizeElementQ2(dav_coarse,&lmi_coarse,&lmj_coarse,&lmk_coarse);CHKERRQ(ierr);
+  
+  ierr = DMDAGetRefinementFactor(dav_fine,&refi,&refj,&refk);CHKERRQ(ierr);
+  
+  nni = 2*refi + 1;
+  nnj = 2*refj + 1;
+  nnk = 2*refk + 1;
+  
+  PetscPrintf(PETSC_COMM_WORLD,"MatAssembleMFGalerkin:\n");
+  PetscPrintf(PETSC_COMM_WORLD,"  Q2 cell problem contains: [%D x %D x %D] elements, [%D x %D x %D] nodes\n",refi,refj,refk,nni,nnj,nnk);
+  
+  ierr = x_DMDACreate3d(PETSC_COMM_SELF,wrap,DMDA_STENCIL_BOX,nni,nnj,nnk, 1,1,1, 3,2, 0,0,0,&daf);CHKERRQ(ierr);
+  ierr = DMSetUp(daf);CHKERRQ(ierr);
+  ierr = DMDASetElementType_Q2(daf);CHKERRQ(ierr);
+  //ierr = DMDASetUniformCoordinates(daf, 0.0,1.0, 0.0,1.0, 0.0,1.0);CHKERRQ(ierr); /* not compatable with using -da_processors_x etc */
+  
+  ierr = x_DMDACreate3d(PETSC_COMM_SELF,wrap,DMDA_STENCIL_BOX,3,3,3, 1,1,1, 3,2, 0,0,0,&dac);CHKERRQ(ierr);
+  ierr = DMSetUp(dac);CHKERRQ(ierr);
+  ierr = DMDASetElementType_Q2(dac);CHKERRQ(ierr);
+  //ierr = DMDASetUniformCoordinates(dac, 0.0,1.0, 0.0,1.0, 0.0,1.0);CHKERRQ(ierr);
+  
+  ierr = DMCreateInterpolation(dac,daf,&P,NULL);CHKERRQ(ierr);
+  
+  /* check nlocal_elements_i is divisible by ref_i: I don't want to build any off proc elements needed for the cell problem */
+  ierr = DMDAGetCornersElementQ2(dav_fine,&sei,&sej,&sek,&lmi,&lmj,&lmk);CHKERRQ(ierr);
+  if (sei%refi != 0) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Start element (i) must be divisible by %D",refi); }
+  if (sej%refj != 0) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Start element (j) must be divisible by %D",refj); }
+  if (sek%refk != 0) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Start element (k) must be divisible by %D",refk); }
+  
+  if (lmi%refi != 0) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Local element size (i) must be divisible by %D",refi); }
+  if (lmj%refj != 0) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Local element size (j) must be divisible by %D",refj); }
+  if (lmk%refk != 0) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Local element size (k) must be divisible by %D",refk); }
+  
+  ierr = DMSetMatType(daf,MATSEQAIJ);CHKERRQ(ierr);
+  ierr = DMCreateMatrix(daf,&Acell);CHKERRQ(ierr);
+  //ierr = MatPtAPSymbolic(Acell,P,1.0,&Ac_el);CHKERRQ(ierr);
+  ierr = MatPtAP(Acell,P,MAT_INITIAL_MATRIX,1.0,&Ac_el);CHKERRQ(ierr);
+  
+  /* quadrature */
+  nqp = volQ_fine->npoints;
+  P3D_prepare_elementQ2(nqp,WEIGHT,XI,NI,GNI);
+  ierr = VolumeQuadratureGetAllCellData_Stokes(volQ_fine,&quadrature_points);CHKERRQ(ierr);
+  
+  /* setup for coords */
+  ierr = DMGetCoordinateDM(dav_fine,&cda);CHKERRQ(ierr);
+  ierr = DMGetCoordinatesLocal(dav_fine,&gcoords);CHKERRQ(ierr);
+  ierr = VecGetArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
+  
+  /* indices */
+  ierr = DMGetLocalToGlobalMapping(dav_fine, &ltog);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetSize(ltog, &NUM_GINDICES);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetIndices(ltog, &GINDICES);CHKERRQ(ierr);
+  ierr = BCListApplyDirichletMask(NUM_GINDICES,(PetscInt*)GINDICES,u_bclist_fine);CHKERRQ(ierr);
+  ierr = DMGetLocalToGlobalMapping(daf, &ltog);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetSize(ltog, &NUM_GINDICES_cell);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetIndices(ltog, &GINDICES_cell);CHKERRQ(ierr);
+  
+  ierr = DMGetLocalToGlobalMapping(dav_coarse, &ltog);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetSize(ltog, &NUM_GINDICES_coarse);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetIndices(ltog, &GINDICES_coarse);CHKERRQ(ierr);
+  
+  /* loop and assemble */
+  ierr = DMDAGetElements_pTatinQ2P1(dav_fine,&nel,&nen_v,&elnidx_v);CHKERRQ(ierr);
+  ierr = DMDAGetElements_pTatinQ2P1(daf,&nel_cell,&nen_v_cell,&elnidx_v_cell);CHKERRQ(ierr);
+  ierr = DMDAGetElements_pTatinQ2P1(dav_coarse,&nel_coarse,&nen_v_coarse,&elnidx_v_coarse);CHKERRQ(ierr);
+  
+  /* loop over cells on coarse grid */
+  t[0] = t[1] = t[2] = t[3] = t[4] = t[5] = 0.0;
+  PetscTime(&t[0]);
+  for (kc=0; kc<lmk/refk; kc++) {
+    for (jc=0; jc<lmj/refj; jc++) {
+      for (ic=0; ic<lmi/refi; ic++) {
+        PetscInt cidx_coarse;
+        
+        cidx_coarse = ic + jc*lmi_coarse + kc*lmi_coarse*lmj_coarse;
+        
+        
+        ierr = MatZeroEntries(Acell);CHKERRQ(ierr);
+        ierr = MatZeroEntries(Ac_el);CHKERRQ(ierr);
+        
+        /* look over fine cells contained in coarse (i call this a cell problem) */
+        PetscTime(&t0);
+        for (kkf=refk*kc; kkf<refk*kc+refk; kkf++) {
+          for (jjf=refj*jc; jjf<refj*jc+refj; jjf++) {
+            for (iif=refi*ic; iif<refi*ic+refi; iif++) {
+              PetscInt cidx;
+              PetscInt cidx_cell;
+              
+              cidx      = iif + jjf*lmi + kkf*lmi*lmj;
+              cidx_cell = (iif-refi*ic) + (jjf-refj*jc)*refi + (kkf-refk*kc)*refi*refj;
+              
+              /* get global indices */
+              for (n=0; n<NPE; n++) {
+                PetscInt NID;
+                
+                /* global indices of FE problem */
+                NID = elnidx_v[NPE*cidx + n];
+                ge_eqnums[3*n  ] = GINDICES[ 3*NID   ];
+                ge_eqnums[3*n+1] = GINDICES[ 3*NID+1 ];
+                ge_eqnums[3*n+2] = GINDICES[ 3*NID+2 ];
+                
+                /* local indices of FE problem relative to cell problem */
+                NID = elnidx_v_cell[NPE*cidx_cell + n];
+                ge_eqnums_cell[3*n  ] = GINDICES_cell[ 3*NID   ];
+                ge_eqnums_cell[3*n+1] = GINDICES_cell[ 3*NID+1 ];
+                ge_eqnums_cell[3*n+2] = GINDICES_cell[ 3*NID+2 ];
+              }
+              
+              ierr = DMDAGetElementCoordinatesQ2_3D(el_coords,(PetscInt*)&elnidx_v[nen_v*cidx],LA_gcoords);CHKERRQ(ierr);
+              
+              ierr = VolumeQuadratureGetCellData_Stokes(volQ_fine,quadrature_points,cidx,&cell_quadrature_points);CHKERRQ(ierr);
+              
+              /* initialise element stiffness matrix */
+              PetscMemzero( Ae, sizeof(PetscScalar)* Q2_NODES_PER_EL_3D * Q2_NODES_PER_EL_3D * U_DOFS * U_DOFS );
+              
+              P3D_evaluate_geometry_elementQ2(nqp,el_coords,GNI, detJ,dNudx,dNudy,dNudz);
+              
+              /* evaluate the viscosity */
+              for (q=0; q<nqp; q++) {
+                el_eta[q] = cell_quadrature_points[q].eta;
+              }
+              
+              /* assemble */
+              for (q=0; q<nqp; q++) {
+                fac = WEIGHT[q] * detJ[q];
+                
+                diagD[0] = 2.0*fac*el_eta[q ];
+                diagD[1] = 2.0*fac*el_eta[q ];
+                diagD[2] = 2.0*fac*el_eta[q ];
+                
+                diagD[3] =     fac*el_eta[q ];
+                diagD[4] =     fac*el_eta[q ];
+                diagD[5] =     fac*el_eta[q ];
+                
+                for (ii = 0; ii<NPE; ii++) {
+                  PetscScalar dx_i = dNudx[q ][ii];
+                  PetscScalar dy_i = dNudy[q ][ii];
+                  PetscScalar dz_i = dNudz[q ][ii];
+                  
+                  for (jj = ii; jj<NPE; jj++) {
+                    PetscScalar dx_j = dNudx[q ][jj];
+                    PetscScalar dy_j = dNudy[q ][jj];
+                    PetscScalar dz_j = dNudz[q ][jj];
+                    
+                    Ae[(3*ii+0)*81 + (3*jj+0)] += diagD[0]*dx_i*dx_j + diagD[3]*dy_i*dy_j + diagD[4]*dz_i*dz_j; //
+                    Ae[(3*ii+0)*81 + (3*jj+1)] += diagD[3]*dy_i*dx_j; //
+                    Ae[(3*ii+0)*81 + (3*jj+2)] += diagD[4]*dz_i*dx_j; //
+                    
+                    Ae[(3*ii+1)*81 + (3*jj+0)] += diagD[3]*dx_i*dy_j; //
+                    Ae[(3*ii+1)*81 + (3*jj+1)] += diagD[1]*dy_i*dy_j + diagD[3]*dx_i*dx_j + diagD[5]*dz_i*dz_j; //
+                    Ae[(3*ii+1)*81 + (3*jj+2)] += diagD[5]*dz_i*dy_j; //
+                    
+                    Ae[(3*ii+2)*81 + (3*jj+0)] += diagD[4]*dx_i*dz_j; //
+                    Ae[(3*ii+2)*81 + (3*jj+1)] += diagD[5]*dy_i*dz_j; //
+                    Ae[(3*ii+2)*81 + (3*jj+2)] += diagD[2]*dz_i*dz_j + diagD[4]*dx_i*dx_j + diagD[5]*dy_i*dy_j; //
+                  }
+                }
+              }
+              /* fill lower triangular part */
+              for (ii = 0; ii < 81; ii++) {
+                for (jj = ii; jj < 81; jj++) {
+                  Ae[jj*81+ii] = Ae[ii*81+jj];
+                }
+              }
+              
+              /* mask out any row/cols associated with boundary conditions */
+              for (n=0; n<3*NPE; n++) {
+                if (ge_eqnums[n] < 0) {
+                  
+                  ii = n;
+                  for (jj=0; jj<81; jj++) {
+                    Ae[ii*81+jj] = 0.0;
+                  }
+                  
+                  jj = n;
+                  for (ii=0; ii<81; ii++) {
+                    Ae[ii*81+jj] = 0.0;
+                  }
+                }
+              }
+              ierr = MatSetValues(Acell,Q2_NODES_PER_EL_3D * U_DOFS,ge_eqnums_cell,Q2_NODES_PER_EL_3D * U_DOFS,ge_eqnums_cell,Ae,ADD_VALUES);CHKERRQ(ierr);
+              
+            }
+          }
+        }
+        ierr = MatAssemblyBegin(Acell,MAT_FLUSH_ASSEMBLY);CHKERRQ(ierr);
+        ierr = MatAssemblyEnd (Acell,MAT_FLUSH_ASSEMBLY);CHKERRQ(ierr);
+        
+        /* For each cell problem, define the boundary conditions (kinda ugly hack as this doesnt use bc_list_fine */
+        PetscTime(&t1);
+        t[2] += (t1-t0);
+        
+        t0 = t1;
+        for (kkf=refk*kc; kkf<refk*kc+refk; kkf++) {
+          for (jjf=refj*jc; jjf<refj*jc+refj; jjf++) {
+            for (iif=refi*ic; iif<refi*ic+refi; iif++) {
+              PetscInt cidx;
+              PetscInt cidx_cell;
+              
+              cidx      = iif + jjf*lmi + kkf*lmi*lmj;
+              cidx_cell = (iif-refi*ic) + (jjf-refj*jc)*refi + (kkf-refk*kc)*refi*refj;
+              
+              for (n=0; n<NPE; n++) {
+                PetscInt NID;
+                
+                NID = elnidx_v[NPE*cidx + n];
+                ge_eqnums[3*n  ] = GINDICES[ 3*NID   ];
+                ge_eqnums[3*n+1] = GINDICES[ 3*NID+1 ];
+                ge_eqnums[3*n+2] = GINDICES[ 3*NID+2 ];
+                
+                NID = elnidx_v_cell[NPE*cidx_cell + n];
+                ge_eqnums_cell[3*n  ] = GINDICES_cell[ 3*NID   ];
+                ge_eqnums_cell[3*n+1] = GINDICES_cell[ 3*NID+1 ];
+                ge_eqnums_cell[3*n+2] = GINDICES_cell[ 3*NID+2 ];
+              }
+              
+              for (n=0; n<3*NPE; n++) {
+                if (ge_eqnums[n] < 0) {
+                  ii = ge_eqnums_cell[n];
+                  ierr = MatSetValue(Acell,ii,ii,1.0,INSERT_VALUES);CHKERRQ(ierr);
+                }
+              }
+            }
+          }
+        }
+        
+        ierr = MatAssemblyBegin(Acell,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+        ierr = MatAssemblyEnd (Acell,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+        PetscTime(&t1);
+        t[3] += (t1-t0);
+        
+        t0 = t1;
+        //ierr = MatPtAPNumeric(Acell,P,Ac_el);CHKERRQ(ierr);
+        ierr = MatPtAP(Acell,P,MAT_REUSE_MATRIX,1.0,&Ac_el);CHKERRQ(ierr);
+        PetscTime(&t1);
+        t[4] += (t1-t0);
+        
+        /* assemble coarse grid operator */
+        
+        /* get global indices */
+        t0 = t1;
+        for (n=0; n<NPE; n++) {
+          PetscInt NID;
+          
+          NID = elnidx_v_coarse[NPE*cidx_coarse + n];
+          ge_eqnums_coarse[3*n  ] = GINDICES_coarse[ 3*NID   ];
+          ge_eqnums_coarse[3*n+1] = GINDICES_coarse[ 3*NID+1 ];
+          ge_eqnums_coarse[3*n+2] = GINDICES_coarse[ 3*NID+2 ];
+        }
+        ierr = MatSeqAIJGetArray(Ac_el,&Ac_entries);CHKERRQ(ierr);
+        
+        ierr = MatSetValues(Ac,Q2_NODES_PER_EL_3D*U_DOFS,ge_eqnums_coarse,Q2_NODES_PER_EL_3D*U_DOFS,ge_eqnums_coarse,Ac_entries,ADD_VALUES);CHKERRQ(ierr);
+        
+        ierr = MatSeqAIJRestoreArray(Ac_el,&Ac_entries);CHKERRQ(ierr);
+        PetscTime(&t1);
+        t[5] += (t1-t0);
+        
+      }
+    }
+  }
+  ierr = MatAssemblyBegin(Ac,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  ierr = MatAssemblyEnd (Ac,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  PetscTime(&t[1]);
+  
+  PetscPrintf(PETSC_COMM_WORLD,"  Time[Assemble cell prb]   %1.4e (sec)\n",t[2]);
+  PetscPrintf(PETSC_COMM_WORLD,"  Time[BC insertion]        %1.4e (sec)\n",t[3]);
+  PetscPrintf(PETSC_COMM_WORLD,"  Time[Form PtAP]           %1.4e (sec)\n",t[4]);
+  PetscPrintf(PETSC_COMM_WORLD,"  Time[Assemble coarse prb] %1.4e (sec)\n",t[5]);
+  PetscPrintf(PETSC_COMM_WORLD,"  Time[Total]               %1.4e (sec)\n",t[1]-t[0]);
+  
+  ierr = BCListRemoveDirichletMask(NUM_GINDICES,(PetscInt*)GINDICES,u_bclist_fine);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingRestoreIndices(ltog, &GINDICES);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingRestoreIndices(ltog, &GINDICES_cell);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingRestoreIndices(ltog, &GINDICES_coarse);CHKERRQ(ierr);
+  
+  ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
+  ierr = MatDestroy(&Acell);CHKERRQ(ierr);
+  ierr = MatDestroy(&Ac_el);CHKERRQ(ierr);
+  ierr = DMDestroy(&daf);CHKERRQ(ierr);
+  ierr = DMDestroy(&dac);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
 
 
 PetscErrorCode SNESGetKSP_(SNES snes,SNES *this_snes,KSP *this_ksp)
@@ -302,14 +627,32 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
     ierr = MatSetFromOptions(Spp);CHKERRQ(ierr);
 
     /* A12 */
+    /*
     ierr = StokesQ2P1CreateMatrix_MFOperator_A12(StkCtx,&Aup);CHKERRQ(ierr);
     ierr = MatSetOptionsPrefix(Aup,"Bup_");CHKERRQ(ierr);
     ierr = MatSetFromOptions(Aup);CHKERRQ(ierr);
+    */
+    //
+    ierr = StokesQ2P1CreateMatrix_A12(stokes_ctx,&Aup);CHKERRQ(ierr);
+    ierr = MatAssemble_StokesA_A12(Aup,stokes_ctx->dav,stokes_ctx->dap,stokes_ctx->u_bclist,stokes_ctx->p_bclist,stokes_ctx->volQ);CHKERRQ(ierr);
+    ierr = MatZeroEntries(Aup);CHKERRQ(ierr);
+    ierr = MatSetOptionsPrefix(Aup,"Bup_");CHKERRQ(ierr);
+    ierr = MatSetFromOptions(Aup);CHKERRQ(ierr);
+    //
 
     /* A21 */
+    /*
     ierr = StokesQ2P1CreateMatrix_MFOperator_A21(StkCtx,&Apu);CHKERRQ(ierr);
     ierr = MatSetOptionsPrefix(Apu,"Bpu_");CHKERRQ(ierr);
     ierr = MatSetFromOptions(Apu);CHKERRQ(ierr);
+    */
+    //
+    ierr = StokesQ2P1CreateMatrix_A21(stokes_ctx,&Apu);CHKERRQ(ierr);
+    ierr = MatSetOptionsPrefix(Apu,"Bpu_");CHKERRQ(ierr);
+    ierr = MatSetFromOptions(Apu);CHKERRQ(ierr);
+    ierr = MatAssemble_StokesA_A21(Apu,stokes_ctx->dav,stokes_ctx->dap,stokes_ctx->u_bclist,stokes_ctx->p_bclist,stokes_ctx->volQ);CHKERRQ(ierr);
+    ierr = MatZeroEntries(Apu);CHKERRQ(ierr);
+    //
 
     /* nest */
     bA[0][0] = NULL; bA[0][1] = Aup;
@@ -450,7 +793,71 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
       }
         break;
 
+      case OP_TYPE_MFGALERKIN:
+      {
+        Mat Auu;
+        Vec X;
+        MatNullSpace nullsp;
+        
+        if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: MFGalerkin :: assembled operator \n", k);
+        if (k == nlevels-1) {
+          SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_ARG_OUTOFRANGE,"Cannot use mf-galerkin coarse grid on the finest level");
+        }
+        if (level_type[k+1] != OP_TYPE_REDISC_MF) {
+          SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_ARG_OUTOFRANGE,"Cannot use mf-galerkin. Next finest level[%D] must be of type OP_TYPE_REDISC_MF",k+1);
+        }
+        
+        ierr = DMSetMatType(dav_hierarchy[k],MATAIJ);CHKERRQ(ierr);
+        ierr = DMCreateMatrix(dav_hierarchy[k],&Auu);CHKERRQ(ierr);
+        ierr = MatSetOptionsPrefix(Auu,"Buu_mfg_");CHKERRQ(ierr);
+        ierr = MatSetFromOptions(Auu);CHKERRQ(ierr);
+
+        ierr = MatAssembleMFGalerkin(dav_hierarchy[k+1],u_bclist[k+1],volQ[k+1],dav_hierarchy[k],Auu);CHKERRQ(ierr);
+        
+        operatorA11[k] = Auu;
+        operatorB11[k] = Auu;
+        ierr = PetscObjectReference((PetscObject)Auu);CHKERRQ(ierr);
+        
+        ierr = DMGetCoordinates(dav_hierarchy[k],&X);CHKERRQ(ierr);
+        ierr = MatNullSpaceCreateRigidBody(X,&nullsp);CHKERRQ(ierr);
+        ierr = MatSetBlockSize(Auu,3);CHKERRQ(ierr);
+        ierr = MatSetNearNullSpace(Auu,nullsp);CHKERRQ(ierr);
+        ierr = MatNullSpaceDestroy(&nullsp);CHKERRQ(ierr);
+      }
+        break;
+        
+      case OP_TYPE_SNESFD:
+      {
+        Mat Auu;
+        Vec X;
+        MatNullSpace nullsp;
+        
+        if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: SNESFD :: assembled operator \n", k);
+        if (k != nlevels-1) {
+          SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_ARG_OUTOFRANGE,"Cannot only use snes-fd on the finest level");
+        }
+        
+        ierr = DMSetMatType(dav_hierarchy[k],MATAIJ);CHKERRQ(ierr);
+        ierr = DMCreateMatrix(dav_hierarchy[k],&Auu);CHKERRQ(ierr);
+        ierr = MatAssemblyBegin(Auu,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+        ierr = MatAssemblyEnd(Auu,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+        ierr = MatSetOptionsPrefix(Auu,"Buu_fdu_");CHKERRQ(ierr);
+        ierr = MatSetFromOptions(Auu);CHKERRQ(ierr);
+        
+        operatorA11[k] = Auu;
+        operatorB11[k] = Auu;
+        ierr = PetscObjectReference((PetscObject)Auu);CHKERRQ(ierr);
+        
+        ierr = DMGetCoordinates(dav_hierarchy[k],&X);CHKERRQ(ierr);
+        ierr = MatNullSpaceCreateRigidBody(X,&nullsp);CHKERRQ(ierr);
+        ierr = MatSetBlockSize(Auu,3);CHKERRQ(ierr);
+        //ierr = MatSetNearNullSpace(Auu,nullsp);CHKERRQ(ierr);
+        ierr = MatNullSpaceDestroy(&nullsp);CHKERRQ(ierr);
+      }
+        break;
+        
       default:
+        SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Must choose a coarse grid constructor");
         break;
     }
   }
@@ -520,6 +927,13 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
     ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,mlctx->nlevels,mlctx->interpolation_eta,mlctx->dav_hierarchy,mlctx->volQ);CHKERRQ(ierr);
   }
 
+  /* clean up */
+  ierr = VecRestoreArray(Uloc,&LA_Uloc);CHKERRQ(ierr);
+  ierr = VecRestoreArray(Ploc,&LA_Ploc);CHKERRQ(ierr);
+  
+  ierr = DMCompositeRestoreLocalVectors(stokes_pack,&Uloc,&Ploc);CHKERRQ(ierr);
+  
+  
   /* operator */
   ierr = PetscObjectTypeCompare((PetscObject)A,MATMFFD, &is_mffd);CHKERRQ(ierr);
   ierr = PetscObjectTypeCompare((PetscObject)A,MATNEST, &is_nest);CHKERRQ(ierr);
@@ -534,7 +948,52 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
     ierr = PetscObjectTypeCompare((PetscObject)Auu,MATSHELL,&is_shell);CHKERRQ(ierr);
     if (!is_shell) {
       ierr = MatZeroEntries(Auu);CHKERRQ(ierr);
-      ierr = MatAssemble_StokesA_AUU(Auu,dau,user->stokes_ctx->u_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
+      
+
+      k = mlctx->nlevels-1;
+      switch (mlctx->level_type[k]) {
+          
+        case OP_TYPE_REDISC_ASM:
+          ierr = MatAssemble_StokesA_AUU(Auu,dau,user->stokes_ctx->u_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
+          break;
+          
+        case OP_TYPE_SNESFD:
+        {
+          Mat Auu_k;
+          Vec Xu,Xp,_X,_F;
+          SNES _snes;
+          
+          Auu_k = Auu;
+          
+          ierr = DMCreateGlobalVector(mlctx->dav_hierarchy[k],&_F);CHKERRQ(ierr);
+          ierr = DMCreateGlobalVector(mlctx->dav_hierarchy[k],&_X);CHKERRQ(ierr);
+          ierr = DMCompositeGetAccess(stokes_pack,X,&Xu,&Xp);CHKERRQ(ierr);
+          ierr = VecCopy(Xu,_X);CHKERRQ(ierr);
+          ierr = DMCompositeRestoreAccess(stokes_pack,X,&Xu,&Xp);CHKERRQ(ierr);
+          
+          ierr = SNESCreate(PETSC_COMM_WORLD,&_snes);CHKERRQ(ierr);
+          ierr = SNESSetDM(_snes,mlctx->dav_hierarchy[k]);CHKERRQ(ierr);
+          ierr = SNESSetOptionsPrefix(_snes,"fdu_");CHKERRQ(ierr);
+          ierr = SNESSetSolution(_snes,_X);CHKERRQ(ierr);
+          ierr = SNESSetFunction(_snes,_F,FormFunction_StokesU,(void*)ctx);CHKERRQ(ierr);
+          ierr = SNESSetJacobian(_snes,Auu_k,Auu_k,SNESComputeJacobianDefaultColor,NULL);CHKERRQ(ierr);
+          ierr = SNESSetFromOptions(_snes);CHKERRQ(ierr);
+          ierr = SNESSetUp(_snes);CHKERRQ(ierr);
+          
+          //ierr = SNESSolve(_snes,NULL,_X);CHKERRQ(ierr);
+          ierr = SNESComputeFunction(_snes,_X,_F);CHKERRQ(ierr); /* not sure what setup is not done until SNESComputeFunction() or SNESSolve() is called */
+          ierr = SNESComputeJacobian(_snes,_X,Auu_k,Auu_k);CHKERRQ(ierr);
+          
+          ierr = SNESDestroy(&_snes);CHKERRQ(ierr);
+          ierr = VecDestroy(&_X);CHKERRQ(ierr);
+          ierr = VecDestroy(&_F);CHKERRQ(ierr);
+        }
+          break;
+          
+        default:
+          break;
+      }
+
     }
 
     ierr = MatDestroy(&Auu);CHKERRQ(ierr);
@@ -548,6 +1007,7 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
   /* preconditioner operator for Jacobian */
   {
     Mat Buu,Bpp;
+    Mat Bup,Bpu;
 
     ierr = MatCreateSubMatrix(B,mlctx->is_stokes_field[0],mlctx->is_stokes_field[0],MAT_INITIAL_MATRIX,&Buu);CHKERRQ(ierr);
     ierr = MatCreateSubMatrix(B,mlctx->is_stokes_field[1],mlctx->is_stokes_field[1],MAT_INITIAL_MATRIX,&Bpp);CHKERRQ(ierr);
@@ -556,22 +1016,141 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
     ierr = PetscObjectTypeCompare((PetscObject)Buu,MATSHELL,&is_shell);CHKERRQ(ierr);
     if (!is_shell) {
       ierr = MatZeroEntries(Buu);CHKERRQ(ierr);
-      ierr = MatAssemble_StokesA_AUU(Buu,dau,user->stokes_ctx->u_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
+      
+      k = mlctx->nlevels-1;
+      switch (mlctx->level_type[k]) {
+          
+        case OP_TYPE_REDISC_ASM:
+          ierr = MatAssemble_StokesA_AUU(Buu,dau,user->stokes_ctx->u_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
+          break;
+
+        case OP_TYPE_SNESFD:
+        {
+          Mat Auu_k;
+          Vec Xu,Xp,_X,_F;
+          SNES _snes;
+          
+          Auu_k = Buu;
+          
+          ierr = DMCreateGlobalVector(mlctx->dav_hierarchy[k],&_F);CHKERRQ(ierr);
+          ierr = DMCreateGlobalVector(mlctx->dav_hierarchy[k],&_X);CHKERRQ(ierr);
+          ierr = DMCompositeGetAccess(stokes_pack,X,&Xu,&Xp);CHKERRQ(ierr);
+          ierr = VecCopy(Xu,_X);CHKERRQ(ierr);
+          ierr = DMCompositeRestoreAccess(stokes_pack,X,&Xu,&Xp);CHKERRQ(ierr);
+
+          ierr = SNESCreate(PETSC_COMM_WORLD,&_snes);CHKERRQ(ierr);
+          ierr = SNESSetDM(_snes,mlctx->dav_hierarchy[k]);CHKERRQ(ierr);
+          ierr = SNESSetOptionsPrefix(_snes,"fdu_");CHKERRQ(ierr);
+          ierr = SNESSetSolution(_snes,_X);CHKERRQ(ierr);
+          ierr = SNESSetFunction(_snes,_F,FormFunction_StokesU,(void*)ctx);CHKERRQ(ierr);
+          ierr = SNESSetJacobian(_snes,Auu_k,Auu_k,SNESComputeJacobianDefaultColor,NULL);CHKERRQ(ierr);
+          ierr = SNESSetFromOptions(_snes);CHKERRQ(ierr);
+          ierr = SNESSetUp(_snes);CHKERRQ(ierr);
+          
+          //ierr = SNESSolve(_snes,NULL,_X);CHKERRQ(ierr);
+          ierr = SNESComputeFunction(_snes,_X,_F);CHKERRQ(ierr); /* not sure what setup is not done until SNESComputeFunction() or SNESSolve() is called */
+          ierr = SNESComputeJacobian(_snes,_X,Auu_k,Auu_k);CHKERRQ(ierr);
+          
+          ierr = SNESDestroy(&_snes);CHKERRQ(ierr);
+          ierr = VecDestroy(&_X);CHKERRQ(ierr);
+          ierr = VecDestroy(&_F);CHKERRQ(ierr);
+        }
+          break;
+          
+        default:
+          break;
+      }
+      
+      
+      
     }
 
     is_shell = PETSC_FALSE;
     ierr = PetscObjectTypeCompare((PetscObject)Bpp,MATSHELL,&is_shell);CHKERRQ(ierr);
     if (!is_shell) {
       ierr = MatZeroEntries(Bpp);CHKERRQ(ierr);
-      ierr = MatAssemble_StokesPC_ScaledMassMatrix(Bpp,dau,dap,user->stokes_ctx->p_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
     }
 
     ierr = MatDestroy(&Buu);CHKERRQ(ierr);
     ierr = MatDestroy(&Bpp);CHKERRQ(ierr);
+    
+
+    ierr = MatCreateSubMatrix(B,mlctx->is_stokes_field[0],mlctx->is_stokes_field[1],MAT_INITIAL_MATRIX,&Bup);CHKERRQ(ierr);
+    ierr = MatCreateSubMatrix(B,mlctx->is_stokes_field[1],mlctx->is_stokes_field[0],MAT_INITIAL_MATRIX,&Bpu);CHKERRQ(ierr);
+
+    is_shell = PETSC_FALSE;
+    ierr = PetscObjectTypeCompare((PetscObject)Bup,MATSHELL,&is_shell);CHKERRQ(ierr);
+    if (!is_shell) {
+      ierr = MatZeroEntries(Bup);CHKERRQ(ierr);
+      ierr = MatAssemble_StokesA_A12(Bup,dau,dap,user->stokes_ctx->u_bclist,user->stokes_ctx->p_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
+    }
+    
+    is_shell = PETSC_FALSE;
+    ierr = PetscObjectTypeCompare((PetscObject)Bpu,MATSHELL,&is_shell);CHKERRQ(ierr);
+    if (!is_shell) {
+      ierr = MatZeroEntries(Bpu);CHKERRQ(ierr);
+      ierr = MatAssemble_StokesA_A21(Bpu,dau,dap,user->stokes_ctx->u_bclist,user->stokes_ctx->p_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
+    }
+
+    ierr = MatDestroy(&Bup);CHKERRQ(ierr);
+    ierr = MatDestroy(&Bpu);CHKERRQ(ierr);
   }
   ierr = MatAssemblyBegin(B,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd  (B,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
 
+  /*
+  {
+    KSP ksp;
+    PC pc;
+    Mat Spp;
+    PCFieldSplitSchurPreType ptype;
+    
+    
+    ierr = SNESGetKSP(snes,&ksp);CHKERRQ(ierr);
+    ierr = KSPGetPC(ksp,&pc);CHKERRQ(ierr);
+    ierr = PCFieldSplitGetSchurPre(pc,&ptype,&Spp);CHKERRQ(ierr);
+    
+    ierr = MatZeroEntries(Spp);CHKERRQ(ierr);
+    //ierr = MatAssemble_StokesPC_ScaledMassMatrix(Spp,dau,dap,user->stokes_ctx->p_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
+    ierr = MatAssemble_LocalSchur(Spp,dau,dap,user->stokes_ctx->u_bclist,user->stokes_ctx->p_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
+  }
+  */
+  /*
+  {
+    KSP ksp;
+    PC pc;
+    Mat Spp,Bup;
+    PCFieldSplitSchurPreType ptype;
+    
+    ierr = MatCreateSubMatrix(B,mlctx->is_stokes_field[0],mlctx->is_stokes_field[1],MAT_INITIAL_MATRIX,&Bup);CHKERRQ(ierr);
+
+    
+    SNESGetKSP(snes,&ksp);
+    KSPGetPC(ksp,&pc);
+    ierr = PCFieldSplitGetSchurPre(pc,&ptype,&Spp);CHKERRQ(ierr);
+    
+    ierr = MatZeroEntries(Spp);CHKERRQ(ierr);
+    ierr = MatAssemble_LocalSchur2(Spp,Bup,dau,dap,user->stokes_ctx->u_bclist,user->stokes_ctx->p_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
+    
+    ierr = MatDestroy(&Bup);CHKERRQ(ierr);
+  }
+  */
+  {
+    KSP ksp,*sub_ksp;
+    PC pc,pc_lsc;
+    PetscInt nsplits;
+    Vec scale;
+    
+    ierr = SNESGetKSP(snes,&ksp);CHKERRQ(ierr);
+    ierr = KSPGetPC(ksp,&pc);CHKERRQ(ierr);
+    ierr = PCFieldSplitGetSubKSP(pc,&nsplits,&sub_ksp);CHKERRQ(ierr);
+    ierr = KSPGetPC(sub_ksp[1],&pc_lsc);CHKERRQ(ierr);
+    ierr = PCLSCGetScale(pc_lsc,&scale);CHKERRQ(ierr);
+    ierr = VecAssemble_SchurScale(scale,dau,dap,user->stokes_ctx->u_bclist,user->stokes_ctx->p_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
+    ierr = VecReciprocal(scale);CHKERRQ(ierr);
+  }
+
+  
   /* Buu preconditioner for all other levels in the hierarchy */
   {
     PetscBool use_low_order_geometry;
@@ -646,11 +1225,6 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
         {
           Mat Auu_k;
 
-          if (k == mlctx->nlevels-1) {
-            SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_ARG_OUTOFRANGE,"Cannot use galerkin coarse grid on the finest level");
-          }
-          PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: Galerkin :: assembled operator \n", k);
-
           /*
           ierr = MatPtAP(mlctx->operatorA11[k+1],mlctx->interpolation_v[k+1],MAT_INITIAL_MATRIX,1.0,&Auu_k);CHKERRQ(ierr);
           ierr = KSPSetOperators(ksp_smoother,Auu_k,Auu_k);CHKERRQ(ierr);
@@ -660,6 +1234,20 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
           */
           Auu_k = mlctx->operatorA11[k];
           ierr = MatPtAP(mlctx->operatorA11[k+1],mlctx->interpolation_v[k+1],MAT_REUSE_MATRIX,1.0,&Auu_k);CHKERRQ(ierr);
+          ierr = KSPSetOperators(ksp_smoother,Auu_k,Auu_k);CHKERRQ(ierr);
+          mlctx->operatorB11[k] = Auu_k;
+        }
+          break;
+
+        case OP_TYPE_MFGALERKIN:
+        {
+          Mat Auu_k;
+
+          Auu_k = mlctx->operatorA11[k];
+          ierr = MatZeroEntries(Auu_k);CHKERRQ(ierr);
+          
+          ierr = MatAssembleMFGalerkin(mlctx->dav_hierarchy[k+1],mlctx->u_bclist[k+1],mlctx->volQ[k+1],mlctx->dav_hierarchy[k],Auu_k);CHKERRQ(ierr);
+          
           ierr = KSPSetOperators(ksp_smoother,Auu_k,Auu_k);CHKERRQ(ierr);
           mlctx->operatorB11[k] = Auu_k;
         }
@@ -723,6 +1311,16 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
           ierr = KSPSetOperators(ksp_smoother,mlctx->operatorA11[k],mlctx->operatorB11[k]);CHKERRQ(ierr);
         }
           break;
+          
+        case OP_TYPE_MFGALERKIN:
+          ierr = KSPSetOperators(ksp_smoother,mlctx->operatorA11[k],mlctx->operatorB11[k]);CHKERRQ(ierr);
+          break;
+
+        case OP_TYPE_SNESFD:
+          ierr = KSPSetOperators(ksp_smoother,mlctx->operatorA11[k],mlctx->operatorB11[k]);CHKERRQ(ierr);
+          break;
+
+          
       }
       PetscFree(sub_ksp);
     }
@@ -755,11 +1353,6 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
     }
   }
 
-  /* clean up */
-  ierr = VecRestoreArray(Uloc,&LA_Uloc);CHKERRQ(ierr);
-  ierr = VecRestoreArray(Ploc,&LA_Ploc);CHKERRQ(ierr);
-
-  ierr = DMCompositeRestoreLocalVectors(stokes_pack,&Uloc,&Ploc);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -1053,7 +1646,38 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
 
     /* configure uu split for galerkin multi-grid */
     ierr = pTatin3dStokesKSPConfigureFSGMG(ksp,nlevels,operatorA11,operatorB11,interpolation_v,dav_hierarchy);CHKERRQ(ierr);
+    {
+      Mat Spp;
+      
+      ierr = DMCreateMatrix(dap,&Spp);CHKERRQ(ierr);
+      ierr = MatSetOptionsPrefix(Spp,"s_");CHKERRQ(ierr);
+      ierr = MatSetOption(Spp,MAT_IGNORE_LOWER_TRIANGULAR,PETSC_TRUE);CHKERRQ(ierr);
+      ierr = MatSetFromOptions(Spp);CHKERRQ(ierr);
+      ierr = PCFieldSplitSetSchurPre(pc,PC_FIELDSPLIT_SCHUR_PRE_USER,Spp);CHKERRQ(ierr);
+      ierr = MatDestroy(&Spp);CHKERRQ(ierr);
+    }
+    /*
+    {
+      Mat Spp,Bup,Bpu,B11;
+      
+      ierr = MatCreateSubMatrix(B,is_stokes_field[0],is_stokes_field[1],MAT_INITIAL_MATRIX,&Bup);CHKERRQ(ierr);
+      ierr = MatCreateSubMatrix(B,is_stokes_field[1],is_stokes_field[0],MAT_INITIAL_MATRIX,&Bpu);CHKERRQ(ierr);
 
+      ierr = DMCreateMatrix(dav,&B11);CHKERRQ(ierr);
+
+      ierr = MatPtAP(B11,Bup,MAT_INITIAL_MATRIX,PETSC_DEFAULT,&Spp);CHKERRQ(ierr);
+      ierr = MatSetOptionsPrefix(Spp,"s_");CHKERRQ(ierr);
+     
+      ierr = MatDestroy(&Bup);CHKERRQ(ierr);
+      ierr = MatDestroy(&Bpu);CHKERRQ(ierr);
+      ierr = MatDestroy(&B11);CHKERRQ(ierr);
+
+      
+      ierr = PCFieldSplitSetSchurPre(pc,PC_FIELDSPLIT_SCHUR_PRE_SELFP,NULL);CHKERRQ(ierr);
+      ierr = MatDestroy(&Spp);CHKERRQ(ierr);
+    }
+    */
+    
     ierr = pTatinLogBasic(user);CHKERRQ(ierr);
 
     /* --------------------------------------------------------- */
@@ -1130,6 +1754,17 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
     ierr = PCFieldSplitSetIS(pc,"p",is_stokes_field[1]);CHKERRQ(ierr);
     /* mg */
     ierr = pTatin3dStokesKSPConfigureFSGMG(ksp,nlevels,operatorA11,operatorB11,interpolation_v,dav_hierarchy);CHKERRQ(ierr);
+    {
+      Mat Spp;
+      
+      ierr = DMCreateMatrix(dap,&Spp);CHKERRQ(ierr);
+      ierr = MatSetOptionsPrefix(Spp,"s_");CHKERRQ(ierr);
+      ierr = MatSetOption(Spp,MAT_IGNORE_LOWER_TRIANGULAR,PETSC_TRUE);CHKERRQ(ierr);
+      ierr = MatSetFromOptions(Spp);CHKERRQ(ierr);
+      ierr = PCFieldSplitSetSchurPre(pc,PC_FIELDSPLIT_SCHUR_PRE_USER,Spp);CHKERRQ(ierr);
+      ierr = MatDestroy(&Spp);CHKERRQ(ierr);
+    }
+
     ierr = pTatinLogBasic(user);CHKERRQ(ierr);
 
     /* --------------------------------------------------------- */
@@ -1203,6 +1838,16 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
 
     /* configure uu split for galerkin multi-grid */
     ierr = pTatin3dStokesKSPConfigureFSGMG(ksp,nlevels,operatorA11,operatorB11,interpolation_v,dav_hierarchy);CHKERRQ(ierr);
+    {
+      Mat Spp;
+      
+      ierr = DMCreateMatrix(dap,&Spp);CHKERRQ(ierr);
+      ierr = MatSetOptionsPrefix(Spp,"s_");CHKERRQ(ierr);
+      ierr = MatSetOption(Spp,MAT_IGNORE_LOWER_TRIANGULAR,PETSC_TRUE);CHKERRQ(ierr);
+      ierr = MatSetFromOptions(Spp);CHKERRQ(ierr);
+      ierr = PCFieldSplitSetSchurPre(pc,PC_FIELDSPLIT_SCHUR_PRE_USER,Spp);CHKERRQ(ierr);
+      ierr = MatDestroy(&Spp);CHKERRQ(ierr);
+    }
 
     SNESSetTolerances(snes_newton,PETSC_DEFAULT,PETSC_DEFAULT,PETSC_DEFAULT,newton_its,PETSC_DEFAULT);
     PetscPrintf(PETSC_COMM_WORLD,"   --------- NEWTON STAGE ---------\n");
@@ -1594,6 +2239,16 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
 
     /* configure uu split for galerkin multi-grid */
     ierr = pTatin3dStokesKSPConfigureFSGMG(ksp,nlevels,operatorA11,operatorB11,interpolation_v,dav_hierarchy);CHKERRQ(ierr);
+    {
+      Mat Spp;
+      
+      ierr = DMCreateMatrix(dap,&Spp);CHKERRQ(ierr);
+      ierr = MatSetOptionsPrefix(Spp,"s_");CHKERRQ(ierr);
+      ierr = MatSetOption(Spp,MAT_IGNORE_LOWER_TRIANGULAR,PETSC_TRUE);CHKERRQ(ierr);
+      ierr = MatSetFromOptions(Spp);CHKERRQ(ierr);
+      ierr = PCFieldSplitSetSchurPre(pc,PC_FIELDSPLIT_SCHUR_PRE_USER,Spp);CHKERRQ(ierr);
+      ierr = MatDestroy(&Spp);CHKERRQ(ierr);
+    }
 
     /* insert boundary conditions into solution vector */
     ierr = DMCompositeGetAccess(user->pack,X,&velocity,&pressure);CHKERRQ(ierr);
