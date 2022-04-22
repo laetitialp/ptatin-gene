@@ -14,6 +14,9 @@
 #include <finite_volume/fvda_private.h>
 #include <finite_volume/kdtree.h>
 
+#include <cJSON.h>
+#include <cjson_utils.h>
+
 PetscErrorCode _cart_convert_index_to_ijk(PetscInt r,const PetscInt mp[],PetscInt rijk[]);
 PetscErrorCode _cart_convert_ijk_to_index(const PetscInt rijk[],const PetscInt mp[],PetscInt *r);
 
@@ -1638,4 +1641,253 @@ PetscErrorCode EvalRHS_HeatProd(FVDA fv,Vec F)
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode CheckpointWrite_EnergyFV(PhysCompEnergyFV energyfv,PetscBool write_dmda,const char path[],const char prefix[])
+{
+  PetscMPIInt    commsize,commrank;
+  FVDA           fv;
+  char           jprefix_fv[PETSC_MAX_PATH_LEN];
+  char           jprefix_geom[PETSC_MAX_PATH_LEN];
+  char           jfilename[PETSC_MAX_PATH_LEN];
+  char           vfilename[3][PETSC_MAX_PATH_LEN],daprefix[PETSC_MAX_PATH_LEN];
+  PetscErrorCode ierr;
 
+  PetscFunctionBegin;
+  
+  fv = energyfv->fv;
+  ierr = MPI_Comm_size(fv->comm,&commsize);CHKERRQ(ierr);
+  ierr = MPI_Comm_rank(fv->comm,&commrank);CHKERRQ(ierr);
+  
+  if (path && prefix) SETERRQ(fv->comm,PETSC_ERR_SUP,"Only support for path/file or prefix_file");
+  
+  daprefix[0] = '\0';
+  if (write_dmda) {
+    if (path) {
+      if (prefix) { PetscSNPrintf(jprefix_fv,PETSC_MAX_PATH_LEN-1,"%s/%s_fvda_fvspace",path,prefix); }
+      else { PetscSNPrintf(jprefix_fv,PETSC_MAX_PATH_LEN-1,"%s/fvda_fvspace",path); }
+    } else {
+      if (prefix) { PetscSNPrintf(jprefix_fv,PETSC_MAX_PATH_LEN-1,"%s_fvda_fvspace",prefix); }
+      else { PetscSNPrintf(jprefix_fv,PETSC_MAX_PATH_LEN-1,"fvda_fvspace"); }
+    }
+    ierr = DMDACheckpointWrite(fv->dm_fv,jprefix_fv);CHKERRQ(ierr);
+    
+    if (path) {
+      if (prefix) { PetscSNPrintf(jprefix_geom,PETSC_MAX_PATH_LEN-1,"%s/%s_fvda_geom",path,prefix); }
+      else { PetscSNPrintf(jprefix_geom,PETSC_MAX_PATH_LEN-1,"%s/fvda_geom",path); }
+    } else {
+      if (prefix) { PetscSNPrintf(jprefix_geom,PETSC_MAX_PATH_LEN-1,"%s_fvda_geom",prefix); }
+      else { PetscSNPrintf(jprefix_geom,PETSC_MAX_PATH_LEN-1,"fvda_geom"); }
+    }
+    ierr = DMDACheckpointWrite(fv->dm_geometry,jprefix_geom);CHKERRQ(ierr);
+    
+    char cfilename[PETSC_MAX_PATH_LEN];
+    PetscSNPrintf(cfilename,PETSC_MAX_PATH_LEN-1,"%s_coords",jprefix_geom);
+    ierr =  PetscVecWriteJSON(fv->vertex_coor_geometry,0,cfilename);CHKERRQ(ierr);
+  }
+  
+  if (path) {
+    PetscSNPrintf(jfilename,PETSC_MAX_PATH_LEN-1,"%s/physcomp_energy_fvda.json",path);
+    PetscSNPrintf(vfilename[0],PETSC_MAX_PATH_LEN-1,"%s/physcomp_energy_fvda_Told.pbvec",path);
+    PetscSNPrintf(vfilename[1],PETSC_MAX_PATH_LEN-1,"%s/physcomp_energy_fvda_Xold.pbvec",path);
+  } else {
+    PetscSNPrintf(jfilename,PETSC_MAX_PATH_LEN-1,"%s_physcomp_energy_fvda.json",prefix);
+    PetscSNPrintf(vfilename[0],PETSC_MAX_PATH_LEN-1,"%s_physcomp_energy_fvda_Told.pbvec",prefix);
+    PetscSNPrintf(vfilename[1],PETSC_MAX_PATH_LEN-1,"%s_physcomp_energy_fvda_Xold.pbvec",prefix);
+  }
+  
+  /* Write vectors required to restart */
+  if (energyfv->Told) {
+    ierr = DMDAWriteVectorToFile(energyfv->Told,vfilename[0],PETSC_FALSE);CHKERRQ(ierr);
+  }
+  if (energyfv->Xold) {
+    ierr = DMDAWriteVectorToFile(energyfv->Xold,vfilename[1],PETSC_FALSE);CHKERRQ(ierr);
+  }
+  
+  if (commrank == 0) {
+    cJSON *jso_file = NULL,*jso_energy = NULL,*content;
+
+    /* create json meta data file */
+    jso_file = cJSON_CreateObject();
+
+    jso_energy = cJSON_CreateObject();
+    cJSON_AddItemToObject(jso_file,"PhysCompEnergyFV",jso_energy);
+
+    content = cJSON_CreateInt((int)fv->Mi[0]);    cJSON_AddItemToObject(jso_energy,"mx",content);
+    content = cJSON_CreateInt((int)fv->Mi[1]);    cJSON_AddItemToObject(jso_energy,"my",content);
+    content = cJSON_CreateInt((int)fv->Mi[2]);    cJSON_AddItemToObject(jso_energy,"mz",content);
+    
+    content = cJSON_CreateInt((int)energyfv->nsubdivision[0]); cJSON_AddItemToObject(jso_energy,"nsubdivision_x",content);
+    content = cJSON_CreateInt((int)energyfv->nsubdivision[1]); cJSON_AddItemToObject(jso_energy,"nsubdivision_y",content);
+    content = cJSON_CreateInt((int)energyfv->nsubdivision[2]); cJSON_AddItemToObject(jso_energy,"nsubdivision_z",content);
+    
+    content = cJSON_CreateNumber((double)energyfv->time);   cJSON_AddItemToObject(jso_energy,"time",content);
+    content = cJSON_CreateNumber((double)energyfv->dt);     cJSON_AddItemToObject(jso_energy,"timeStepSize",content);
+
+    if (write_dmda) {
+      cJSON *jso_dmda;
+      char subdmfilename[PETSC_MAX_PATH_LEN];
+
+      jso_dmda = cJSON_CreateObject();
+      cJSON_AddItemToObject(jso_energy,"sub_dmda",jso_dmda);
+
+      PetscSNPrintf(subdmfilename,PETSC_MAX_PATH_LEN-1,"%s_dmda.json",daprefix);
+      content = cJSON_CreateString(subdmfilename);       cJSON_AddItemToObject(jso_dmda,"fileName",content);
+      content = cJSON_CreateString("json-meta");         cJSON_AddItemToObject(jso_dmda,"dataFormat",content);
+    }
+
+    {
+      cJSON *jso_petscvec;
+
+      jso_petscvec = cJSON_CreateObject();
+      cJSON_AddItemToObject(jso_energy,"Told",jso_petscvec);
+
+      content = cJSON_CreateString(vfilename[0]);   cJSON_AddItemToObject(jso_petscvec,"fileName",content);
+      content = cJSON_CreateString("petsc-binary"); cJSON_AddItemToObject(jso_petscvec,"dataFormat",content);
+    }
+    {
+      cJSON *jso_petscvec;
+
+      jso_petscvec = cJSON_CreateObject();
+      cJSON_AddItemToObject(jso_energy,"Xold",jso_petscvec);
+
+      content = cJSON_CreateString(vfilename[1]);   cJSON_AddItemToObject(jso_petscvec,"fileName",content);
+      content = cJSON_CreateString("petsc-binary"); cJSON_AddItemToObject(jso_petscvec,"dataFormat",content);
+    }
+
+    /* write json meta data file */
+    {
+      FILE *fp;
+      char *jbuff = cJSON_Print(jso_file);
+
+      fp = fopen(jfilename,"w");
+      if (!fp) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Unable to open file %s",jfilename);
+      fprintf(fp,"%s\n",jbuff);
+      fclose(fp);
+      free(jbuff);
+    }
+
+    cJSON_Delete(jso_file);
+  }
+  
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode PhysCompLoad_EnergyFV(pTatinCtx user,DM dav,const char jfilename[])
+{
+  PhysCompEnergyFV energyfv;
+  PetscErrorCode ierr;
+  PetscMPIInt rank;
+  char pathtovec[PETSC_MAX_PATH_LEN];
+  cJSON *jfile = NULL,*jphys = NULL;
+  //PetscInt mx,my,mz;
+  PetscInt nsub[] = {0,0,0};
+  PetscReal time,dt;
+  MPI_Comm comm;
+  PetscBool found;
+
+
+  PetscFunctionBegin;
+  ierr = PetscObjectGetComm((PetscObject)dav,&comm);CHKERRQ(ierr);
+  ierr = MPI_Comm_rank(comm,&rank);CHKERRQ(ierr);
+
+  if (rank == 0) {
+    cJSON_FileView(jfilename,&jfile);
+    if (!jfile) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open JSON file \"%s\"",jfilename);
+    jphys = cJSON_GetObjectItem(jfile,"PhysCompEnergyFV");
+  }
+  
+  /* query JSON file for input parameters */
+  ierr = cJSONGetPetscInt(comm,jphys,"nsubdivision_x",&nsub[0],&found);CHKERRQ(ierr);
+  if (!found) SETERRQ(comm,PETSC_ERR_USER,"Failed to locate key \"nsubdivision_x\"");
+
+  ierr = cJSONGetPetscInt(comm,jphys,"nsubdivision_y",&nsub[1],&found);CHKERRQ(ierr);
+  if (!found) SETERRQ(comm,PETSC_ERR_USER,"Failed to locate key \"nsubdivision_y\"");
+
+  ierr = cJSONGetPetscInt(comm,jphys,"nsubdivision_z",&nsub[2],&found);CHKERRQ(ierr);
+  if (!found) SETERRQ(comm,PETSC_ERR_USER,"Failed to locate key \"nsubdivision_z\"");
+
+  ierr = cJSONGetPetscReal(comm,jphys,"time",&time,&found);CHKERRQ(ierr);
+  if (!found) SETERRQ(comm,PETSC_ERR_USER,"Failed to locate key \"time\"");
+
+  ierr = cJSONGetPetscReal(comm,jphys,"timeStepSize",&dt,&found);CHKERRQ(ierr);
+  if (!found) SETERRQ(comm,PETSC_ERR_USER,"Failed to locate key \"timeStepSize\"");
+
+  /*
+   This function creates the DMDA for temperature.
+   I elect to perform a self creation, rather than creating via DMDACheckpointLoad() as
+   this particular DMDA possess extra content associated with finite elements in the
+   form of an attached struct.
+  */
+  ierr = PhysCompEnergyFVCreate(PETSC_COMM_WORLD,&energyfv);CHKERRQ(ierr);
+  ierr = PhysCompEnergyFVSetParams(energyfv,time,dt,nsub);CHKERRQ(ierr);
+  ierr = PhysCompEnergyFVSetUp(energyfv,user);CHKERRQ(ierr);
+  ierr = PhysCompEnergyFVUpdateGeometry(energyfv,user->stokes_ctx);CHKERRQ(ierr);
+  /* query file for state vector filenames - load vectors into energy struct */
+  {
+    cJSON *jso_petscvec;
+
+    /* T^{k} */
+    if (jphys) {
+      jso_petscvec = NULL;
+      jso_petscvec = cJSON_GetObjectItem(jphys,"Told");
+      if (!jso_petscvec) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to locate key \"Told\"");
+    }
+
+    ierr = cJSONGetPetscString(comm,jso_petscvec,"fileName",pathtovec,&found);CHKERRQ(ierr);
+    if (found) { ierr = VecLoadFromFile(energyfv->Told,pathtovec);CHKERRQ(ierr);
+    } else       SETERRQ(comm,PETSC_ERR_USER,"Failed to locate key \"fileName\"");
+
+    /* X^{k} */
+    if (jphys) {
+      jso_petscvec = NULL;
+      jso_petscvec = cJSON_GetObjectItem(jphys,"Xold");
+      if (!jso_petscvec) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to locate key \"Xold\"");
+    }
+
+    ierr = cJSONGetPetscString(comm,jso_petscvec,"fileName",pathtovec,&found);CHKERRQ(ierr);
+    if (found) { ierr = VecLoadFromFile(energyfv->Xold,pathtovec);CHKERRQ(ierr);
+    } else       SETERRQ(comm,PETSC_ERR_USER,"Failed to locate key \"fileName\"");
+  }
+
+  if (rank == 0) {
+    cJSON_Delete(jfile);
+  }
+  
+  user->energyfv_ctx = energyfv;
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode pTatinPhysCompActivate_EnergyFV_FromFile(pTatinCtx ctx)
+{
+  PetscErrorCode   ierr;
+  PhysCompStokes   stokes;
+  MPI_Comm         comm;
+  PetscMPIInt      commrank;
+  char             jfilename[PETSC_MAX_PATH_LEN],field_string[PETSC_MAX_PATH_LEN];
+  cJSON            *jfile = NULL,*jptat = NULL,*jobj;
+  PetscBool        found;
+
+  PetscFunctionBegin;
+  comm = PETSC_COMM_WORLD;
+  ierr = MPI_Comm_rank(comm,&commrank);CHKERRQ(ierr);
+  PetscSNPrintf(jfilename,PETSC_MAX_PATH_LEN-1,"%s/ptatin3dctx.json",ctx->restart_dir);
+  if (commrank == 0) {
+    cJSON_FileView(jfilename,&jfile);
+    if (!jfile) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open JSON file \"%s\"",jfilename);
+    jptat = cJSON_GetObjectItem(jfile,"pTatinCtx");
+  }
+
+  jobj = NULL;
+  if (commrank == 0) { jobj = cJSON_GetObjectItem(jptat,"energy"); if (!jobj) SETERRQ_JSONKEY(PETSC_COMM_SELF,"energy"); }
+  ierr = cJSONGetPetscString(comm,jobj,"fileName",field_string,&found);CHKERRQ(ierr);
+  if (!found) SETERRQ_JSONKEY(comm,"fileName");
+
+  stokes = ctx->stokes_ctx;
+  ierr = PhysCompLoad_EnergyFV(ctx,stokes->dav,field_string);CHKERRQ(ierr);
+  
+  if (commrank == 0) {
+    cJSON_Delete(jfile);
+  }
+
+  PetscFunctionReturn(0);
+}

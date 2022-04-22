@@ -51,5 +51,10 @@ PetscErrorCode pTatinPhysCompEnergyFV_ComputeAdvectiveTimestep(PhysCompEnergyFV 
 PetscErrorCode fvgeometry_dmda3d_create_from_element_partition(MPI_Comm comm,PetscInt target_decomp[],const PetscInt m[],DM *dm);
 PetscErrorCode EvalRHS_HeatProd(FVDA fv,Vec F);
 
+PetscErrorCode CheckpointWrite_EnergyFV(PhysCompEnergyFV energyfv,PetscBool write_dmda,const char path[],const char prefix[]);
+PetscErrorCode PhysCompLoad_EnergyFV(pTatinCtx user,DM dav,const char jfilename[]);
+PetscErrorCode pTatinPhysCompActivate_EnergyFV_FromFile(pTatinCtx ctx);
+
+
 #endif
 
