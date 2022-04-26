@@ -752,3 +752,43 @@ PetscErrorCode DMDMeshQualityMetricGetInfo(DM dm,MeshQualityMeasure measure,Pets
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode ElementComputeMeshQualityMetric_Diagonal(PetscReal el_coords[], PetscReal *min_value, PetscReal *max_value)
+{
+  PetscReal       posA[3],posB[3];
+  PetscReal       diag,dl_min,dl_max;
+  PetscErrorCode  ierr;
+
+  PetscFunctionBegin;
+
+  dl_min = 1.0e32;
+  dl_max = -1.0e32;
+
+  get_node_coordinate(el_coords,Q2_VERTEX_0,posA);
+  get_node_coordinate(el_coords,Q2_VERTEX_7,posB);
+  diag =  compute_distance3(posA,posB);
+  if (diag < dl_min) { dl_min = diag; }
+  if (diag > dl_max) { dl_max = diag; }
+
+  get_node_coordinate(el_coords,Q2_VERTEX_1,posA);
+  get_node_coordinate(el_coords,Q2_VERTEX_6,posB);
+  diag =  compute_distance3(posA,posB);
+  if (diag < dl_min) { dl_min = diag; }
+  if (diag > dl_max) { dl_max = diag; }
+
+  get_node_coordinate(el_coords,Q2_VERTEX_5,posA);
+  get_node_coordinate(el_coords,Q2_VERTEX_2,posB);
+  diag =  compute_distance3(posA,posB);
+  if (diag < dl_min) { dl_min = diag; }
+  if (diag > dl_max) { dl_max = diag; }
+
+  get_node_coordinate(el_coords,Q2_VERTEX_4,posA);
+  get_node_coordinate(el_coords,Q2_VERTEX_3,posB);
+  diag =  compute_distance3(posA,posB);
+  if (diag < dl_min) { dl_min = diag; }
+  if (diag > dl_max) { dl_max = diag; }
+
+  *min_value = dl_min;
+  *max_value = dl_max;
+
+  PetscFunctionReturn(0);
+}

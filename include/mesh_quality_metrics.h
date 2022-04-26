@@ -67,6 +67,7 @@ typedef enum {
 PetscErrorCode DMDAComputeMeshQualityMetric(DM dm,MeshQualityMeasure measure,PetscReal *value);
 PetscErrorCode DMDAComputeMeshQualityMetricList(DM dm,const PetscInt nmeasures,MeshQualityMeasure measure[],PetscReal value[]);
 PetscErrorCode DMDMeshQualityMetricGetInfo(DM dm,MeshQualityMeasure measure,PetscReal range[],PetscReal valid_range[]);
+PetscErrorCode ElementComputeMeshQualityMetric_Diagonal(PetscReal el_coords[], PetscReal *min_value, PetscReal *max_value);
 
 #endif
 
