@@ -41,6 +41,7 @@
 #include "element_utils_q2.h"
 #include "QPntVolCoefStokes_def.h"
 #include "quadrature.h"
+#include "mesh_quality_metrics.h"
 
 
 PetscErrorCode FormFunctionLocal_profile(PhysCompStokes user,DM dau,PetscScalar u[],DM dap,PetscScalar p[],PetscScalar Rp[])
@@ -361,6 +362,218 @@ PetscErrorCode FormFunctionLocal_U_tractionBC(PhysCompStokes user,DM dau,PetscSc
   PetscFunctionReturn(0);
 }
 
+static inline void ComputeStrainRate3d(double ux[],double uy[],double uz[],double dNudx[],double dNudy[],double dNudz[],double D[NSD][NSD])
+{
+  int    k;
+  double exx,eyy,ezz,exy,exz,eyz;
+
+  exx=0.0;  eyy=0.0;  ezz=0.0;
+  exy=0.0;  exz=0.0;  eyz=0.0;
+
+  for (k=0; k<Q2_NODES_PER_EL_3D; k++) {
+    exx += dNudx[k] * ux[k];
+    eyy += dNudy[k] * uy[k];
+    ezz += dNudz[k] * uz[k];
+
+    exy += dNudy[k] * ux[k] + dNudx[k] * uy[k];
+    exz += dNudz[k] * ux[k] + dNudx[k] * uz[k];
+    eyz += dNudz[k] * uy[k] + dNudy[k] * uz[k];
+  }
+  exy = 0.5 * exy;
+  exz = 0.5 * exz;
+  eyz = 0.5 * eyz;
+
+  D[0][0] = exx;    D[0][1] = exy;    D[0][2] = exz;
+  D[1][0] = exy;    D[1][1] = eyy;    D[1][2] = eyz;
+  D[2][0] = exz;    D[2][1] = eyz;    D[2][2] = ezz;
+}
+
+
+PetscErrorCode FormFunctionLocal_U_NitscheBC(PhysCompStokes user,DM dau,PetscScalar ufield[],DM dap,PetscScalar pfield[],PetscScalar Ru[])
+{
+  PetscErrorCode ierr;
+  PetscInt p,i,j,d;
+  DM cda;
+  Vec gcoords;
+  PetscReal *LA_gcoords;
+  PetscInt nel,nen_u,nen_p,k,e,edge,fe;
+  const PetscInt *elnidx_u;
+  const PetscInt *elnidx_p;
+  PetscReal elcoords[3*Q2_NODES_PER_EL_3D];
+  PetscReal elu[3*Q2_NODES_PER_EL_3D],elp[P_BASIS_FUNCTIONS];
+  PetscReal ux[Q2_NODES_PER_EL_3D],uy[Q2_NODES_PER_EL_3D],uz[Q2_NODES_PER_EL_3D];
+  PetscReal Fe[3*Q2_NODES_PER_EL_3D],Be[3*Q2_NODES_PER_EL_2D];
+  PetscInt vel_el_lidx[3*U_BASIS_FUNCTIONS];
+  PetscLogDouble t0,t1;
+  QPntSurfCoefStokes *quadpoints,*cell_quadpoints;
+  SurfaceQuadrature surfQ;
+
+  PetscFunctionBegin;
+
+  /* quadrature */
+
+  /* setup for coords */
+  ierr = DMGetCoordinateDM( dau, &cda);CHKERRQ(ierr);
+  ierr = DMGetCoordinatesLocal( dau,&gcoords );CHKERRQ(ierr);
+  ierr = VecGetArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
+
+  ierr = DMDAGetElements_pTatinQ2P1(dau,&nel,&nen_u,&elnidx_u);CHKERRQ(ierr);
+  ierr = DMDAGetElements_pTatinQ2P1(dap,&nel,&nen_p,&elnidx_p);CHKERRQ(ierr);
+
+  PetscTime(&t0);
+
+  for (edge=0; edge<HEX_EDGES; edge++) {
+    ConformingElementFamily element;
+    int *face_local_indices;
+    PetscInt nfaces,ngp;
+    QPoint2d *gp2;
+    QPoint3d *gp3;
+
+    surfQ   = user->surfQ[edge];
+    element = surfQ->e;
+    nfaces  = surfQ->nfaces;
+    gp2     = surfQ->gp2;
+    gp3     = surfQ->gp3;
+    ngp     = surfQ->ngp;
+    ierr = SurfaceQuadratureGetAllCellData_Stokes(surfQ,&quadpoints);CHKERRQ(ierr);
+
+    face_local_indices = element->face_node_list[edge];
+
+    for (fe=0; fe<nfaces; fe++) { /* for all elements on this domain face */
+      PetscReal min_diag,max_diag,gamma;
+      /* get element index of the face element we want to integrate */
+      e = surfQ->element_list[fe];
+
+      ierr = StokesVelocity_GetElementLocalIndices(vel_el_lidx,(PetscInt*)&elnidx_u[nen_u*e]);CHKERRQ(ierr);
+      ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx_u[nen_u*e],LA_gcoords);CHKERRQ(ierr);
+      ierr = DMDAGetVectorElementFieldQ2_3D(elu,(PetscInt*)&elnidx_u[nen_u*e],ufield);CHKERRQ(ierr);
+      ierr = DMDAGetScalarElementField(elp,nen_p,(PetscInt*)&elnidx_p[nen_p*e],pfield);CHKERRQ(ierr);
+
+      ierr = SurfaceQuadratureGetCellData_Stokes(surfQ,quadpoints,fe,&cell_quadpoints);CHKERRQ(ierr);
+
+      /* Compute the min and max diagonals of the element */
+      ierr = ElementComputeMeshQualityMetric_Diagonal(elcoords,&min_diag,&max_diag);CHKERRQ(ierr);
+      /* Penalty */
+      gamma = 200.0/min_diag;
+
+      /* Get velocity components at nodes */
+      for (k=0; k<Q2_NODES_PER_EL_3D; k++ ) {
+        ux[k] = elu[3*k  ];
+        uy[k] = elu[3*k+1];
+        uz[k] = elu[3*k+2];
+      }
+
+      /* initialise element stiffness matrix */
+      PetscMemzero( Fe, sizeof(PetscScalar)* Q2_NODES_PER_EL_3D*3 );
+      PetscMemzero( Be, sizeof(PetscScalar)* Q2_NODES_PER_EL_2D*3 );
+
+      for (p=0; p<ngp; p++) {
+        PetscScalar fac,surfJ_p;
+        PetscReal _xi[3],GNi[NSD][Q2_NODES_PER_EL_3D],Ni[Q2_NODES_PER_EL_3D];
+        PetscReal dNudx[Q2_NODES_PER_EL_3D],dNudy[Q2_NODES_PER_EL_3D],dNudz[Q2_NODES_PER_EL_3D];
+        PetscReal D[NSD][NSD],u_p[3],u_dot_n,tau_nn,s00,s11,s22,s01,s02,s12;
+        double    *normal, eta;
+
+        /* Local coords of gauss point */
+        _xi[0] = gp3[p].xi;
+        _xi[1] = gp3[p].eta;
+        _xi[2] = gp3[p].zeta;
+
+        /* Evaluate shape functions at gauss point */
+        P3D_ConstructNi_Q2_3D(_xi,Ni);
+        /* Evaluate shape function local derivative */
+        P3D_ConstructGNi_Q2_3D(_xi,GNi);
+        /* Evaluate shape function global derivatives */
+        P3D_evaluate_global_derivatives_Q2(elcoords,GNi,dNudx,dNudy,dNudz);
+        /* Compute strain rate tensor */
+        ComputeStrainRate3d(ux,uy,uz,dNudx,dNudy,dNudz,D);
+        /* Get the normal to the facet */
+        QPntSurfCoefStokesGetField_surface_normal(&cell_quadpoints[p],&normal);
+        /* Get viscosity at gauss point */
+        QPntSurfCoefStokesGetField_viscosity(&cell_quadpoints[p],&eta);
+
+        /* Interpolate velocity at current point */
+        u_p[0] = u_p[1] = u_p[2] = 0.0;
+        for (k=0; k<Q2_NODES_PER_EL_3D; k++) {
+          u_p[0] += Ni[k]*ux[k];
+          u_p[1] += Ni[k]*uy[k];
+          u_p[2] += Ni[k]*uz[k];
+        }
+
+        /* Compute u.n */
+        u_dot_n = 0.0;
+        for (d=0; d<3; d++) {
+          u_dot_n += u_p[d]*normal[d];
+        }
+
+        /* Compute n.tau*n */
+        tau_nn = 0.0;
+        for (i=0; i<3; i++) {
+          for (j=0; j<3; j++) {
+            tau_nn += normal[i]*(2.0*eta*D[i][j])*normal[j];
+          }
+        }
+
+        /* construct n.tau(w)*n */
+        s00 = 2.0*eta*normal[0]*normal[0];
+        s11 = 2.0*eta*normal[1]*normal[1];
+        s22 = 2.0*eta*normal[2]*normal[2];
+
+        s01 = 2.0*eta*normal[0]*normal[1];
+        s02 = 2.0*eta*normal[0]*normal[2];
+        s12 = 2.0*eta*normal[1]*normal[2];
+
+        element->compute_surface_geometry_3D(
+            element,
+            elcoords,    // should contain 27 points with dimension 3 (x,y,z) //
+            surfQ->face_id,   // edge index 0,...,7 //
+            &gp2[p], // should contain 1 point with dimension 2 (xi,eta)   //
+            NULL,NULL, &surfJ_p ); // n0[],t0 contains 1 point with dimension 3 (x,y,z) //
+        fac = gp2[p].w * surfJ_p;
+
+        for (k=0; k<Q2_NODES_PER_EL_3D; k++) {
+          Be[3*k  ] = Be[3*k  ] - fac * ( Ni[k] * normal[0] * tau_nn + (dNudx[k]*s00 + dNudy[k]*s01 + dNudz[k]*s02)*u_dot_n ) + fac * (gamma * u_dot_n * Ni[k] * normal[0]);
+          Be[3*k+1] = Be[3*k+1] - fac * ( Ni[k] * normal[1] * tau_nn + (dNudx[k]*s01 + dNudy[k]*s11 + dNudz[k]*s12)*u_dot_n ) + fac * (gamma * u_dot_n * Ni[k] * normal[1]);
+          Be[3*k+2] = Be[3*k+2] - fac * ( Ni[k] * normal[2] * tau_nn + (dNudx[k]*s02 + dNudy[k]*s12 + dNudz[k]*s22)*u_dot_n ) + fac * (gamma * u_dot_n * Ni[k] * normal[2]);
+        }
+
+        /* ORIGINAL SURFACE INTEGRAL FOR TRACTION
+        for (k=0; k<Q2_NODES_PER_EL_2D; k++) {
+          Be[3*k  ] = Be[3*k  ] - fac * NIu_surf[p][k] * cell_quadpoints[p].traction[0];
+          Be[3*k+1] = Be[3*k+1] - fac * NIu_surf[p][k] * cell_quadpoints[p].traction[1];
+          Be[3*k+2] = Be[3*k+2] - fac * NIu_surf[p][k] * cell_quadpoints[p].traction[2];
+        }
+        */
+      }
+
+      /* combine body force with A.x */
+      for (k=0; k<Q2_NODES_PER_EL_3D; k++) {
+        Fe[3*k  ] = Be[3*k  ];
+        Fe[3*k+1] = Be[3*k+1];
+        Fe[3*k+2] = Be[3*k+2];
+      }
+
+      //for (k=0; k<Q2_NODES_PER_EL_2D; k++) {
+        //int nidx3d;
+
+        /* map 1D index over element edge to 2D element space */
+        //nidx3d = face_local_indices[k];
+        //Fe[3*nidx3d  ] = Be[3*k  ];
+        //Fe[3*nidx3d+1] = Be[3*k+1];
+        //Fe[3*nidx3d+2] = Be[3*k+2];
+      //}
+
+      ierr = DMDASetValuesLocalStencil_AddValues_Stokes_Velocity(Ru, vel_el_lidx,Fe);CHKERRQ(ierr);
+    }
+  }
+  PetscTime(&t1);
+  //PetscPrintf(PETSC_COMM_WORLD,"Assembled int_S N traction[i].n[i] dS, = %1.4e (sec)\n",t1-t0);
+
+  ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode FormFunctionLocal_P(PhysCompStokes user,DM dau,PetscScalar ufield[],DM dap,PetscScalar pfield[],PetscScalar Rp[])
 {
   PetscErrorCode ierr;
@@ -527,7 +740,8 @@ PetscErrorCode FormFunction_Stokes(SNES snes,Vec X,Vec F,void *ctx)
 
   /* momentum */
   ierr = FormFunctionLocal_U(stokes,dau,LA_Uloc,dap,LA_Ploc,LA_FUloc);CHKERRQ(ierr);
-  //ierr = FormFunctionLocal_U_tractionBC(stokes,dau,LA_Uloc,dap,LA_Ploc,LA_FUloc);CHKERRQ(ierr);
+  ierr = FormFunctionLocal_U_tractionBC(stokes,dau,LA_Uloc,dap,LA_Ploc,LA_FUloc);CHKERRQ(ierr);
+  ierr = FormFunctionLocal_U_NitscheBC(stokes,dau,LA_Uloc,dap,LA_Ploc,LA_FUloc);CHKERRQ(ierr);
 
   /* continuity */
   ierr = FormFunctionLocal_P(stokes,dau,LA_Uloc,dap,LA_Ploc,LA_FPloc);CHKERRQ(ierr);
