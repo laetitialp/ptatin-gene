@@ -46,16 +46,16 @@
 #  1 : no slip everywhere
 #  2 : free slip everywhere + free surface
 #  3 : no slip everywhere + free surface
--model_viscous_sinker_bc_type 0
+-model_viscous_sinker_bc_type 2
 
 # Deform the upper surface with a Gaussian bump with some amplitude
 -gbump_amp 0.0
 
 
 # Mesh resolution
--mx 16
--my 16
--mz 16
+-mx 4
+-my 4
+-mz 4
 
 # Material point resolution per cell
 -lattice_layout_Nx 3
@@ -70,23 +70,23 @@
 
 # ---- Define ptatin timestepping/io parameters ---- #
 -output_path sinker-ex1
--nsteps 500
--output_frequency 25
+-nsteps 1 #500
+-output_frequency 1 #25
 
 -dt_min 1.0e-6
--dt_max 0.5
+-dt_max 1.0e-6
 
 
 
 # ---- Solver configuration ---- #
--A11_operator_type 0,1,1
--dau_nlevels 3
+-A11_operator_type 0 #,1,1
+-dau_nlevels 1
 -fieldsplit_p_ksp_type preonly
 -fieldsplit_p_pc_type jacobi
 -fieldsplit_u_ksp_monitor
 -fieldsplit_u_ksp_rtol 1.0e-1
 -fieldsplit_u_ksp_type fgmres
--fieldsplit_u_pc_type mg
+-fieldsplit_u_pc_type lu
 -fieldsplit_u_pc_mg_levels 3
 #-fieldsplit_u_pc_mg_log
 #-fieldsplit_u_mg_coarse_pc_factor_mat_solver_package superlu_dist
@@ -99,11 +99,16 @@
 -fieldsplit_u_mg_levels_ksp_norm_type NONE
 -fieldsplit_u_mg_levels_esteig_ksp_norm_type NONE
 -ksp_type fgmres
--ksp_rtol 1.0e-3
--ksp_atol 1.0e-6
+-ksp_rtol 1.0e-6
+-ksp_monitor
+#-ksp_atol 1.0e-6
 -log_summary
 -pc_fieldsplit_schur_fact_type upper
 -pc_fieldsplit_type schur
 -pc_type fieldsplit
--snes_type ksponly
+-snes_type newtonls #ksponly
 -stk_velocity_dm_mat_type aij
+-snes_view
+-snes_linesearch_type basic
+-snes_monitor
+-snes_rtol 1.0e-5
