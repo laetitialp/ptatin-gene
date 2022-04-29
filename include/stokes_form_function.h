@@ -42,5 +42,7 @@ PetscErrorCode MatCreateStokesJux(pTatinCtx ctx,void *Jctx,Mat *_Jux);
 PetscErrorCode MatCreateStokesJpx(pTatinCtx ctx,void *Jctx,Mat *_Jpx);
 PetscErrorCode MatCreateStokesJuu(pTatinCtx ctx,void *Jctx,Mat *_Juu);
 
+PetscErrorCode FormFunctionLocal_U_NitscheBC(SurfaceQuadrature *mesh_surfQ,DM dau,PetscScalar ufield[],DM dap,PetscScalar pfield[],PetscScalar Ru[]);
+
 #endif
 

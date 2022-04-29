@@ -388,28 +388,119 @@ static inline void ComputeStrainRate3d(double ux[],double uy[],double uz[],doubl
   D[2][0] = exz;    D[2][1] = eyz;    D[2][2] = ezz;
 }
 
+// ---------------------------------------------------
+// test function coeff:   [w0[i], w1[i], w2[i]]
+// test function:         wNt[i]
+// test function derivs:  [wNtx[i], wNty[i], wNtz[i]]
+//
+// trial function coeff:  [u0[j], u1[j], u2[j]]
+// trial function:        uN[j]
+// trial function derivs: [uNx[j], uNy[j], uNz[j]]
+//
+// basis dim: 3
+// spatial dim: 3
+// ---------------------------------------------------
 
-PetscErrorCode FormFunctionLocal_U_NitscheBC(PhysCompStokes user,DM dau,PetscScalar ufield[],DM dap,PetscScalar pfield[],PetscScalar Ru[])
+static inline void lform_action_nitsche_classic(
+                    double eta,double normal[],double gamma, // inputs
+                    double scale,
+                    double wNt[],double wNtx[],double wNty[],double wNtz[], // test function
+                    double uN[],double uNx[],double uNy[],double uNz[], // trial function
+                    double u0[],double u1[],double u2[], // trial function coefficients
+                    double F[]) // output
+{
+  int i,j;
+  double u0_uN = 0.0;
+  double u1_uN = 0.0;
+  double u2_uN = 0.0;
+  double u0_uNx = 0.0;
+  double u0_uNy = 0.0;
+  double u0_uNz = 0.0;
+  double u1_uNx = 0.0;
+  double u1_uNy = 0.0;
+  double u1_uNz = 0.0;
+  double u2_uNx = 0.0;
+  double u2_uNy = 0.0;
+  double u2_uNz = 0.0;
+  for (j=0; j<27; j++) { // u_nbasis
+    u0_uN += u0[j]*uN[j];
+    u1_uN += u1[j]*uN[j];
+    u2_uN += u2[j]*uN[j];
+    u0_uNx += u0[j]*uNx[j];
+    u0_uNy += u0[j]*uNy[j];
+    u0_uNz += u0[j]*uNz[j];
+    u1_uNx += u1[j]*uNx[j];
+    u1_uNy += u1[j]*uNy[j];
+    u1_uNz += u1[j]*uNz[j];
+    u2_uNx += u2[j]*uNx[j];
+    u2_uNy += u2[j]*uNy[j];
+    u2_uNz += u2[j]*uNz[j];
+  }
+
+  for (i=0; i<27; i++) { // w_nbasis
+    F[3*i + 0] += scale * (normal[0]*(-2.0*eta*pow(normal[0], 2)*u0_uN*wNtx[i] - 2.0*eta*pow(normal[0], 2)*u0_uNx*wNt[i] - 2.0*eta*normal[0]*normal[1]*u0_uN*wNty[i] - 2.0*eta*normal[0]*normal[1]*u0_uNy*wNt[i] - 2.0*eta*normal[0]*normal[1]*u1_uN*wNtx[i] - 2.0*eta*normal[0]*normal[1]*u1_uNx*wNt[i] - 2.0*eta*normal[0]*normal[2]*u0_uN*wNtz[i] - 2.0*eta*normal[0]*normal[2]*u0_uNz*wNt[i] - 2.0*eta*normal[0]*normal[2]*u2_uN*wNtx[i] - 2.0*eta*normal[0]*normal[2]*u2_uNx*wNt[i] - 2.0*eta*pow(normal[1], 2)*u1_uN*wNty[i] - 2.0*eta*pow(normal[1], 2)*u1_uNy*wNt[i] - 2.0*eta*normal[1]*normal[2]*u1_uN*wNtz[i] - 2.0*eta*normal[1]*normal[2]*u1_uNz*wNt[i] - 2.0*eta*normal[1]*normal[2]*u2_uN*wNty[i] - 2.0*eta*normal[1]*normal[2]*u2_uNy*wNt[i] - 2.0*eta*pow(normal[2], 2)*u2_uN*wNtz[i] - 2.0*eta*pow(normal[2], 2)*u2_uNz*wNt[i] + gamma*normal[0]*u0_uN*wNt[i] + gamma*normal[1]*u1_uN*wNt[i] + gamma*normal[2]*u2_uN*wNt[i]));
+    F[3*i + 1] += scale * (normal[1]*(-2.0*eta*pow(normal[0], 2)*u0_uN*wNtx[i] - 2.0*eta*pow(normal[0], 2)*u0_uNx*wNt[i] - 2.0*eta*normal[0]*normal[1]*u0_uN*wNty[i] - 2.0*eta*normal[0]*normal[1]*u0_uNy*wNt[i] - 2.0*eta*normal[0]*normal[1]*u1_uN*wNtx[i] - 2.0*eta*normal[0]*normal[1]*u1_uNx*wNt[i] - 2.0*eta*normal[0]*normal[2]*u0_uN*wNtz[i] - 2.0*eta*normal[0]*normal[2]*u0_uNz*wNt[i] - 2.0*eta*normal[0]*normal[2]*u2_uN*wNtx[i] - 2.0*eta*normal[0]*normal[2]*u2_uNx*wNt[i] - 2.0*eta*pow(normal[1], 2)*u1_uN*wNty[i] - 2.0*eta*pow(normal[1], 2)*u1_uNy*wNt[i] - 2.0*eta*normal[1]*normal[2]*u1_uN*wNtz[i] - 2.0*eta*normal[1]*normal[2]*u1_uNz*wNt[i] - 2.0*eta*normal[1]*normal[2]*u2_uN*wNty[i] - 2.0*eta*normal[1]*normal[2]*u2_uNy*wNt[i] - 2.0*eta*pow(normal[2], 2)*u2_uN*wNtz[i] - 2.0*eta*pow(normal[2], 2)*u2_uNz*wNt[i] + gamma*normal[0]*u0_uN*wNt[i] + gamma*normal[1]*u1_uN*wNt[i] + gamma*normal[2]*u2_uN*wNt[i]));
+    F[3*i + 2] += scale * (normal[2]*(-2.0*eta*pow(normal[0], 2)*u0_uN*wNtx[i] - 2.0*eta*pow(normal[0], 2)*u0_uNx*wNt[i] - 2.0*eta*normal[0]*normal[1]*u0_uN*wNty[i] - 2.0*eta*normal[0]*normal[1]*u0_uNy*wNt[i] - 2.0*eta*normal[0]*normal[1]*u1_uN*wNtx[i] - 2.0*eta*normal[0]*normal[1]*u1_uNx*wNt[i] - 2.0*eta*normal[0]*normal[2]*u0_uN*wNtz[i] - 2.0*eta*normal[0]*normal[2]*u0_uNz*wNt[i] - 2.0*eta*normal[0]*normal[2]*u2_uN*wNtx[i] - 2.0*eta*normal[0]*normal[2]*u2_uNx*wNt[i] - 2.0*eta*pow(normal[1], 2)*u1_uN*wNty[i] - 2.0*eta*pow(normal[1], 2)*u1_uNy*wNt[i] - 2.0*eta*normal[1]*normal[2]*u1_uN*wNtz[i] - 2.0*eta*normal[1]*normal[2]*u1_uNz*wNt[i] - 2.0*eta*normal[1]*normal[2]*u2_uN*wNty[i] - 2.0*eta*normal[1]*normal[2]*u2_uNy*wNt[i] - 2.0*eta*pow(normal[2], 2)*u2_uN*wNtz[i] - 2.0*eta*pow(normal[2], 2)*u2_uNz*wNt[i] + gamma*normal[0]*u0_uN*wNt[i] + gamma*normal[1]*u1_uN*wNt[i] + gamma*normal[2]*u2_uN*wNt[i]));
+  }
+}
+
+static inline void lform_action_nitsche_custom(
+                    double wNt[], double wNtx[], double wNty[], double wNtz[],
+                    double uN[], double uNx[], double uNy[], double uNz[],
+                    double u0[], double u1[], double u2[],
+                    double eta, double gamma, double n[], double nhat[], double that[],
+                    double scale, double F[])
+{
+  int i,j;
+  double u0_uN = 0.0;
+  double u1_uN = 0.0;
+  double u2_uN = 0.0;
+  double u0_uNx = 0.0;
+  double u0_uNy = 0.0;
+  double u0_uNz = 0.0;
+  double u1_uNx = 0.0;
+  double u1_uNy = 0.0;
+  double u1_uNz = 0.0;
+  double u2_uNx = 0.0;
+  double u2_uNy = 0.0;
+  double u2_uNz = 0.0;
+  for (j=0; j<27; j++) { // u_nbasis
+    u0_uN += u0[j]*uN[j];
+    u1_uN += u1[j]*uN[j];
+    u2_uN += u2[j]*uN[j];
+    u0_uNx += u0[j]*uNx[j];
+    u0_uNy += u0[j]*uNy[j];
+    u0_uNz += u0[j]*uNz[j];
+    u1_uNx += u1[j]*uNx[j];
+    u1_uNy += u1[j]*uNy[j];
+    u1_uNz += u1[j]*uNz[j];
+    u2_uNx += u2[j]*uNx[j];
+    u2_uNy += u2[j]*uNy[j];
+    u2_uNz += u2[j]*uNz[j];
+  }
+  for (i=0; i<27; i++) { // w_nbasis
+    F[3*i + 0] += scale * (-2.0*eta*n[0]*pow(nhat[0], 4)*u0_uN*wNtx[i] - 2.0*eta*n[0]*pow(nhat[0], 4)*u0_uNx*wNt[i] - 2.0*eta*n[0]*pow(nhat[0], 3)*nhat[1]*u0_uN*wNty[i] - 2.0*eta*n[0]*pow(nhat[0], 3)*nhat[1]*u0_uNy*wNt[i] - 2.0*eta*n[0]*pow(nhat[0], 3)*nhat[1]*u1_uN*wNtx[i] - 2.0*eta*n[0]*pow(nhat[0], 3)*nhat[1]*u1_uNx*wNt[i] - 2.0*eta*n[0]*pow(nhat[0], 3)*nhat[2]*u0_uN*wNtz[i] - 2.0*eta*n[0]*pow(nhat[0], 3)*nhat[2]*u0_uNz*wNt[i] - 2.0*eta*n[0]*pow(nhat[0], 3)*nhat[2]*u2_uN*wNtx[i] - 2.0*eta*n[0]*pow(nhat[0], 3)*nhat[2]*u2_uNx*wNt[i] - 2.0*eta*n[0]*pow(nhat[0], 3)*that[0]*u0_uN*wNtx[i] - 1.0*eta*n[0]*pow(nhat[0], 3)*that[1]*u0_uN*wNty[i] - 1.0*eta*n[0]*pow(nhat[0], 3)*that[2]*u0_uN*wNtz[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*pow(nhat[1], 2)*u1_uN*wNty[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*pow(nhat[1], 2)*u1_uNy*wNt[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*nhat[2]*u1_uN*wNtz[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*nhat[2]*u1_uNz*wNt[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*nhat[2]*u2_uN*wNty[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*nhat[2]*u2_uNy*wNt[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*that[0]*u0_uN*wNty[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*that[0]*u1_uN*wNtx[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*that[1]*u1_uN*wNty[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*that[2]*u1_uN*wNtz[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*pow(nhat[2], 2)*u2_uN*wNtz[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*pow(nhat[2], 2)*u2_uNz*wNt[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[2]*that[0]*u0_uN*wNtz[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[2]*that[0]*u2_uN*wNtx[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[2]*that[1]*u2_uN*wNty[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[2]*that[2]*u2_uN*wNtz[i] - 1.0*eta*n[0]*nhat[0]*pow(nhat[1], 2)*that[0]*u1_uN*wNty[i] - 1.0*eta*n[0]*nhat[0]*nhat[1]*nhat[2]*that[0]*u1_uN*wNtz[i] - 1.0*eta*n[0]*nhat[0]*nhat[1]*nhat[2]*that[0]*u2_uN*wNty[i] - 1.0*eta*n[0]*nhat[0]*pow(nhat[2], 2)*that[0]*u2_uN*wNtz[i] - 2.0*eta*n[0]*pow(that[0], 4)*u0_uNx*wNt[i] - 2.0*eta*n[0]*pow(that[0], 3)*that[1]*u0_uNy*wNt[i] - 2.0*eta*n[0]*pow(that[0], 3)*that[1]*u1_uNx*wNt[i] - 2.0*eta*n[0]*pow(that[0], 3)*that[2]*u0_uNz*wNt[i] - 2.0*eta*n[0]*pow(that[0], 3)*that[2]*u2_uNx*wNt[i] - 2.0*eta*n[0]*pow(that[0], 2)*pow(that[1], 2)*u1_uNy*wNt[i] - 2.0*eta*n[0]*pow(that[0], 2)*that[1]*that[2]*u1_uNz*wNt[i] - 2.0*eta*n[0]*pow(that[0], 2)*that[1]*that[2]*u2_uNy*wNt[i] - 2.0*eta*n[0]*pow(that[0], 2)*pow(that[2], 2)*u2_uNz*wNt[i] - 2.0*eta*n[1]*pow(nhat[0], 3)*nhat[1]*u0_uN*wNtx[i] - 2.0*eta*n[1]*pow(nhat[0], 3)*nhat[1]*u0_uNx*wNt[i] - 2.0*eta*n[1]*pow(nhat[0], 2)*pow(nhat[1], 2)*u0_uN*wNty[i] - 2.0*eta*n[1]*pow(nhat[0], 2)*pow(nhat[1], 2)*u0_uNy*wNt[i] - 2.0*eta*n[1]*pow(nhat[0], 2)*pow(nhat[1], 2)*u1_uN*wNtx[i] - 2.0*eta*n[1]*pow(nhat[0], 2)*pow(nhat[1], 2)*u1_uNx*wNt[i] - 2.0*eta*n[1]*pow(nhat[0], 2)*nhat[1]*nhat[2]*u0_uN*wNtz[i] - 2.0*eta*n[1]*pow(nhat[0], 2)*nhat[1]*nhat[2]*u0_uNz*wNt[i] - 2.0*eta*n[1]*pow(nhat[0], 2)*nhat[1]*nhat[2]*u2_uN*wNtx[i] - 2.0*eta*n[1]*pow(nhat[0], 2)*nhat[1]*nhat[2]*u2_uNx*wNt[i] - 2.0*eta*n[1]*pow(nhat[0], 2)*nhat[1]*that[0]*u0_uN*wNtx[i] - 1.0*eta*n[1]*pow(nhat[0], 2)*nhat[1]*that[1]*u0_uN*wNty[i] - 1.0*eta*n[1]*pow(nhat[0], 2)*nhat[1]*that[2]*u0_uN*wNtz[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 3)*u1_uN*wNty[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 3)*u1_uNy*wNt[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*nhat[2]*u1_uN*wNtz[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*nhat[2]*u1_uNz*wNt[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*nhat[2]*u2_uN*wNty[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*nhat[2]*u2_uNy*wNt[i] - 1.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*that[0]*u0_uN*wNty[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*that[0]*u1_uN*wNtx[i] - 1.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*that[1]*u1_uN*wNty[i] - 1.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*that[2]*u1_uN*wNtz[i] - 2.0*eta*n[1]*nhat[0]*nhat[1]*pow(nhat[2], 2)*u2_uN*wNtz[i] - 2.0*eta*n[1]*nhat[0]*nhat[1]*pow(nhat[2], 2)*u2_uNz*wNt[i] - 1.0*eta*n[1]*nhat[0]*nhat[1]*nhat[2]*that[0]*u0_uN*wNtz[i] - 2.0*eta*n[1]*nhat[0]*nhat[1]*nhat[2]*that[0]*u2_uN*wNtx[i] - 1.0*eta*n[1]*nhat[0]*nhat[1]*nhat[2]*that[1]*u2_uN*wNty[i] - 1.0*eta*n[1]*nhat[0]*nhat[1]*nhat[2]*that[2]*u2_uN*wNtz[i] - 1.0*eta*n[1]*pow(nhat[1], 3)*that[0]*u1_uN*wNty[i] - 1.0*eta*n[1]*pow(nhat[1], 2)*nhat[2]*that[0]*u1_uN*wNtz[i] - 1.0*eta*n[1]*pow(nhat[1], 2)*nhat[2]*that[0]*u2_uN*wNty[i] - 1.0*eta*n[1]*nhat[1]*pow(nhat[2], 2)*that[0]*u2_uN*wNtz[i] - 2.0*eta*n[1]*pow(that[0], 3)*that[1]*u0_uNx*wNt[i] - 2.0*eta*n[1]*pow(that[0], 2)*pow(that[1], 2)*u0_uNy*wNt[i] - 2.0*eta*n[1]*pow(that[0], 2)*pow(that[1], 2)*u1_uNx*wNt[i] - 2.0*eta*n[1]*pow(that[0], 2)*that[1]*that[2]*u0_uNz*wNt[i] - 2.0*eta*n[1]*pow(that[0], 2)*that[1]*that[2]*u2_uNx*wNt[i] - 2.0*eta*n[1]*that[0]*pow(that[1], 3)*u1_uNy*wNt[i] - 2.0*eta*n[1]*that[0]*pow(that[1], 2)*that[2]*u1_uNz*wNt[i] - 2.0*eta*n[1]*that[0]*pow(that[1], 2)*that[2]*u2_uNy*wNt[i] - 2.0*eta*n[1]*that[0]*that[1]*pow(that[2], 2)*u2_uNz*wNt[i] - 2.0*eta*n[2]*pow(nhat[0], 3)*nhat[2]*u0_uN*wNtx[i] - 2.0*eta*n[2]*pow(nhat[0], 3)*nhat[2]*u0_uNx*wNt[i] - 2.0*eta*n[2]*pow(nhat[0], 2)*nhat[1]*nhat[2]*u0_uN*wNty[i] - 2.0*eta*n[2]*pow(nhat[0], 2)*nhat[1]*nhat[2]*u0_uNy*wNt[i] - 2.0*eta*n[2]*pow(nhat[0], 2)*nhat[1]*nhat[2]*u1_uN*wNtx[i] - 2.0*eta*n[2]*pow(nhat[0], 2)*nhat[1]*nhat[2]*u1_uNx*wNt[i] - 2.0*eta*n[2]*pow(nhat[0], 2)*pow(nhat[2], 2)*u0_uN*wNtz[i] - 2.0*eta*n[2]*pow(nhat[0], 2)*pow(nhat[2], 2)*u0_uNz*wNt[i] - 2.0*eta*n[2]*pow(nhat[0], 2)*pow(nhat[2], 2)*u2_uN*wNtx[i] - 2.0*eta*n[2]*pow(nhat[0], 2)*pow(nhat[2], 2)*u2_uNx*wNt[i] - 2.0*eta*n[2]*pow(nhat[0], 2)*nhat[2]*that[0]*u0_uN*wNtx[i] - 1.0*eta*n[2]*pow(nhat[0], 2)*nhat[2]*that[1]*u0_uN*wNty[i] - 1.0*eta*n[2]*pow(nhat[0], 2)*nhat[2]*that[2]*u0_uN*wNtz[i] - 2.0*eta*n[2]*nhat[0]*pow(nhat[1], 2)*nhat[2]*u1_uN*wNty[i] - 2.0*eta*n[2]*nhat[0]*pow(nhat[1], 2)*nhat[2]*u1_uNy*wNt[i] - 2.0*eta*n[2]*nhat[0]*nhat[1]*pow(nhat[2], 2)*u1_uN*wNtz[i] - 2.0*eta*n[2]*nhat[0]*nhat[1]*pow(nhat[2], 2)*u1_uNz*wNt[i] - 2.0*eta*n[2]*nhat[0]*nhat[1]*pow(nhat[2], 2)*u2_uN*wNty[i] - 2.0*eta*n[2]*nhat[0]*nhat[1]*pow(nhat[2], 2)*u2_uNy*wNt[i] - 1.0*eta*n[2]*nhat[0]*nhat[1]*nhat[2]*that[0]*u0_uN*wNty[i] - 2.0*eta*n[2]*nhat[0]*nhat[1]*nhat[2]*that[0]*u1_uN*wNtx[i] - 1.0*eta*n[2]*nhat[0]*nhat[1]*nhat[2]*that[1]*u1_uN*wNty[i] - 1.0*eta*n[2]*nhat[0]*nhat[1]*nhat[2]*that[2]*u1_uN*wNtz[i] - 2.0*eta*n[2]*nhat[0]*pow(nhat[2], 3)*u2_uN*wNtz[i] - 2.0*eta*n[2]*nhat[0]*pow(nhat[2], 3)*u2_uNz*wNt[i] - 1.0*eta*n[2]*nhat[0]*pow(nhat[2], 2)*that[0]*u0_uN*wNtz[i] - 2.0*eta*n[2]*nhat[0]*pow(nhat[2], 2)*that[0]*u2_uN*wNtx[i] - 1.0*eta*n[2]*nhat[0]*pow(nhat[2], 2)*that[1]*u2_uN*wNty[i] - 1.0*eta*n[2]*nhat[0]*pow(nhat[2], 2)*that[2]*u2_uN*wNtz[i] - 1.0*eta*n[2]*pow(nhat[1], 2)*nhat[2]*that[0]*u1_uN*wNty[i] - 1.0*eta*n[2]*nhat[1]*pow(nhat[2], 2)*that[0]*u1_uN*wNtz[i] - 1.0*eta*n[2]*nhat[1]*pow(nhat[2], 2)*that[0]*u2_uN*wNty[i] - 1.0*eta*n[2]*pow(nhat[2], 3)*that[0]*u2_uN*wNtz[i] - 2.0*eta*n[2]*pow(that[0], 3)*that[2]*u0_uNx*wNt[i] - 2.0*eta*n[2]*pow(that[0], 2)*that[1]*that[2]*u0_uNy*wNt[i] - 2.0*eta*n[2]*pow(that[0], 2)*that[1]*that[2]*u1_uNx*wNt[i] - 2.0*eta*n[2]*pow(that[0], 2)*pow(that[2], 2)*u0_uNz*wNt[i] - 2.0*eta*n[2]*pow(that[0], 2)*pow(that[2], 2)*u2_uNx*wNt[i] - 2.0*eta*n[2]*that[0]*pow(that[1], 2)*that[2]*u1_uNy*wNt[i] - 2.0*eta*n[2]*that[0]*that[1]*pow(that[2], 2)*u1_uNz*wNt[i] - 2.0*eta*n[2]*that[0]*that[1]*pow(that[2], 2)*u2_uNy*wNt[i] - 2.0*eta*n[2]*that[0]*pow(that[2], 3)*u2_uNz*wNt[i] + gamma*pow(nhat[0], 2)*u0_uN*wNt[i] + gamma*nhat[0]*nhat[1]*u1_uN*wNt[i] + gamma*nhat[0]*nhat[2]*u2_uN*wNt[i]);
+    F[3*i + 1] += scale * (-2.0*eta*n[0]*pow(nhat[0], 3)*nhat[1]*u0_uN*wNtx[i] - 2.0*eta*n[0]*pow(nhat[0], 3)*nhat[1]*u0_uNx*wNt[i] - 1.0*eta*n[0]*pow(nhat[0], 3)*that[1]*u0_uN*wNtx[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*pow(nhat[1], 2)*u0_uN*wNty[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*pow(nhat[1], 2)*u0_uNy*wNt[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*pow(nhat[1], 2)*u1_uN*wNtx[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*pow(nhat[1], 2)*u1_uNx*wNt[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*nhat[2]*u0_uN*wNtz[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*nhat[2]*u0_uNz*wNt[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*nhat[2]*u2_uN*wNtx[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*nhat[2]*u2_uNx*wNt[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*that[0]*u0_uN*wNtx[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*that[1]*u0_uN*wNty[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*that[1]*u1_uN*wNtx[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*that[2]*u0_uN*wNtz[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[2]*that[1]*u0_uN*wNtz[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[2]*that[1]*u2_uN*wNtx[i] - 2.0*eta*n[0]*nhat[0]*pow(nhat[1], 3)*u1_uN*wNty[i] - 2.0*eta*n[0]*nhat[0]*pow(nhat[1], 3)*u1_uNy*wNt[i] - 2.0*eta*n[0]*nhat[0]*pow(nhat[1], 2)*nhat[2]*u1_uN*wNtz[i] - 2.0*eta*n[0]*nhat[0]*pow(nhat[1], 2)*nhat[2]*u1_uNz*wNt[i] - 2.0*eta*n[0]*nhat[0]*pow(nhat[1], 2)*nhat[2]*u2_uN*wNty[i] - 2.0*eta*n[0]*nhat[0]*pow(nhat[1], 2)*nhat[2]*u2_uNy*wNt[i] - 1.0*eta*n[0]*nhat[0]*pow(nhat[1], 2)*that[0]*u1_uN*wNtx[i] - 2.0*eta*n[0]*nhat[0]*pow(nhat[1], 2)*that[1]*u1_uN*wNty[i] - 1.0*eta*n[0]*nhat[0]*pow(nhat[1], 2)*that[2]*u1_uN*wNtz[i] - 2.0*eta*n[0]*nhat[0]*nhat[1]*pow(nhat[2], 2)*u2_uN*wNtz[i] - 2.0*eta*n[0]*nhat[0]*nhat[1]*pow(nhat[2], 2)*u2_uNz*wNt[i] - 1.0*eta*n[0]*nhat[0]*nhat[1]*nhat[2]*that[0]*u2_uN*wNtx[i] - 1.0*eta*n[0]*nhat[0]*nhat[1]*nhat[2]*that[1]*u1_uN*wNtz[i] - 2.0*eta*n[0]*nhat[0]*nhat[1]*nhat[2]*that[1]*u2_uN*wNty[i] - 1.0*eta*n[0]*nhat[0]*nhat[1]*nhat[2]*that[2]*u2_uN*wNtz[i] - 1.0*eta*n[0]*nhat[0]*pow(nhat[2], 2)*that[1]*u2_uN*wNtz[i] - 2.0*eta*n[0]*pow(that[0], 3)*that[1]*u0_uNx*wNt[i] - 2.0*eta*n[0]*pow(that[0], 2)*pow(that[1], 2)*u0_uNy*wNt[i] - 2.0*eta*n[0]*pow(that[0], 2)*pow(that[1], 2)*u1_uNx*wNt[i] - 2.0*eta*n[0]*pow(that[0], 2)*that[1]*that[2]*u0_uNz*wNt[i] - 2.0*eta*n[0]*pow(that[0], 2)*that[1]*that[2]*u2_uNx*wNt[i] - 2.0*eta*n[0]*that[0]*pow(that[1], 3)*u1_uNy*wNt[i] - 2.0*eta*n[0]*that[0]*pow(that[1], 2)*that[2]*u1_uNz*wNt[i] - 2.0*eta*n[0]*that[0]*pow(that[1], 2)*that[2]*u2_uNy*wNt[i] - 2.0*eta*n[0]*that[0]*that[1]*pow(that[2], 2)*u2_uNz*wNt[i] - 2.0*eta*n[1]*pow(nhat[0], 2)*pow(nhat[1], 2)*u0_uN*wNtx[i] - 2.0*eta*n[1]*pow(nhat[0], 2)*pow(nhat[1], 2)*u0_uNx*wNt[i] - 1.0*eta*n[1]*pow(nhat[0], 2)*nhat[1]*that[1]*u0_uN*wNtx[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 3)*u0_uN*wNty[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 3)*u0_uNy*wNt[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 3)*u1_uN*wNtx[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 3)*u1_uNx*wNt[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*nhat[2]*u0_uN*wNtz[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*nhat[2]*u0_uNz*wNt[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*nhat[2]*u2_uN*wNtx[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*nhat[2]*u2_uNx*wNt[i] - 1.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*that[0]*u0_uN*wNtx[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*that[1]*u0_uN*wNty[i] - 1.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*that[1]*u1_uN*wNtx[i] - 1.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*that[2]*u0_uN*wNtz[i] - 1.0*eta*n[1]*nhat[0]*nhat[1]*nhat[2]*that[1]*u0_uN*wNtz[i] - 1.0*eta*n[1]*nhat[0]*nhat[1]*nhat[2]*that[1]*u2_uN*wNtx[i] - 2.0*eta*n[1]*pow(nhat[1], 4)*u1_uN*wNty[i] - 2.0*eta*n[1]*pow(nhat[1], 4)*u1_uNy*wNt[i] - 2.0*eta*n[1]*pow(nhat[1], 3)*nhat[2]*u1_uN*wNtz[i] - 2.0*eta*n[1]*pow(nhat[1], 3)*nhat[2]*u1_uNz*wNt[i] - 2.0*eta*n[1]*pow(nhat[1], 3)*nhat[2]*u2_uN*wNty[i] - 2.0*eta*n[1]*pow(nhat[1], 3)*nhat[2]*u2_uNy*wNt[i] - 1.0*eta*n[1]*pow(nhat[1], 3)*that[0]*u1_uN*wNtx[i] - 2.0*eta*n[1]*pow(nhat[1], 3)*that[1]*u1_uN*wNty[i] - 1.0*eta*n[1]*pow(nhat[1], 3)*that[2]*u1_uN*wNtz[i] - 2.0*eta*n[1]*pow(nhat[1], 2)*pow(nhat[2], 2)*u2_uN*wNtz[i] - 2.0*eta*n[1]*pow(nhat[1], 2)*pow(nhat[2], 2)*u2_uNz*wNt[i] - 1.0*eta*n[1]*pow(nhat[1], 2)*nhat[2]*that[0]*u2_uN*wNtx[i] - 1.0*eta*n[1]*pow(nhat[1], 2)*nhat[2]*that[1]*u1_uN*wNtz[i] - 2.0*eta*n[1]*pow(nhat[1], 2)*nhat[2]*that[1]*u2_uN*wNty[i] - 1.0*eta*n[1]*pow(nhat[1], 2)*nhat[2]*that[2]*u2_uN*wNtz[i] - 1.0*eta*n[1]*nhat[1]*pow(nhat[2], 2)*that[1]*u2_uN*wNtz[i] - 2.0*eta*n[1]*pow(that[0], 2)*pow(that[1], 2)*u0_uNx*wNt[i] - 2.0*eta*n[1]*that[0]*pow(that[1], 3)*u0_uNy*wNt[i] - 2.0*eta*n[1]*that[0]*pow(that[1], 3)*u1_uNx*wNt[i] - 2.0*eta*n[1]*that[0]*pow(that[1], 2)*that[2]*u0_uNz*wNt[i] - 2.0*eta*n[1]*that[0]*pow(that[1], 2)*that[2]*u2_uNx*wNt[i] - 2.0*eta*n[1]*pow(that[1], 4)*u1_uNy*wNt[i] - 2.0*eta*n[1]*pow(that[1], 3)*that[2]*u1_uNz*wNt[i] - 2.0*eta*n[1]*pow(that[1], 3)*that[2]*u2_uNy*wNt[i] - 2.0*eta*n[1]*pow(that[1], 2)*pow(that[2], 2)*u2_uNz*wNt[i] - 2.0*eta*n[2]*pow(nhat[0], 2)*nhat[1]*nhat[2]*u0_uN*wNtx[i] - 2.0*eta*n[2]*pow(nhat[0], 2)*nhat[1]*nhat[2]*u0_uNx*wNt[i] - 1.0*eta*n[2]*pow(nhat[0], 2)*nhat[2]*that[1]*u0_uN*wNtx[i] - 2.0*eta*n[2]*nhat[0]*pow(nhat[1], 2)*nhat[2]*u0_uN*wNty[i] - 2.0*eta*n[2]*nhat[0]*pow(nhat[1], 2)*nhat[2]*u0_uNy*wNt[i] - 2.0*eta*n[2]*nhat[0]*pow(nhat[1], 2)*nhat[2]*u1_uN*wNtx[i] - 2.0*eta*n[2]*nhat[0]*pow(nhat[1], 2)*nhat[2]*u1_uNx*wNt[i] - 2.0*eta*n[2]*nhat[0]*nhat[1]*pow(nhat[2], 2)*u0_uN*wNtz[i] - 2.0*eta*n[2]*nhat[0]*nhat[1]*pow(nhat[2], 2)*u0_uNz*wNt[i] - 2.0*eta*n[2]*nhat[0]*nhat[1]*pow(nhat[2], 2)*u2_uN*wNtx[i] - 2.0*eta*n[2]*nhat[0]*nhat[1]*pow(nhat[2], 2)*u2_uNx*wNt[i] - 1.0*eta*n[2]*nhat[0]*nhat[1]*nhat[2]*that[0]*u0_uN*wNtx[i] - 2.0*eta*n[2]*nhat[0]*nhat[1]*nhat[2]*that[1]*u0_uN*wNty[i] - 1.0*eta*n[2]*nhat[0]*nhat[1]*nhat[2]*that[1]*u1_uN*wNtx[i] - 1.0*eta*n[2]*nhat[0]*nhat[1]*nhat[2]*that[2]*u0_uN*wNtz[i] - 1.0*eta*n[2]*nhat[0]*pow(nhat[2], 2)*that[1]*u0_uN*wNtz[i] - 1.0*eta*n[2]*nhat[0]*pow(nhat[2], 2)*that[1]*u2_uN*wNtx[i] - 2.0*eta*n[2]*pow(nhat[1], 3)*nhat[2]*u1_uN*wNty[i] - 2.0*eta*n[2]*pow(nhat[1], 3)*nhat[2]*u1_uNy*wNt[i] - 2.0*eta*n[2]*pow(nhat[1], 2)*pow(nhat[2], 2)*u1_uN*wNtz[i] - 2.0*eta*n[2]*pow(nhat[1], 2)*pow(nhat[2], 2)*u1_uNz*wNt[i] - 2.0*eta*n[2]*pow(nhat[1], 2)*pow(nhat[2], 2)*u2_uN*wNty[i] - 2.0*eta*n[2]*pow(nhat[1], 2)*pow(nhat[2], 2)*u2_uNy*wNt[i] - 1.0*eta*n[2]*pow(nhat[1], 2)*nhat[2]*that[0]*u1_uN*wNtx[i] - 2.0*eta*n[2]*pow(nhat[1], 2)*nhat[2]*that[1]*u1_uN*wNty[i] - 1.0*eta*n[2]*pow(nhat[1], 2)*nhat[2]*that[2]*u1_uN*wNtz[i] - 2.0*eta*n[2]*nhat[1]*pow(nhat[2], 3)*u2_uN*wNtz[i] - 2.0*eta*n[2]*nhat[1]*pow(nhat[2], 3)*u2_uNz*wNt[i] - 1.0*eta*n[2]*nhat[1]*pow(nhat[2], 2)*that[0]*u2_uN*wNtx[i] - 1.0*eta*n[2]*nhat[1]*pow(nhat[2], 2)*that[1]*u1_uN*wNtz[i] - 2.0*eta*n[2]*nhat[1]*pow(nhat[2], 2)*that[1]*u2_uN*wNty[i] - 1.0*eta*n[2]*nhat[1]*pow(nhat[2], 2)*that[2]*u2_uN*wNtz[i] - 1.0*eta*n[2]*pow(nhat[2], 3)*that[1]*u2_uN*wNtz[i] - 2.0*eta*n[2]*pow(that[0], 2)*that[1]*that[2]*u0_uNx*wNt[i] - 2.0*eta*n[2]*that[0]*pow(that[1], 2)*that[2]*u0_uNy*wNt[i] - 2.0*eta*n[2]*that[0]*pow(that[1], 2)*that[2]*u1_uNx*wNt[i] - 2.0*eta*n[2]*that[0]*that[1]*pow(that[2], 2)*u0_uNz*wNt[i] - 2.0*eta*n[2]*that[0]*that[1]*pow(that[2], 2)*u2_uNx*wNt[i] - 2.0*eta*n[2]*pow(that[1], 3)*that[2]*u1_uNy*wNt[i] - 2.0*eta*n[2]*pow(that[1], 2)*pow(that[2], 2)*u1_uNz*wNt[i] - 2.0*eta*n[2]*pow(that[1], 2)*pow(that[2], 2)*u2_uNy*wNt[i] - 2.0*eta*n[2]*that[1]*pow(that[2], 3)*u2_uNz*wNt[i] + gamma*nhat[0]*nhat[1]*u0_uN*wNt[i] + gamma*pow(nhat[1], 2)*u1_uN*wNt[i] + gamma*nhat[1]*nhat[2]*u2_uN*wNt[i]);
+    F[3*i + 2] += scale * (-2.0*eta*n[0]*pow(nhat[0], 3)*nhat[2]*u0_uN*wNtx[i] - 2.0*eta*n[0]*pow(nhat[0], 3)*nhat[2]*u0_uNx*wNt[i] - 1.0*eta*n[0]*pow(nhat[0], 3)*that[2]*u0_uN*wNtx[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*nhat[2]*u0_uN*wNty[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*nhat[2]*u0_uNy*wNt[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*nhat[2]*u1_uN*wNtx[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*nhat[2]*u1_uNx*wNt[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*that[2]*u0_uN*wNty[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*that[2]*u1_uN*wNtx[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*pow(nhat[2], 2)*u0_uN*wNtz[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*pow(nhat[2], 2)*u0_uNz*wNt[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*pow(nhat[2], 2)*u2_uN*wNtx[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*pow(nhat[2], 2)*u2_uNx*wNt[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[2]*that[0]*u0_uN*wNtx[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[2]*that[1]*u0_uN*wNty[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[2]*that[2]*u0_uN*wNtz[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[2]*that[2]*u2_uN*wNtx[i] - 2.0*eta*n[0]*nhat[0]*pow(nhat[1], 2)*nhat[2]*u1_uN*wNty[i] - 2.0*eta*n[0]*nhat[0]*pow(nhat[1], 2)*nhat[2]*u1_uNy*wNt[i] - 1.0*eta*n[0]*nhat[0]*pow(nhat[1], 2)*that[2]*u1_uN*wNty[i] - 2.0*eta*n[0]*nhat[0]*nhat[1]*pow(nhat[2], 2)*u1_uN*wNtz[i] - 2.0*eta*n[0]*nhat[0]*nhat[1]*pow(nhat[2], 2)*u1_uNz*wNt[i] - 2.0*eta*n[0]*nhat[0]*nhat[1]*pow(nhat[2], 2)*u2_uN*wNty[i] - 2.0*eta*n[0]*nhat[0]*nhat[1]*pow(nhat[2], 2)*u2_uNy*wNt[i] - 1.0*eta*n[0]*nhat[0]*nhat[1]*nhat[2]*that[0]*u1_uN*wNtx[i] - 1.0*eta*n[0]*nhat[0]*nhat[1]*nhat[2]*that[1]*u1_uN*wNty[i] - 2.0*eta*n[0]*nhat[0]*nhat[1]*nhat[2]*that[2]*u1_uN*wNtz[i] - 1.0*eta*n[0]*nhat[0]*nhat[1]*nhat[2]*that[2]*u2_uN*wNty[i] - 2.0*eta*n[0]*nhat[0]*pow(nhat[2], 3)*u2_uN*wNtz[i] - 2.0*eta*n[0]*nhat[0]*pow(nhat[2], 3)*u2_uNz*wNt[i] - 1.0*eta*n[0]*nhat[0]*pow(nhat[2], 2)*that[0]*u2_uN*wNtx[i] - 1.0*eta*n[0]*nhat[0]*pow(nhat[2], 2)*that[1]*u2_uN*wNty[i] - 2.0*eta*n[0]*nhat[0]*pow(nhat[2], 2)*that[2]*u2_uN*wNtz[i] - 2.0*eta*n[0]*pow(that[0], 3)*that[2]*u0_uNx*wNt[i] - 2.0*eta*n[0]*pow(that[0], 2)*that[1]*that[2]*u0_uNy*wNt[i] - 2.0*eta*n[0]*pow(that[0], 2)*that[1]*that[2]*u1_uNx*wNt[i] - 2.0*eta*n[0]*pow(that[0], 2)*pow(that[2], 2)*u0_uNz*wNt[i] - 2.0*eta*n[0]*pow(that[0], 2)*pow(that[2], 2)*u2_uNx*wNt[i] - 2.0*eta*n[0]*that[0]*pow(that[1], 2)*that[2]*u1_uNy*wNt[i] - 2.0*eta*n[0]*that[0]*that[1]*pow(that[2], 2)*u1_uNz*wNt[i] - 2.0*eta*n[0]*that[0]*that[1]*pow(that[2], 2)*u2_uNy*wNt[i] - 2.0*eta*n[0]*that[0]*pow(that[2], 3)*u2_uNz*wNt[i] - 2.0*eta*n[1]*pow(nhat[0], 2)*nhat[1]*nhat[2]*u0_uN*wNtx[i] - 2.0*eta*n[1]*pow(nhat[0], 2)*nhat[1]*nhat[2]*u0_uNx*wNt[i] - 1.0*eta*n[1]*pow(nhat[0], 2)*nhat[1]*that[2]*u0_uN*wNtx[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*nhat[2]*u0_uN*wNty[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*nhat[2]*u0_uNy*wNt[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*nhat[2]*u1_uN*wNtx[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*nhat[2]*u1_uNx*wNt[i] - 1.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*that[2]*u0_uN*wNty[i] - 1.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*that[2]*u1_uN*wNtx[i] - 2.0*eta*n[1]*nhat[0]*nhat[1]*pow(nhat[2], 2)*u0_uN*wNtz[i] - 2.0*eta*n[1]*nhat[0]*nhat[1]*pow(nhat[2], 2)*u0_uNz*wNt[i] - 2.0*eta*n[1]*nhat[0]*nhat[1]*pow(nhat[2], 2)*u2_uN*wNtx[i] - 2.0*eta*n[1]*nhat[0]*nhat[1]*pow(nhat[2], 2)*u2_uNx*wNt[i] - 1.0*eta*n[1]*nhat[0]*nhat[1]*nhat[2]*that[0]*u0_uN*wNtx[i] - 1.0*eta*n[1]*nhat[0]*nhat[1]*nhat[2]*that[1]*u0_uN*wNty[i] - 2.0*eta*n[1]*nhat[0]*nhat[1]*nhat[2]*that[2]*u0_uN*wNtz[i] - 1.0*eta*n[1]*nhat[0]*nhat[1]*nhat[2]*that[2]*u2_uN*wNtx[i] - 2.0*eta*n[1]*pow(nhat[1], 3)*nhat[2]*u1_uN*wNty[i] - 2.0*eta*n[1]*pow(nhat[1], 3)*nhat[2]*u1_uNy*wNt[i] - 1.0*eta*n[1]*pow(nhat[1], 3)*that[2]*u1_uN*wNty[i] - 2.0*eta*n[1]*pow(nhat[1], 2)*pow(nhat[2], 2)*u1_uN*wNtz[i] - 2.0*eta*n[1]*pow(nhat[1], 2)*pow(nhat[2], 2)*u1_uNz*wNt[i] - 2.0*eta*n[1]*pow(nhat[1], 2)*pow(nhat[2], 2)*u2_uN*wNty[i] - 2.0*eta*n[1]*pow(nhat[1], 2)*pow(nhat[2], 2)*u2_uNy*wNt[i] - 1.0*eta*n[1]*pow(nhat[1], 2)*nhat[2]*that[0]*u1_uN*wNtx[i] - 1.0*eta*n[1]*pow(nhat[1], 2)*nhat[2]*that[1]*u1_uN*wNty[i] - 2.0*eta*n[1]*pow(nhat[1], 2)*nhat[2]*that[2]*u1_uN*wNtz[i] - 1.0*eta*n[1]*pow(nhat[1], 2)*nhat[2]*that[2]*u2_uN*wNty[i] - 2.0*eta*n[1]*nhat[1]*pow(nhat[2], 3)*u2_uN*wNtz[i] - 2.0*eta*n[1]*nhat[1]*pow(nhat[2], 3)*u2_uNz*wNt[i] - 1.0*eta*n[1]*nhat[1]*pow(nhat[2], 2)*that[0]*u2_uN*wNtx[i] - 1.0*eta*n[1]*nhat[1]*pow(nhat[2], 2)*that[1]*u2_uN*wNty[i] - 2.0*eta*n[1]*nhat[1]*pow(nhat[2], 2)*that[2]*u2_uN*wNtz[i] - 2.0*eta*n[1]*pow(that[0], 2)*that[1]*that[2]*u0_uNx*wNt[i] - 2.0*eta*n[1]*that[0]*pow(that[1], 2)*that[2]*u0_uNy*wNt[i] - 2.0*eta*n[1]*that[0]*pow(that[1], 2)*that[2]*u1_uNx*wNt[i] - 2.0*eta*n[1]*that[0]*that[1]*pow(that[2], 2)*u0_uNz*wNt[i] - 2.0*eta*n[1]*that[0]*that[1]*pow(that[2], 2)*u2_uNx*wNt[i] - 2.0*eta*n[1]*pow(that[1], 3)*that[2]*u1_uNy*wNt[i] - 2.0*eta*n[1]*pow(that[1], 2)*pow(that[2], 2)*u1_uNz*wNt[i] - 2.0*eta*n[1]*pow(that[1], 2)*pow(that[2], 2)*u2_uNy*wNt[i] - 2.0*eta*n[1]*that[1]*pow(that[2], 3)*u2_uNz*wNt[i] - 2.0*eta*n[2]*pow(nhat[0], 2)*pow(nhat[2], 2)*u0_uN*wNtx[i] - 2.0*eta*n[2]*pow(nhat[0], 2)*pow(nhat[2], 2)*u0_uNx*wNt[i] - 1.0*eta*n[2]*pow(nhat[0], 2)*nhat[2]*that[2]*u0_uN*wNtx[i] - 2.0*eta*n[2]*nhat[0]*nhat[1]*pow(nhat[2], 2)*u0_uN*wNty[i] - 2.0*eta*n[2]*nhat[0]*nhat[1]*pow(nhat[2], 2)*u0_uNy*wNt[i] - 2.0*eta*n[2]*nhat[0]*nhat[1]*pow(nhat[2], 2)*u1_uN*wNtx[i] - 2.0*eta*n[2]*nhat[0]*nhat[1]*pow(nhat[2], 2)*u1_uNx*wNt[i] - 1.0*eta*n[2]*nhat[0]*nhat[1]*nhat[2]*that[2]*u0_uN*wNty[i] - 1.0*eta*n[2]*nhat[0]*nhat[1]*nhat[2]*that[2]*u1_uN*wNtx[i] - 2.0*eta*n[2]*nhat[0]*pow(nhat[2], 3)*u0_uN*wNtz[i] - 2.0*eta*n[2]*nhat[0]*pow(nhat[2], 3)*u0_uNz*wNt[i] - 2.0*eta*n[2]*nhat[0]*pow(nhat[2], 3)*u2_uN*wNtx[i] - 2.0*eta*n[2]*nhat[0]*pow(nhat[2], 3)*u2_uNx*wNt[i] - 1.0*eta*n[2]*nhat[0]*pow(nhat[2], 2)*that[0]*u0_uN*wNtx[i] - 1.0*eta*n[2]*nhat[0]*pow(nhat[2], 2)*that[1]*u0_uN*wNty[i] - 2.0*eta*n[2]*nhat[0]*pow(nhat[2], 2)*that[2]*u0_uN*wNtz[i] - 1.0*eta*n[2]*nhat[0]*pow(nhat[2], 2)*that[2]*u2_uN*wNtx[i] - 2.0*eta*n[2]*pow(nhat[1], 2)*pow(nhat[2], 2)*u1_uN*wNty[i] - 2.0*eta*n[2]*pow(nhat[1], 2)*pow(nhat[2], 2)*u1_uNy*wNt[i] - 1.0*eta*n[2]*pow(nhat[1], 2)*nhat[2]*that[2]*u1_uN*wNty[i] - 2.0*eta*n[2]*nhat[1]*pow(nhat[2], 3)*u1_uN*wNtz[i] - 2.0*eta*n[2]*nhat[1]*pow(nhat[2], 3)*u1_uNz*wNt[i] - 2.0*eta*n[2]*nhat[1]*pow(nhat[2], 3)*u2_uN*wNty[i] - 2.0*eta*n[2]*nhat[1]*pow(nhat[2], 3)*u2_uNy*wNt[i] - 1.0*eta*n[2]*nhat[1]*pow(nhat[2], 2)*that[0]*u1_uN*wNtx[i] - 1.0*eta*n[2]*nhat[1]*pow(nhat[2], 2)*that[1]*u1_uN*wNty[i] - 2.0*eta*n[2]*nhat[1]*pow(nhat[2], 2)*that[2]*u1_uN*wNtz[i] - 1.0*eta*n[2]*nhat[1]*pow(nhat[2], 2)*that[2]*u2_uN*wNty[i] - 2.0*eta*n[2]*pow(nhat[2], 4)*u2_uN*wNtz[i] - 2.0*eta*n[2]*pow(nhat[2], 4)*u2_uNz*wNt[i] - 1.0*eta*n[2]*pow(nhat[2], 3)*that[0]*u2_uN*wNtx[i] - 1.0*eta*n[2]*pow(nhat[2], 3)*that[1]*u2_uN*wNty[i] - 2.0*eta*n[2]*pow(nhat[2], 3)*that[2]*u2_uN*wNtz[i] - 2.0*eta*n[2]*pow(that[0], 2)*pow(that[2], 2)*u0_uNx*wNt[i] - 2.0*eta*n[2]*that[0]*that[1]*pow(that[2], 2)*u0_uNy*wNt[i] - 2.0*eta*n[2]*that[0]*that[1]*pow(that[2], 2)*u1_uNx*wNt[i] - 2.0*eta*n[2]*that[0]*pow(that[2], 3)*u0_uNz*wNt[i] - 2.0*eta*n[2]*that[0]*pow(that[2], 3)*u2_uNx*wNt[i] - 2.0*eta*n[2]*pow(that[1], 2)*pow(that[2], 2)*u1_uNy*wNt[i] - 2.0*eta*n[2]*that[1]*pow(that[2], 3)*u1_uNz*wNt[i] - 2.0*eta*n[2]*that[1]*pow(that[2], 3)*u2_uNy*wNt[i] - 2.0*eta*n[2]*pow(that[2], 4)*u2_uNz*wNt[i] + gamma*nhat[0]*nhat[2]*u0_uN*wNt[i] + gamma*nhat[1]*nhat[2]*u1_uN*wNt[i] + gamma*pow(nhat[2], 2)*u2_uN*wNt[i]);
+  }
+}
+
+PetscErrorCode FormFunctionLocal_U_NitscheBC(SurfaceQuadrature *mesh_surfQ,DM dau,PetscScalar ufield[],DM dap,PetscScalar pfield[],PetscScalar Ru[])
 {
   PetscErrorCode ierr;
-  PetscInt p,i,j,d;
-  DM cda;
-  Vec gcoords;
-  PetscReal *LA_gcoords;
-  PetscInt nel,nen_u,nen_p,k,e,edge,fe;
+  DM             cda;
+  Vec            gcoords;
+  PetscReal      *LA_gcoords;
+  PetscInt       nel,nen_u,nen_p,k,e,p,edge,fe;
   const PetscInt *elnidx_u;
   const PetscInt *elnidx_p;
-  PetscReal elcoords[3*Q2_NODES_PER_EL_3D];
-  PetscReal elu[3*Q2_NODES_PER_EL_3D],elp[P_BASIS_FUNCTIONS];
-  PetscReal ux[Q2_NODES_PER_EL_3D],uy[Q2_NODES_PER_EL_3D],uz[Q2_NODES_PER_EL_3D];
-  PetscReal Fe[3*Q2_NODES_PER_EL_3D],Be[3*Q2_NODES_PER_EL_2D];
-  PetscInt vel_el_lidx[3*U_BASIS_FUNCTIONS];
+  PetscReal      elcoords[3*Q2_NODES_PER_EL_3D];
+  PetscReal      Fe[3*Q2_NODES_PER_EL_3D],Be[3*Q2_NODES_PER_EL_3D];
+  PetscInt       vel_el_lidx[3*U_BASIS_FUNCTIONS];
   PetscLogDouble t0,t1;
-  QPntSurfCoefStokes *quadpoints,*cell_quadpoints;
-  SurfaceQuadrature surfQ;
 
   PetscFunctionBegin;
-
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
   /* quadrature */
 
   /* setup for coords */
@@ -418,18 +509,21 @@ PetscErrorCode FormFunctionLocal_U_NitscheBC(PhysCompStokes user,DM dau,PetscSca
   ierr = VecGetArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
 
   ierr = DMDAGetElements_pTatinQ2P1(dau,&nel,&nen_u,&elnidx_u);CHKERRQ(ierr);
-  ierr = DMDAGetElements_pTatinQ2P1(dap,&nel,&nen_p,&elnidx_p);CHKERRQ(ierr);
+  //ierr = DMDAGetElements_pTatinQ2P1(dap,&nel,&nen_p,&elnidx_p);CHKERRQ(ierr);
 
   PetscTime(&t0);
 
   for (edge=0; edge<HEX_EDGES; edge++) {
     ConformingElementFamily element;
-    int *face_local_indices;
-    PetscInt nfaces,ngp;
-    QPoint2d *gp2;
-    QPoint3d *gp3;
+    PetscInt                nfaces,ngp;
+    SurfaceQuadrature       surfQ;
+    QPoint2d                *gp2;
+    QPoint3d                *gp3;
+    QPntSurfCoefStokes      *quadpoints,*cell_quadpoints;
 
-    surfQ   = user->surfQ[edge];
+    if (edge == 2) {continue;} // Skip the surface
+
+    surfQ   = mesh_surfQ[edge];
     element = surfQ->e;
     nfaces  = surfQ->nfaces;
     gp2     = surfQ->gp2;
@@ -437,24 +531,23 @@ PetscErrorCode FormFunctionLocal_U_NitscheBC(PhysCompStokes user,DM dau,PetscSca
     ngp     = surfQ->ngp;
     ierr = SurfaceQuadratureGetAllCellData_Stokes(surfQ,&quadpoints);CHKERRQ(ierr);
 
-    face_local_indices = element->face_node_list[edge];
-
     for (fe=0; fe<nfaces; fe++) { /* for all elements on this domain face */
       PetscReal min_diag,max_diag,gamma;
+      PetscReal elu[3*Q2_NODES_PER_EL_3D],elp[P_BASIS_FUNCTIONS];
+      PetscReal ux[Q2_NODES_PER_EL_3D],uy[Q2_NODES_PER_EL_3D],uz[Q2_NODES_PER_EL_3D];
+
       /* get element index of the face element we want to integrate */
       e = surfQ->element_list[fe];
 
       ierr = StokesVelocity_GetElementLocalIndices(vel_el_lidx,(PetscInt*)&elnidx_u[nen_u*e]);CHKERRQ(ierr);
       ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx_u[nen_u*e],LA_gcoords);CHKERRQ(ierr);
       ierr = DMDAGetVectorElementFieldQ2_3D(elu,(PetscInt*)&elnidx_u[nen_u*e],ufield);CHKERRQ(ierr);
-      ierr = DMDAGetScalarElementField(elp,nen_p,(PetscInt*)&elnidx_p[nen_p*e],pfield);CHKERRQ(ierr);
+      //ierr = DMDAGetScalarElementField(elp,nen_p,(PetscInt*)&elnidx_p[nen_p*e],pfield);CHKERRQ(ierr);
 
       ierr = SurfaceQuadratureGetCellData_Stokes(surfQ,quadpoints,fe,&cell_quadpoints);CHKERRQ(ierr);
 
       /* Compute the min and max diagonals of the element */
       ierr = ElementComputeMeshQualityMetric_Diagonal(elcoords,&min_diag,&max_diag);CHKERRQ(ierr);
-      /* Penalty */
-      gamma = 200.0/min_diag;
 
       /* Get velocity components at nodes */
       for (k=0; k<Q2_NODES_PER_EL_3D; k++ ) {
@@ -465,13 +558,13 @@ PetscErrorCode FormFunctionLocal_U_NitscheBC(PhysCompStokes user,DM dau,PetscSca
 
       /* initialise element stiffness matrix */
       PetscMemzero( Fe, sizeof(PetscScalar)* Q2_NODES_PER_EL_3D*3 );
-      PetscMemzero( Be, sizeof(PetscScalar)* Q2_NODES_PER_EL_2D*3 );
-
+      PetscMemzero( Be, sizeof(PetscScalar)* Q2_NODES_PER_EL_3D*3 );
+      
       for (p=0; p<ngp; p++) {
         PetscScalar fac,surfJ_p;
         PetscReal _xi[3],GNi[NSD][Q2_NODES_PER_EL_3D],Ni[Q2_NODES_PER_EL_3D];
         PetscReal dNudx[Q2_NODES_PER_EL_3D],dNudy[Q2_NODES_PER_EL_3D],dNudz[Q2_NODES_PER_EL_3D];
-        PetscReal D[NSD][NSD],u_p[3],u_dot_n,tau_nn,s00,s11,s22,s01,s02,s12;
+        PetscReal D[NSD][NSD];
         double    *normal, eta;
 
         /* Local coords of gauss point */
@@ -486,42 +579,15 @@ PetscErrorCode FormFunctionLocal_U_NitscheBC(PhysCompStokes user,DM dau,PetscSca
         /* Evaluate shape function global derivatives */
         P3D_evaluate_global_derivatives_Q2(elcoords,GNi,dNudx,dNudy,dNudz);
         /* Compute strain rate tensor */
-        ComputeStrainRate3d(ux,uy,uz,dNudx,dNudy,dNudz,D);
+        //ComputeStrainRate3d(ux,uy,uz,dNudx,dNudy,dNudz,D);
+        
         /* Get the normal to the facet */
         QPntSurfCoefStokesGetField_surface_normal(&cell_quadpoints[p],&normal);
         /* Get viscosity at gauss point */
-        QPntSurfCoefStokesGetField_viscosity(&cell_quadpoints[p],&eta);
-
-        /* Interpolate velocity at current point */
-        u_p[0] = u_p[1] = u_p[2] = 0.0;
-        for (k=0; k<Q2_NODES_PER_EL_3D; k++) {
-          u_p[0] += Ni[k]*ux[k];
-          u_p[1] += Ni[k]*uy[k];
-          u_p[2] += Ni[k]*uz[k];
-        }
-
-        /* Compute u.n */
-        u_dot_n = 0.0;
-        for (d=0; d<3; d++) {
-          u_dot_n += u_p[d]*normal[d];
-        }
-
-        /* Compute n.tau*n */
-        tau_nn = 0.0;
-        for (i=0; i<3; i++) {
-          for (j=0; j<3; j++) {
-            tau_nn += normal[i]*(2.0*eta*D[i][j])*normal[j];
-          }
-        }
-
-        /* construct n.tau(w)*n */
-        s00 = 2.0*eta*normal[0]*normal[0];
-        s11 = 2.0*eta*normal[1]*normal[1];
-        s22 = 2.0*eta*normal[2]*normal[2];
-
-        s01 = 2.0*eta*normal[0]*normal[1];
-        s02 = 2.0*eta*normal[0]*normal[2];
-        s12 = 2.0*eta*normal[1]*normal[2];
+        //QPntSurfCoefStokesGetField_viscosity(&cell_quadpoints[p],&eta);
+        eta = 1.0;
+        /* Penalty */
+        gamma = 20.0*eta/min_diag;
 
         element->compute_surface_geometry_3D(
             element,
@@ -531,19 +597,26 @@ PetscErrorCode FormFunctionLocal_U_NitscheBC(PhysCompStokes user,DM dau,PetscSca
             NULL,NULL, &surfJ_p ); // n0[],t0 contains 1 point with dimension 3 (x,y,z) //
         fac = gp2[p].w * surfJ_p;
 
-        for (k=0; k<Q2_NODES_PER_EL_3D; k++) {
-          Be[3*k  ] = Be[3*k  ] - fac * ( Ni[k] * normal[0] * tau_nn + (dNudx[k]*s00 + dNudy[k]*s01 + dNudz[k]*s02)*u_dot_n ) + fac * (gamma * u_dot_n * Ni[k] * normal[0]);
-          Be[3*k+1] = Be[3*k+1] - fac * ( Ni[k] * normal[1] * tau_nn + (dNudx[k]*s01 + dNudy[k]*s11 + dNudz[k]*s12)*u_dot_n ) + fac * (gamma * u_dot_n * Ni[k] * normal[1]);
-          Be[3*k+2] = Be[3*k+2] - fac * ( Ni[k] * normal[2] * tau_nn + (dNudx[k]*s02 + dNudy[k]*s12 + dNudz[k]*s22)*u_dot_n ) + fac * (gamma * u_dot_n * Ni[k] * normal[2]);
-        }
-
-        /* ORIGINAL SURFACE INTEGRAL FOR TRACTION
-        for (k=0; k<Q2_NODES_PER_EL_2D; k++) {
-          Be[3*k  ] = Be[3*k  ] - fac * NIu_surf[p][k] * cell_quadpoints[p].traction[0];
-          Be[3*k+1] = Be[3*k+1] - fac * NIu_surf[p][k] * cell_quadpoints[p].traction[1];
-          Be[3*k+2] = Be[3*k+2] - fac * NIu_surf[p][k] * cell_quadpoints[p].traction[2];
-        }
+        /*
+        lform_action_nitsche_classic(
+                                    eta,normal,gamma, // inputs
+                                    fac,
+                                    Ni,dNudx,dNudy,dNudz, // test function
+                                    Ni,dNudx,dNudy,dNudz, // trial function
+                                    ux,uy,uz, // trial function coefficients
+                                    Be );
         */
+        {
+          PetscReal nhat[3] = {0.7071067811865476, 0.0, -0.7071067811865476};
+          PetscReal that[3] = {0.7071067811865476, 0.0,  0.7071067811865476};
+              
+          lform_action_nitsche_custom(
+                                      Ni, dNudx, dNudy, dNudz,
+                                      Ni, dNudx, dNudy, dNudz,
+                                      ux, uy, uz,
+                                      eta, gamma, normal, nhat, that,
+                                      fac, Be);
+        }
       }
 
       /* combine body force with A.x */
@@ -553,21 +626,10 @@ PetscErrorCode FormFunctionLocal_U_NitscheBC(PhysCompStokes user,DM dau,PetscSca
         Fe[3*k+2] = Be[3*k+2];
       }
 
-      //for (k=0; k<Q2_NODES_PER_EL_2D; k++) {
-        //int nidx3d;
-
-        /* map 1D index over element edge to 2D element space */
-        //nidx3d = face_local_indices[k];
-        //Fe[3*nidx3d  ] = Be[3*k  ];
-        //Fe[3*nidx3d+1] = Be[3*k+1];
-        //Fe[3*nidx3d+2] = Be[3*k+2];
-      //}
-
       ierr = DMDASetValuesLocalStencil_AddValues_Stokes_Velocity(Ru, vel_el_lidx,Fe);CHKERRQ(ierr);
     }
   }
   PetscTime(&t1);
-  //PetscPrintf(PETSC_COMM_WORLD,"Assembled int_S N traction[i].n[i] dS, = %1.4e (sec)\n",t1-t0);
 
   ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
 
@@ -741,7 +803,7 @@ PetscErrorCode FormFunction_Stokes(SNES snes,Vec X,Vec F,void *ctx)
   /* momentum */
   ierr = FormFunctionLocal_U(stokes,dau,LA_Uloc,dap,LA_Ploc,LA_FUloc);CHKERRQ(ierr);
   ierr = FormFunctionLocal_U_tractionBC(stokes,dau,LA_Uloc,dap,LA_Ploc,LA_FUloc);CHKERRQ(ierr);
-  ierr = FormFunctionLocal_U_NitscheBC(stokes,dau,LA_Uloc,dap,LA_Ploc,LA_FUloc);CHKERRQ(ierr);
+  ierr = FormFunctionLocal_U_NitscheBC(stokes->surfQ,dau,LA_Uloc,dap,LA_Ploc,LA_FUloc);CHKERRQ(ierr);
 
   /* continuity */
   ierr = FormFunctionLocal_P(stokes,dau,LA_Uloc,dap,LA_Ploc,LA_FPloc);CHKERRQ(ierr);
