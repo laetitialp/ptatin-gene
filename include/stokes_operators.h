@@ -39,6 +39,7 @@ struct _p_MatStokesMF {
   DM          stokes_pack,daUVW,dap;
   BCList      u_bclist,p_bclist;
   Quadrature  volQ;
+  SurfaceQuadrature *surfQ;
   DM          daU;
   IS          isUVW,isU,isV,isW,isP; /* Need the IS's for GetSubMatrix */
   PetscInt    refcnt;
@@ -49,6 +50,7 @@ struct _p_MatA11MF {
   DM          daUVW;
   BCList      u_bclist;
   Quadrature  volQ;
+  SurfaceQuadrature *surfQ;
   DM          daU; /* Optionally need this */
   IS          isUVW; /* Needed for full column space */
   IS          isU,isV,isW; /* Optionally: Need the IS's for GetSubMatrix */
@@ -71,7 +73,7 @@ PetscErrorCode StokesQ2P1CreateMatrixNest_PCOperator(PhysCompStokes user,PetscIn
 PetscErrorCode MatStokesMFCreate(MatStokesMF *B);
 PetscErrorCode MatA11MFCreate(MatA11MF *B);
 PetscErrorCode MatStokesMFSetup(MatStokesMF StkCtx,PhysCompStokes user);
-PetscErrorCode MatA11MFSetup(MatA11MF A11Ctx,DM dav,Quadrature volQ,BCList u_bclist);
+PetscErrorCode MatA11MFSetup(MatA11MF A11Ctx,DM dav,Quadrature volQ,BCList u_bclist,SurfaceQuadrature *surfQ);
 PetscErrorCode MatStokesMFDestroy(MatStokesMF *B);
 PetscErrorCode MatA11MFDestroy(MatA11MF *B);
 PetscErrorCode MatStokesMFCopy(MatStokesMF A,MatStokesMF *B);

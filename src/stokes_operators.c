@@ -64,6 +64,7 @@
 #include "stokes_operators.h"
 #include "stokes_operators_mf.h"
 #include "stokes_assembly.h"
+#include "stokes_form_function.h"
 
 PetscLogEvent MAT_MultMFA11;
 PetscLogEvent MAT_MultMFA11_stp;
@@ -172,6 +173,7 @@ PetscErrorCode MatStokesMFSetup(MatStokesMF StkCtx,PhysCompStokes user)
   StkCtx->daUVW       = user->dav;           ierr = PetscObjectReference((PetscObject)user->dav);CHKERRQ(ierr);
   StkCtx->dap         = user->dap;           ierr = PetscObjectReference((PetscObject)user->dap);CHKERRQ(ierr);
   StkCtx->volQ        = user->volQ;
+  StkCtx->surfQ       = user->surfQ;
   StkCtx->u_bclist    = user->u_bclist;
   StkCtx->p_bclist    = user->p_bclist;
 
@@ -223,7 +225,7 @@ PetscErrorCode MatStokesMFSetup(MatStokesMF StkCtx,PhysCompStokes user)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatA11MFSetup(MatA11MF A11Ctx,DM dav,Quadrature volQ,BCList u_bclist)
+PetscErrorCode MatA11MFSetup(MatA11MF A11Ctx,DM dav,Quadrature volQ,BCList u_bclist, SurfaceQuadrature *surfQ)
 {
   PetscErrorCode ierr;
   Vec X;
@@ -237,6 +239,7 @@ PetscErrorCode MatA11MFSetup(MatA11MF A11Ctx,DM dav,Quadrature volQ,BCList u_bcl
 
   A11Ctx->daUVW       = dav;           ierr = PetscObjectReference((PetscObject)dav);CHKERRQ(ierr);
   A11Ctx->volQ        = volQ;
+  A11Ctx->surfQ       = surfQ;
   A11Ctx->u_bclist    = u_bclist;
 
   /* Fetch the DA's */
@@ -481,6 +484,7 @@ PetscErrorCode MatCopy_StokesMF_A11MF(MatStokesMF A,MatA11MF *B)
   A11->Mu       = A->Mu;
   A11->u_bclist = A->u_bclist;
   A11->volQ     = A->volQ;
+  A11->surfQ    = A->surfQ;
   A11->isU      = A->isU;   if (A->isU)   { ierr = PetscObjectReference((PetscObject)A->isU);  CHKERRQ(ierr); }
   A11->isV      = A->isV;   if (A->isV)   { ierr = PetscObjectReference((PetscObject)A->isV);  CHKERRQ(ierr); }
   A11->isW      = A->isW;   if (A->isW)   { ierr = PetscObjectReference((PetscObject)A->isW);  CHKERRQ(ierr); }
@@ -587,6 +591,7 @@ PetscErrorCode MatCreateSubMatrix_MFStokes_A(Mat A,IS isr,IS isc,MatReuse cll,Ma
           ierr = MatZeroEntries(*B);CHKERRQ(ierr);
         }
         //PetscPrintf(PETSC_COMM_WORLD,"ierr = AssembleAUU_Stokes();CHKERRQ(ierr);  TODO \n");
+        ierr = MatAssemble_StokesA_AUU_Surface(*B,ctx->daUVW,ctx->surfQ);CHKERRQ(ierr);
         ierr = MatAssemble_StokesA_AUU(*B,ctx->daUVW,ctx->u_bclist,ctx->volQ);CHKERRQ(ierr);
       } else {
         if (cll==MAT_INITIAL_MATRIX) {
@@ -923,11 +928,13 @@ PetscErrorCode MatMult_MFStokes_A(Mat A,Vec X,Vec Y)
   ierr = VecGetArray(YPloc,&LA_YPloc);CHKERRQ(ierr);
 
   /* momentum + continuity */
+  ierr = FormFunctionLocal_U_NitscheBC(ctx->surfQ,dau,LA_XUloc,dap,LA_XPloc,LA_YUloc);CHKERRQ(ierr);
 #if defined(__AVX__)
   ierr = MFStokesWrapper_A_AVX(ctx->volQ,dau,LA_XUloc,dap,LA_XPloc,LA_YUloc,LA_YPloc);CHKERRQ(ierr);
 #else
   ierr = MFStokesWrapper_A(ctx->volQ,dau,LA_XUloc,dap,LA_XPloc,LA_YUloc,LA_YPloc);CHKERRQ(ierr);
 #endif
+
 
   ierr = VecRestoreArray(YPloc,&LA_YPloc);CHKERRQ(ierr);
   ierr = VecRestoreArray(YUloc,&LA_YUloc);CHKERRQ(ierr);
@@ -1183,6 +1190,12 @@ PetscErrorCode MatMult_MFStokes_A11(Mat A,Vec X,Vec Y)
 
   /* momentum */
   ierr = (*ctx->SpMVOp_MatMult)(ctx,ctx->volQ,dau,LA_XUloc,LA_YUloc);CHKERRQ(ierr);
+
+  if (ctx->surfQ != NULL) {
+    ierr = FormFunctionLocal_U_NitscheBC(ctx->surfQ,dau,LA_XUloc,NULL,NULL,LA_YUloc);CHKERRQ(ierr);
+  } else {
+    PetscPrintf(PETSC_COMM_WORLD,"!!! Function [[%s]] Surface Quadrature struct is NULL !!!\n",PETSC_FUNCTION_NAME);
+  }
 
   ierr = VecRestoreArray(YUloc,&LA_YUloc);CHKERRQ(ierr);
   ierr = VecRestoreArray(XUloc,&LA_XUloc);CHKERRQ(ierr);
