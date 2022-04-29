@@ -41,6 +41,7 @@
 #include "dmda_bcs.h"
 #include "dmda_element_q2p1.h"
 #include "quadrature.h"
+#include "mesh_quality_metrics.h"
 
 
 //#define PTAT3D_LOG_ASM_OP
@@ -293,6 +294,173 @@ PetscErrorCode MatAssemble_StokesA_AUU(Mat A,DM dau,BCList u_bclist,Quadrature v
 #endif
   ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
 
+  PetscFunctionReturn(0);
+}
+
+static inline void bform_assemble_nitsche_classic(
+                    double eta,double normal[],double gamma, // inputs
+                    double scale,
+                    double wNt[],double wNtx[],double wNty[],double wNtz[], // test function
+                    double uN[],double uNx[],double uNy[],double uNz[], // trial function
+                    double A[]) // output
+{
+  int i,j;
+  for (i=0; i<27; i++) { // w_nbasis
+    for (j=0; j<27; j++) { // u_nbasis
+      A[(3*i + 0)*81 + (3*j+0)] += scale * (pow(normal[0], 2)*(-2.0*eta*normal[0]*uN[j]*wNtx[i] - 2.0*eta*normal[0]*uNx[j]*wNt[i] - 2.0*eta*normal[1]*uN[j]*wNty[i] - 2.0*eta*normal[1]*uNy[j]*wNt[i] - 2.0*eta*normal[2]*uN[j]*wNtz[i] - 2.0*eta*normal[2]*uNz[j]*wNt[i] + gamma*uN[j]*wNt[i]));
+      A[(3*i + 0)*81 + (3*j+1)] += scale * (normal[0]*normal[1]*(-2.0*eta*normal[0]*uN[j]*wNtx[i] - 2.0*eta*normal[0]*uNx[j]*wNt[i] - 2.0*eta*normal[1]*uN[j]*wNty[i] - 2.0*eta*normal[1]*uNy[j]*wNt[i] - 2.0*eta*normal[2]*uN[j]*wNtz[i] - 2.0*eta*normal[2]*uNz[j]*wNt[i] + gamma*uN[j]*wNt[i]));
+      A[(3*i + 0)*81 + (3*j+2)] += scale * (normal[0]*normal[2]*(-2.0*eta*normal[0]*uN[j]*wNtx[i] - 2.0*eta*normal[0]*uNx[j]*wNt[i] - 2.0*eta*normal[1]*uN[j]*wNty[i] - 2.0*eta*normal[1]*uNy[j]*wNt[i] - 2.0*eta*normal[2]*uN[j]*wNtz[i] - 2.0*eta*normal[2]*uNz[j]*wNt[i] + gamma*uN[j]*wNt[i]));
+      A[(3*i + 1)*81 + (3*j+0)] += scale * (normal[0]*normal[1]*(-2.0*eta*normal[0]*uN[j]*wNtx[i] - 2.0*eta*normal[0]*uNx[j]*wNt[i] - 2.0*eta*normal[1]*uN[j]*wNty[i] - 2.0*eta*normal[1]*uNy[j]*wNt[i] - 2.0*eta*normal[2]*uN[j]*wNtz[i] - 2.0*eta*normal[2]*uNz[j]*wNt[i] + gamma*uN[j]*wNt[i]));
+      A[(3*i + 1)*81 + (3*j+1)] += scale * (pow(normal[1], 2)*(-2.0*eta*normal[0]*uN[j]*wNtx[i] - 2.0*eta*normal[0]*uNx[j]*wNt[i] - 2.0*eta*normal[1]*uN[j]*wNty[i] - 2.0*eta*normal[1]*uNy[j]*wNt[i] - 2.0*eta*normal[2]*uN[j]*wNtz[i] - 2.0*eta*normal[2]*uNz[j]*wNt[i] + gamma*uN[j]*wNt[i]));
+      A[(3*i + 1)*81 + (3*j+2)] += scale * (normal[1]*normal[2]*(-2.0*eta*normal[0]*uN[j]*wNtx[i] - 2.0*eta*normal[0]*uNx[j]*wNt[i] - 2.0*eta*normal[1]*uN[j]*wNty[i] - 2.0*eta*normal[1]*uNy[j]*wNt[i] - 2.0*eta*normal[2]*uN[j]*wNtz[i] - 2.0*eta*normal[2]*uNz[j]*wNt[i] + gamma*uN[j]*wNt[i]));
+      A[(3*i + 2)*81 + (3*j+0)] += scale * (normal[0]*normal[2]*(-2.0*eta*normal[0]*uN[j]*wNtx[i] - 2.0*eta*normal[0]*uNx[j]*wNt[i] - 2.0*eta*normal[1]*uN[j]*wNty[i] - 2.0*eta*normal[1]*uNy[j]*wNt[i] - 2.0*eta*normal[2]*uN[j]*wNtz[i] - 2.0*eta*normal[2]*uNz[j]*wNt[i] + gamma*uN[j]*wNt[i]));
+      A[(3*i + 2)*81 + (3*j+1)] += scale * (normal[1]*normal[2]*(-2.0*eta*normal[0]*uN[j]*wNtx[i] - 2.0*eta*normal[0]*uNx[j]*wNt[i] - 2.0*eta*normal[1]*uN[j]*wNty[i] - 2.0*eta*normal[1]*uNy[j]*wNt[i] - 2.0*eta*normal[2]*uN[j]*wNtz[i] - 2.0*eta*normal[2]*uNz[j]*wNt[i] + gamma*uN[j]*wNt[i]));
+      A[(3*i + 2)*81 + (3*j+2)] += scale * (pow(normal[2], 2)*(-2.0*eta*normal[0]*uN[j]*wNtx[i] - 2.0*eta*normal[0]*uNx[j]*wNt[i] - 2.0*eta*normal[1]*uN[j]*wNty[i] - 2.0*eta*normal[1]*uNy[j]*wNt[i] - 2.0*eta*normal[2]*uN[j]*wNtz[i] - 2.0*eta*normal[2]*uNz[j]*wNt[i] + gamma*uN[j]*wNt[i]));
+    }
+  }
+}
+
+static inline void bform_assemble_nitsche_custom(
+                    double wNt[], double wNtx[], double wNty[], double wNtz[], 
+                    double uN[], double uNx[], double uNy[], double uNz[], 
+                    double eta, double gamma, double n[], double nhat[], double that[],
+                    double scale, double A[])
+{
+  int i,j;
+  for (i=0; i<27; i++) { // w_nbasis
+    for (j=0; j<27; j++) { // u_nbasis
+      A[(3*i + 0)*81 + (3*j+0)] += scale * (-2.0*eta*n[0]*pow(nhat[0], 4)*uN[j]*wNtx[i] - 2.0*eta*n[0]*pow(nhat[0], 4)*uNx[j]*wNt[i] - 2.0*eta*n[0]*pow(nhat[0], 3)*nhat[1]*uN[j]*wNty[i] - 2.0*eta*n[0]*pow(nhat[0], 3)*nhat[1]*uNy[j]*wNt[i] - 2.0*eta*n[0]*pow(nhat[0], 3)*nhat[2]*uN[j]*wNtz[i] - 2.0*eta*n[0]*pow(nhat[0], 3)*nhat[2]*uNz[j]*wNt[i] - 2.0*eta*n[0]*pow(nhat[0], 3)*that[0]*uN[j]*wNtx[i] - 1.0*eta*n[0]*pow(nhat[0], 3)*that[1]*uN[j]*wNty[i] - 1.0*eta*n[0]*pow(nhat[0], 3)*that[2]*uN[j]*wNtz[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*that[0]*uN[j]*wNty[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[2]*that[0]*uN[j]*wNtz[i] - 2.0*eta*n[0]*pow(that[0], 4)*uNx[j]*wNt[i] - 2.0*eta*n[0]*pow(that[0], 3)*that[1]*uNy[j]*wNt[i] - 2.0*eta*n[0]*pow(that[0], 3)*that[2]*uNz[j]*wNt[i] - 2.0*eta*n[1]*pow(nhat[0], 3)*nhat[1]*uN[j]*wNtx[i] - 2.0*eta*n[1]*pow(nhat[0], 3)*nhat[1]*uNx[j]*wNt[i] - 2.0*eta*n[1]*pow(nhat[0], 2)*pow(nhat[1], 2)*uN[j]*wNty[i] - 2.0*eta*n[1]*pow(nhat[0], 2)*pow(nhat[1], 2)*uNy[j]*wNt[i] - 2.0*eta*n[1]*pow(nhat[0], 2)*nhat[1]*nhat[2]*uN[j]*wNtz[i] - 2.0*eta*n[1]*pow(nhat[0], 2)*nhat[1]*nhat[2]*uNz[j]*wNt[i] - 2.0*eta*n[1]*pow(nhat[0], 2)*nhat[1]*that[0]*uN[j]*wNtx[i] - 1.0*eta*n[1]*pow(nhat[0], 2)*nhat[1]*that[1]*uN[j]*wNty[i] - 1.0*eta*n[1]*pow(nhat[0], 2)*nhat[1]*that[2]*uN[j]*wNtz[i] - 1.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*that[0]*uN[j]*wNty[i] - 1.0*eta*n[1]*nhat[0]*nhat[1]*nhat[2]*that[0]*uN[j]*wNtz[i] - 2.0*eta*n[1]*pow(that[0], 3)*that[1]*uNx[j]*wNt[i] - 2.0*eta*n[1]*pow(that[0], 2)*pow(that[1], 2)*uNy[j]*wNt[i] - 2.0*eta*n[1]*pow(that[0], 2)*that[1]*that[2]*uNz[j]*wNt[i] - 2.0*eta*n[2]*pow(nhat[0], 3)*nhat[2]*uN[j]*wNtx[i] - 2.0*eta*n[2]*pow(nhat[0], 3)*nhat[2]*uNx[j]*wNt[i] - 2.0*eta*n[2]*pow(nhat[0], 2)*nhat[1]*nhat[2]*uN[j]*wNty[i] - 2.0*eta*n[2]*pow(nhat[0], 2)*nhat[1]*nhat[2]*uNy[j]*wNt[i] - 2.0*eta*n[2]*pow(nhat[0], 2)*pow(nhat[2], 2)*uN[j]*wNtz[i] - 2.0*eta*n[2]*pow(nhat[0], 2)*pow(nhat[2], 2)*uNz[j]*wNt[i] - 2.0*eta*n[2]*pow(nhat[0], 2)*nhat[2]*that[0]*uN[j]*wNtx[i] - 1.0*eta*n[2]*pow(nhat[0], 2)*nhat[2]*that[1]*uN[j]*wNty[i] - 1.0*eta*n[2]*pow(nhat[0], 2)*nhat[2]*that[2]*uN[j]*wNtz[i] - 1.0*eta*n[2]*nhat[0]*nhat[1]*nhat[2]*that[0]*uN[j]*wNty[i] - 1.0*eta*n[2]*nhat[0]*pow(nhat[2], 2)*that[0]*uN[j]*wNtz[i] - 2.0*eta*n[2]*pow(that[0], 3)*that[2]*uNx[j]*wNt[i] - 2.0*eta*n[2]*pow(that[0], 2)*that[1]*that[2]*uNy[j]*wNt[i] - 2.0*eta*n[2]*pow(that[0], 2)*pow(that[2], 2)*uNz[j]*wNt[i] + gamma*pow(nhat[0], 2)*uN[j]*wNt[i]);
+      A[(3*i + 0)*81 + (3*j+1)] += scale * (-2.0*eta*n[0]*pow(nhat[0], 3)*nhat[1]*uN[j]*wNtx[i] - 2.0*eta*n[0]*pow(nhat[0], 3)*nhat[1]*uNx[j]*wNt[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*pow(nhat[1], 2)*uN[j]*wNty[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*pow(nhat[1], 2)*uNy[j]*wNt[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*nhat[2]*uN[j]*wNtz[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*nhat[2]*uNz[j]*wNt[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*that[0]*uN[j]*wNtx[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*that[1]*uN[j]*wNty[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*that[2]*uN[j]*wNtz[i] - 1.0*eta*n[0]*nhat[0]*pow(nhat[1], 2)*that[0]*uN[j]*wNty[i] - 1.0*eta*n[0]*nhat[0]*nhat[1]*nhat[2]*that[0]*uN[j]*wNtz[i] - 2.0*eta*n[0]*pow(that[0], 3)*that[1]*uNx[j]*wNt[i] - 2.0*eta*n[0]*pow(that[0], 2)*pow(that[1], 2)*uNy[j]*wNt[i] - 2.0*eta*n[0]*pow(that[0], 2)*that[1]*that[2]*uNz[j]*wNt[i] - 2.0*eta*n[1]*pow(nhat[0], 2)*pow(nhat[1], 2)*uN[j]*wNtx[i] - 2.0*eta*n[1]*pow(nhat[0], 2)*pow(nhat[1], 2)*uNx[j]*wNt[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 3)*uN[j]*wNty[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 3)*uNy[j]*wNt[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*nhat[2]*uN[j]*wNtz[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*nhat[2]*uNz[j]*wNt[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*that[0]*uN[j]*wNtx[i] - 1.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*that[1]*uN[j]*wNty[i] - 1.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*that[2]*uN[j]*wNtz[i] - 1.0*eta*n[1]*pow(nhat[1], 3)*that[0]*uN[j]*wNty[i] - 1.0*eta*n[1]*pow(nhat[1], 2)*nhat[2]*that[0]*uN[j]*wNtz[i] - 2.0*eta*n[1]*pow(that[0], 2)*pow(that[1], 2)*uNx[j]*wNt[i] - 2.0*eta*n[1]*that[0]*pow(that[1], 3)*uNy[j]*wNt[i] - 2.0*eta*n[1]*that[0]*pow(that[1], 2)*that[2]*uNz[j]*wNt[i] - 2.0*eta*n[2]*pow(nhat[0], 2)*nhat[1]*nhat[2]*uN[j]*wNtx[i] - 2.0*eta*n[2]*pow(nhat[0], 2)*nhat[1]*nhat[2]*uNx[j]*wNt[i] - 2.0*eta*n[2]*nhat[0]*pow(nhat[1], 2)*nhat[2]*uN[j]*wNty[i] - 2.0*eta*n[2]*nhat[0]*pow(nhat[1], 2)*nhat[2]*uNy[j]*wNt[i] - 2.0*eta*n[2]*nhat[0]*nhat[1]*pow(nhat[2], 2)*uN[j]*wNtz[i] - 2.0*eta*n[2]*nhat[0]*nhat[1]*pow(nhat[2], 2)*uNz[j]*wNt[i] - 2.0*eta*n[2]*nhat[0]*nhat[1]*nhat[2]*that[0]*uN[j]*wNtx[i] - 1.0*eta*n[2]*nhat[0]*nhat[1]*nhat[2]*that[1]*uN[j]*wNty[i] - 1.0*eta*n[2]*nhat[0]*nhat[1]*nhat[2]*that[2]*uN[j]*wNtz[i] - 1.0*eta*n[2]*pow(nhat[1], 2)*nhat[2]*that[0]*uN[j]*wNty[i] - 1.0*eta*n[2]*nhat[1]*pow(nhat[2], 2)*that[0]*uN[j]*wNtz[i] - 2.0*eta*n[2]*pow(that[0], 2)*that[1]*that[2]*uNx[j]*wNt[i] - 2.0*eta*n[2]*that[0]*pow(that[1], 2)*that[2]*uNy[j]*wNt[i] - 2.0*eta*n[2]*that[0]*that[1]*pow(that[2], 2)*uNz[j]*wNt[i] + gamma*nhat[0]*nhat[1]*uN[j]*wNt[i]);
+      A[(3*i + 0)*81 + (3*j+2)] += scale * (-2.0*eta*n[0]*pow(nhat[0], 3)*nhat[2]*uN[j]*wNtx[i] - 2.0*eta*n[0]*pow(nhat[0], 3)*nhat[2]*uNx[j]*wNt[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*nhat[2]*uN[j]*wNty[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*nhat[2]*uNy[j]*wNt[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*pow(nhat[2], 2)*uN[j]*wNtz[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*pow(nhat[2], 2)*uNz[j]*wNt[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[2]*that[0]*uN[j]*wNtx[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[2]*that[1]*uN[j]*wNty[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[2]*that[2]*uN[j]*wNtz[i] - 1.0*eta*n[0]*nhat[0]*nhat[1]*nhat[2]*that[0]*uN[j]*wNty[i] - 1.0*eta*n[0]*nhat[0]*pow(nhat[2], 2)*that[0]*uN[j]*wNtz[i] - 2.0*eta*n[0]*pow(that[0], 3)*that[2]*uNx[j]*wNt[i] - 2.0*eta*n[0]*pow(that[0], 2)*that[1]*that[2]*uNy[j]*wNt[i] - 2.0*eta*n[0]*pow(that[0], 2)*pow(that[2], 2)*uNz[j]*wNt[i] - 2.0*eta*n[1]*pow(nhat[0], 2)*nhat[1]*nhat[2]*uN[j]*wNtx[i] - 2.0*eta*n[1]*pow(nhat[0], 2)*nhat[1]*nhat[2]*uNx[j]*wNt[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*nhat[2]*uN[j]*wNty[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*nhat[2]*uNy[j]*wNt[i] - 2.0*eta*n[1]*nhat[0]*nhat[1]*pow(nhat[2], 2)*uN[j]*wNtz[i] - 2.0*eta*n[1]*nhat[0]*nhat[1]*pow(nhat[2], 2)*uNz[j]*wNt[i] - 2.0*eta*n[1]*nhat[0]*nhat[1]*nhat[2]*that[0]*uN[j]*wNtx[i] - 1.0*eta*n[1]*nhat[0]*nhat[1]*nhat[2]*that[1]*uN[j]*wNty[i] - 1.0*eta*n[1]*nhat[0]*nhat[1]*nhat[2]*that[2]*uN[j]*wNtz[i] - 1.0*eta*n[1]*pow(nhat[1], 2)*nhat[2]*that[0]*uN[j]*wNty[i] - 1.0*eta*n[1]*nhat[1]*pow(nhat[2], 2)*that[0]*uN[j]*wNtz[i] - 2.0*eta*n[1]*pow(that[0], 2)*that[1]*that[2]*uNx[j]*wNt[i] - 2.0*eta*n[1]*that[0]*pow(that[1], 2)*that[2]*uNy[j]*wNt[i] - 2.0*eta*n[1]*that[0]*that[1]*pow(that[2], 2)*uNz[j]*wNt[i] - 2.0*eta*n[2]*pow(nhat[0], 2)*pow(nhat[2], 2)*uN[j]*wNtx[i] - 2.0*eta*n[2]*pow(nhat[0], 2)*pow(nhat[2], 2)*uNx[j]*wNt[i] - 2.0*eta*n[2]*nhat[0]*nhat[1]*pow(nhat[2], 2)*uN[j]*wNty[i] - 2.0*eta*n[2]*nhat[0]*nhat[1]*pow(nhat[2], 2)*uNy[j]*wNt[i] - 2.0*eta*n[2]*nhat[0]*pow(nhat[2], 3)*uN[j]*wNtz[i] - 2.0*eta*n[2]*nhat[0]*pow(nhat[2], 3)*uNz[j]*wNt[i] - 2.0*eta*n[2]*nhat[0]*pow(nhat[2], 2)*that[0]*uN[j]*wNtx[i] - 1.0*eta*n[2]*nhat[0]*pow(nhat[2], 2)*that[1]*uN[j]*wNty[i] - 1.0*eta*n[2]*nhat[0]*pow(nhat[2], 2)*that[2]*uN[j]*wNtz[i] - 1.0*eta*n[2]*nhat[1]*pow(nhat[2], 2)*that[0]*uN[j]*wNty[i] - 1.0*eta*n[2]*pow(nhat[2], 3)*that[0]*uN[j]*wNtz[i] - 2.0*eta*n[2]*pow(that[0], 2)*pow(that[2], 2)*uNx[j]*wNt[i] - 2.0*eta*n[2]*that[0]*that[1]*pow(that[2], 2)*uNy[j]*wNt[i] - 2.0*eta*n[2]*that[0]*pow(that[2], 3)*uNz[j]*wNt[i] + gamma*nhat[0]*nhat[2]*uN[j]*wNt[i]);
+      A[(3*i + 1)*81 + (3*j+0)] += scale * (-2.0*eta*n[0]*pow(nhat[0], 3)*nhat[1]*uN[j]*wNtx[i] - 2.0*eta*n[0]*pow(nhat[0], 3)*nhat[1]*uNx[j]*wNt[i] - 1.0*eta*n[0]*pow(nhat[0], 3)*that[1]*uN[j]*wNtx[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*pow(nhat[1], 2)*uN[j]*wNty[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*pow(nhat[1], 2)*uNy[j]*wNt[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*nhat[2]*uN[j]*wNtz[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*nhat[2]*uNz[j]*wNt[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*that[0]*uN[j]*wNtx[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*that[1]*uN[j]*wNty[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*that[2]*uN[j]*wNtz[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[2]*that[1]*uN[j]*wNtz[i] - 2.0*eta*n[0]*pow(that[0], 3)*that[1]*uNx[j]*wNt[i] - 2.0*eta*n[0]*pow(that[0], 2)*pow(that[1], 2)*uNy[j]*wNt[i] - 2.0*eta*n[0]*pow(that[0], 2)*that[1]*that[2]*uNz[j]*wNt[i] - 2.0*eta*n[1]*pow(nhat[0], 2)*pow(nhat[1], 2)*uN[j]*wNtx[i] - 2.0*eta*n[1]*pow(nhat[0], 2)*pow(nhat[1], 2)*uNx[j]*wNt[i] - 1.0*eta*n[1]*pow(nhat[0], 2)*nhat[1]*that[1]*uN[j]*wNtx[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 3)*uN[j]*wNty[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 3)*uNy[j]*wNt[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*nhat[2]*uN[j]*wNtz[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*nhat[2]*uNz[j]*wNt[i] - 1.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*that[0]*uN[j]*wNtx[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*that[1]*uN[j]*wNty[i] - 1.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*that[2]*uN[j]*wNtz[i] - 1.0*eta*n[1]*nhat[0]*nhat[1]*nhat[2]*that[1]*uN[j]*wNtz[i] - 2.0*eta*n[1]*pow(that[0], 2)*pow(that[1], 2)*uNx[j]*wNt[i] - 2.0*eta*n[1]*that[0]*pow(that[1], 3)*uNy[j]*wNt[i] - 2.0*eta*n[1]*that[0]*pow(that[1], 2)*that[2]*uNz[j]*wNt[i] - 2.0*eta*n[2]*pow(nhat[0], 2)*nhat[1]*nhat[2]*uN[j]*wNtx[i] - 2.0*eta*n[2]*pow(nhat[0], 2)*nhat[1]*nhat[2]*uNx[j]*wNt[i] - 1.0*eta*n[2]*pow(nhat[0], 2)*nhat[2]*that[1]*uN[j]*wNtx[i] - 2.0*eta*n[2]*nhat[0]*pow(nhat[1], 2)*nhat[2]*uN[j]*wNty[i] - 2.0*eta*n[2]*nhat[0]*pow(nhat[1], 2)*nhat[2]*uNy[j]*wNt[i] - 2.0*eta*n[2]*nhat[0]*nhat[1]*pow(nhat[2], 2)*uN[j]*wNtz[i] - 2.0*eta*n[2]*nhat[0]*nhat[1]*pow(nhat[2], 2)*uNz[j]*wNt[i] - 1.0*eta*n[2]*nhat[0]*nhat[1]*nhat[2]*that[0]*uN[j]*wNtx[i] - 2.0*eta*n[2]*nhat[0]*nhat[1]*nhat[2]*that[1]*uN[j]*wNty[i] - 1.0*eta*n[2]*nhat[0]*nhat[1]*nhat[2]*that[2]*uN[j]*wNtz[i] - 1.0*eta*n[2]*nhat[0]*pow(nhat[2], 2)*that[1]*uN[j]*wNtz[i] - 2.0*eta*n[2]*pow(that[0], 2)*that[1]*that[2]*uNx[j]*wNt[i] - 2.0*eta*n[2]*that[0]*pow(that[1], 2)*that[2]*uNy[j]*wNt[i] - 2.0*eta*n[2]*that[0]*that[1]*pow(that[2], 2)*uNz[j]*wNt[i] + gamma*nhat[0]*nhat[1]*uN[j]*wNt[i]);
+      A[(3*i + 1)*81 + (3*j+1)] += scale * (-2.0*eta*n[0]*pow(nhat[0], 2)*pow(nhat[1], 2)*uN[j]*wNtx[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*pow(nhat[1], 2)*uNx[j]*wNt[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*that[1]*uN[j]*wNtx[i] - 2.0*eta*n[0]*nhat[0]*pow(nhat[1], 3)*uN[j]*wNty[i] - 2.0*eta*n[0]*nhat[0]*pow(nhat[1], 3)*uNy[j]*wNt[i] - 2.0*eta*n[0]*nhat[0]*pow(nhat[1], 2)*nhat[2]*uN[j]*wNtz[i] - 2.0*eta*n[0]*nhat[0]*pow(nhat[1], 2)*nhat[2]*uNz[j]*wNt[i] - 1.0*eta*n[0]*nhat[0]*pow(nhat[1], 2)*that[0]*uN[j]*wNtx[i] - 2.0*eta*n[0]*nhat[0]*pow(nhat[1], 2)*that[1]*uN[j]*wNty[i] - 1.0*eta*n[0]*nhat[0]*pow(nhat[1], 2)*that[2]*uN[j]*wNtz[i] - 1.0*eta*n[0]*nhat[0]*nhat[1]*nhat[2]*that[1]*uN[j]*wNtz[i] - 2.0*eta*n[0]*pow(that[0], 2)*pow(that[1], 2)*uNx[j]*wNt[i] - 2.0*eta*n[0]*that[0]*pow(that[1], 3)*uNy[j]*wNt[i] - 2.0*eta*n[0]*that[0]*pow(that[1], 2)*that[2]*uNz[j]*wNt[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 3)*uN[j]*wNtx[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 3)*uNx[j]*wNt[i] - 1.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*that[1]*uN[j]*wNtx[i] - 2.0*eta*n[1]*pow(nhat[1], 4)*uN[j]*wNty[i] - 2.0*eta*n[1]*pow(nhat[1], 4)*uNy[j]*wNt[i] - 2.0*eta*n[1]*pow(nhat[1], 3)*nhat[2]*uN[j]*wNtz[i] - 2.0*eta*n[1]*pow(nhat[1], 3)*nhat[2]*uNz[j]*wNt[i] - 1.0*eta*n[1]*pow(nhat[1], 3)*that[0]*uN[j]*wNtx[i] - 2.0*eta*n[1]*pow(nhat[1], 3)*that[1]*uN[j]*wNty[i] - 1.0*eta*n[1]*pow(nhat[1], 3)*that[2]*uN[j]*wNtz[i] - 1.0*eta*n[1]*pow(nhat[1], 2)*nhat[2]*that[1]*uN[j]*wNtz[i] - 2.0*eta*n[1]*that[0]*pow(that[1], 3)*uNx[j]*wNt[i] - 2.0*eta*n[1]*pow(that[1], 4)*uNy[j]*wNt[i] - 2.0*eta*n[1]*pow(that[1], 3)*that[2]*uNz[j]*wNt[i] - 2.0*eta*n[2]*nhat[0]*pow(nhat[1], 2)*nhat[2]*uN[j]*wNtx[i] - 2.0*eta*n[2]*nhat[0]*pow(nhat[1], 2)*nhat[2]*uNx[j]*wNt[i] - 1.0*eta*n[2]*nhat[0]*nhat[1]*nhat[2]*that[1]*uN[j]*wNtx[i] - 2.0*eta*n[2]*pow(nhat[1], 3)*nhat[2]*uN[j]*wNty[i] - 2.0*eta*n[2]*pow(nhat[1], 3)*nhat[2]*uNy[j]*wNt[i] - 2.0*eta*n[2]*pow(nhat[1], 2)*pow(nhat[2], 2)*uN[j]*wNtz[i] - 2.0*eta*n[2]*pow(nhat[1], 2)*pow(nhat[2], 2)*uNz[j]*wNt[i] - 1.0*eta*n[2]*pow(nhat[1], 2)*nhat[2]*that[0]*uN[j]*wNtx[i] - 2.0*eta*n[2]*pow(nhat[1], 2)*nhat[2]*that[1]*uN[j]*wNty[i] - 1.0*eta*n[2]*pow(nhat[1], 2)*nhat[2]*that[2]*uN[j]*wNtz[i] - 1.0*eta*n[2]*nhat[1]*pow(nhat[2], 2)*that[1]*uN[j]*wNtz[i] - 2.0*eta*n[2]*that[0]*pow(that[1], 2)*that[2]*uNx[j]*wNt[i] - 2.0*eta*n[2]*pow(that[1], 3)*that[2]*uNy[j]*wNt[i] - 2.0*eta*n[2]*pow(that[1], 2)*pow(that[2], 2)*uNz[j]*wNt[i] + gamma*pow(nhat[1], 2)*uN[j]*wNt[i]);
+      A[(3*i + 1)*81 + (3*j+2)] += scale * (-2.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*nhat[2]*uN[j]*wNtx[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*nhat[2]*uNx[j]*wNt[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[2]*that[1]*uN[j]*wNtx[i] - 2.0*eta*n[0]*nhat[0]*pow(nhat[1], 2)*nhat[2]*uN[j]*wNty[i] - 2.0*eta*n[0]*nhat[0]*pow(nhat[1], 2)*nhat[2]*uNy[j]*wNt[i] - 2.0*eta*n[0]*nhat[0]*nhat[1]*pow(nhat[2], 2)*uN[j]*wNtz[i] - 2.0*eta*n[0]*nhat[0]*nhat[1]*pow(nhat[2], 2)*uNz[j]*wNt[i] - 1.0*eta*n[0]*nhat[0]*nhat[1]*nhat[2]*that[0]*uN[j]*wNtx[i] - 2.0*eta*n[0]*nhat[0]*nhat[1]*nhat[2]*that[1]*uN[j]*wNty[i] - 1.0*eta*n[0]*nhat[0]*nhat[1]*nhat[2]*that[2]*uN[j]*wNtz[i] - 1.0*eta*n[0]*nhat[0]*pow(nhat[2], 2)*that[1]*uN[j]*wNtz[i] - 2.0*eta*n[0]*pow(that[0], 2)*that[1]*that[2]*uNx[j]*wNt[i] - 2.0*eta*n[0]*that[0]*pow(that[1], 2)*that[2]*uNy[j]*wNt[i] - 2.0*eta*n[0]*that[0]*that[1]*pow(that[2], 2)*uNz[j]*wNt[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*nhat[2]*uN[j]*wNtx[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*nhat[2]*uNx[j]*wNt[i] - 1.0*eta*n[1]*nhat[0]*nhat[1]*nhat[2]*that[1]*uN[j]*wNtx[i] - 2.0*eta*n[1]*pow(nhat[1], 3)*nhat[2]*uN[j]*wNty[i] - 2.0*eta*n[1]*pow(nhat[1], 3)*nhat[2]*uNy[j]*wNt[i] - 2.0*eta*n[1]*pow(nhat[1], 2)*pow(nhat[2], 2)*uN[j]*wNtz[i] - 2.0*eta*n[1]*pow(nhat[1], 2)*pow(nhat[2], 2)*uNz[j]*wNt[i] - 1.0*eta*n[1]*pow(nhat[1], 2)*nhat[2]*that[0]*uN[j]*wNtx[i] - 2.0*eta*n[1]*pow(nhat[1], 2)*nhat[2]*that[1]*uN[j]*wNty[i] - 1.0*eta*n[1]*pow(nhat[1], 2)*nhat[2]*that[2]*uN[j]*wNtz[i] - 1.0*eta*n[1]*nhat[1]*pow(nhat[2], 2)*that[1]*uN[j]*wNtz[i] - 2.0*eta*n[1]*that[0]*pow(that[1], 2)*that[2]*uNx[j]*wNt[i] - 2.0*eta*n[1]*pow(that[1], 3)*that[2]*uNy[j]*wNt[i] - 2.0*eta*n[1]*pow(that[1], 2)*pow(that[2], 2)*uNz[j]*wNt[i] - 2.0*eta*n[2]*nhat[0]*nhat[1]*pow(nhat[2], 2)*uN[j]*wNtx[i] - 2.0*eta*n[2]*nhat[0]*nhat[1]*pow(nhat[2], 2)*uNx[j]*wNt[i] - 1.0*eta*n[2]*nhat[0]*pow(nhat[2], 2)*that[1]*uN[j]*wNtx[i] - 2.0*eta*n[2]*pow(nhat[1], 2)*pow(nhat[2], 2)*uN[j]*wNty[i] - 2.0*eta*n[2]*pow(nhat[1], 2)*pow(nhat[2], 2)*uNy[j]*wNt[i] - 2.0*eta*n[2]*nhat[1]*pow(nhat[2], 3)*uN[j]*wNtz[i] - 2.0*eta*n[2]*nhat[1]*pow(nhat[2], 3)*uNz[j]*wNt[i] - 1.0*eta*n[2]*nhat[1]*pow(nhat[2], 2)*that[0]*uN[j]*wNtx[i] - 2.0*eta*n[2]*nhat[1]*pow(nhat[2], 2)*that[1]*uN[j]*wNty[i] - 1.0*eta*n[2]*nhat[1]*pow(nhat[2], 2)*that[2]*uN[j]*wNtz[i] - 1.0*eta*n[2]*pow(nhat[2], 3)*that[1]*uN[j]*wNtz[i] - 2.0*eta*n[2]*that[0]*that[1]*pow(that[2], 2)*uNx[j]*wNt[i] - 2.0*eta*n[2]*pow(that[1], 2)*pow(that[2], 2)*uNy[j]*wNt[i] - 2.0*eta*n[2]*that[1]*pow(that[2], 3)*uNz[j]*wNt[i] + gamma*nhat[1]*nhat[2]*uN[j]*wNt[i]);
+      A[(3*i + 2)*81 + (3*j+0)] += scale * (-2.0*eta*n[0]*pow(nhat[0], 3)*nhat[2]*uN[j]*wNtx[i] - 2.0*eta*n[0]*pow(nhat[0], 3)*nhat[2]*uNx[j]*wNt[i] - 1.0*eta*n[0]*pow(nhat[0], 3)*that[2]*uN[j]*wNtx[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*nhat[2]*uN[j]*wNty[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*nhat[2]*uNy[j]*wNt[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*that[2]*uN[j]*wNty[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*pow(nhat[2], 2)*uN[j]*wNtz[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*pow(nhat[2], 2)*uNz[j]*wNt[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[2]*that[0]*uN[j]*wNtx[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[2]*that[1]*uN[j]*wNty[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[2]*that[2]*uN[j]*wNtz[i] - 2.0*eta*n[0]*pow(that[0], 3)*that[2]*uNx[j]*wNt[i] - 2.0*eta*n[0]*pow(that[0], 2)*that[1]*that[2]*uNy[j]*wNt[i] - 2.0*eta*n[0]*pow(that[0], 2)*pow(that[2], 2)*uNz[j]*wNt[i] - 2.0*eta*n[1]*pow(nhat[0], 2)*nhat[1]*nhat[2]*uN[j]*wNtx[i] - 2.0*eta*n[1]*pow(nhat[0], 2)*nhat[1]*nhat[2]*uNx[j]*wNt[i] - 1.0*eta*n[1]*pow(nhat[0], 2)*nhat[1]*that[2]*uN[j]*wNtx[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*nhat[2]*uN[j]*wNty[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*nhat[2]*uNy[j]*wNt[i] - 1.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*that[2]*uN[j]*wNty[i] - 2.0*eta*n[1]*nhat[0]*nhat[1]*pow(nhat[2], 2)*uN[j]*wNtz[i] - 2.0*eta*n[1]*nhat[0]*nhat[1]*pow(nhat[2], 2)*uNz[j]*wNt[i] - 1.0*eta*n[1]*nhat[0]*nhat[1]*nhat[2]*that[0]*uN[j]*wNtx[i] - 1.0*eta*n[1]*nhat[0]*nhat[1]*nhat[2]*that[1]*uN[j]*wNty[i] - 2.0*eta*n[1]*nhat[0]*nhat[1]*nhat[2]*that[2]*uN[j]*wNtz[i] - 2.0*eta*n[1]*pow(that[0], 2)*that[1]*that[2]*uNx[j]*wNt[i] - 2.0*eta*n[1]*that[0]*pow(that[1], 2)*that[2]*uNy[j]*wNt[i] - 2.0*eta*n[1]*that[0]*that[1]*pow(that[2], 2)*uNz[j]*wNt[i] - 2.0*eta*n[2]*pow(nhat[0], 2)*pow(nhat[2], 2)*uN[j]*wNtx[i] - 2.0*eta*n[2]*pow(nhat[0], 2)*pow(nhat[2], 2)*uNx[j]*wNt[i] - 1.0*eta*n[2]*pow(nhat[0], 2)*nhat[2]*that[2]*uN[j]*wNtx[i] - 2.0*eta*n[2]*nhat[0]*nhat[1]*pow(nhat[2], 2)*uN[j]*wNty[i] - 2.0*eta*n[2]*nhat[0]*nhat[1]*pow(nhat[2], 2)*uNy[j]*wNt[i] - 1.0*eta*n[2]*nhat[0]*nhat[1]*nhat[2]*that[2]*uN[j]*wNty[i] - 2.0*eta*n[2]*nhat[0]*pow(nhat[2], 3)*uN[j]*wNtz[i] - 2.0*eta*n[2]*nhat[0]*pow(nhat[2], 3)*uNz[j]*wNt[i] - 1.0*eta*n[2]*nhat[0]*pow(nhat[2], 2)*that[0]*uN[j]*wNtx[i] - 1.0*eta*n[2]*nhat[0]*pow(nhat[2], 2)*that[1]*uN[j]*wNty[i] - 2.0*eta*n[2]*nhat[0]*pow(nhat[2], 2)*that[2]*uN[j]*wNtz[i] - 2.0*eta*n[2]*pow(that[0], 2)*pow(that[2], 2)*uNx[j]*wNt[i] - 2.0*eta*n[2]*that[0]*that[1]*pow(that[2], 2)*uNy[j]*wNt[i] - 2.0*eta*n[2]*that[0]*pow(that[2], 3)*uNz[j]*wNt[i] + gamma*nhat[0]*nhat[2]*uN[j]*wNt[i]);
+      A[(3*i + 2)*81 + (3*j+1)] += scale * (-2.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*nhat[2]*uN[j]*wNtx[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*nhat[2]*uNx[j]*wNt[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[1]*that[2]*uN[j]*wNtx[i] - 2.0*eta*n[0]*nhat[0]*pow(nhat[1], 2)*nhat[2]*uN[j]*wNty[i] - 2.0*eta*n[0]*nhat[0]*pow(nhat[1], 2)*nhat[2]*uNy[j]*wNt[i] - 1.0*eta*n[0]*nhat[0]*pow(nhat[1], 2)*that[2]*uN[j]*wNty[i] - 2.0*eta*n[0]*nhat[0]*nhat[1]*pow(nhat[2], 2)*uN[j]*wNtz[i] - 2.0*eta*n[0]*nhat[0]*nhat[1]*pow(nhat[2], 2)*uNz[j]*wNt[i] - 1.0*eta*n[0]*nhat[0]*nhat[1]*nhat[2]*that[0]*uN[j]*wNtx[i] - 1.0*eta*n[0]*nhat[0]*nhat[1]*nhat[2]*that[1]*uN[j]*wNty[i] - 2.0*eta*n[0]*nhat[0]*nhat[1]*nhat[2]*that[2]*uN[j]*wNtz[i] - 2.0*eta*n[0]*pow(that[0], 2)*that[1]*that[2]*uNx[j]*wNt[i] - 2.0*eta*n[0]*that[0]*pow(that[1], 2)*that[2]*uNy[j]*wNt[i] - 2.0*eta*n[0]*that[0]*that[1]*pow(that[2], 2)*uNz[j]*wNt[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*nhat[2]*uN[j]*wNtx[i] - 2.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*nhat[2]*uNx[j]*wNt[i] - 1.0*eta*n[1]*nhat[0]*pow(nhat[1], 2)*that[2]*uN[j]*wNtx[i] - 2.0*eta*n[1]*pow(nhat[1], 3)*nhat[2]*uN[j]*wNty[i] - 2.0*eta*n[1]*pow(nhat[1], 3)*nhat[2]*uNy[j]*wNt[i] - 1.0*eta*n[1]*pow(nhat[1], 3)*that[2]*uN[j]*wNty[i] - 2.0*eta*n[1]*pow(nhat[1], 2)*pow(nhat[2], 2)*uN[j]*wNtz[i] - 2.0*eta*n[1]*pow(nhat[1], 2)*pow(nhat[2], 2)*uNz[j]*wNt[i] - 1.0*eta*n[1]*pow(nhat[1], 2)*nhat[2]*that[0]*uN[j]*wNtx[i] - 1.0*eta*n[1]*pow(nhat[1], 2)*nhat[2]*that[1]*uN[j]*wNty[i] - 2.0*eta*n[1]*pow(nhat[1], 2)*nhat[2]*that[2]*uN[j]*wNtz[i] - 2.0*eta*n[1]*that[0]*pow(that[1], 2)*that[2]*uNx[j]*wNt[i] - 2.0*eta*n[1]*pow(that[1], 3)*that[2]*uNy[j]*wNt[i] - 2.0*eta*n[1]*pow(that[1], 2)*pow(that[2], 2)*uNz[j]*wNt[i] - 2.0*eta*n[2]*nhat[0]*nhat[1]*pow(nhat[2], 2)*uN[j]*wNtx[i] - 2.0*eta*n[2]*nhat[0]*nhat[1]*pow(nhat[2], 2)*uNx[j]*wNt[i] - 1.0*eta*n[2]*nhat[0]*nhat[1]*nhat[2]*that[2]*uN[j]*wNtx[i] - 2.0*eta*n[2]*pow(nhat[1], 2)*pow(nhat[2], 2)*uN[j]*wNty[i] - 2.0*eta*n[2]*pow(nhat[1], 2)*pow(nhat[2], 2)*uNy[j]*wNt[i] - 1.0*eta*n[2]*pow(nhat[1], 2)*nhat[2]*that[2]*uN[j]*wNty[i] - 2.0*eta*n[2]*nhat[1]*pow(nhat[2], 3)*uN[j]*wNtz[i] - 2.0*eta*n[2]*nhat[1]*pow(nhat[2], 3)*uNz[j]*wNt[i] - 1.0*eta*n[2]*nhat[1]*pow(nhat[2], 2)*that[0]*uN[j]*wNtx[i] - 1.0*eta*n[2]*nhat[1]*pow(nhat[2], 2)*that[1]*uN[j]*wNty[i] - 2.0*eta*n[2]*nhat[1]*pow(nhat[2], 2)*that[2]*uN[j]*wNtz[i] - 2.0*eta*n[2]*that[0]*that[1]*pow(that[2], 2)*uNx[j]*wNt[i] - 2.0*eta*n[2]*pow(that[1], 2)*pow(that[2], 2)*uNy[j]*wNt[i] - 2.0*eta*n[2]*that[1]*pow(that[2], 3)*uNz[j]*wNt[i] + gamma*nhat[1]*nhat[2]*uN[j]*wNt[i]);
+      A[(3*i + 2)*81 + (3*j+2)] += scale * (-2.0*eta*n[0]*pow(nhat[0], 2)*pow(nhat[2], 2)*uN[j]*wNtx[i] - 2.0*eta*n[0]*pow(nhat[0], 2)*pow(nhat[2], 2)*uNx[j]*wNt[i] - 1.0*eta*n[0]*pow(nhat[0], 2)*nhat[2]*that[2]*uN[j]*wNtx[i] - 2.0*eta*n[0]*nhat[0]*nhat[1]*pow(nhat[2], 2)*uN[j]*wNty[i] - 2.0*eta*n[0]*nhat[0]*nhat[1]*pow(nhat[2], 2)*uNy[j]*wNt[i] - 1.0*eta*n[0]*nhat[0]*nhat[1]*nhat[2]*that[2]*uN[j]*wNty[i] - 2.0*eta*n[0]*nhat[0]*pow(nhat[2], 3)*uN[j]*wNtz[i] - 2.0*eta*n[0]*nhat[0]*pow(nhat[2], 3)*uNz[j]*wNt[i] - 1.0*eta*n[0]*nhat[0]*pow(nhat[2], 2)*that[0]*uN[j]*wNtx[i] - 1.0*eta*n[0]*nhat[0]*pow(nhat[2], 2)*that[1]*uN[j]*wNty[i] - 2.0*eta*n[0]*nhat[0]*pow(nhat[2], 2)*that[2]*uN[j]*wNtz[i] - 2.0*eta*n[0]*pow(that[0], 2)*pow(that[2], 2)*uNx[j]*wNt[i] - 2.0*eta*n[0]*that[0]*that[1]*pow(that[2], 2)*uNy[j]*wNt[i] - 2.0*eta*n[0]*that[0]*pow(that[2], 3)*uNz[j]*wNt[i] - 2.0*eta*n[1]*nhat[0]*nhat[1]*pow(nhat[2], 2)*uN[j]*wNtx[i] - 2.0*eta*n[1]*nhat[0]*nhat[1]*pow(nhat[2], 2)*uNx[j]*wNt[i] - 1.0*eta*n[1]*nhat[0]*nhat[1]*nhat[2]*that[2]*uN[j]*wNtx[i] - 2.0*eta*n[1]*pow(nhat[1], 2)*pow(nhat[2], 2)*uN[j]*wNty[i] - 2.0*eta*n[1]*pow(nhat[1], 2)*pow(nhat[2], 2)*uNy[j]*wNt[i] - 1.0*eta*n[1]*pow(nhat[1], 2)*nhat[2]*that[2]*uN[j]*wNty[i] - 2.0*eta*n[1]*nhat[1]*pow(nhat[2], 3)*uN[j]*wNtz[i] - 2.0*eta*n[1]*nhat[1]*pow(nhat[2], 3)*uNz[j]*wNt[i] - 1.0*eta*n[1]*nhat[1]*pow(nhat[2], 2)*that[0]*uN[j]*wNtx[i] - 1.0*eta*n[1]*nhat[1]*pow(nhat[2], 2)*that[1]*uN[j]*wNty[i] - 2.0*eta*n[1]*nhat[1]*pow(nhat[2], 2)*that[2]*uN[j]*wNtz[i] - 2.0*eta*n[1]*that[0]*that[1]*pow(that[2], 2)*uNx[j]*wNt[i] - 2.0*eta*n[1]*pow(that[1], 2)*pow(that[2], 2)*uNy[j]*wNt[i] - 2.0*eta*n[1]*that[1]*pow(that[2], 3)*uNz[j]*wNt[i] - 2.0*eta*n[2]*nhat[0]*pow(nhat[2], 3)*uN[j]*wNtx[i] - 2.0*eta*n[2]*nhat[0]*pow(nhat[2], 3)*uNx[j]*wNt[i] - 1.0*eta*n[2]*nhat[0]*pow(nhat[2], 2)*that[2]*uN[j]*wNtx[i] - 2.0*eta*n[2]*nhat[1]*pow(nhat[2], 3)*uN[j]*wNty[i] - 2.0*eta*n[2]*nhat[1]*pow(nhat[2], 3)*uNy[j]*wNt[i] - 1.0*eta*n[2]*nhat[1]*pow(nhat[2], 2)*that[2]*uN[j]*wNty[i] - 2.0*eta*n[2]*pow(nhat[2], 4)*uN[j]*wNtz[i] - 2.0*eta*n[2]*pow(nhat[2], 4)*uNz[j]*wNt[i] - 1.0*eta*n[2]*pow(nhat[2], 3)*that[0]*uN[j]*wNtx[i] - 1.0*eta*n[2]*pow(nhat[2], 3)*that[1]*uN[j]*wNty[i] - 2.0*eta*n[2]*pow(nhat[2], 3)*that[2]*uN[j]*wNtz[i] - 2.0*eta*n[2]*that[0]*pow(that[2], 3)*uNx[j]*wNt[i] - 2.0*eta*n[2]*that[1]*pow(that[2], 3)*uNy[j]*wNt[i] - 2.0*eta*n[2]*pow(that[2], 4)*uNz[j]*wNt[i] + gamma*pow(nhat[2], 2)*uN[j]*wNt[i]);
+    }
+  }
+}
+
+PetscErrorCode MatAssemble_StokesA_AUU_Surface(Mat A,DM dau,SurfaceQuadrature *mesh_surfQ)
+{
+  PetscErrorCode ierr;
+  PetscInt       p,ngp,edge,fe,nfaces;
+  DM             cda;
+  Vec            gcoords;
+  PetscReal      *LA_gcoords;
+  PetscInt       nel,nen_u,e;
+  PetscInt       vel_el_lidx[3*U_BASIS_FUNCTIONS];
+  const PetscInt *elnidx_u;
+
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+
+  /* setup for coords */
+  ierr = DMGetCoordinateDM(dau,&cda);CHKERRQ(ierr);
+  ierr = DMGetCoordinatesLocal(dau,&gcoords);CHKERRQ(ierr);
+  ierr = VecGetArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
+
+  ierr = DMDAGetElements_pTatinQ2P1(dau,&nel,&nen_u,&elnidx_u);CHKERRQ(ierr);
+
+  /* Loop over faces */
+  for (edge=0; edge<HEX_EDGES; edge++) {
+    ConformingElementFamily element;
+    SurfaceQuadrature       surfQ;
+    QPntSurfCoefStokes      *quadpoints,*cell_quadpoints;
+    QPoint2d                *gp2;
+    QPoint3d                *gp3;
+
+    if (edge == 2) {continue;} // Skip the surface
+
+    surfQ   = mesh_surfQ[edge];
+    element = surfQ->e;
+    nfaces  = surfQ->nfaces;
+    gp2     = surfQ->gp2;
+    gp3     = surfQ->gp3;
+    ngp     = surfQ->ngp;
+    ierr = SurfaceQuadratureGetAllCellData_Stokes(surfQ,&quadpoints);CHKERRQ(ierr);
+
+    /* Loop over elements belonging to the face */
+    for (fe=0; fe<nfaces; fe++) {
+      PetscReal elcoords[3*Q2_NODES_PER_EL_3D];
+      PetscReal Ae[Q2_NODES_PER_EL_3D * Q2_NODES_PER_EL_3D * U_DOFS * U_DOFS];
+      PetscReal min_diag,max_diag;
+
+      e = surfQ->element_list[fe];
+      /* get local indices */
+      ierr = StokesVelocity_GetElementLocalIndices(vel_el_lidx,(PetscInt*)&elnidx_u[nen_u*e]);CHKERRQ(ierr);
+
+      /* Get coordinates of the element */
+      ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx_u[nen_u*e],LA_gcoords);CHKERRQ(ierr);
+      /* Get surface quadrature data */
+      ierr = SurfaceQuadratureGetCellData_Stokes(surfQ,quadpoints,fe,&cell_quadpoints);CHKERRQ(ierr);
+      /* Compute the min and max diagonals of the element */
+      ierr = ElementComputeMeshQualityMetric_Diagonal(elcoords,&min_diag,&max_diag);CHKERRQ(ierr);
+
+      /* initialise element stiffness matrix */
+      PetscMemzero( Ae, sizeof(PetscScalar)* Q2_NODES_PER_EL_3D * Q2_NODES_PER_EL_3D * U_DOFS * U_DOFS );
+
+      for (p=0; p<ngp; p++) {
+        PetscReal _xi[3],GNi[NSD][Q2_NODES_PER_EL_3D],Ni[Q2_NODES_PER_EL_3D];
+        PetscReal dNudx[Q2_NODES_PER_EL_3D],dNudy[Q2_NODES_PER_EL_3D],dNudz[Q2_NODES_PER_EL_3D];
+        PetscReal fac,surfJ_p,gamma;
+        double    *normal, eta;
+
+        /* Local coords of gauss point */
+        _xi[0] = gp3[p].xi;
+        _xi[1] = gp3[p].eta;
+        _xi[2] = gp3[p].zeta;
+
+        /* Evaluate shape functions at gauss point */
+        P3D_ConstructNi_Q2_3D(_xi,Ni);
+        /* Evaluate shape function local derivative */
+        P3D_ConstructGNi_Q2_3D(_xi,GNi);
+        /* Evaluate shape function global derivatives */
+        P3D_evaluate_global_derivatives_Q2(elcoords,GNi,dNudx,dNudy,dNudz);
+        /* Get the normal to the facet */
+        QPntSurfCoefStokesGetField_surface_normal(&cell_quadpoints[p],&normal);
+        /* Get viscosity at gauss point */
+        //QPntSurfCoefStokesGetField_viscosity(&cell_quadpoints[p],&eta);
+
+        eta = 1.0;
+        /* Penalty */
+        gamma = 20.0*eta/min_diag;
+        element->compute_surface_geometry_3D(
+            element,
+            elcoords,    // should contain 27 points with dimension 3 (x,y,z) //
+            surfQ->face_id,   // edge index 0,...,7 //
+            &gp2[p], // should contain 1 point with dimension 2 (xi,eta)   //
+            NULL,NULL, &surfJ_p ); // n0[],t0 contains 1 point with dimension 3 (x,y,z) //
+        fac = gp2[p].w * surfJ_p;
+        /*
+        bform_assemble_nitsche_classic(
+                                      eta,normal,gamma, // inputs
+                                      fac,
+                                      Ni,dNudx,dNudy,dNudz, // test function
+                                      Ni,dNudx,dNudy,dNudz, // trial function
+                                      Ae );
+        */
+
+        {
+          PetscReal nhat[3] = {0.7071067811865476, 0.0, -0.7071067811865476};
+          PetscReal that[3] = {0.7071067811865476, 0.0,  0.7071067811865476};
+          bform_assemble_nitsche_custom(
+                                        Ni, dNudx, dNudy, dNudz, 
+                                        Ni, dNudx, dNudy, dNudz, 
+                                        eta, gamma, normal, nhat, that,
+                                        fac, Ae);
+        }
+
+      }
+      ierr = MatSetValues(A,Q2_NODES_PER_EL_3D * U_DOFS,vel_el_lidx,Q2_NODES_PER_EL_3D * U_DOFS,vel_el_lidx,Ae,ADD_VALUES);CHKERRQ(ierr);
+    }
+  }
+
+  ierr = MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  ierr = MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+
+  ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
