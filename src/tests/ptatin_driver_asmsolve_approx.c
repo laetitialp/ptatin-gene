@@ -1186,7 +1186,7 @@ PetscErrorCode pTatin3d_gmg2_material_points(int argc,char **argv)
 
         PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: Re-discretisation :: matrix free operator \n", k);
         ierr = MatA11MFCreate(&A11Ctx);CHKERRQ(ierr);
-        ierr = MatA11MFSetup(A11Ctx,dav_hierarchy[k],volQ[k],u_bclist[k]);CHKERRQ(ierr);
+        ierr = MatA11MFSetup(A11Ctx,dav_hierarchy[k],volQ[k],u_bclist[k],NULL);CHKERRQ(ierr);
 
         ierr = StokesQ2P1CreateMatrix_MFOperator_A11(A11Ctx,&Auu);CHKERRQ(ierr);
         ierr = MatShellGetMatA11MF(Auu,&mf);CHKERRQ(ierr);
@@ -1200,7 +1200,7 @@ PetscErrorCode pTatin3d_gmg2_material_points(int argc,char **argv)
 
         // LOW ORDER FOR B
         ierr = MatA11MFCreate(&A11Ctx);CHKERRQ(ierr);
-        ierr = MatA11MFSetup(A11Ctx,dav_hierarchy[k],volQ_2x2x2[k],u_bclist[k]);CHKERRQ(ierr);
+        ierr = MatA11MFSetup(A11Ctx,dav_hierarchy[k],volQ_2x2x2[k],u_bclist[k],NULL);CHKERRQ(ierr);
 
         ierr = StokesQ2P1CreateMatrix_MFOperator_A11(A11Ctx,&Auu);CHKERRQ(ierr);
         ierr = MatShellGetMatA11MF(Auu,&mf);CHKERRQ(ierr);

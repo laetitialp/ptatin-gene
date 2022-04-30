@@ -444,7 +444,7 @@ PetscErrorCode test_pTatin3d_gmg_mf(int argc,char **argv)
     MatA11MF ctx;
 
     ierr = MatA11MFCreate(&ctx);CHKERRQ(ierr);
-    ierr = MatA11MFSetup(ctx,dav_hierarchy[k],volQ[k],u_bclist[k]);CHKERRQ(ierr);
+    ierr = MatA11MFSetup(ctx,dav_hierarchy[k],volQ[k],u_bclist[k],NULL);CHKERRQ(ierr);
 
     ierr = StokesQ2P1CreateMatrix_MFOperator_A11(ctx,&A11MF[k]);CHKERRQ(ierr);
     ierr = MatA11MFDestroy(&ctx);CHKERRQ(ierr);
