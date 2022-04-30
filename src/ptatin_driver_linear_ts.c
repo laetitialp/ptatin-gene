@@ -414,6 +414,7 @@ PetscErrorCode FormJacobian_Stokes(SNES snes,Vec X,Mat A,Mat B,void *ctx)
 
   /* Jacobian */
   ierr = pTatin_EvaluateRheologyNonlinearities(user,dau,LA_Uloc,dap,LA_Ploc);CHKERRQ(ierr);
+  ierr = ModelApplyTractionFromLithoPressure(user,X);CHKERRQ(ierr);
 
   ierr = PetscObjectTypeCompare((PetscObject)A,MATMFFD, &is_mffd);CHKERRQ(ierr);
   ierr = PetscObjectTypeCompare((PetscObject)A,MATNEST, &is_nest);CHKERRQ(ierr);
@@ -428,6 +429,7 @@ PetscErrorCode FormJacobian_Stokes(SNES snes,Vec X,Mat A,Mat B,void *ctx)
     ierr = PetscObjectTypeCompare((PetscObject)Auu,MATSHELL,&is_shell);CHKERRQ(ierr);
     if (!is_shell) {
       ierr = MatZeroEntries(Auu);CHKERRQ(ierr);
+      ierr = MatAssemble_StokesA_AUU_Surface(Auu,dau,user->stokes_ctx->surfQ);CHKERRQ(ierr);
       ierr = MatAssemble_StokesA_AUU(Auu,dau,user->stokes_ctx->u_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
     }
 
@@ -450,6 +452,7 @@ PetscErrorCode FormJacobian_Stokes(SNES snes,Vec X,Mat A,Mat B,void *ctx)
     ierr = PetscObjectTypeCompare((PetscObject)Buu,MATSHELL,&is_shell);CHKERRQ(ierr);
     if (!is_shell) {
       ierr = MatZeroEntries(Buu);CHKERRQ(ierr);
+      ierr = MatAssemble_StokesA_AUU_Surface(Buu,dau,user->stokes_ctx->surfQ);CHKERRQ(ierr);
       ierr = MatAssemble_StokesA_AUU(Buu,dau,user->stokes_ctx->u_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
     }
 
@@ -658,6 +661,8 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
           }
           /* should move assembly into jacobian */
           ierr = MatZeroEntries(Auu);CHKERRQ(ierr);
+          PetscPrintf(PETSC_COMM_WORLD,"The next call will SEGFAULT if the number of multigrid is > 1\n");
+          ierr = MatAssemble_StokesA_AUU_Surface(Auu,dav_hierarchy[k],stokes_ctx->surfQ);CHKERRQ(ierr);
           ierr = MatAssemble_StokesA_AUU(Auu,dav_hierarchy[k],u_bclist[k],volQ[k]);CHKERRQ(ierr);
 
           operatorA11[k] = Auu;
@@ -678,7 +683,7 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
 
           if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: Re-discretisation :: matrix free operator \n", k);
           ierr = MatA11MFCreate(&A11Ctx);CHKERRQ(ierr);
-          ierr = MatA11MFSetup(A11Ctx,dav_hierarchy[k],volQ[k],u_bclist[k]);CHKERRQ(ierr);
+          ierr = MatA11MFSetup(A11Ctx,dav_hierarchy[k],volQ[k],u_bclist[k],NULL);CHKERRQ(ierr);
 
           ierr = StokesQ2P1CreateMatrix_MFOperator_A11(A11Ctx,&Auu);CHKERRQ(ierr);
           ierr = MatShellGetMatA11MF(Auu,&mf);CHKERRQ(ierr);
@@ -745,7 +750,11 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
               ierr = MatSetOption(A_kp1,MAT_IGNORE_LOWER_TRIANGULAR,PETSC_TRUE);CHKERRQ(ierr);
             }
             ierr = MatZeroEntries(A_kp1);CHKERRQ(ierr);
+            PetscPrintf(PETSC_COMM_WORLD,"The next call will SEGFAULT if the number of multigrid is > 1\n");
+            ierr = MatAssemble_StokesA_AUU_Surface(A_kp1,dav_hierarchy[k+1],stokes_ctx->surfQ);CHKERRQ(ierr);
             ierr = MatAssemble_StokesA_AUU(A_kp1,dav_hierarchy[k+1],u_bclist[k+1],volQ[k+1]);CHKERRQ(ierr);
+            
+
 
             ierr = MatPtAP(A_kp1,interpolation_v[k+1],MAT_INITIAL_MATRIX,1.0,&Auu);CHKERRQ(ierr);
             ierr = MatDestroy(&A_kp1);CHKERRQ(ierr);
