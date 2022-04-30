@@ -159,6 +159,7 @@ PetscErrorCode ass_A11(PhysCompStokes stk)
     ierr = MatSetOption(B,MAT_IGNORE_LOWER_TRIANGULAR,PETSC_TRUE);CHKERRQ(ierr);
   }
 
+  ierr = MatAssemble_StokesA_AUU_Surface(B,da,stk->surfQ);CHKERRQ(ierr);
   ierr = MatAssemble_StokesA_AUU(B,da,stk->u_bclist,stk->volQ);CHKERRQ(ierr);
 
   ierr = DMCreateGlobalVector(da,&x);CHKERRQ(ierr);
@@ -272,6 +273,7 @@ PetscErrorCode compare_mf_A11(PhysCompStokes user)
   ierr = DMSetMatType(da,MATAIJ);CHKERRQ(ierr);
   ierr = DMCreateMatrix(da,&B);CHKERRQ(ierr);
   PetscTime(&t0);
+  ierr = MatAssemble_StokesA_AUU_Surface(B,da,user->surfQ);CHKERRQ(ierr);
   ierr = MatAssemble_StokesA_AUU(B,da,user->u_bclist,user->volQ);CHKERRQ(ierr);
   PetscTime(&t1);
   tl = (double)(t1 - t0);
@@ -552,6 +554,7 @@ PetscErrorCode compare_mf_diagA11(PhysCompStokes user)
 
   ierr = DMSetMatType(da,MATAIJ);CHKERRQ(ierr);
   ierr = DMCreateMatrix(da,&B);CHKERRQ(ierr);
+  ierr = MatAssemble_StokesA_AUU_Surface(B,da,user->surfQ);CHKERRQ(ierr);
   ierr = MatAssemble_StokesA_AUU(B,da,user->u_bclist,user->volQ);CHKERRQ(ierr);
 
   ierr = MatGetDiagonal(B,y2);CHKERRQ(ierr);
@@ -670,6 +673,7 @@ PetscErrorCode apply_asm_A11(PhysCompStokes user)
   ierr = DMSetMatType(da,MATAIJ);CHKERRQ(ierr);
   ierr = DMCreateMatrix(da,&B);CHKERRQ(ierr);
   PetscTime(&t0);
+  ierr = MatAssemble_StokesA_AUU_Surface(B,da,user->surfQ);CHKERRQ(ierr);
   ierr = MatAssemble_StokesA_AUU(B,da,user->u_bclist,user->volQ);CHKERRQ(ierr);
   PetscTime(&t1);
   tl = (double)(t1 - t0);
@@ -736,6 +740,7 @@ PetscErrorCode perform_viscous_solve(PhysCompStokes user)
   ierr = DMSetMatType(da,MATAIJ);CHKERRQ(ierr);
   ierr = DMCreateMatrix(da,&B);CHKERRQ(ierr);
   PetscTime(&t0);
+  ierr = MatAssemble_StokesA_AUU_Surface(B,da,user->surfQ);CHKERRQ(ierr);
   ierr = MatAssemble_StokesA_AUU(B,da,user->u_bclist,user->volQ);CHKERRQ(ierr);
   PetscTime(&t1);
   tl = (double)(t1 - t0);
