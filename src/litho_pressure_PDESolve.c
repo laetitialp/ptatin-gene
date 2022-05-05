@@ -899,6 +899,113 @@ PetscErrorCode ApplyLithostaticPressure_SurfQuadratureStokes_FullFace(PhysCompSt
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode ApplyDeviatoricValuePlusLithostaticPressure_SurfQuadratureStokes_FullFace
+                (PhysCompStokes stokes,
+                 DM da,
+                 Vec X,
+                 HexElementFace face_location[],
+                 PetscInt face_list_n)
+{
+  SurfaceQuadrature  surfQ_face;
+  QPntSurfCoefStokes *surfQ_coeff,*surfQ_cell_coeff;
+  DM                 cda;
+  Vec                gcoords;
+  PetscInt           c,q,n,f,k,nqp,nfaces,*element_list;
+  QPoint3d           *qp3d;
+  Vec                LP_local;
+  PetscReal          *LA_LP_local;
+  PetscScalar        *LA_gcoords;
+  PetscInt           nel_lp,nen_lp;
+  const PetscInt     *elnidx_lp;
+  PetscScalar        el_coords[NSD*NODES_PER_EL_Q1_3D];
+  PetscReal          el_lithop[Q1_NODES_PER_EL_3D];
+  PetscErrorCode     ierr;
+  
+  PetscFunctionBegin;
+  
+  /* setup for coords */
+  ierr = DMGetCoordinateDM(da,&cda);CHKERRQ(ierr);
+  ierr = DMGetCoordinatesLocal(da,&gcoords);CHKERRQ(ierr);
+  ierr = VecGetArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
+
+  /* Get Q1 elements connectivity table */
+  ierr = DMDAGetElements(da,&nel_lp,&nen_lp,&elnidx_lp);CHKERRQ(ierr);
+
+  /* Get the values of the lithostatic pressure solution vector at local rank */
+  ierr = DMGetLocalVector(da,&LP_local);CHKERRQ(ierr);
+  ierr = VecZeroEntries(LP_local);CHKERRQ(ierr);
+  ierr = DMGlobalToLocalBegin(da,X,INSERT_VALUES,LP_local);CHKERRQ(ierr);
+  ierr = DMGlobalToLocalEnd  (da,X,INSERT_VALUES,LP_local);CHKERRQ(ierr);
+  ierr = VecGetArray(LP_local,&LA_LP_local);CHKERRQ(ierr);
+  
+  for (f=0; f<face_list_n; f++) {
+    ierr = PhysCompStokesGetSurfaceQuadrature(stokes,face_location[f],&surfQ_face);CHKERRQ(ierr);
+    ierr = SurfaceQuadratureGetQuadratureInfo(surfQ_face,&nqp,NULL,&qp3d);CHKERRQ(ierr);
+    ierr = SurfaceQuadratureGetFaceInfo(surfQ_face,NULL,&nfaces,&element_list);CHKERRQ(ierr);
+    
+    ierr = SurfaceQuadratureGetAllCellData_Stokes(surfQ_face,&surfQ_coeff);CHKERRQ(ierr);
+
+    for (c=0; c<nfaces; c++) {
+      PetscInt  eidx;
+      PetscReal tau;
+      /* Get the element index */
+      eidx = element_list[c];
+      /* get coords for the element */
+      ierr = DMDAEQ1_GetVectorElementField_3D(el_coords,(PetscInt*)&elnidx_lp[nen_lp*eidx],LA_gcoords);CHKERRQ(ierr);
+      /* Get the lithostatic pressure in the element */
+      ierr = DMDAEQ1_GetScalarElementField_3D(el_lithop,(PetscInt*)&elnidx_lp[nen_lp*eidx],LA_LP_local);CHKERRQ(ierr);
+      /* Get the surface quadrature data of the element */
+      ierr = SurfaceQuadratureGetCellData_Stokes(surfQ_face,surfQ_coeff,c,&surfQ_cell_coeff);CHKERRQ(ierr);
+      
+      tau = 0.0;
+      if (face_location[f] == HEX_FACE_Pzeta) {
+        for (k=0;k<Q1_NODES_PER_EL_3D;k++) {
+          if (el_coords[3*k + 1] > -0.5) {
+            tau = 15.0;
+          }
+        }
+      }
+
+      /* Loop over quadrature points */
+      for (q=0; q<nqp; q++) {
+        PetscReal litho_pressure_qp;
+        PetscReal NiQ1[Q1_NODES_PER_EL_3D];
+        PetscReal qp_xi[NSD];
+        double    *normal,*traction;
+        
+        /* Get normal and traction arrays at quadrature point (3 components) */
+        QPntSurfCoefStokesGetField_surface_normal(&surfQ_cell_coeff[q],&normal);
+        QPntSurfCoefStokesGetField_surface_traction(&surfQ_cell_coeff[q],&traction);
+        
+        /* Get local coords of quadrature point */
+        qp_xi[0] = qp3d[q].xi;
+        qp_xi[1] = qp3d[q].eta;
+        qp_xi[2] = qp3d[q].zeta;
+        /* Evaluate NiQ1 for interpolation on quadrature point */
+        EvaluateBasis_Q1_3D(qp_xi,NiQ1);
+        /* Interpolate lithostatic pressure at quadrature point */
+        litho_pressure_qp = 0.0;
+        for (n=0; n<Q1_NODES_PER_EL_3D; n++) {
+          litho_pressure_qp += NiQ1[n]*el_lithop[n];
+        }
+
+        /* Set traction as t = -lp.n (colinear vector of opposite direction and scale lp) */
+        traction[0] = (tau - litho_pressure_qp) * (normal[0]);
+        traction[1] = (tau - litho_pressure_qp) * (normal[1]);
+        traction[2] = (tau - litho_pressure_qp) * (normal[2]);
+        
+      }
+    }
+  }
+
+  ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
+  ierr = VecRestoreArray(LP_local,&LA_LP_local);CHKERRQ(ierr);
+  ierr = DMRestoreLocalVector(da,&LP_local);CHKERRQ(ierr);
+  ierr = DMDARestoreElements(da,&nel_lp,&nen_lp,&elnidx_lp);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode ApplyNormalStress_SurfQuadratureStokes_FullFace(PhysCompStokes stokes,
                                                                DM da,
                                                                Vec X,
@@ -1311,9 +1418,25 @@ PetscErrorCode ModelApplyTractionFromLithoPressure(pTatinCtx user, Vec X_stokes)
   ierr = MatSetFromOptions(J);CHKERRQ(ierr);
   
   ierr = SNESSolve_LithoPressure(LP,J,LP->X,LP->F,user);CHKERRQ(ierr);
+
+  {
+    PetscViewer viewer;
+    char        fname[256];
+    
+    PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/LithoP_step%d.vts",user->outputpath,user->step);
+    ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
+    ierr = PetscViewerSetType(viewer,PETSCVIEWERVTK);CHKERRQ(ierr);
+    ierr = PetscViewerFileSetMode(viewer,FILE_MODE_WRITE);CHKERRQ(ierr);
+    ierr = PetscViewerFileSetName(viewer,fname);CHKERRQ(ierr);
+    ierr = VecView(LP->X,viewer);CHKERRQ(ierr);
+    ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
+  }
+
   face_list_n = 5;
   /* Apply the lithostatic pressure on surface quadrature points */
-  ierr = ApplyLithostaticPressure_SurfQuadratureStokes_FullFace(user->stokes_ctx,LP->da,LP->X,face_list,face_list_n);CHKERRQ(ierr);
+  //ierr = ApplyLithostaticPressure_SurfQuadratureStokes_FullFace(user->stokes_ctx,LP->da,LP->X,face_list,face_list_n);CHKERRQ(ierr);
+  ierr = ApplyDeviatoricValuePlusLithostaticPressure_SurfQuadratureStokes_FullFace(user->stokes_ctx,LP->da,LP->X,face_list,face_list_n);CHKERRQ(ierr);
+
   //ierr = ApplyNormalStress_SurfQuadratureStokes_FullFace(user->stokes_ctx,LP->da,LP->X,X_stokes,face_list,face_list_n);CHKERRQ(ierr);
   //ierr = ModelApplyTractionFromLithoPressureStokesVolumeQuadrature(user,user->stokes_ctx,LP->da,LP->X,X_stokes,face_list,face_list_n);CHKERRQ(ierr);
   ierr = MatDestroy(&J);CHKERRQ(ierr);
