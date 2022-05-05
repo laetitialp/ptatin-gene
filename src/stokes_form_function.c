@@ -392,6 +392,11 @@ PetscErrorCode FormFunctionLocal_U_FSSA(PhysCompStokes user,DM dau,PetscReal the
     int                     *face_local_indices;
     PetscInt                nfaces,ngp;
     QPoint2d                *gp2;
+
+    /* Only apply the FFSA on the JMAX face */
+    if (edge != 2) {
+      continue;
+    }
     
     surfQ   = user->surfQ[edge];
     element = surfQ->e;
