@@ -16,6 +16,7 @@ PetscErrorCode MeshEntityCreate(MeshEntity *_e)
   ierr = PetscMemzero(e,sizeof(struct _p_MeshEntity));CHKERRQ(ierr);
   e->n_entities = 0;
   e->empty = PETSC_TRUE;
+  e->set_values_called = PETSC_FALSE;
   e->ref_cnt = 1;
   *_e = e;
   PetscFunctionReturn(0);
@@ -310,7 +311,7 @@ PetscErrorCode MeshFacetInfoSetUp(MeshFacetInfo e, DM dm)
     e->n_facets += nface_list[k];
   }
 
-  e->n_facet_labels = 6; /* hex has size faces */
+  e->n_facet_labels = 6; /* hex has six faces */
   ierr = PetscMalloc1(6+1,&e->facet_label_offset);CHKERRQ(ierr); /* six faces of hex */
   e->facet_label_offset[0] = 0;
   for (k=0; k<6; k++) {

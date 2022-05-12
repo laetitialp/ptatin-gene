@@ -5,6 +5,7 @@
 #include <petsc.h>
 #include <petscdm.h>
 #include <data_bucket.h>
+#include <quadrature.h>
 #include <mesh_entity.h>
 
 typedef enum {
@@ -53,15 +54,28 @@ struct _p_SurfaceConstraint {
   PetscBool             setup;
   struct _SurfaceConstraintOps ops;
   void                         *data; /* for implementations */
-  DataBucket                   domain_properties_db;
+  SurfaceQuadrature     quadrature;
   PetscErrorCode        (*user_set_values)(void*);
   void                  *user_data;
 };
 
 
+PetscErrorCode SurfaceConstraintCreate(SurfaceConstraint *_sc);
+PetscErrorCode SurfaceConstraintDestroy(SurfaceConstraint *_sc);
+PetscErrorCode SurfaceConstraintSetDM(SurfaceConstraint sc, DM dm);
+PetscErrorCode SurfaceConstraintSetType(SurfaceConstraint sc, SurfaceConstraintType type, PetscBool residual_only, PetscBool operator_only);
+PetscErrorCode SurfaceConstraintSetQuadrature(SurfaceConstraint sc, SurfaceQuadrature q);
+PetscErrorCode SurfaceConstraintGetFacets(SurfaceConstraint sc, MeshEntity *f);
+
+
 
 typedef PetscErrorCode (*SurfConstraintSetter)(void*);
 typedef PetscErrorCode (*SurfConstraintSetTraction)(Facet,const PetscReal*,PetscReal*,void*);
+
+
+PetscErrorCode SurfaceConstraintSetValues_TRACTION(SurfaceConstraint sc,
+                                                   PetscErrorCode (*set)(Facet,const PetscReal*,PetscReal*,void*),
+                                                   void *data);
 
 
 

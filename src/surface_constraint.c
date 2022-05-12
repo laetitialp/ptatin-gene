@@ -11,6 +11,7 @@
 #include <private/ptatin_impl.h>
 #include <element_utils_q2.h>
 #include <quadrature.h>
+#include <private/quadrature_impl.h>
 #include <ptatin3d_stokes.h>
 
 #include <surface_constraint.h>
@@ -82,6 +83,10 @@ PetscErrorCode SurfaceConstraintSetType(SurfaceConstraint sc, SurfaceConstraintT
 {
   PetscErrorCode ierr;
 
+  if (sc->type != SC_NONE) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"SurfaceConstraint type already set");
+  
+  sc->type = type;
+
   switch (type) {
     case SC_NONE:
       ierr = _SetType_NONE(sc);CHKERRQ(ierr);
@@ -110,9 +115,9 @@ PetscErrorCode SurfaceConstraintSetType(SurfaceConstraint sc, SurfaceConstraintT
 }
 
 
-PetscErrorCode SurfaceConstraintSetQuadratureProperties(SurfaceConstraint sc, DataBucket prop_db)
+PetscErrorCode SurfaceConstraintSetQuadrature(SurfaceConstraint sc, SurfaceQuadrature q)
 {
-  sc->domain_properties_db = prop_db;
+  sc->quadrature = q;
   PetscFunctionReturn(0);
 }
 
@@ -127,6 +132,14 @@ PetscErrorCode SurfaceConstraintSetFacets(SurfaceConstraint sc, MeshEntity facet
   sc->facets = facets;
 }
 */
+
+PetscErrorCode SurfaceConstraintGetFacets(SurfaceConstraint sc, MeshEntity *f)
+{
+  if (f) {
+    *f = sc->facets;
+  }
+  PetscFunctionReturn(0);
+}
 
 
 static PetscErrorCode _ops_residual_only(SurfaceConstraint sc)
@@ -176,6 +189,7 @@ static PetscErrorCode _SetType_NONE(SurfaceConstraint sc)
   sc->ops.destroy = NULL;
   /* allocate implementation data */
   sc->data = NULL;
+  sc->type = SC_NONE;
   PetscFunctionReturn(0);
 }
 
@@ -222,7 +236,19 @@ PetscErrorCode SurfaceConstraintSetValues_TRACTION(SurfaceConstraint sc,
   PetscReal qp_coor[3],traction[3];
   PetscErrorCode ierr;
   PetscReal *traction_qp;
+  double Ni[27];
+  const PetscInt *elnidx;
+  PetscInt       nel,nen;
+  double         elcoords[3*Q2_NODES_PER_EL_3D];
+
   
+  if (sc->type != SC_TRACTION) {
+    printf("[ignoring] SurfaceConstraintSetValues_TRACTION() called with different type\n");
+    PetscFunctionReturn(0);
+  }
+
+  if (!sc->quadrature) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Must call SurfaceConstraintSetQuadrature() first");
+
   /* resize traction qp data */
   ierr = _resize_facet_quadrature_data(sc);CHKERRQ(ierr);
   
@@ -230,18 +256,34 @@ PetscErrorCode SurfaceConstraintSetValues_TRACTION(SurfaceConstraint sc,
   
   ierr = MeshFacetInfoGetCoords(sc->fi);CHKERRQ(ierr);
   ierr = FacetCreate(&cell_facet);CHKERRQ(ierr);
+  ierr = DMDAGetElements_pTatinQ2P1(sc->fi->dm,&nel,&nen,&elnidx);CHKERRQ(ierr);
   
   for (e=0; e<sc->facets->n_entities; e++) {
     facet_index = sc->facets->local_index[e]; /* facet local index */
     cell_side  = sc->fi->facet_label[facet_index]; /* side label */
     cell_index = sc->fi->facet_cell_index[facet_index];
+    printf("cell_side %d\n",cell_side);
     
     ierr = FacetPack(cell_facet, facet_index, sc->fi);CHKERRQ(ierr);
-    
+
+    ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx[nen*cell_index],(PetscReal*)sc->fi->_mesh_coor);CHKERRQ(ierr);
+
     //qp_offset = sc->nqp_facet * facet_index; /* offset into entire domain qp list */
     qp_offset = sc->nqp_facet * e; /* offset into entire domain qp list */
     for (q=0; q<sc->nqp_facet; q++) {
-      
+
+      {
+        PetscInt d,k;
+        
+        for (d=0; d<3; d++) { qp_coor[d] = 0.0; }
+        sc->fi->element->basis_NI_3D(&sc->quadrature->gp3[cell_side][q],Ni);
+        for (k=0; k<sc->fi->element->n_nodes_3D; k++) {
+          for (d=0; d<3; d++) {
+            qp_coor[d] += Ni[k] * elcoords[3*k+d];
+          }
+        }
+      }
+
       ierr = set(cell_facet, qp_coor, traction, data);CHKERRQ(ierr);
       
       ierr = PetscMemcpy(&traction_qp[3*qp_offset],traction,sizeof(PetscReal)*3);CHKERRQ(ierr);
@@ -290,7 +332,6 @@ static PetscErrorCode _FormFunctionLocal_Fu_TRACTION(SurfaceConstraint sc,DM dau
   PetscTime(&t0);
   for (fe=0; fe<sc->facets->n_entities; fe++) {
     PetscInt          facet_index,cell_side,cell_index;
-    SurfaceQuadrature surfQ;
     QPoint2d          *qp2 = NULL;
     const PetscReal   *cell_traction_qp;
     int               *face_local_indices = NULL;
@@ -299,9 +340,8 @@ static PetscErrorCode _FormFunctionLocal_Fu_TRACTION(SurfaceConstraint sc,DM dau
     cell_side  = sc->fi->facet_label[facet_index]; /* side label */
     cell_index = sc->fi->facet_cell_index[facet_index];
 
-    //surfQ   = sc->surfQ[cell_side];
-    //qp2     = surfQ->qp2;
-    //nqp     = surfQ->nqp;
+    nqp = sc->quadrature->ngp;
+    qp2 = sc->quadrature->gp2[cell_side];
 
     /* evaluate the quadrature points using the 1D basis for this edge */
     for (q=0; q<nqp; q++) {
