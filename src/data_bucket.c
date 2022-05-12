@@ -1354,3 +1354,24 @@ void DataBucketInsertPackedArray(DataBucket db,const int idx,void *data)
     offset = offset + df->atomic_size;
   }
 }
+
+void DataBucketGetEntriesdByName(DataBucket db,const char name[],void *data[])
+{
+  DataField gfield;
+  
+  *data = NULL;
+  DataBucketGetDataFieldByName(db,name,&gfield);
+  DataFieldGetAccess(gfield);
+  DataFieldGetEntries(gfield,data);
+}
+
+void DataBucketRestoreEntriesdByName(DataBucket db,const char name[],void *data[])
+{
+  DataField gfield;
+  
+  DataBucketGetDataFieldByName(db,name,&gfield);
+  DataFieldRestoreAccess(gfield);
+  DataFieldRestoreEntries(gfield,data);
+  *data = NULL;
+}
+
