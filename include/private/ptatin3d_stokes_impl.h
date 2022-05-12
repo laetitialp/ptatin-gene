@@ -40,7 +40,7 @@ struct _p_PhysCompStokes {
   DM                      stokes_pack;
   BCList                  u_bclist,p_bclist;
   Quadrature              volQ;
-  SurfaceQuadrature       *surfQ; /* eight faces - one for each hex */
+  SurfaceQuadrature       surfQ;
   PetscBool               use_mf_stokes;
   PetscReal               gravity_vector[3];
 };

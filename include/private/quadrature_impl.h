@@ -32,6 +32,7 @@
 
 #include "petsc.h"
 #include "element_type_Q2.h"
+#include "mesh_entity.h"
 
 struct _p_Quadrature {
   PetscInt       dim;
@@ -45,14 +46,13 @@ struct _p_Quadrature {
 
 struct _p_SurfaceQuadrature {
   ConformingElementFamily e;
-  HexElementFace face_id;
   /* quadrature */
   PetscInt    ngp;
-  QPoint2d    gp2[9]; /* s,t coordinates */
-  QPoint3d    gp3[9]; /* xi,eta,zeta coordinates */
+  QPoint2d    gp2[HEX_EDGES][9]; /* s,t coordinates */
+  QPoint3d    gp3[HEX_EDGES][9]; /* xi,eta,zeta coordinates */
   PetscInt    nfaces;
-  PetscInt    *element_list; /* list of cells connected to the face */
   DataBucket  properties_db;
+  MeshFacetInfo mfi;
 };
 
 

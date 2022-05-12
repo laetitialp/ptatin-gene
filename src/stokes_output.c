@@ -42,7 +42,7 @@
 
 
 /* surface quadrature point viewer */
-PetscErrorCode _SurfaceQuadratureViewParaviewVTU_Stokes(SurfaceQuadrature surfQ,DM da,const char name[])
+PetscErrorCode _SurfaceQuadratureViewParaviewVTU_Stokes(SurfaceQuadrature surfQ,PetscInt start,PetscInt end,DM da,const char name[])
 {
   PetscErrorCode ierr;
   PetscInt fe,n,e,k,ngp,npoints;
@@ -57,7 +57,7 @@ PetscErrorCode _SurfaceQuadratureViewParaviewVTU_Stokes(SurfaceQuadrature surfQ,
   double         elcoords[3*Q2_NODES_PER_EL_3D];
   double         Ni[27];
   const PetscInt *elnidx;
-  PetscInt       nel,nen;
+  PetscInt       nel,nen,nfaces;
   ConformingElementFamily element;
   int            c,npoints32;
 
@@ -69,7 +69,8 @@ PetscErrorCode _SurfaceQuadratureViewParaviewVTU_Stokes(SurfaceQuadrature surfQ,
 
   element = surfQ->e;
   ngp = surfQ->ngp;
-  npoints = surfQ->nfaces * surfQ->ngp;
+  nfaces = end - start;
+  npoints = nfaces * surfQ->ngp;
   PetscMPIIntCast(npoints,&npoints32);
 
   /* setup for quadrature point properties */
@@ -95,11 +96,14 @@ PetscErrorCode _SurfaceQuadratureViewParaviewVTU_Stokes(SurfaceQuadrature surfQ,
   /* POINT COORDS */
   fprintf(fp, "    <Points>\n");
   fprintf(fp, "      <DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n");
-  for (fe=0; fe<surfQ->nfaces; fe++) {
+  for (fe=start; fe<end; fe++) {
+    PetscInt face_id;
+    
     ierr =  SurfaceQuadratureGetCellData_Stokes(surfQ,all_qpoint,fe,&cell_qpoint);CHKERRQ(ierr);
 
-    e = surfQ->element_list[fe];
-
+    e = surfQ->mfi->facet_cell_index[fe];
+    face_id = surfQ->mfi->facet_label[fe];
+    
     ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx[nen*e],LA_gcoords);CHKERRQ(ierr);
     ierr = SurfaceQuadratureGetCellData_Stokes(surfQ,all_qpoint,fe,&cell_qpoint);CHKERRQ(ierr);
 
@@ -107,7 +111,7 @@ PetscErrorCode _SurfaceQuadratureViewParaviewVTU_Stokes(SurfaceQuadrature surfQ,
       qpoint = &cell_qpoint[n];
 
       /* interpolate global coords */
-      element->basis_NI_3D(&surfQ->gp3[n],Ni);
+      element->basis_NI_3D(&surfQ->gp3[face_id][n],Ni);
       xp = yp = zp = 0.0;
       for (k=0; k<element->n_nodes_3D; k++) {
         xp += Ni[k] * elcoords[3*k  ];
@@ -128,7 +132,7 @@ PetscErrorCode _SurfaceQuadratureViewParaviewVTU_Stokes(SurfaceQuadrature surfQ,
 
   /* normals */
   fprintf(fp, "      <DataArray type=\"Float32\" Name=\"normal\" NumberOfComponents=\"3\" format=\"ascii\">\n");
-  for (fe=0;fe<surfQ->nfaces;fe++) {
+  for (fe=start; fe<end; fe++) {
     ierr =  SurfaceQuadratureGetCellData_Stokes(surfQ,all_qpoint,fe,&cell_qpoint);CHKERRQ(ierr);
     for (n=0; n<ngp; n++) {
       qpoint = &cell_qpoint[n];
@@ -141,7 +145,7 @@ PetscErrorCode _SurfaceQuadratureViewParaviewVTU_Stokes(SurfaceQuadrature surfQ,
 
   /* tangent */
   fprintf(fp, "      <DataArray type=\"Float32\" Name=\"tangent1\" NumberOfComponents=\"3\" format=\"ascii\">\n");
-  for (fe=0;fe<surfQ->nfaces;fe++) {
+  for (fe=start; fe<end; fe++) {
     ierr =  SurfaceQuadratureGetCellData_Stokes(surfQ,all_qpoint,fe,&cell_qpoint);CHKERRQ(ierr);
     for (n=0; n<ngp; n++) {
       qpoint = &cell_qpoint[n];
@@ -154,7 +158,7 @@ PetscErrorCode _SurfaceQuadratureViewParaviewVTU_Stokes(SurfaceQuadrature surfQ,
 
   /* tangent */
   fprintf(fp, "      <DataArray type=\"Float32\" Name=\"tangent2\" NumberOfComponents=\"3\" format=\"ascii\">\n");
-  for (fe=0;fe<surfQ->nfaces;fe++) {
+  for (fe=start; fe<end; fe++) {
     ierr =  SurfaceQuadratureGetCellData_Stokes(surfQ,all_qpoint,fe,&cell_qpoint);CHKERRQ(ierr);
     for (n=0; n<ngp; n++) {
       qpoint = &cell_qpoint[n];
@@ -167,7 +171,7 @@ PetscErrorCode _SurfaceQuadratureViewParaviewVTU_Stokes(SurfaceQuadrature surfQ,
 
   /* traction */
   fprintf(fp, "      <DataArray type=\"Float32\" Name=\"traction\" NumberOfComponents=\"3\" format=\"ascii\">\n");
-  for (fe=0;fe<surfQ->nfaces;fe++) {
+  for (fe=start; fe<end; fe++) {
     ierr =  SurfaceQuadratureGetCellData_Stokes(surfQ,all_qpoint,fe,&cell_qpoint);CHKERRQ(ierr);
     for (n=0; n<ngp; n++) {
       qpoint = &cell_qpoint[n];
@@ -314,7 +318,10 @@ PetscErrorCode SurfaceQuadratureViewParaview_Stokes(PhysCompStokes ctx,const cha
       if (asprintf(&filename,"./%s",vtkfilename) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
     }
 
-    ierr = _SurfaceQuadratureViewParaviewVTU_Stokes(ctx->surfQ[e],ctx->dav,filename);CHKERRQ(ierr);
+    ierr = _SurfaceQuadratureViewParaviewVTU_Stokes(ctx->surfQ,
+                                                    ctx->surfQ->mfi->facet_label_offset[e],
+                                                    ctx->surfQ->mfi->facet_label_offset[e+1],
+                                                    ctx->dav,filename);CHKERRQ(ierr);
     free(filename);
     free(vtkfilename);
     free(appended);

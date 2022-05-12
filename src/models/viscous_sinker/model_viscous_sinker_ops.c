@@ -359,6 +359,7 @@ PetscErrorCode ModelApplyBoundaryCondition_ViscousSinker(pTatinCtx user,void *ct
         /* free slip, free surface, normal stress on IMAX */
         ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
         //
+#if 0 // TODO DAM
         {
           SurfaceQuadrature surfQ_east;
           QPntSurfCoefStokes *surfQ_coeff,*surfQ_cell_coeff;
@@ -438,6 +439,7 @@ PetscErrorCode ModelApplyBoundaryCondition_ViscousSinker(pTatinCtx user,void *ct
 
           ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
         }
+#endif
         //
         //ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
 
