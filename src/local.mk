@@ -86,6 +86,8 @@ libptatin3d-y.c += $(call thisdir, \
   mpiio_blocking.c \
   inorms.c \
   quantity.c \
+  mesh_entity.c \
+  surface_constraint.c \
 )
 
 libptatin3d-$(CONFIG_CUDA).cu += $(call thisdir, \
