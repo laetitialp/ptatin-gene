@@ -185,6 +185,35 @@ PetscErrorCode _SurfaceQuadratureViewParaviewVTU_Stokes(SurfaceQuadrature surfQ,
   }
   fprintf(fp, "      </DataArray>\n");
 
+  
+  /* eta/rho */
+  fprintf(fp, "      <DataArray type=\"Float32\" Name=\"eta\" NumberOfComponents=\"1\" format=\"ascii\">\n");
+  for (fe=start; fe<end; fe++) {
+    ierr =  SurfaceQuadratureGetCellData_Stokes(surfQ,all_qpoint,fe,&cell_qpoint);CHKERRQ(ierr);
+    for (n=0; n<ngp; n++) {
+      double field;
+      qpoint = &cell_qpoint[n];
+      
+      QPntSurfCoefStokesGetField_viscosity(qpoint,&field);
+      fprintf(fp, "      %1.4e \n", field );
+    }
+  }
+  fprintf(fp, "      </DataArray>\n");
+
+  fprintf(fp, "      <DataArray type=\"Float32\" Name=\"rho\" NumberOfComponents=\"1\" format=\"ascii\">\n");
+  for (fe=start; fe<end; fe++) {
+    ierr =  SurfaceQuadratureGetCellData_Stokes(surfQ,all_qpoint,fe,&cell_qpoint);CHKERRQ(ierr);
+    for (n=0; n<ngp; n++) {
+      double field;
+      qpoint = &cell_qpoint[n];
+      
+      QPntSurfCoefStokesGetField_density(qpoint,&field);
+      fprintf(fp, "      %1.4e \n", field );
+    }
+  }
+  fprintf(fp, "      </DataArray>\n");
+
+  
   /* POINT-DATA HEADER - CLOSE */
   fprintf(fp, "    </PointData>\n");
 
