@@ -434,7 +434,7 @@ PetscErrorCode VolumeQuadratureCreate_GaussLegendreStokes(PetscInt nsd,PetscInt 
   DataBucketRegisterField(Q->properties_db,QPntVolCoefStokes_classname, sizeof(QPntVolCoefStokes),NULL);
   DataBucketFinalize(Q->properties_db);
 
-  QuadratureSetSize(Q->properties_db);
+  QuadratureSetSize(Q);
 
   *quadrature = Q;
   PetscFunctionReturn(0);
