@@ -63,6 +63,7 @@ struct _p_SurfaceConstraint {
 PetscErrorCode SurfaceConstraintCreate(SurfaceConstraint *_sc);
 PetscErrorCode SurfaceConstraintDestroy(SurfaceConstraint *_sc);
 PetscErrorCode SurfaceConstraintSetDM(SurfaceConstraint sc, DM dm);
+PetscErrorCode SurfaceConstraintCreateWithFacetInfo(MeshFacetInfo mfi,SurfaceConstraint *_sc);
 PetscErrorCode SurfaceConstraintSetType(SurfaceConstraint sc, SurfaceConstraintType type, PetscBool residual_only, PetscBool operator_only);
 PetscErrorCode SurfaceConstraintSetQuadrature(SurfaceConstraint sc, SurfaceQuadrature q);
 PetscErrorCode SurfaceConstraintGetFacets(SurfaceConstraint sc, MeshEntity *f);

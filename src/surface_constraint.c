@@ -60,10 +60,33 @@ PetscErrorCode SurfaceConstraintDestroy(SurfaceConstraint *_sc)
 }
 
 
+PetscErrorCode SurfaceConstraintCreateWithFacetInfo(MeshFacetInfo mfi,SurfaceConstraint *_sc)
+{
+  PetscErrorCode    ierr;
+  SurfaceConstraint sc;
+  
+  ierr = SurfaceConstraintCreate(&sc);CHKERRQ(ierr);
+  ierr = MeshFacetInfoIncrementRef(mfi);CHKERRQ(ierr);
+  sc->fi = mfi;
+  sc->dm = mfi->dm;
+  
+  // build facet info for the domain
+  ierr = MeshFacetInfoCreate2(sc->dm,&sc->fi);CHKERRQ(ierr);
+  
+  // create empty facet list named "default"
+  ierr = MeshFacetCreate("default",sc->dm,&sc->facets);CHKERRQ(ierr);
+  
+  sc->nqp_facet = 9; /* Really should choose this a better way. Query fi->element ?? */
+  *_sc = sc;
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode SurfaceConstraintSetDM(SurfaceConstraint sc, DM dm)
 {
   PetscErrorCode ierr;
   
+  if (sc->dm) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"DM is already set");
+  if (sc->fi) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"MeshFacetInfo is already set");
   sc->dm = dm;
   
   // build facet info for the domain
