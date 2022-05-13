@@ -87,6 +87,15 @@ PetscErrorCode QuadratureView(Quadrature q)
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode QuadratureSetSize(Quadrature Q)
+{
+  if (!Q->properties_db) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Q->properties_db is NULL");
+  if (Q->properties_db->finalised == BFALSE) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Q->properties_db fields are not finalized - must call DataBucketFinalize() first");
+  //if (Q->n_elements == 0 || Q->npoints == 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Q->n_elements or Q->npoints is 0");
+  DataBucketSetInitialSizes(Q->properties_db,Q->npoints*Q->n_elements,1);
+  PetscFunctionReturn(0);
+}
+
 void QuadratureCreateGauss_2pnt_3D(PetscInt *ngp,PetscReal **_q_coor,PetscReal **_q_weight)
 {
   const double s = 0.577350269189;
@@ -149,6 +158,44 @@ void QuadratureCreateGauss_3pnt_3D(PetscInt *ngp,PetscReal **_q_coor,PetscReal *
   }
   *_q_coor = q_coor;
   *_q_weight = q_weight;
+}
+
+PetscErrorCode VolumeQuadratureCreateGaussLegendre(PetscInt dim,PetscInt ncells,PetscInt np_per_dim,Quadrature *quadrature)
+{
+  Quadrature     Q;
+  PetscErrorCode ierr;
+  
+  PetscFunctionBegin;
+  
+  ierr = QuadratureCreate(&Q);CHKERRQ(ierr);
+  if (dim != 3) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Only a DM defined in 3D is supported");
+  Q->dim  = dim;
+  Q->type = VOLUME_QUAD;
+  
+  switch (np_per_dim) {
+    case 1:
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"This will result in a rank-deficient operator");
+      break;
+      
+    case 2:
+      QuadratureCreateGauss_2pnt_3D(&Q->npoints,&Q->q_xi_coor,&Q->q_weight);
+      break;
+      
+    case 3:
+      QuadratureCreateGauss_3pnt_3D(&Q->npoints,&Q->q_xi_coor,&Q->q_weight);
+      break;
+      
+    default:
+      QuadratureCreateGauss_3pnt_3D(&Q->npoints,&Q->q_xi_coor,&Q->q_weight);
+      break;
+  }
+
+  Q->n_elements = ncells;
+  
+  DataBucketCreate(&Q->properties_db);
+  
+  *quadrature = Q;
+  PetscFunctionReturn(0);
 }
 
 /* surface quadrature */

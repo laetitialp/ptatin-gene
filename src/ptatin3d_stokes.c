@@ -429,48 +429,12 @@ PetscErrorCode VolumeQuadratureCreate_GaussLegendreStokes(PetscInt nsd,PetscInt 
 
   PetscFunctionBegin;
 
-  ierr = QuadratureCreate(&Q);CHKERRQ(ierr);
-  Q->dim  = nsd;
-  Q->type = VOLUME_QUAD;
+  ierr = VolumeQuadratureCreateGaussLegendre(nsd,np_per_dim,ncells,&Q);CHKERRQ(ierr);
+  
+  DataBucketRegisterField(Q->properties_db,QPntVolCoefStokes_classname, sizeof(QPntVolCoefStokes),NULL);
+  DataBucketFinalize(Q->properties_db);
 
-  /*PetscPrintf(PETSC_COMM_WORLD,"VolumeQuadratureCreate_GaussLegendreStokes:\n");*/
-  switch (np_per_dim) {
-    case 1:
-      /*PetscPrintf(PETSC_COMM_WORLD,"\tUsing 1 pnt Gauss Legendre quadrature\n");*/
-      //QuadratureCreateGauss_1pnt_3D(&ngp,gp_xi,gp_weight);
-      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"This will result in a rank-deficient operator");
-      break;
-
-    case 2:
-      /*PetscPrintf(PETSC_COMM_WORLD,"\tUsing 2x2 pnt Gauss Legendre quadrature\n");*/
-      QuadratureCreateGauss_2pnt_3D(&Q->npoints,&Q->q_xi_coor,&Q->q_weight);
-      break;
-
-    case 3:
-      /*PetscPrintf(PETSC_COMM_WORLD,"\tUsing 3x3 pnt Gauss Legendre quadrature\n");*/
-      QuadratureCreateGauss_3pnt_3D(&Q->npoints,&Q->q_xi_coor,&Q->q_weight);
-      break;
-
-    default:
-      /*PetscPrintf(PETSC_COMM_WORLD,"\tUsing 3x3 pnt Gauss Legendre quadrature\n");*/
-      QuadratureCreateGauss_3pnt_3D(&Q->npoints,&Q->q_xi_coor,&Q->q_weight);
-      break;
-  }
-
-  Q->n_elements = ncells;
-  if (ncells != 0) {
-
-    DataBucketCreate(&Q->properties_db);
-    DataBucketRegisterField(Q->properties_db,QPntVolCoefStokes_classname, sizeof(QPntVolCoefStokes),NULL);
-    DataBucketFinalize(Q->properties_db);
-
-    DataBucketSetInitialSizes(Q->properties_db,Q->npoints*ncells,1);
-
-    /*
-    // Note: This call will hang if any rank contained zero elements
-    DataBucketView(PETSC_COMM_WORLD, Q->properties_db,"GaussLegendre StokesCoefficients",DATABUCKET_VIEW_STDOUT);
-    */
-  }
+  QuadratureSetSize(Q->properties_db);
 
   *quadrature = Q;
   PetscFunctionReturn(0);
