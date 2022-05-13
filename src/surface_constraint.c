@@ -340,7 +340,7 @@ static PetscErrorCode _FormFunctionLocal_Fu_TRACTION(SurfaceConstraint sc,DM dau
     cell_side  = sc->fi->facet_label[facet_index]; /* side label */
     cell_index = sc->fi->facet_cell_index[facet_index];
 
-    nqp = sc->quadrature->ngp;
+    nqp = sc->quadrature->npoints;
     qp2 = sc->quadrature->gp2[cell_side];
 
     /* evaluate the quadrature points using the 1D basis for this edge */

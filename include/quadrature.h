@@ -45,6 +45,8 @@ PetscErrorCode VolumeQuadratureCreateGaussLegendre(PetscInt dim,PetscInt np_per_
 
 PetscErrorCode SurfaceQuadratureCreate(SurfaceQuadrature *quadrature);
 PetscErrorCode SurfaceQuadratureDestroy(SurfaceQuadrature *quadrature);
+PetscErrorCode SurfaceQuadratureSetSize(SurfaceQuadrature Q);
+
 PetscErrorCode _SurfaceQuadratureCreate(SurfaceQuadrature quadrature);
 PetscErrorCode _SurfaceQuadratureCellIndexSetUp(SurfaceQuadrature Q,DM da);
 

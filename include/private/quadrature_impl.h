@@ -47,10 +47,10 @@ struct _p_Quadrature {
 struct _p_SurfaceQuadrature {
   ConformingElementFamily e;
   /* quadrature */
-  PetscInt    ngp;
+  PetscInt    npoints;
   QPoint2d    gp2[HEX_EDGES][9]; /* s,t coordinates */
   QPoint3d    gp3[HEX_EDGES][9]; /* xi,eta,zeta coordinates */
-  PetscInt    nfaces;
+  PetscInt    n_facets;
   DataBucket  properties_db;
   MeshFacetInfo mfi;
 };

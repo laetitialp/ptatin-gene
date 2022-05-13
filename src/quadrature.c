@@ -92,7 +92,13 @@ PetscErrorCode QuadratureSetSize(Quadrature Q)
   if (!Q->properties_db) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Q->properties_db is NULL");
   if (Q->properties_db->finalised == BFALSE) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Q->properties_db fields are not finalized - must call DataBucketFinalize() first");
   //if (Q->n_elements == 0 || Q->npoints == 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Q->n_elements or Q->npoints is 0");
-  DataBucketSetInitialSizes(Q->properties_db,Q->npoints*Q->n_elements,1);
+  //DataBucketSetInitialSizes(Q->properties_db,Q->npoints*Q->n_elements,1);
+  if (Q->n_elements != 0) {
+    DataBucketSetInitialSizes(Q->properties_db,Q->npoints*Q->n_elements,1);
+  } else {
+    DataBucketSetInitialSizes(Q->properties_db,1,1);
+    DataBucketSetSizes(Q->properties_db,0,-1);
+  }
   PetscFunctionReturn(0);
 }
 
@@ -226,8 +232,8 @@ PetscErrorCode _SurfaceQuadratureCreate(SurfaceQuadrature quadrature)
   for (index=0; index<HEX_EDGES; index++) {
     e->generate_surface_quadrature_3D(e,index,&ngp32,quadrature->gp2[index],quadrature->gp3[index]);
   }
-  quadrature->ngp = (PetscInt)ngp32;
-  quadrature->nfaces = -1; /* mark this as negative just for tracing setup mistakes */
+  quadrature->npoints = (PetscInt)ngp32;
+  quadrature->n_facets = -1; /* mark this as negative just for tracing setup mistakes */
 
   PetscFunctionReturn(0);
 }
@@ -239,7 +245,7 @@ PetscErrorCode _SurfaceQuadratureCellIndexSetUp(SurfaceQuadrature Q,DM da)
   PetscFunctionBegin;
   ierr = MeshFacetInfoCreate(&Q->mfi);CHKERRQ(ierr);
   ierr = MeshFacetInfoSetUp(Q->mfi,da);CHKERRQ(ierr);
-  Q->nfaces = Q->mfi->n_facets;
+  Q->n_facets = Q->mfi->n_facets;
   PetscFunctionReturn(0);
 }
 
@@ -273,7 +279,7 @@ PetscErrorCode SurfaceQuadratureGetElementFamily(SurfaceQuadrature q,ConformingE
 
 PetscErrorCode SurfaceQuadratureGetQuadratureInfo(SurfaceQuadrature q,HexElementFace faceid,PetscInt *nqp,QPoint2d **qp2,QPoint3d **qp3)
 {
-  if (nqp) { *nqp = q->ngp; }
+  if (nqp) { *nqp = q->npoints; }
   if (qp2) { *qp2 = q->gp2[faceid]; }
   if (qp3) { *qp3 = q->gp3[faceid]; }
   PetscFunctionReturn(0);
@@ -281,7 +287,7 @@ PetscErrorCode SurfaceQuadratureGetQuadratureInfo(SurfaceQuadrature q,HexElement
 
 PetscErrorCode SurfaceQuadratureGetFaceInfo(SurfaceQuadrature q,PetscInt *nfaces,PetscInt *faceid[],PetscInt *ellist[])
 {
-  if (nfaces) { *nfaces = q->nfaces; }
+  if (nfaces) { *nfaces = q->n_facets; }
   if (faceid) { *faceid = q->mfi->facet_label; }
   if (ellist) { *ellist = q->mfi->facet_cell_index; }
   PetscFunctionReturn(0);
@@ -303,3 +309,17 @@ PetscErrorCode SurfaceQuadratureInterpolate3D(SurfaceQuadrature q,QPoint3d *qp3d
 
 PetscFunctionReturn(0);
 }
+
+PetscErrorCode SurfaceQuadratureSetSize(SurfaceQuadrature Q)
+{
+  if (!Q->properties_db) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Q->properties_db is NULL");
+  if (Q->properties_db->finalised == BFALSE) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Q->properties_db fields are not finalized - must call DataBucketFinalize() first");
+  if (Q->n_facets != 0) {
+    DataBucketSetInitialSizes(Q->properties_db,Q->npoints*Q->n_facets,1);
+  } else {
+    DataBucketSetInitialSizes(Q->properties_db,1,1);
+    DataBucketSetSizes(Q->properties_db,0,-1);
+  }
+  PetscFunctionReturn(0);
+}
+

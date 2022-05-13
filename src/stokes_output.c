@@ -68,9 +68,9 @@ PetscErrorCode _SurfaceQuadratureViewParaviewVTU_Stokes(SurfaceQuadrature surfQ,
   }
 
   element = surfQ->e;
-  ngp = surfQ->ngp;
+  ngp = surfQ->npoints;
   nfaces = end - start;
-  npoints = nfaces * surfQ->ngp;
+  npoints = nfaces * surfQ->npoints;
   PetscMPIIntCast(npoints,&npoints32);
 
   /* setup for quadrature point properties */

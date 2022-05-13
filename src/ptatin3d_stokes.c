@@ -484,12 +484,7 @@ PetscErrorCode SurfaceQuadratureCreate_GaussLegendreStokes(DM da,SurfaceQuadratu
   DataBucketRegisterField(Q->properties_db,QPntSurfCoefStokes_classname, sizeof(QPntSurfCoefStokes),NULL);
   DataBucketFinalize(Q->properties_db);
 
-  if (Q->nfaces != 0) {
-    DataBucketSetInitialSizes(Q->properties_db,Q->ngp*Q->nfaces,1);
-  } else {
-    DataBucketSetInitialSizes(Q->properties_db,1,1);
-        DataBucketSetSizes(Q->properties_db,0,-1);
-  }
+  ierr = SurfaceQuadratureSetSize(Q);CHKERRQ(ierr);
 //  DataBucketView(PetscObjectComm((PetscObject)da), Q->properties_db,"SurfaceGaussLegendre StokesCoefficients",DATABUCKET_VIEW_STDOUT);
 
   *quadrature = Q;
@@ -532,7 +527,7 @@ PetscErrorCode SurfaceQuadratureOrientationSetUpStokes(SurfaceQuadrature Q,DM da
   element = Q->e;
 
   ierr = SurfaceQuadratureGetAllCellData_Stokes(Q,&all_qpoint);CHKERRQ(ierr);
-  for (fe=0; fe<Q->nfaces; fe++) {
+  for (fe=0; fe<Q->n_facets; fe++) {
 
     e = Q->mfi->facet_cell_index[fe];
     face_id = Q->mfi->facet_label[fe];
@@ -541,7 +536,7 @@ PetscErrorCode SurfaceQuadratureOrientationSetUpStokes(SurfaceQuadrature Q,DM da
 
     ierr =  SurfaceQuadratureGetCellData_Stokes(Q,all_qpoint,fe,&cell_qpoint);CHKERRQ(ierr);
 
-    for (gp=0; gp<Q->ngp; gp++) {
+    for (gp=0; gp<Q->npoints; gp++) {
       //double normal[3],tangent1[3],tangent2[3],xp,yp,zp;
       double *normal,*tangent1,*tangent2,xp,yp,zp;
       QPntSurfCoefStokes *qpoint = &cell_qpoint[gp];
@@ -619,9 +614,9 @@ PetscErrorCode SurfaceQuadratureOrientationViewGnuplotStokes(SurfaceQuadrature Q
   }
 
   PetscFPrintf(PETSC_COMM_SELF,file,"# Surface quadrature data (n,t1,t1,traction) for face %D \n",Q->face_id);
-  PetscFPrintf(PETSC_COMM_SELF,file,"# nfaces = %D \n",Q->nfaces);
+  PetscFPrintf(PETSC_COMM_SELF,file,"# n_facets = %D \n",Q->n_facets);
 
-  if (Q->nfaces == 0) { PetscFunctionReturn(0); }
+  if (Q->n_facets == 0) { PetscFunctionReturn(0); }
 
   /* setup for coords */
   ierr = DMGetCoordinateDM(da,&cda);CHKERRQ(ierr);
@@ -632,14 +627,14 @@ PetscErrorCode SurfaceQuadratureOrientationViewGnuplotStokes(SurfaceQuadrature Q
   element = Q->e;
 
   ierr = SurfaceQuadratureGetAllCellData_Stokes(Q,&all_qpoint);CHKERRQ(ierr);
-  for (fe=0; fe<Q->nfaces; fe++) {
+  for (fe=0; fe<Q->n_facets; fe++) {
 
     e = Q->element_list[fe];
     ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx[nen*e],LA_gcoords);CHKERRQ(ierr);
 
     ierr =  SurfaceQuadratureGetCellData_Stokes(Q,all_qpoint,fe,&cell_qpoint);CHKERRQ(ierr);
 
-    for (gp=0; gp<Q->ngp; gp++) {
+    for (gp=0; gp<Q->npoints; gp++) {
       //double normal[3],tangent1[3],tangent2[3],xp,yp,zp;
       double *normal,*tangent1,*tangent2,*traction,xp,yp,zp;
       QPntSurfCoefStokes *qpoint = &cell_qpoint[gp];
@@ -694,7 +689,7 @@ PetscErrorCode SurfaceQuadratureGetAllCellData_Stokes(SurfaceQuadrature Q,QPntSu
   DataField          PField;
   PetscFunctionBegin;
 
-  if (Q->nfaces) {
+  if (Q->n_facets) {
     DataBucketGetDataFieldByName(Q->properties_db, QPntSurfCoefStokes_classname ,&PField);
     quadraturepoint_data = PField->data;
     *coeffs = quadraturepoint_data;
@@ -709,11 +704,11 @@ PetscErrorCode SurfaceQuadratureGetCellData_Stokes(SurfaceQuadrature Q,QPntSurfC
 {
   PetscFunctionBegin;
   *cell = NULL;
-  if (cidx >= Q->nfaces) {
+  if (cidx >= Q->n_facets) {
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_ARG_SIZ,"cidx > max cells");
   }
-  if (Q->nfaces) {
-    *cell = &coeffs[cidx*Q->ngp];
+  if (Q->n_facets) {
+    *cell = &coeffs[cidx*Q->npoints];
   } else {
     *cell = NULL;
   }
