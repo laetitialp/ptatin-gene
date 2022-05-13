@@ -220,36 +220,17 @@ PetscErrorCode SurfaceQuadratureCreate(SurfaceQuadrature *quadrature)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode _SurfaceQuadratureCellIndexSetUp(SurfaceQuadrature Q,DM da)
-{
-  PetscErrorCode ierr;
-
-  PetscFunctionBegin;
-  ierr = MeshFacetInfoCreate(&Q->mfi);CHKERRQ(ierr);
-  ierr = MeshFacetInfoSetUp(Q->mfi,da);CHKERRQ(ierr);
-  Q->n_facets = Q->mfi->n_facets;
-  PetscFunctionReturn(0);
-}
-
 PetscErrorCode SurfaceQuadratureDestroy(SurfaceQuadrature *quadrature)
 {
   SurfaceQuadrature Q;
   PetscErrorCode  ierr;
 
   PetscFunctionBegin;
-
   if (!quadrature) { PetscFunctionReturn(0); }
-
   Q = *quadrature;
-
   if (Q->properties_db) { DataBucketDestroy(&Q->properties_db); }
-  //ElementTypeDestroy_Q2(&Q->e);
-  ierr = MeshFacetInfoDestroy(&Q->mfi);CHKERRQ(ierr);
-
   ierr = PetscFree(Q);CHKERRQ(ierr);
-
   *quadrature = NULL;
-
   PetscFunctionReturn(0);
 }
 
@@ -261,11 +242,9 @@ PetscErrorCode SurfaceQuadratureGetQuadratureInfo(SurfaceQuadrature q,HexElement
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode SurfaceQuadratureGetFaceInfo(SurfaceQuadrature q,PetscInt *nfaces,PetscInt *faceid[],PetscInt *ellist[])
+PetscErrorCode SurfaceQuadratureGetFaceInfo(SurfaceQuadrature q,PetscInt *nfaces)
 {
   if (nfaces) { *nfaces = q->n_facets; }
-  if (faceid) { *faceid = q->mfi->facet_label; }
-  if (ellist) { *ellist = q->mfi->facet_cell_index; }
   PetscFunctionReturn(0);
 }
 

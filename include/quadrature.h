@@ -47,10 +47,8 @@ PetscErrorCode SurfaceQuadratureCreate(SurfaceQuadrature *quadrature);
 PetscErrorCode SurfaceQuadratureDestroy(SurfaceQuadrature *quadrature);
 PetscErrorCode SurfaceQuadratureSetSize(SurfaceQuadrature Q);
 
-PetscErrorCode _SurfaceQuadratureCellIndexSetUp(SurfaceQuadrature Q,DM da);
-
 PetscErrorCode SurfaceQuadratureGetQuadratureInfo(SurfaceQuadrature q,HexElementFace faceid,PetscInt *nqp,QPoint2d **qp2,QPoint3d **qp3);
-PetscErrorCode SurfaceQuadratureGetFaceInfo(SurfaceQuadrature q,PetscInt *nfaces,PetscInt *faceid[],PetscInt *ellist[]);
+PetscErrorCode SurfaceQuadratureGetFaceInfo(SurfaceQuadrature q,PetscInt *nfaces);
 
 PetscErrorCode SurfaceQuadratureCreateGaussLegendre(PetscInt dim,PetscInt nfacets,SurfaceQuadrature *quadrature);
 

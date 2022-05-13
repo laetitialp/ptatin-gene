@@ -47,14 +47,12 @@ struct _p_Quadrature {
 struct _p_SurfaceQuadrature {
   PetscInt       dim,co_dim;
   QuadratureType type;
-  //ConformingElementFamily e;
   /* quadrature */
   PetscInt    npoints;
   QPoint2d    gp2[HEX_EDGES][9]; /* s,t coordinates */
   QPoint3d    gp3[HEX_EDGES][9]; /* xi,eta,zeta coordinates */
   PetscInt    n_facets;
   DataBucket  properties_db;
-  MeshFacetInfo mfi;
 };
 
 

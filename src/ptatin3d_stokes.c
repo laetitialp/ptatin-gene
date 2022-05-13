@@ -474,8 +474,6 @@ PetscErrorCode SurfaceQuadratureCreate_GaussLegendreStokes(DM da,SurfaceQuadratu
 
   ierr = DMDAGetLocalSizeFacetQ2(da,&nfacets);CHKERRQ(ierr);
   ierr = SurfaceQuadratureCreateGaussLegendre(3,nfacets,&Q);CHKERRQ(ierr);
-  /* setup element lists */
-  ierr = _SurfaceQuadratureCellIndexSetUp(Q,da);CHKERRQ(ierr);
   
   DataBucketRegisterField(Q->properties_db,QPntSurfCoefStokes_classname, sizeof(QPntSurfCoefStokes),NULL);
   DataBucketFinalize(Q->properties_db);
@@ -516,8 +514,8 @@ PetscErrorCode SurfaceQuadratureGeometryUpdate_Stokes(SurfaceQuadrature Q,MeshFa
   ierr = SurfaceQuadratureGetAllCellData_Stokes(Q,&all_qpoint);CHKERRQ(ierr);
   for (fe=0; fe<Q->n_facets; fe++) {
 
-    e = Q->mfi->facet_cell_index[fe];
-    face_id = Q->mfi->facet_label[fe];
+    e = mfi->facet_cell_index[fe];
+    face_id = mfi->facet_label[fe];
     
     ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx[nen*e],LA_gcoords);CHKERRQ(ierr);
 

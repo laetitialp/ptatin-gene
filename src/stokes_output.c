@@ -36,13 +36,14 @@
 #include "quadrature.h"
 #include "dmda_checkpoint.h"
 #include "element_type_Q2.h"
+#include "mesh_entity.h"
 #include "output_paraview.h"
 #include "QPntVolCoefStokes_def.h"
 #include "QPntSurfCoefStokes_def.h"
 
 
 /* surface quadrature point viewer */
-PetscErrorCode _SurfaceQuadratureViewParaviewVTU_Stokes(SurfaceQuadrature surfQ,PetscInt start,PetscInt end,DM da,const char name[])
+PetscErrorCode _SurfaceQuadratureViewParaviewVTU_Stokes(SurfaceQuadrature surfQ,PetscInt start,PetscInt end,MeshFacetInfo mfi,const char name[])
 {
   PetscErrorCode ierr;
   PetscInt fe,n,e,k,ngp,npoints;
@@ -60,14 +61,16 @@ PetscErrorCode _SurfaceQuadratureViewParaviewVTU_Stokes(SurfaceQuadrature surfQ,
   PetscInt       nel,nen,nfaces;
   ConformingElementFamily element;
   int            c,npoints32;
-
+  DM da;
 
   PetscFunctionBegin;
   if ((fp = fopen ( name, "w")) == NULL)  {
     SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
   }
 
-  ElementTypeCreate_Q2(&element,3);
+  da = mfi->dm;
+  element = mfi->element;
+  
   ngp = surfQ->npoints;
   nfaces = end - start;
   npoints = nfaces * surfQ->npoints;
@@ -101,8 +104,8 @@ PetscErrorCode _SurfaceQuadratureViewParaviewVTU_Stokes(SurfaceQuadrature surfQ,
     
     ierr =  SurfaceQuadratureGetCellData_Stokes(surfQ,all_qpoint,fe,&cell_qpoint);CHKERRQ(ierr);
 
-    e = surfQ->mfi->facet_cell_index[fe];
-    face_id = surfQ->mfi->facet_label[fe];
+    e = mfi->facet_cell_index[fe];
+    face_id = mfi->facet_label[fe];
     
     ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx[nen*e],LA_gcoords);CHKERRQ(ierr);
     ierr = SurfaceQuadratureGetCellData_Stokes(surfQ,all_qpoint,fe,&cell_qpoint);CHKERRQ(ierr);
@@ -226,7 +229,6 @@ PetscErrorCode _SurfaceQuadratureViewParaviewVTU_Stokes(SurfaceQuadrature surfQ,
   fprintf(fp, "</VTKFile>\n");
 
   ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
-  ElementTypeDestroy_Q2(&element);
   fclose(fp);
   PetscFunctionReturn(0);
 }
@@ -320,9 +322,9 @@ PetscErrorCode SurfaceQuadratureViewParaview_Stokes(PhysCompStokes ctx,const cha
     }
 
     ierr = _SurfaceQuadratureViewParaviewVTU_Stokes(ctx->surfQ,
-                                                    ctx->surfQ->mfi->facet_label_offset[e],
-                                                    ctx->surfQ->mfi->facet_label_offset[e+1],
-                                                    ctx->dav,filename);CHKERRQ(ierr);
+                                                    ctx->mfi->facet_label_offset[e],
+                                                    ctx->mfi->facet_label_offset[e+1],
+                                                    ctx->mfi,filename);CHKERRQ(ierr);
     free(filename);
     free(vtkfilename);
     free(appended);
