@@ -14,7 +14,7 @@
 -lattice_layout_Ny 3
 -lattice_layout_Nz 16
 -mp_popctrl_np_lower 0
--mp_popctrl_np_upper 60
+-mp_popctrl_np_upper 128
 ########## BASIC NUMERICS ##############
 -mx 8 #128 # Number of elements along x
 -my 8 #32 # Number of elements along y
@@ -34,19 +34,19 @@
 -model_subduction_oblique_Ox 0.0e+5 # Origin for x axis
 -model_subduction_oblique_Oy -6.8e+5 # Max depth along y axis
 -model_subduction_oblique_Oz 0.0e+5 # Origin for z axis
--model_subduction_oblique_xtrench_offset -100.0e3
+-model_subduction_oblique_xtrench_offset 0.0 #-100.0e3
 ################ BCs ##################
-#-model_subduction_oblique_IC
+-model_subduction_oblique_IC
 #-model_subduction_oblique_open_base
 -model_subduction_oblique_use_v_dot_n
--model_subduction_oblique_BC
--model_subduction_oblique_Arctangent_KMIN
--model_subduction_oblique_normV 6.0
+#-model_subduction_oblique_BC
+#-model_subduction_oblique_Arctangent_KMIN
+-model_subduction_oblique_normV 3.0
 -model_subduction_oblique_angle_v 45.0
 -model_subduction_oblique_Ttop 0.0
 -model_subduction_oblique_Tbottom 1600.0
 ############### Geometry ###############
-#-model_subduction_oblique_alpha_trench 45.0
+-model_subduction_oblique_alpha_trench 60.0
 #-model_subduction_oblique_theta_subd 30.0
 #-model_subduction_oblique_wz_width
 ############ Phases Parameters #############
@@ -290,26 +290,27 @@
 	-fieldsplit_u_mg_levels_ksp_max_it 8
 	-fieldsplit_u_mg_levels_ksp_norm_type NONE
 		#---- Coarse Grid ----#
-		# 32 x 8 x 16 #
-		-fieldsplit_u_mg_coarse_pc_type dmdarepart
-		-fieldsplit_u_mg_coarse_ksp_type preonly
+		-fieldsplit_u_mg_coarse_pc_type cholesky
+#		# 32 x 8 x 16 #
+#		-fieldsplit_u_mg_coarse_pc_type dmdarepart
+#		-fieldsplit_u_mg_coarse_ksp_type preonly
 			#---- Coarse Grid KSP ----#
 			# 16 x 4 x 8 #
-			-fieldsplit_u_mg_coarse_pc_dmdarepart_factor 16
+#			-fieldsplit_u_mg_coarse_pc_dmdarepart_factor 16
 			# From 1024 MPI ranks, now there are 1024/16 = 64 MPI ranks
-			-fieldsplit_u_mg_coarse_dmdarepart_pc_type mg
-			-fieldsplit_u_mg_coarse_dmdarepart_pc_mg_cycle_type v
-			-fieldsplit_u_mg_coarse_dmdarepart_ksp_type preonly
-			-fieldsplit_u_mg_coarse_dmdarepart_pc_mg_levels 2
-			-fieldsplit_u_mg_coarse_dmdarepart_pc_mg_galerkin
-			-fieldsplit_u_mg_coarse_dmdarepart_mg_levels_ksp_type gmres
-			-fieldsplit_u_mg_coarse_dmdarepart_mg_levels_pc_type jacobi
-			-fieldsplit_u_mg_coarse_dmdarepart_mg_levels_ksp_max_it 6
-				#---- Coarse Coarse Grid ----#
-				# 16 x 4 x 8 #
-				-fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_pc_type telescope
-				-fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_telescope_pc_type cholesky
-				-fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_pc_telescope_reduction_factor 1
+#			-fieldsplit_u_mg_coarse_dmdarepart_pc_type mg
+#			-fieldsplit_u_mg_coarse_dmdarepart_pc_mg_cycle_type v
+#			-fieldsplit_u_mg_coarse_dmdarepart_ksp_type preonly
+#			-fieldsplit_u_mg_coarse_dmdarepart_pc_mg_levels 2
+#			-fieldsplit_u_mg_coarse_dmdarepart_pc_mg_galerkin
+#			-fieldsplit_u_mg_coarse_dmdarepart_mg_levels_ksp_type gmres
+#			-fieldsplit_u_mg_coarse_dmdarepart_mg_levels_pc_type jacobi
+#			-fieldsplit_u_mg_coarse_dmdarepart_mg_levels_ksp_max_it 6
+#				#---- Coarse Coarse Grid ----#
+#				# 16 x 4 x 8 #
+#				-fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_pc_type telescope
+#				-fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_telescope_pc_type cholesky
+#				-fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_pc_telescope_reduction_factor 1
 #### THERMAL SOLVER
 -ptatin_energyfv_nsub 2,2,2
 -energyfv_snes_converged_reason
@@ -330,7 +331,7 @@
 -energyfv_mg_levels_ksp_type fgmres #chebyshev
 -energyfv_mg_levels_ksp_max_it 8
 -energyfv_mg_coarse_pc_type telescope
--energyfv_mg_coarse_pc_telescope_reduction_factor 8
+-energyfv_mg_coarse_pc_telescope_reduction_factor 1 #8
 -energyfv_mg_coarse_telescope_pc_type cholesky
 
 
