@@ -160,6 +160,9 @@ void DataBucketLoadRedundant_NATIVE(MPI_Comm comm,const char jfilename[],DataBuc
 
 void DataBucketGetEntriesdByName(DataBucket db,const char name[],void *data[]);
 void DataBucketRestoreEntriesdByName(DataBucket db,const char name[],void *data[]);
+void DataBucketRegister_double(DataBucket db,const char name[],int blocksize);
+void DataBucketGetArray_double(DataBucket db,const char name[],int *blocksize,double *data[]);
+void DataBucketRestoreArray_double(DataBucket db,const char name[],double *data[]);
 
 #endif
 
