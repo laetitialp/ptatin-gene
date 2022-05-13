@@ -220,24 +220,6 @@ PetscErrorCode SurfaceQuadratureCreate(SurfaceQuadrature *quadrature)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode _SurfaceQuadratureCreate(SurfaceQuadrature quadrature)
-{
-  ConformingElementFamily e;
-  int ngp32;
-  int index;
-
-  PetscFunctionBegin;
-  ElementTypeCreate_Q2(&e,3);
-  quadrature->e       = e;
-  for (index=0; index<HEX_EDGES; index++) {
-    e->generate_surface_quadrature_3D(e,index,&ngp32,quadrature->gp2[index],quadrature->gp3[index]);
-  }
-  quadrature->npoints = (PetscInt)ngp32;
-  quadrature->n_facets = -1; /* mark this as negative just for tracing setup mistakes */
-
-  PetscFunctionReturn(0);
-}
-
 PetscErrorCode _SurfaceQuadratureCellIndexSetUp(SurfaceQuadrature Q,DM da)
 {
   PetscErrorCode ierr;
@@ -261,19 +243,13 @@ PetscErrorCode SurfaceQuadratureDestroy(SurfaceQuadrature *quadrature)
   Q = *quadrature;
 
   if (Q->properties_db) { DataBucketDestroy(&Q->properties_db); }
-  ElementTypeDestroy_Q2(&Q->e);
+  //ElementTypeDestroy_Q2(&Q->e);
   ierr = MeshFacetInfoDestroy(&Q->mfi);CHKERRQ(ierr);
 
   ierr = PetscFree(Q);CHKERRQ(ierr);
 
   *quadrature = NULL;
 
-  PetscFunctionReturn(0);
-}
-
-PetscErrorCode SurfaceQuadratureGetElementFamily(SurfaceQuadrature q,ConformingElementFamily *e)
-{
-  if (e) { *e = q->e; }
   PetscFunctionReturn(0);
 }
 
@@ -293,6 +269,7 @@ PetscErrorCode SurfaceQuadratureGetFaceInfo(SurfaceQuadrature q,PetscInt *nfaces
   PetscFunctionReturn(0);
 }
 
+/*
 PetscErrorCode SurfaceQuadratureInterpolate3D(SurfaceQuadrature q,QPoint3d *qp3d,PetscInt ndof,PetscReal field[],PetscReal value[])
 {
   int    k,d;
@@ -306,9 +283,9 @@ PetscErrorCode SurfaceQuadratureInterpolate3D(SurfaceQuadrature q,QPoint3d *qp3d
       value[d] += Ni[k] * field[ndof*k + d];
     }
   }
-
-PetscFunctionReturn(0);
+ PetscFunctionReturn(0);
 }
+*/
 
 PetscErrorCode SurfaceQuadratureSetSize(SurfaceQuadrature Q)
 {
@@ -320,6 +297,35 @@ PetscErrorCode SurfaceQuadratureSetSize(SurfaceQuadrature Q)
     DataBucketSetInitialSizes(Q->properties_db,1,1);
     DataBucketSetSizes(Q->properties_db,0,-1);
   }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode SurfaceQuadratureCreateGaussLegendre(PetscInt dim,PetscInt nfacets,SurfaceQuadrature *quadrature)
+{
+  SurfaceQuadrature       Q;
+  ConformingElementFamily element;
+  int                     ngp32,index;
+  PetscErrorCode          ierr;
+  
+  PetscFunctionBegin;
+  ierr = SurfaceQuadratureCreate(&Q);CHKERRQ(ierr);
+  Q->dim  = dim;
+  Q->co_dim  = dim - 1;
+  Q->type = SURFACE_QUAD;
+  
+  ElementTypeCreate_Q2(&element,dim);
+  for (index=0; index<HEX_EDGES; index++) {
+    element->generate_surface_quadrature_3D(element,index,&ngp32,Q->gp2[index],Q->gp3[index]);
+  }
+  Q->npoints = (PetscInt)ngp32;
+
+  Q->n_facets = nfacets;
+  
+  DataBucketCreate(&Q->properties_db);
+
+  ElementTypeDestroy_Q2(&element);
+
+  *quadrature = Q;
   PetscFunctionReturn(0);
 }
 

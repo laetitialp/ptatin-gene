@@ -31,7 +31,9 @@
 #define __private_ptatin3d_stokes_impl_h__
 
 #include <petscdm.h>
-#include "dmda_bcs.h"
+#include <dmda_bcs.h>
+#include <quadrature.h>
+#include <mesh_entity.h>
 
 
 struct _p_PhysCompStokes {
@@ -41,6 +43,7 @@ struct _p_PhysCompStokes {
   BCList                  u_bclist,p_bclist;
   Quadrature              volQ;
   SurfaceQuadrature       surfQ;
+  MeshFacetInfo           mfi;
   PetscBool               use_mf_stokes;
   PetscReal               gravity_vector[3];
 };

@@ -38,6 +38,7 @@
 #include "dmda_checkpoint.h"
 #include "element_type_Q2.h"
 #include "data_bucket.h"
+#include "mesh_entity.h"
 
 #include "petsc/private/snesimpl.h" /* for snes->ttol */
 
@@ -102,10 +103,8 @@ PetscErrorCode PhysCompDestroy_Stokes(PhysCompStokes *ctx)
   if (!ctx) {PetscFunctionReturn(0);}
   user = *ctx;
 
-  if (user->surfQ) {
-    ierr = SurfaceQuadratureDestroy(&user->surfQ);CHKERRQ(ierr);
-  }
-
+  if (user->mfi) { ierr = MeshFacetInfoDestroy(&user->mfi);CHKERRQ(ierr); }
+  if (user->surfQ) { ierr = SurfaceQuadratureDestroy(&user->surfQ);CHKERRQ(ierr); }
   if (user->volQ) { ierr = QuadratureDestroy(&user->volQ);CHKERRQ(ierr); }
   if (user->p_bclist) { ierr = BCListDestroy(&user->p_bclist);CHKERRQ(ierr); }
   if (user->u_bclist) { ierr = BCListDestroy(&user->u_bclist);CHKERRQ(ierr); }
@@ -429,7 +428,7 @@ PetscErrorCode VolumeQuadratureCreate_GaussLegendreStokes(PetscInt nsd,PetscInt 
 
   PetscFunctionBegin;
 
-  ierr = VolumeQuadratureCreateGaussLegendre(nsd,np_per_dim,ncells,&Q);CHKERRQ(ierr);
+  ierr = VolumeQuadratureCreateGaussLegendre(nsd,ncells,np_per_dim,&Q);CHKERRQ(ierr);
   
   DataBucketRegisterField(Q->properties_db,QPntVolCoefStokes_classname, sizeof(QPntVolCoefStokes),NULL);
   DataBucketFinalize(Q->properties_db);
@@ -468,19 +467,16 @@ PetscErrorCode VolumeQuadratureGetCellData_Stokes(Quadrature Q,QPntVolCoefStokes
 PetscErrorCode SurfaceQuadratureCreate_GaussLegendreStokes(DM da,SurfaceQuadrature *quadrature)
 {
   SurfaceQuadrature Q;
-  PetscErrorCode ierr;
+  PetscInt          nfacets;
+  PetscErrorCode    ierr;
 
   PetscFunctionBegin;
 
-  ierr = SurfaceQuadratureCreate(&Q);CHKERRQ(ierr);
-
-  /* setup surface gauss points (weights and local coordinates) */
-  ierr = _SurfaceQuadratureCreate(Q);CHKERRQ(ierr);
-
+  ierr = DMDAGetLocalSizeFacetQ2(da,&nfacets);CHKERRQ(ierr);
+  ierr = SurfaceQuadratureCreateGaussLegendre(3,nfacets,&Q);CHKERRQ(ierr);
   /* setup element lists */
   ierr = _SurfaceQuadratureCellIndexSetUp(Q,da);CHKERRQ(ierr);
-
-  DataBucketCreate(&Q->properties_db);
+  
   DataBucketRegisterField(Q->properties_db,QPntSurfCoefStokes_classname, sizeof(QPntSurfCoefStokes),NULL);
   DataBucketFinalize(Q->properties_db);
 
@@ -491,21 +487,10 @@ PetscErrorCode SurfaceQuadratureCreate_GaussLegendreStokes(DM da,SurfaceQuadratu
   PetscFunctionReturn(0);
 }
 
-
-
-PetscErrorCode SurfaceQuadratureGeometrySetUpStokes(SurfaceQuadrature Q,DM da)
+PetscErrorCode SurfaceQuadratureGeometryUpdate_Stokes(SurfaceQuadrature Q,MeshFacetInfo mfi)
 {
   PetscErrorCode ierr;
-  PetscFunctionBegin;
-  //ierr = SurfaceQuadratureStokesCoordinatesSetUp(Q,da);CHKERRQ(ierr); // not storing coordinates //
-  ierr = SurfaceQuadratureOrientationSetUpStokes(Q,da);CHKERRQ(ierr);
-  PetscFunctionReturn(0);
-}
-
-PetscErrorCode SurfaceQuadratureOrientationSetUpStokes(SurfaceQuadrature Q,DM da)
-{
-  PetscErrorCode ierr;
-  DM             cda;
+  DM             da,cda;
   Vec            gcoords;
   PetscScalar    *LA_gcoords;
   PetscInt       nel,nen,fe,e,k,gp,face_id;
@@ -518,13 +503,15 @@ PetscErrorCode SurfaceQuadratureOrientationSetUpStokes(SurfaceQuadrature Q,DM da
 
   PetscFunctionBegin;
 
+  da = mfi->dm;
+  element = mfi->element;
+  
   /* setup for coords */
   ierr = DMGetCoordinateDM(da,&cda);CHKERRQ(ierr);
   ierr = DMGetCoordinatesLocal(da,&gcoords);CHKERRQ(ierr);
   ierr = VecGetArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
 
   ierr = DMDAGetElements_pTatinQ2P1(da,&nel,&nen,&elnidx);CHKERRQ(ierr);
-  element = Q->e;
 
   ierr = SurfaceQuadratureGetAllCellData_Stokes(Q,&all_qpoint);CHKERRQ(ierr);
   for (fe=0; fe<Q->n_facets; fe++) {
@@ -573,113 +560,11 @@ PetscErrorCode SurfaceQuadratureOrientationSetUpStokes(SurfaceQuadrature Q,DM da
                    Q->face_id,fe,gp, Q->gp2[gp].xi,Q->gp2[gp].eta, Q->gp3[gp].xi,Q->gp3[gp].eta,Q->gp3[gp].zeta,
                    xp,yp,zp);
       */
-      //printf("%1.4e %1.4e %1.4e %1.4e %1.4e %1.4e\n",xp,yp,zp,0.1*normal[0],0.1*normal[1],0.1*normal[2]);
+      printf("x = %+1.4e %+1.4e %+1.4e | n = %+1.4e %+1.4e %+1.4e\n",xp,yp,zp,normal[0],normal[1],normal[2]);
 
     }
   }
   ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
-  PetscFunctionReturn(0);
-}
-
-PetscErrorCode SurfaceQuadratureOrientationViewGnuplotStokes(SurfaceQuadrature Q,DM da,const char name[])
-{
-#if 0 // TODO DAM
-  PetscErrorCode ierr;
-  DM             cda;
-  Vec            gcoords;
-  PetscScalar    *LA_gcoords;
-  PetscInt       nel,nen,fe,e,k,gp;
-  const PetscInt *elnidx;
-  ConformingElementFamily element;
-  double         elcoords[3*Q2_NODES_PER_EL_3D];
-  double         Ni[27];
-  QPntSurfCoefStokes *all_qpoint;
-  QPntSurfCoefStokes *cell_qpoint;
-  char fname[PETSC_MAX_PATH_LEN];
-  PetscMPIInt rank;
-  FILE *file;
-
-  PetscFunctionBegin;
-
-
-  ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&rank);CHKERRQ(ierr);
-  if (name) {
-    PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s-surfquadrature-face%D-r%D.gp",name,Q->face_id,rank);
-  } else {
-    PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"surfquadrature-face%D-r%D.gp",Q->face_id,rank);
-  }
-  file = fopen(fname,"w");
-  if (!file) {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",fname);
-  }
-
-  PetscFPrintf(PETSC_COMM_SELF,file,"# Surface quadrature data (n,t1,t1,traction) for face %D \n",Q->face_id);
-  PetscFPrintf(PETSC_COMM_SELF,file,"# n_facets = %D \n",Q->n_facets);
-
-  if (Q->n_facets == 0) { PetscFunctionReturn(0); }
-
-  /* setup for coords */
-  ierr = DMGetCoordinateDM(da,&cda);CHKERRQ(ierr);
-  ierr = DMGetCoordinatesLocal(da,&gcoords);CHKERRQ(ierr);
-  ierr = VecGetArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
-
-  ierr = DMDAGetElements_pTatinQ2P1(da,&nel,&nen,&elnidx);CHKERRQ(ierr);
-  element = Q->e;
-
-  ierr = SurfaceQuadratureGetAllCellData_Stokes(Q,&all_qpoint);CHKERRQ(ierr);
-  for (fe=0; fe<Q->n_facets; fe++) {
-
-    e = Q->element_list[fe];
-    ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx[nen*e],LA_gcoords);CHKERRQ(ierr);
-
-    ierr =  SurfaceQuadratureGetCellData_Stokes(Q,all_qpoint,fe,&cell_qpoint);CHKERRQ(ierr);
-
-    for (gp=0; gp<Q->npoints; gp++) {
-      //double normal[3],tangent1[3],tangent2[3],xp,yp,zp;
-      double *normal,*tangent1,*tangent2,*traction,xp,yp,zp;
-      QPntSurfCoefStokes *qpoint = &cell_qpoint[gp];
-
-
-      QPntSurfCoefStokesGetField_surface_normal(qpoint,&normal);
-      QPntSurfCoefStokesGetField_surface_tangent1(qpoint,&tangent1);
-      QPntSurfCoefStokesGetField_surface_tangent2(qpoint,&tangent2);
-
-      QPntSurfCoefStokesGetField_surface_traction(qpoint,&traction);
-
-      element->compute_surface_normal_3D(
-                                         element,
-                                         elcoords,    // should contain 27 points with dimension 3 (x,y,z) //
-                                         Q->face_id,   // edge index 0,1,2,3,4,5,6,7 //
-                                         &Q->gp2[gp], // should contain 1 point with dimension 2 (xi,eta)   //
-                                         normal ); // normal[] contains 1 point with dimension 3 (x,y,z) //
-      element->compute_surface_tangents_3D(
-                                           element,
-                                           elcoords,    // should contain 27 points with dimension 3 (x,y,z) //
-                                           Q->face_id,
-                                           &Q->gp2[gp], // should contain 1 point with dimension 2 (xi,eta)   //
-                                           tangent1,tangent2 ); // t1[],t2[] contains 1 point with dimension 3 (x,y,z) //
-
-      /* interpolate global coords */
-      element->basis_NI_3D(&Q->gp3[gp],Ni);
-      xp = yp = zp = 0.0;
-      for (k=0; k<element->n_nodes_3D; k++) {
-        xp += Ni[k] * elcoords[3*k  ];
-        yp += Ni[k] * elcoords[3*k+1];
-        zp += Ni[k] * elcoords[3*k+2];
-      }
-
-      fprintf(file,"%1.4e %1.4e %1.4e %1.4e %1.4e %1.4e  %1.4e %1.4e %1.4e %1.4e %1.4e %1.4e  %1.4e %1.4e %1.4e %1.4e %1.4e %1.4e  %1.4e %1.4e %1.4e %1.4e %1.4e %1.4e\n",
-              xp,yp,zp,0.1*normal[0],0.1*normal[1],0.1*normal[2],
-              xp,yp,zp,0.1*tangent1[0],0.1*tangent1[1],0.1*tangent1[2],
-              xp,yp,zp,0.1*tangent2[0],0.1*tangent2[1],0.1*tangent2[2],
-              xp,yp,zp,0.1*traction[0],0.1*traction[1],0.1*traction[2]
-              );
-
-    }
-  }
-  ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
-  fclose(file);
-#endif
   PetscFunctionReturn(0);
 }
 
@@ -723,9 +608,9 @@ PetscErrorCode PhysCompCreateSurfaceQuadrature_Stokes(PhysCompStokes ctx)
   PetscFunctionBegin;
 
   dav = ctx->dav;
-
+  ierr = MeshFacetInfoCreate2(dav,&ctx->mfi);CHKERRQ(ierr);
   ierr = SurfaceQuadratureCreate_GaussLegendreStokes(dav,&ctx->surfQ);CHKERRQ(ierr);
-  ierr = SurfaceQuadratureGeometrySetUpStokes(ctx->surfQ,dav);CHKERRQ(ierr);
+  ierr = SurfaceQuadratureGeometryUpdate_Stokes(ctx->surfQ,ctx->mfi);CHKERRQ(ierr);
 
   // debugging
   //ierr = SurfaceQuadratureOrientationViewGnuplotStokes(surfQ,dav,"init");CHKERRQ(ierr);
@@ -1071,6 +956,13 @@ PetscErrorCode PhysCompStokesGetSurfaceQuadratureAllCellData(PhysCompStokes stok
     if (coeffs) {
       ierr = SurfaceQuadratureGetAllCellData_Stokes(stokes->surfQ,coeffs);CHKERRQ(ierr);
     }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode PhysCompStokesUpdateSurfaceQuadratureGeometry(PhysCompStokes ctx)
+{
+  PetscErrorCode ierr;
+  ierr = SurfaceQuadratureGeometryUpdate_Stokes(ctx->surfQ,ctx->mfi);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 

@@ -67,7 +67,7 @@ PetscErrorCode _SurfaceQuadratureViewParaviewVTU_Stokes(SurfaceQuadrature surfQ,
     SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
   }
 
-  element = surfQ->e;
+  ElementTypeCreate_Q2(&element,3);
   ngp = surfQ->npoints;
   nfaces = end - start;
   npoints = nfaces * surfQ->npoints;
@@ -226,7 +226,8 @@ PetscErrorCode _SurfaceQuadratureViewParaviewVTU_Stokes(SurfaceQuadrature surfQ,
   fprintf(fp, "</VTKFile>\n");
 
   ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
-  fclose( fp );
+  ElementTypeDestroy_Q2(&element);
+  fclose(fp);
   PetscFunctionReturn(0);
 }
 

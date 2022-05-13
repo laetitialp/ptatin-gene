@@ -264,26 +264,6 @@ static PetscErrorCode _MeshFacetInfoSetUp(MeshFacetInfo e)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMDAGetLocalSizeFacetQ2(DM dm, PetscInt *_nf)
-{
-  PetscErrorCode ierr;
-  PetscInt lmx,lmy,lmz,M,N,P,si,sj,sk,ni,nj,nk,nf;
-
-  ierr = DMDAGetInfo(dm,NULL,&M,&N,&P, NULL,NULL,NULL,NULL, NULL,NULL,NULL,NULL,NULL);CHKERRQ(ierr);
-  ierr = DMDAGetCorners(dm,&si,&sj,&sk,&ni,&nj,&nk);CHKERRQ(ierr);
-  ierr = DMDAGetLocalSizeElementQ2(dm,&lmx,&lmy,&lmz);CHKERRQ(ierr);
-
-  nf = 0;
-  if (si+ni == M) { nf += lmy*lmz; }
-  if (si == 0)    { nf += lmy*lmz; }
-  if (sj+nj == N) { nf += lmx*lmz; }
-  if (sj == 0)    { nf += lmx*lmz; }
-  if (sk+nk == P) { nf += lmx*lmy; }
-  if (sk == 0)    { nf += lmx*lmy; }
-  *_nf = nf;
-  PetscFunctionReturn(0);
-}
-
 PetscErrorCode MeshFacetInfoSetUp(MeshFacetInfo e, DM dm)
 {
   PetscErrorCode ierr;
@@ -327,6 +307,16 @@ PetscErrorCode MeshFacetInfoSetUp(MeshFacetInfo e, DM dm)
   ierr = _MeshFacetInfoSetUp(e);CHKERRQ(ierr);
   
   e->setup = PETSC_TRUE;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode MeshFacetInfoCreate2(DM dm,MeshFacetInfo *_e)
+{
+  PetscErrorCode ierr;
+  MeshFacetInfo e;
+  ierr = MeshFacetInfoCreate(&e);CHKERRQ(ierr);
+  ierr = MeshFacetInfoSetUp(e,dm);CHKERRQ(ierr);
+  *_e = e;
   PetscFunctionReturn(0);
 }
 

@@ -41,19 +41,17 @@ PetscErrorCode QuadratureSetSize(Quadrature Q);
 void QuadratureCreateGauss_2pnt_3D(PetscInt *ngp,PetscReal **_q_coor,PetscReal **_q_weight);
 void QuadratureCreateGauss_3pnt_3D(PetscInt *ngp,PetscReal **_q_coor,PetscReal **_q_weight);
 
-PetscErrorCode VolumeQuadratureCreateGaussLegendre(PetscInt dim,PetscInt np_per_dim,PetscInt ncells,Quadrature *quadrature);
+PetscErrorCode VolumeQuadratureCreateGaussLegendre(PetscInt dim,PetscInt ncells,PetscInt np_per_dim,Quadrature *quadrature);
 
 PetscErrorCode SurfaceQuadratureCreate(SurfaceQuadrature *quadrature);
 PetscErrorCode SurfaceQuadratureDestroy(SurfaceQuadrature *quadrature);
 PetscErrorCode SurfaceQuadratureSetSize(SurfaceQuadrature Q);
 
-PetscErrorCode _SurfaceQuadratureCreate(SurfaceQuadrature quadrature);
 PetscErrorCode _SurfaceQuadratureCellIndexSetUp(SurfaceQuadrature Q,DM da);
 
-PetscErrorCode SurfaceQuadratureGetElementFamily(SurfaceQuadrature q,ConformingElementFamily *e);
 PetscErrorCode SurfaceQuadratureGetQuadratureInfo(SurfaceQuadrature q,HexElementFace faceid,PetscInt *nqp,QPoint2d **qp2,QPoint3d **qp3);
 PetscErrorCode SurfaceQuadratureGetFaceInfo(SurfaceQuadrature q,PetscInt *nfaces,PetscInt *faceid[],PetscInt *ellist[]);
 
-PetscErrorCode SurfaceQuadratureInterpolate3D(SurfaceQuadrature q,QPoint3d *qp3d,PetscInt ndof,PetscReal field[],PetscReal value[]);
+PetscErrorCode SurfaceQuadratureCreateGaussLegendre(PetscInt dim,PetscInt nfacets,SurfaceQuadrature *quadrature);
 
 #endif

@@ -45,7 +45,9 @@ struct _p_Quadrature {
 };
 
 struct _p_SurfaceQuadrature {
-  ConformingElementFamily e;
+  PetscInt       dim,co_dim;
+  QuadratureType type;
+  //ConformingElementFamily e;
   /* quadrature */
   PetscInt    npoints;
   QPoint2d    gp2[HEX_EDGES][9]; /* s,t coordinates */

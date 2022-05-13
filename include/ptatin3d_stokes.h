@@ -35,6 +35,7 @@
 #include "QPntVolCoefStokes_def.h"
 #include "QPntSurfCoefStokes_def.h"
 #include "dmda_bcs.h"
+#include "mesh_entity.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -68,12 +69,9 @@ PetscErrorCode VolumeQuadratureGetAllCellData_Stokes(Quadrature Q,QPntVolCoefSto
 PetscErrorCode VolumeQuadratureGetCellData_Stokes(Quadrature Q,QPntVolCoefStokes coeffs[],PetscInt cidx,QPntVolCoefStokes *cell[]);
 
 PetscErrorCode SurfaceQuadratureCreate_GaussLegendreStokes(DM da,SurfaceQuadrature *quadrature);
-PetscErrorCode SurfaceQuadratureGeometrySetUpStokes(SurfaceQuadrature Q,DM da);
-PetscErrorCode SurfaceQuadratureOrientationSetUpStokes(SurfaceQuadrature Q,DM da);
+PetscErrorCode SurfaceQuadratureGeometryUpdate_Stokes(SurfaceQuadrature Q,MeshFacetInfo mfi);
 PetscErrorCode SurfaceQuadratureGetAllCellData_Stokes(SurfaceQuadrature Q,QPntSurfCoefStokes *coeffs[]);
 PetscErrorCode SurfaceQuadratureGetCellData_Stokes(SurfaceQuadrature Q,QPntSurfCoefStokes coeffs[],PetscInt cidx,QPntSurfCoefStokes *cell[]);
-
-PetscErrorCode SurfaceQuadratureOrientationViewGnuplotStokes(SurfaceQuadrature Q,DM da,const char name[]);
 
 PetscErrorCode SNESStokes_ConvergenceTest_UPstol(SNES snes,PetscInt it,PetscReal xnorm,PetscReal snorm,PetscReal fnorm,SNESConvergedReason *reason,void *dummy);
 PetscErrorCode SNESStokes_SetConvergenceTest_UPstol(SNES snes,pTatinCtx user);
@@ -93,7 +91,8 @@ PetscErrorCode PhysCompStokesGetVolumeQuadrature(PhysCompStokes stokes,Quadratur
 PetscErrorCode PhysCompStokesGetVolumeQuadratureAllCellData(PhysCompStokes stokes,QPntVolCoefStokes *coeffs[]);
 PetscErrorCode PhysCompStokesGetSurfaceQuadrature(PhysCompStokes stokes,SurfaceQuadrature *sq);
 PetscErrorCode PhysCompStokesGetSurfaceQuadratureAllCellData(PhysCompStokes stokes,QPntSurfCoefStokes *coeffs[]);
-  PetscErrorCode PhysCompSetup_Stokes(PhysCompStokes ctx,DM dav);
+PetscErrorCode PhysCompStokesUpdateSurfaceQuadratureGeometry(PhysCompStokes ctx);
+PetscErrorCode PhysCompSetup_Stokes(PhysCompStokes ctx,DM dav);
 
 #ifdef __cplusplus
 }

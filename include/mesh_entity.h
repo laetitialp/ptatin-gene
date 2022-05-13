@@ -61,6 +61,7 @@ struct _p_Facet {
 PetscErrorCode MeshFacetInfoCreate(MeshFacetInfo *_e);
 PetscErrorCode MeshFacetInfoDestroy(MeshFacetInfo *_e);
 PetscErrorCode MeshFacetInfoSetUp(MeshFacetInfo e, DM dm);
+PetscErrorCode MeshFacetInfoCreate2(DM dm,MeshFacetInfo *_e);
 PetscErrorCode MeshFacetInfoGetCoords(MeshFacetInfo e);
 PetscErrorCode MeshFacetInfoRestoreCoords(MeshFacetInfo e);
 
