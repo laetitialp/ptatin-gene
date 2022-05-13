@@ -7,6 +7,18 @@
 #include <mesh_entity.h>
 
 
+PetscErrorCode MeshEntityView(MeshEntity e)
+{
+  PetscErrorCode ierr;
+  PetscPrintf(PETSC_COMM_SELF,"MeshEntity: %s\n",e->name);
+  PetscPrintf(PETSC_COMM_SELF,"  type: %D\n",(PetscInt)e->type);
+  PetscPrintf(PETSC_COMM_SELF,"  n_entities: %D\n",e->n_entities);
+  PetscPrintf(PETSC_COMM_SELF,"  range: [ %D , %D )\n",e->range_index[0],e->range_index[1]);
+  PetscPrintf(PETSC_COMM_SELF,"  empty?: %D\n",(PetscInt)e->empty);
+  PetscPrintf(PETSC_COMM_SELF,"  set_values_called?: %D\n",(PetscInt)e->set_values_called);
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode MeshEntityCreate(MeshEntity *_e)
 {
   MeshEntity     e;
@@ -105,6 +117,7 @@ PetscErrorCode MeshEntitySetValues(MeshEntity e,PetscInt len, const PetscInt val
     e->n_entities = nnew;
   }
   
+  e->empty = PETSC_FALSE;
   if (e->n_entities == 0) {
     e->empty = PETSC_TRUE;
   }
@@ -134,6 +147,12 @@ PetscErrorCode FacetDestroy(Facet *_f)
   f = *_f;
   ierr = PetscFree(f);CHKERRQ(ierr);
   *_f = NULL;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode MeshFacetInfoIncrementRef(MeshFacetInfo e)
+{
+  e->ref_cnt++;
   PetscFunctionReturn(0);
 }
 
@@ -517,6 +536,65 @@ PetscErrorCode MeshFacetMarkDomainFaces(
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode MeshFacetMarkDomainFaceSubset(
+                                        MeshEntity e, MeshFacetInfo fi,
+                                        PetscInt nsides, HexElementFace sides[],
+                                        PetscBool (*mark)(Facet,void*), void *data)
+{
+  PetscErrorCode ierr;
+  PetscInt *facet_to_keep,nmarked=0,f,k,f_start,f_end;
+  PetscInt side_mark[HEX_EDGES];
+  Facet cell_facet;
+  
+  if (e->type != MESH_ENTITY_FACET) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Only valid for MESH_ENTITY_FACET");
+  
+  if (e->dm != fi->dm) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Only valid if DMs refer to the same object");
+  
+  /* check side list does not contain duplicates */
+  for (k=0; k<HEX_EDGES; k++) {
+    side_mark[k] = 0;
+  }
+  for (k=0; k<nsides; k++) {
+    side_mark[ sides[k] ]++;
+  }
+  for (k=0; k<HEX_EDGES; k++) {
+    if (side_mark[k] > 1) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"sides[] must not contain duplicate entries");
+  }
+  
+  ierr = MeshFacetInfoGetCoords(fi);CHKERRQ(ierr);
+  ierr = FacetCreate(&cell_facet);CHKERRQ(ierr);
+  
+  ierr = PetscMalloc1(fi->n_facets,&facet_to_keep);CHKERRQ(ierr);
+  nmarked = 0;
+  for (k=0; k<nsides; k++) {
+    f_start = fi->facet_label_offset[ sides[k] ];
+    f_end   = fi->facet_label_offset[ sides[k]+1 ];
+    
+    for (f=f_start; f<f_end; f++) {
+      PetscBool selected = PETSC_FALSE;
+      
+      /* pack data */
+      ierr = FacetPack(cell_facet, f, fi);CHKERRQ(ierr);
+      
+      /* user select */
+      selected = mark(cell_facet, data);
+      if (selected) {
+        facet_to_keep[nmarked] = f;
+        nmarked++;
+      }
+    }
+  }
+  ierr = FacetDestroy(&cell_facet);CHKERRQ(ierr);
+  ierr = MeshFacetInfoRestoreCoords(fi);CHKERRQ(ierr);
+
+  ierr = MeshEntitySetValues(e,nmarked,(const PetscInt*)facet_to_keep);CHKERRQ(ierr);
+  
+  ierr = PetscFree(facet_to_keep);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
+
 /* Basic MeshEntity viewer */
 PetscErrorCode _MeshEntityView_Facet(MeshEntity me, PetscInt tag, PetscInt fileindex)
 {
@@ -653,7 +731,7 @@ PetscErrorCode _MeshEntityView_Facet(MeshEntity me, PetscInt tag, PetscInt filei
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MeshEntityView(PetscInt n,MeshEntity m[])
+PetscErrorCode MeshEntityViewPV(PetscInt n,MeshEntity m[])
 {
   PetscErrorCode ierr;
   PetscInt k,tag;

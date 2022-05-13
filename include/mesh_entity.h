@@ -21,6 +21,7 @@ struct _p_MeshEntity {
 };
 
 
+PetscErrorCode MeshEntityView(MeshEntity e);
 PetscErrorCode MeshEntityCreate(MeshEntity *_e);
 PetscErrorCode MeshEntityDestroy(MeshEntity *_e);
 PetscErrorCode MeshEntityIncrementRef(MeshEntity e);
@@ -58,6 +59,7 @@ struct _p_Facet {
   PetscReal centroid[3],centroid_normal[3],centroid_tangent1[3],centroid_tangent2[3];
 };
 
+PetscErrorCode MeshFacetInfoIncrementRef(MeshFacetInfo e);
 PetscErrorCode MeshFacetInfoCreate(MeshFacetInfo *_e);
 PetscErrorCode MeshFacetInfoDestroy(MeshFacetInfo *_e);
 PetscErrorCode MeshFacetInfoSetUp(MeshFacetInfo e, DM dm);
@@ -71,9 +73,14 @@ PetscErrorCode FacetDestroy(Facet *_f);
 
 PetscErrorCode MeshFacetCreate(const char name[], DM dm, MeshEntity *e);
 PetscErrorCode MeshFacetDestroy(MeshEntity *e);
+
 PetscErrorCode MeshFacetMark(MeshEntity e, MeshFacetInfo fi, PetscBool (*mark)(Facet,void*), void *data);
 PetscErrorCode MeshFacetMarkDomainFaces(MeshEntity e, MeshFacetInfo fi,PetscInt nsides, HexElementFace sides[]);
+PetscErrorCode MeshFacetMarkDomainFaceSubset(
+                                             MeshEntity e, MeshFacetInfo fi,
+                                             PetscInt nsides, HexElementFace sides[],
+                                             PetscBool (*mark)(Facet,void*), void *data);
 
-PetscErrorCode MeshEntityView(PetscInt n,MeshEntity m[]);
+PetscErrorCode MeshEntityViewPV(PetscInt n,MeshEntity m[]);
 
 #endif
