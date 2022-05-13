@@ -712,3 +712,23 @@ PetscErrorCode Q2GetElementLocalIndicesDOF(PetscInt el_localIndices[],PetscInt n
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode DMDAGetLocalSizeFacetQ2(DM dm, PetscInt *_nf)
+{
+  PetscErrorCode ierr;
+  PetscInt lmx,lmy,lmz,M,N,P,si,sj,sk,ni,nj,nk,nf;
+  
+  ierr = DMDAGetInfo(dm,NULL,&M,&N,&P, NULL,NULL,NULL,NULL, NULL,NULL,NULL,NULL,NULL);CHKERRQ(ierr);
+  ierr = DMDAGetCorners(dm,&si,&sj,&sk,&ni,&nj,&nk);CHKERRQ(ierr);
+  ierr = DMDAGetLocalSizeElementQ2(dm,&lmx,&lmy,&lmz);CHKERRQ(ierr);
+  
+  nf = 0;
+  if (si+ni == M) { nf += lmy*lmz; }
+  if (si == 0)    { nf += lmy*lmz; }
+  if (sj+nj == N) { nf += lmx*lmz; }
+  if (sj == 0)    { nf += lmx*lmz; }
+  if (sk+nk == P) { nf += lmx*lmy; }
+  if (sk == 0)    { nf += lmx*lmy; }
+  *_nf = nf;
+  PetscFunctionReturn(0);
+}
+

@@ -63,6 +63,8 @@ PetscErrorCode DMDASetValuesLocalStencil_SetValues_DOF(PetscScalar *fields_F,Pet
 PetscErrorCode Q2GetElementLocalIndicesDOF(PetscInt el_localIndices[],PetscInt ndof,PetscInt elnid[]);
 PetscErrorCode DMDAGetScalarElementField(PetscScalar elfield[],PetscInt npe,PetscInt elnid[],PetscScalar LA_gfield[]);
 
+PetscErrorCode DMDAGetLocalSizeFacetQ2(DM dm, PetscInt *_nf);
+  
 #ifdef __cplusplus
 }
 #endif
