@@ -148,7 +148,7 @@ PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
   data->y_ocean[3] = -80.0e3; // LAB
   
   data->y0 = 0.0; // depth of the first rock layer
-  data->alpha_subd = 15.0; // angle of the trench
+  data->alpha_subd = 90.0; // angle of the trench
   data->theta_subd = 30.0; // angle of the subduction 
   data->wz = 20.0e3; // weak zone width
   
@@ -622,7 +622,7 @@ static PetscErrorCode RemeshSurfaceIsostaticTopography(pTatinCtx user,ModelSubdu
   Vec             coord;
   PetscInt        nc,M,N,P,si,sj,sk,nx,ny,nz,i,j,k;
   PetscScalar     *LA_coords;
-  PetscReal       xc,dy,x_trench,x_offset=0.0;
+  PetscReal       xc,zc,dy,x_trench,x_offset=0.0;
   PetscReal       d_ouc,d_olc,d_uc,d_lc,d_air,d_m;
   PetscReal       h_s,h_ouc,h_olc,h_o;
   PetscReal       h_uc,h_lc,h_c;
@@ -639,10 +639,11 @@ static PetscErrorCode RemeshSurfaceIsostaticTopography(pTatinCtx user,ModelSubdu
   ierr = VecGetArray(coord,&LA_coords);CHKERRQ(ierr);
   
   xc = (data->Lx + data->Ox)/2.0;
+  zc = (data->Lz + data->Oz)/2.0;
   /* Trench located at centre of the model in x direction */
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-xtrench_offset",&x_offset,NULL);CHKERRQ(ierr);
   x_offset = x_offset / data->length_bar;
-  x_trench = xc + x_offset;
+  //x_trench = xc + x_offset;
   
   /* Compute the isostatic subsidence of the ocean */
   ierr = ComputeIsostaticTopography(data,&dy);CHKERRQ(ierr);
@@ -669,26 +670,7 @@ static PetscErrorCode RemeshSurfaceIsostaticTopography(pTatinCtx user,ModelSubdu
   h_uc  = data->y0 - data->y_continent[0];
   h_lc  = data->y_continent[0] - data->y_continent[1];
   h_c   = h_uc + h_lc;
-  /* Prepare intersection points between layers for isostatic equilibrium of the continental margin */
-  /* Intersection point between the continental and oceanic plates d(xd,yd) */
-  xd = -(-dy - data->y0) / tan(data->theta_subd) + x_trench;
-  yd = data->y0 - dy;
-  /* Intersection point between the centre of the weak zone and the bottom of the continental crust a(xa,ya) */
-  xa = (h_c + data->y0)/tan(data->theta_subd) + x_trench;
-  ya = data->y0 - h_c;
-  /* Intersection point between the weak zone and the bottom of the continental crust b(xb,yb)*/
-  xb = xa + data->wz;
-  yb = ya;
-  /* Intersection point between the weak zone and the top of the lower continental crust */
-  xf = xb - h_lc/tan(data->theta_subd);
-  yf = ya + h_lc;
-  /* Upper right corner of the weak zone */
-  xi = xf - (h_uc - data->y0 - h_o - dy)/tan(data->theta_subd);
-  yi = data->y0 - h_o - dy;
-  /* Intersection point between the centre of the weak zone, the bottom of the ocean and the continent */
-  yg = yi;
-  xg = xi - data->wz;
-  
+
   /* Surface of the mesh */
   if (sj+ny == N) {
     j = ny-1;//N-1;
@@ -705,8 +687,29 @@ static PetscErrorCode RemeshSurfaceIsostaticTopography(pTatinCtx user,ModelSubdu
         y = LA_coords[3*nidx + 1];
         z = LA_coords[3*nidx + 2];
         
+        x_trench =  (z - zc      ) / tan(data->alpha_subd) + xc + x_offset;
         x_subd   = -(y - data->y0) / tan(data->theta_subd) + x_trench;
         
+        /* Prepare intersection points between layers for isostatic equilibrium of the continental margin */
+        /* Intersection point between the continental and oceanic plates d(xd,yd) */
+        xd = -(-dy - data->y0) / tan(data->theta_subd) + x_trench;
+        yd = data->y0 - dy;
+        /* Intersection point between the centre of the weak zone and the bottom of the continental crust a(xa,ya) */
+        xa = (h_c + data->y0)/tan(data->theta_subd) + x_trench;
+        ya = data->y0 - h_c;
+        /* Intersection point between the weak zone and the bottom of the continental crust b(xb,yb)*/
+        xb = xa + data->wz;
+        yb = ya;
+        /* Intersection point between the weak zone and the top of the lower continental crust */
+        xf = xb - h_lc/tan(data->theta_subd);
+        yf = ya + h_lc;
+        /* Upper right corner of the weak zone */
+        xi = xf - (h_uc - data->y0 - h_o - dy)/tan(data->theta_subd);
+        yi = data->y0 - h_o - dy;
+        /* Intersection point between the centre of the weak zone, the bottom of the ocean and the continent */
+        yg = yi;
+        xg = xi - data->wz;
+
         y_contact = data->y0 - (x - x_trench - data->wz)*tan(data->theta_subd);
         h_contact_bot_cont = data->y_continent[0] - y_contact;
         h_contact_uc       = data->y0 - y_contact;
@@ -925,7 +928,7 @@ PetscErrorCode ModelApplyInitialMaterialGeometryNoAir_ObliqueBC(pTatinCtx c,void
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-xtrench_offset",&x_offset,NULL);CHKERRQ(ierr);
   x_offset = x_offset / data->length_bar;
   x_trench = xc + x_offset;
- /* Compute the isostatic subsidence of the ocean */
+  /* Compute the isostatic subsidence of the ocean */
   ierr = ComputeIsostaticTopography(data,&dy);CHKERRQ(ierr);
   
   DataBucketGetSizes(db,&n_mp_points,0,0);
@@ -984,6 +987,94 @@ PetscErrorCode ModelApplyInitialMaterialGeometryNoAir_ObliqueBC(pTatinCtx c,void
   PetscFunctionReturn(0);
 }
 
+/* GEOMETRY: Obliquity through initial conditions */
+PetscErrorCode ModelApplyInitialMaterialGeometryNoAir_ObliqueIC(pTatinCtx c,void *ctx)
+{
+  ModelSubductionObliqueCtx *data = (ModelSubductionObliqueCtx*)ctx;
+  DataBucket                db;
+  DataField                 PField_std,PField_pls;
+  PetscInt                  p;
+  int                       n_mp_points;
+  PetscReal                 xc,zc,dy,x_offset=0.0;
+  PetscErrorCode            ierr;
+  
+  PetscFunctionBegin;
+  
+  /* define properties on material points */
+  db = c->materialpoint_db;
+  DataBucketGetDataFieldByName(db,MPntStd_classname,&PField_std);
+  DataFieldGetAccess(PField_std);
+  DataFieldVerifyAccess(PField_std,sizeof(MPntStd));
+
+  DataBucketGetDataFieldByName(db,MPntPStokesPl_classname,&PField_pls);
+  DataFieldGetAccess(PField_pls);
+  DataFieldVerifyAccess(PField_pls,sizeof(MPntPStokesPl));
+  
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-xtrench_offset",&x_offset,NULL);CHKERRQ(ierr);
+
+  xc = (data->Lx + data->Ox)/2.0;
+  zc = (data->Lz + data->Oz)/2.0;
+  
+  /* Compute the isostatic subsidence of the ocean */
+  ierr = ComputeIsostaticTopography(data,&dy);CHKERRQ(ierr);
+
+  DataBucketGetSizes(db,&n_mp_points,0,0);
+  for (p=0; p<n_mp_points; p++) {
+    PetscReal     x_trench,x_subd;
+    MPntStd       *material_point;
+    MPntPStokesPl *mpprop_pls;
+    int           region_idx;
+    double        *position;
+    float         pls;
+    short         yield;
+
+    DataFieldAccessPoint(PField_std,p,(void**)&material_point);
+    DataFieldAccessPoint(PField_pls,p,(void**)&mpprop_pls);
+
+    /* Access using the getter function */
+    MPntStdGetField_global_coord(material_point,&position);
+    /* Set an initial small random noise on plastic strain */
+    pls = ptatin_RandomNumberGetDouble(0.0,0.03);
+    /* Set yield to none */
+    yield = 0;
+    /* Trench angle */
+    x_trench =  (position[2] - zc      ) / tan(data->alpha_subd) + xc + x_offset;
+    /* Initial weak zone angle */
+    x_subd   = -(position[1] - data->y0) / tan(data->theta_subd) + x_trench;
+
+    if (position[0] <= x_subd && position[1] >= data->y_ocean[0]-dy) {
+      region_idx = 8; // Oceanic sediments
+    } else if (position[0] <= x_subd && position[1] >= data->y_ocean[1]-dy) {
+      region_idx = 0; // Oceanic upper crust
+    } else if (position[0] <= x_subd && position[1] >= data->y_ocean[2]-dy) {
+      region_idx = 1; // Oceanic lower crust
+    } else if (position[0] <= (x_subd-data->wz) && position[1] >= data->y_ocean[3]-dy) {
+      region_idx = 4; // Oceanic lithosphere mantle
+    } else if (position[0] >= (x_subd-data->wz)  && 
+               position[0] <= (x_subd+data->wz)  &&
+               //position[1] < data->y_ocean[2]-dy && 
+               position[1] >= data->y_continent[2]) {
+      region_idx = 7; // Weak zone
+    } else if (position[0] > x_subd && position[1] >= data->y_continent[0]) {
+      region_idx = 2; // Continental upper crust
+    } else if (position[0] > x_subd && position[1] >= data->y_continent[1]) {
+      region_idx = 3; // Continental lower crust
+    } else if (position[0] > x_subd && position[1] >= data->y_continent[2]) {
+      region_idx = 5; // Continental lithosphere mante
+    } else {
+      region_idx = 6; // Asthenosphere
+    }
+
+    MPntStdSetField_phase_index(material_point,region_idx);
+    MPntPStokesPlSetField_yield_indicator(mpprop_pls,yield);
+    MPntPStokesPlSetField_plastic_strain(mpprop_pls,pls);
+  }
+  DataFieldRestoreAccess(PField_std);
+  DataFieldRestoreAccess(PField_pls);
+  
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode ModelApplyInitialMaterialGeometry_SubductionOblique(pTatinCtx c,void *ctx)
 {
   ModelSubductionObliqueCtx *data = (ModelSubductionObliqueCtx*)ctx;
@@ -993,7 +1084,11 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_SubductionOblique(pTatinCtx c,v
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
   
   if (data->oblique_IC) {
-    ierr = ModelApplyInitialMaterialGeometry_ObliqueIC(c,ctx);CHKERRQ(ierr);
+    if (data->no_air) {
+      ierr = ModelApplyInitialMaterialGeometryNoAir_ObliqueIC(c,ctx);CHKERRQ(ierr);
+    } else {
+      ierr = ModelApplyInitialMaterialGeometry_ObliqueIC(c,ctx);CHKERRQ(ierr);
+    }
   } else if (data->oblique_BC) {
     if (data->no_air) {
       ierr = ModelApplyInitialMaterialGeometryNoAir_ObliqueBC(c,ctx);CHKERRQ(ierr);
@@ -1099,7 +1194,6 @@ static PetscErrorCode ModelApplyInitialStokesVariableMarkers_SubductionOblique(p
   Vec                        Uloc,Ploc;
   PetscScalar                *LA_Uloc,*LA_Ploc;
   DataField                  PField;
-  MaterialConst_MaterialType *truc;
   PetscInt                   regionidx;
   PetscErrorCode             ierr;
 
@@ -1107,13 +1201,7 @@ static PetscErrorCode ModelApplyInitialStokesVariableMarkers_SubductionOblique(p
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
 
   DataBucketGetDataFieldByName(user->material_constants,MaterialConst_MaterialType_classname,&PField);
-/*  DataFieldGetAccess(PField);
-  for (regionidx=0; regionidx<user->rheology_constants.nphases_active;regionidx++) {
-    DataFieldAccessPoint(PField,regionidx,(void**)&truc);
-    MaterialConst_MaterialTypeSetField_plastic_type(truc,PLASTIC_MISES);
-  }
-  DataFieldRestoreAccess(PField);
-*/  
+
   ierr = pTatinGetStokesContext(user,&stokes);CHKERRQ(ierr);
   stokes_pack = stokes->stokes_pack;
 
@@ -1127,18 +1215,7 @@ static PetscErrorCode ModelApplyInitialStokesVariableMarkers_SubductionOblique(p
 
   ierr = VecRestoreArray(Uloc,&LA_Uloc);CHKERRQ(ierr);
   ierr = VecRestoreArray(Ploc,&LA_Ploc);CHKERRQ(ierr);
-/*
-  ierr = DMCompositeRestoreLocalVectors(stokes_pack,&Uloc,&Ploc);CHKERRQ(ierr);
-  for (regionidx=0; regionidx<user->rheology_constants.nphases_active;regionidx++) {
-    DataBucketGetDataFieldByName(user->material_constants,MaterialConst_MaterialType_classname,&PField);
-    DataFieldGetAccess(PField);
-    for (regionidx=0; regionidx<user->rheology_constants.nphases_active;regionidx++) {
-      DataFieldAccessPoint(PField,regionidx,(void**)&truc);
-      MaterialConst_MaterialTypeSetField_plastic_type(truc,PLASTIC_DP);
-    }
-    DataFieldRestoreAccess(PField);
-  }
-*/  
+
   PetscFunctionReturn(0);
 }
 
@@ -1504,6 +1581,41 @@ PetscErrorCode SubductionOblique_VelocityBC_Oblique_KMIN_DirichletArctangent(BCL
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode SubductionOblique_VelocityBC_Orthogonal(BCList bclist,DM dav,pTatinCtx c,ModelSubductionObliqueCtx *data)
+{
+  BC_Lithosphere bcdata;
+  PetscReal      vxl,vxr;
+  PetscReal      zero = 0.0;
+  PetscErrorCode ierr;
+  
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+  
+  ierr = PetscMalloc(sizeof(struct _p_BC_Lithosphere),&bcdata);CHKERRQ(ierr);
+  /* Left face */  
+  vxl = data->normV;
+  /* Right face */
+  vxr = -data->normV;
+
+  bcdata->y_lab = data->y_ocean[3];
+  bcdata->v = vxl;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
+  
+  bcdata->y_lab = data->y_continent[2];
+  bcdata->v = vxr;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
+  
+  bcdata->y_lab = data->y_continent[2];
+  bcdata->v = 0.0;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
+
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&data->vy);CHKERRQ(ierr);
+
+  ierr = PetscFree(bcdata);
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode ModelApplyBoundaryCondition_Velocity(BCList bclist,DM dav,pTatinCtx c,ModelSubductionObliqueCtx *data)
 {
   PhysCompStokes stokes;
@@ -1527,6 +1639,8 @@ PetscErrorCode ModelApplyBoundaryCondition_Velocity(BCList bclist,DM dav,pTatinC
     bctype = 1;
   } else if (data->Arctangent_KMIN) {
     bctype = 2;
+  } else if (data->oblique_IC) {
+    bctype = 3;
   }
 
   switch(bctype) {
@@ -1540,6 +1654,10 @@ PetscErrorCode ModelApplyBoundaryCondition_Velocity(BCList bclist,DM dav,pTatinC
 
     case 2:
       ierr = SubductionOblique_VelocityBC_Oblique_KMIN_DirichletArctangent(bclist,dav,c,data);CHKERRQ(ierr);
+      break;
+
+    case 3:
+      ierr = SubductionOblique_VelocityBC_Orthogonal(bclist,dav,c,data);CHKERRQ(ierr);
       break;
 
     default:
