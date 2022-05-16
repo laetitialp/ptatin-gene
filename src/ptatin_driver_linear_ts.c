@@ -1180,10 +1180,11 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
 
     /* update mesh */
     ierr = pTatinModel_UpdateMeshGeometry(user->model,user,X);CHKERRQ(ierr);
-    ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(user->stokes_ctx);CHKERRQ(ierr);
 
     /* update mesh coordinate hierarchy */
     ierr = DMDARestrictCoordinatesHierarchy(dav_hierarchy,nlevels);CHKERRQ(ierr);
+    
+    ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(user->stokes_ctx);CHKERRQ(ierr);
     for (k=0; k<nlevels-1; k++) {
       ierr = SurfaceQuadratureGeometryUpdate_Stokes(surfQ[k],mfi[k]);CHKERRQ(ierr);
     }
