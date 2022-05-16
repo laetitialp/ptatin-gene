@@ -31,5 +31,6 @@
 #define __stokes_output_h__
 
 PetscErrorCode SurfaceQuadratureViewParaview_Stokes(PhysCompStokes ctx,const char path[],const char prefix[]);
+PetscErrorCode SurfaceQuadratureViewParaview_Stokes2(SurfaceQuadrature surfQ, MeshFacetInfo mfi, const char path[], const char prefix[]);
 
 #endif

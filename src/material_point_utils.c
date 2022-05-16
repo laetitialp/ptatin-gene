@@ -1330,7 +1330,7 @@ PetscErrorCode _BuildQ1CoefficientProjection_QuadraturePoints_MPntPStokes_FineGr
  (i) your model setup, or
  (ii) through a call to pTatin_EvaluateRheologyNonlinearitiesMarkers()
 */
-PetscErrorCode SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(PetscInt coefficient_projection_type,const int npoints,MPntStd mp_std[],MPntPStokes mp_stokes[],PetscInt nlevels,Mat R[],DM da[],Quadrature Q[])
+PetscErrorCode SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(PetscInt coefficient_projection_type,const int npoints,MPntStd mp_std[],MPntPStokes mp_stokes[],PetscInt nlevels,Mat R[],DM da[],Quadrature Q[],SurfaceQuadrature surfQ[],MeshFacetInfo mfi[])
 {
   PetscInt  dof,k;
   DM        clone[100];
@@ -1497,6 +1497,13 @@ PetscErrorCode SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierar
       ierr = VecView(properties_A2[k-1], viewer);CHKERRQ(ierr);
       ierr = PetscViewerPopFormat(viewer);CHKERRQ(ierr);
       ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
+      
+      /*
+      if (surfQ) {
+        PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"SwarmUpdateProperties_LocalL2Proj_Stokes_%D",k-1);
+        ierr = SurfaceQuadratureViewParaview_Stokes2(surfQ[i],mfi[],NULL,name);CHKERRQ(ierr);
+      }
+      */
     }
 
   }

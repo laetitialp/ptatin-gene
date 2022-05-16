@@ -653,7 +653,7 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
     mp_std    = PField_std->data; /* should write a function to do this */
     mp_stokes = PField_stokes->data; /* should write a function to do this */
 
-    ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,mlctx->nlevels,mlctx->interpolation_eta,mlctx->dav_hierarchy,mlctx->volQ);CHKERRQ(ierr);
+    ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,mlctx->nlevels,mlctx->interpolation_eta,mlctx->dav_hierarchy,mlctx->volQ,NULL,NULL);CHKERRQ(ierr);
   }
 
   /* operator */
@@ -1440,7 +1440,7 @@ PetscErrorCode DummyRun(pTatinCtx pctx,Vec v1,Vec v2)
       DataFieldGetEntries(PField_std,(void**)&mp_std);
       DataFieldGetEntries(PField_stokes,(void**)&mp_stokes);
 
-      ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(pctx->coefficient_projection_type,npoints,mp_std,mp_stokes,mgctx.nlevels,mgctx.interpolation_eta,mgctx.dav_hierarchy,mgctx.volQ);CHKERRQ(ierr);
+      ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(pctx->coefficient_projection_type,npoints,mp_std,mp_stokes,mgctx.nlevels,mgctx.interpolation_eta,mgctx.dav_hierarchy,mgctx.volQ,NULL,NULL);CHKERRQ(ierr);
 
       DataFieldRestoreEntries(PField_stokes,(void**)&mp_stokes);
       DataFieldRestoreEntries(PField_std,(void**)&mp_std);

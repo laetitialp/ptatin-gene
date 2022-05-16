@@ -897,6 +897,8 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
   Mat            interpolation_v[10],interpolation_eta[10];
   Quadrature     volQ[10];
   BCList         u_bclist[10];
+  SurfaceQuadrature surfQ[10];
+  MeshFacetInfo     mfi[10];
   PetscInt       step;
   pTatinModel    model;
   PetscLogDouble time[2];
@@ -1006,11 +1008,19 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
   volQ[nlevels-1] = user->stokes_ctx->volQ;
 
 
-  /* define bounary list on coarse grids */
+  /* define boundary list on coarse grids */
   for (k=0; k<nlevels-1; k++) {
     ierr = DMDABCListCreate(dav_hierarchy[k],&u_bclist[k]);CHKERRQ(ierr);
   }
   u_bclist[nlevels-1] = user->stokes_ctx->u_bclist;
+
+  /* define surface info and quadrature on coarse grids */
+  for (k=0; k<nlevels-1; k++) {
+    ierr = MeshFacetInfoCreate2(dav_hierarchy[k],&mfi[k]);CHKERRQ(ierr);
+    ierr = SurfaceQuadratureCreate_GaussLegendreStokes(dav_hierarchy[k],&surfQ[k]);CHKERRQ(ierr);
+  }
+  mfi[nlevels-1] = user->stokes_ctx->mfi;
+  surfQ[nlevels-1] = user->stokes_ctx->surfQ;
 
 
   /* define bc's for hiearchy */
@@ -1050,7 +1060,7 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
     mp_std    = PField_std->data; /* should write a function to do this */
     mp_stokes = PField_stokes->data; /* should write a function to do this */
 
-    ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,nlevels,interpolation_eta,dav_hierarchy,volQ);CHKERRQ(ierr);
+    ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,nlevels,interpolation_eta,dav_hierarchy,volQ,NULL,NULL);CHKERRQ(ierr);
   }
 
   /* configure stokes opertors */
@@ -1196,7 +1206,7 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
       mp_std    = PField_std->data; /* should write a function to do this */
       mp_stokes = PField_stokes->data; /* should write a function to do this */
 
-      ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,nlevels,interpolation_eta,dav_hierarchy,volQ);CHKERRQ(ierr);
+      ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,nlevels,interpolation_eta,dav_hierarchy,volQ,NULL,NULL);CHKERRQ(ierr);
     }
 
     /* Update boundary conditions */
@@ -1297,6 +1307,10 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
 
 
   /* Clean up */
+  for (k=0; k<nlevels-1; k++) {
+    ierr = MeshFacetInfoDestroy(&mfi[k]);CHKERRQ(ierr);
+    ierr = SurfaceQuadratureDestroy(&surfQ[k]);CHKERRQ(ierr);
+  }
   for (k=0; k<nlevels-1; k++) {
     ierr = BCListDestroy(&u_bclist[k]);CHKERRQ(ierr);
   }

@@ -376,4 +376,52 @@ PetscErrorCode SurfaceQuadratureViewParaview_Stokes(PhysCompStokes ctx,const cha
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode SurfaceQuadratureViewParaview_Stokes2(SurfaceQuadrature surfQ, MeshFacetInfo mfi, const char path[], const char prefix[])
+{
+  PetscInt e;
+  char *vtkfilename,*filename;
+  PetscMPIInt rank;
+  char *appended;
+  PetscErrorCode ierr;
+  
+  PetscFunctionBegin;
+  ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&rank);CHKERRQ(ierr);
+  
+  for (e=0; e<HEX_EDGES; e++) {
+    int e32;
+    
+    PetscMPIIntCast(e,&e32);
+    if (asprintf(&appended,"%s_face%.2d",prefix,e32) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = pTatinGenerateParallelVTKName(appended,"vtu",&vtkfilename);CHKERRQ(ierr);
+    if (path) {
+      if (asprintf(&filename,"%s/%s",path,vtkfilename) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    } else {
+      if (asprintf(&filename,"./%s",vtkfilename) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    }
+    
+    ierr = _SurfaceQuadratureViewParaviewVTU_Stokes(surfQ,
+                                                    mfi->facet_label_offset[e],
+                                                    mfi->facet_label_offset[e+1],
+                                                    mfi,filename);CHKERRQ(ierr);
+    free(filename);
+    free(vtkfilename);
+    free(appended);
+  }
+  
+  if (asprintf(&appended,"%s_allfaces",prefix) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+  ierr = pTatinGenerateVTKName(appended,"pvtu",&vtkfilename);CHKERRQ(ierr);
+  if (path) {
+    if (asprintf(&filename,"%s/%s",path,vtkfilename) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+  } else {
+    if (asprintf(&filename,"./%s",vtkfilename) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+  }
+  if (rank == 0) { /* not we are a bit tricky about which name we pass in here to define the edge data sets */
+    ierr = _SurfaceQuadratureViewParaviewPVTU_Stokes(prefix,filename);CHKERRQ(ierr);
+  }
+  free(filename);
+  free(vtkfilename);
+  free(appended);
+  
+  PetscFunctionReturn(0);
+}
 

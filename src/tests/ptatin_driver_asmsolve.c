@@ -655,7 +655,7 @@ PetscErrorCode pTatin3d_gmg_material_points(int argc,char **argv)
       mp_std    = PField_std->data; /* should write a function to do this */
       mp_stokes = PField_stokes->data; /* should write a function to do this */
 
-      ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,nlevels,R1,dav_hierarchy,volQ);CHKERRQ(ierr);
+      ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,nlevels,R1,dav_hierarchy,volQ,NULL,NULL);CHKERRQ(ierr);
     }
   }
 
@@ -1004,7 +1004,7 @@ PetscErrorCode pTatin3d_gmg2_material_points(int argc,char **argv)
     mp_std    = PField_std->data; /* should write a function to do this */
     mp_stokes = PField_stokes->data; /* should write a function to do this */
 
-    ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,nlevels,interpolatation_eta,dav_hierarchy,volQ);CHKERRQ(ierr);
+    ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,nlevels,interpolatation_eta,dav_hierarchy,volQ,NULL,NULL);CHKERRQ(ierr);
     /* alternative hierachy construction */
     /*
     // a
