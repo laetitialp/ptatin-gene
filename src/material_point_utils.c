@@ -1484,8 +1484,13 @@ PetscErrorCode SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierar
         break;
     }
 
-    ierr = _SwarmUpdateGaussPropertiesLocalL2ProjectionQ1_MPntPStokes_InterpolateToQuadratePoints(clone[k-1],properties_A1[k-1],properties_A2[k-1],Q[k-1],NULL,NULL);CHKERRQ(ierr);
-
+    if (surfQ && mfi) {
+      ierr = _SwarmUpdateGaussPropertiesLocalL2ProjectionQ1_MPntPStokes_InterpolateToQuadratePoints(clone[k-1],properties_A1[k-1],properties_A2[k-1],Q[k-1],surfQ[k-1],mfi[k-1]);CHKERRQ(ierr);
+    } else {
+      PetscPrintf(PETSC_COMM_WORLD,"** WARNING [SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy] ** Level %D will not have interpolated surface data\n",k-1);
+      ierr = _SwarmUpdateGaussPropertiesLocalL2ProjectionQ1_MPntPStokes_InterpolateToQuadratePoints(clone[k-1],properties_A1[k-1],properties_A2[k-1],Q[k-1],NULL,NULL);CHKERRQ(ierr);
+    }
+    
     if (view) {
       PetscViewer viewer;
       char name[PETSC_MAX_PATH_LEN];
