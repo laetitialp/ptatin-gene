@@ -298,6 +298,8 @@ PetscErrorCode _SurfaceQuadratureViewParaviewPVTU_Stokes(const char prefix[],con
   fprintf(fp,"      <PDataArray type=\"Float32\" Name=\"tangent1\" NumberOfComponents=\"3\"/>\n");
   fprintf(fp,"      <PDataArray type=\"Float32\" Name=\"tangent2\" NumberOfComponents=\"3\"/>\n");
   fprintf(fp,"      <PDataArray type=\"Float32\" Name=\"traction\" NumberOfComponents=\"3\"/>\n");
+  fprintf(fp,"      <PDataArray type=\"Float32\" Name=\"eta\" NumberOfComponents=\"1\"/>\n");
+  fprintf(fp,"      <PDataArray type=\"Float32\" Name=\"rho\" NumberOfComponents=\"1\"/>\n");
 
   /* POINT-DATA HEADER - CLOSE */
   fprintf(fp, "    </PPointData>\n");
