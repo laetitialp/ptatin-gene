@@ -1412,7 +1412,7 @@ PetscErrorCode DummyRun(pTatinCtx pctx,Vec v1,Vec v2)
 
     /* update mesh */
     ierr = pTatinModel_UpdateMeshGeometry(model,pctx,X_s);CHKERRQ(ierr);
-    ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(user->stokes_ctx);CHKERRQ(ierr);
+    ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(pctx->stokes_ctx);CHKERRQ(ierr);
 
     /* update mesh coordinate hierarchy */
     ierr = DMDARestrictCoordinatesHierarchy(mgctx.dav_hierarchy,mgctx.nlevels);CHKERRQ(ierr);
