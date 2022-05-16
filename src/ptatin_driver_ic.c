@@ -45,6 +45,7 @@ static const char help[] = "Stokes solver using Q2-Pm1 mixed finite elements.\n"
 #include "stokes_operators.h"
 #include "sub_comm.h"
 #include "dmda_redundant.h"
+#include "stokes_output.h"
 
 PetscErrorCode pTatin3d_material_points_check_ic(int argc,char **argv)
 {
@@ -86,6 +87,8 @@ PetscErrorCode pTatin3d_material_points_check_ic(int argc,char **argv)
 
   /* mesh geometry */
   ierr = pTatinModel_ApplyInitialMeshGeometry(user->model,user);CHKERRQ(ierr);
+  ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(user->stokes_ctx);CHKERRQ(ierr);
+  ierr = SurfaceQuadratureViewParaview_Stokes(user->stokes_ctx,user->outputpath,"def");CHKERRQ(ierr);
 
   /* generate energy solver */
   /* NOTE - Generating the thermal solver here will ensure that the initial geometry on the mechanical model is copied */
@@ -107,15 +110,12 @@ PetscErrorCode pTatin3d_material_points_check_ic(int argc,char **argv)
 
 
   /* interpolate point coordinates (needed if mesh was modified) */
-  //ierr = QuadratureStokesCoordinateSetUp(user->stokes_ctx->Q,dav);CHKERRQ(ierr);
-  //for (e=0; e<QUAD_EDGES; e++) {
-  //  ierr = SurfaceQuadratureStokesGeometrySetUp(user->stokes_ctx->surfQ[e],dav);CHKERRQ(ierr);
-  //}
   /* interpolate material point coordinates (needed if mesh was modified) */
   ierr = MaterialPointCoordinateSetUp(user,dav);CHKERRQ(ierr);
 
   /* material geometry */
   ierr = pTatinModel_ApplyInitialMaterialGeometry(user->model,user);CHKERRQ(ierr);
+  ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(user->stokes_ctx);CHKERRQ(ierr);
 
   /* boundary conditions */
   ierr = pTatinModel_ApplyBoundaryCondition(user->model,user);CHKERRQ(ierr);

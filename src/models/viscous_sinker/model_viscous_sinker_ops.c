@@ -51,6 +51,8 @@
 #include "quadrature.h"
 #include "QPntSurfCoefStokes_def.h"
 
+#include "surface_constraint.h"
+
 #include "viscous_sinker_ctx.h"
 
 PetscErrorCode ModelInitialize_ViscousSinker(pTatinCtx c,void *ctx)
@@ -667,6 +669,27 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_ViscousSinker(pTatinCtx c,voi
   PetscFunctionReturn(0);
 }
 
+PetscBool facet_mark(Facet f,void *data)
+{
+  printf("fid %d side %d cell %d\n",f->index,f->label,f->cell_index);
+  printf("centroid %+1.4e %+1.4e %+1.4e\n",f->centroid[0],f->centroid[1],f->centroid[2]);
+  printf("normal %+1.4e %+1.4e %+1.4e\n",f->centroid_normal[0],f->centroid_normal[1],f->centroid_normal[2]);
+  return PETSC_TRUE;
+}
+
+PetscErrorCode set(Facet f,const PetscReal coor[],PetscReal traction[],void *ctx)
+{
+  printf("fid %d side %d cell %d\n",f->index,f->label,f->cell_index);
+  printf("  %+1.4e %+1.4e %+1.4e\n",coor[0],coor[1],coor[2]);
+  PetscFunctionReturn(0);
+}
+
+PetscBool facet_mark_y(Facet f,void *data)
+{
+  if (f->centroid[1] > 0.5) { return PETSC_TRUE; }
+  return PETSC_FALSE;
+}
+
 PetscErrorCode ModelApplyInitialMeshGeometry_ViscousSinker(pTatinCtx c,void *ctx)
 {
   ModelViscousSinkerCtx *data = (ModelViscousSinkerCtx*)ctx;
@@ -717,6 +740,54 @@ PetscErrorCode ModelApplyInitialMeshGeometry_ViscousSinker(pTatinCtx c,void *ctx
      }
   */
 
+  PhysCompStokesUpdateSurfaceQuadratureGeometry(c->stokes_ctx);
+  //SurfaceQuadratureViewParaview_Stokes(c->stokes_ctx,"./","squad");
+  
+  
+  {
+    SurfaceConstraint sc;
+    PhysCompStokes    stokes;
+    SurfaceQuadrature quad;
+    MeshEntity        facets;
+    
+    ierr = pTatinGetStokesContext(c,&stokes);CHKERRQ(ierr);
+    ierr = PhysCompStokesGetSurfaceQuadrature(stokes,&quad);CHKERRQ(ierr);
+    
+    ierr = SurfaceConstraintCreateWithFacetInfo(c->stokes_ctx->mfi,&sc);CHKERRQ(ierr);
+    ierr = SurfaceConstraintSetType(sc,SC_TRACTION,PETSC_TRUE,PETSC_FALSE);CHKERRQ(ierr);
+    ierr = SurfaceConstraintSetQuadrature(sc,quad);CHKERRQ(ierr);
+
+    ierr = SurfaceConstraintGetFacets(sc,&facets);CHKERRQ(ierr);
+    ierr = MeshEntitySetName(facets,"bc1");CHKERRQ(ierr);
+    /*
+    {
+      PetscInt       nsides;
+      HexElementFace sides[] = { HEX_FACE_Pxi, HEX_FACE_Neta };
+      nsides = sizeof(sides) / sizeof(HexElementFace);
+      ierr = MeshFacetMarkDomainFaces(facets,sc->fi,nsides,sides);CHKERRQ(ierr);
+    }
+    */
+    /*
+    {
+      ierr = MeshFacetMark(facets,sc->fi,facet_mark,NULL);CHKERRQ(ierr);
+    }
+    */
+    
+    {
+      PetscInt       nsides;
+      HexElementFace sides[] = { HEX_FACE_Pxi, HEX_FACE_Peta, HEX_FACE_Nxi };
+      nsides = sizeof(sides) / sizeof(HexElementFace);
+      ierr = MeshFacetMarkDomainFaceSubset(facets,sc->fi,nsides,sides,facet_mark,NULL);CHKERRQ(ierr);
+    }
+    
+
+    ierr = SurfaceConstraintSetValues_TRACTION(sc,set,NULL);CHKERRQ(ierr);
+
+    ierr = MeshEntityViewPV(1,&facets);CHKERRQ(ierr);
+    ierr = MeshEntityView(facets);CHKERRQ(ierr);
+
+  }
+  
   PetscFunctionReturn(0);
 }
 
@@ -1158,6 +1229,8 @@ PetscErrorCode ModelOutput_ViscousSinker(pTatinCtx c,Vec X,const char prefix[],v
 
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
+
+  SurfaceQuadratureViewParaview_Stokes(c->stokes_ctx,"./","surfq");
 
   ierr = pTatin3d_ModelOutput_VelocityPressure_Stokes(c,X,prefix);CHKERRQ(ierr);
   // testing

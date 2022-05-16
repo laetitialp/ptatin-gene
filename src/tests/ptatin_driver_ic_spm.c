@@ -349,10 +349,7 @@ PetscErrorCode pTatin3d_material_points_check_ic(int argc,char **argv)
   ierr = pTatinModel_ApplyInitialMeshGeometry(user->model,user);CHKERRQ(ierr);
 
   /* interpolate point coordinates (needed if mesh was modified) */
-  //ierr = QuadratureStokesCoordinateSetUp(user->stokes_ctx->Q,dav);CHKERRQ(ierr);
-  //for (e=0; e<QUAD_EDGES; e++) {
-  //  ierr = SurfaceQuadratureStokesGeometrySetUp(user->stokes_ctx->surfQ[e],dav);CHKERRQ(ierr);
-  //}
+  ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(user->stokes_ctx);CHKERRQ(ierr);
   /* interpolate material point coordinates (needed if mesh was modified) */
   ierr = MaterialPointCoordinateSetUp(user,dav);CHKERRQ(ierr);
 

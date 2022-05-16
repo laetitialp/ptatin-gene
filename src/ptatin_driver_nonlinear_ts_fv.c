@@ -850,6 +850,8 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
   ierr = pTatinLogBasicDMDA(user,"Velocity",dav);CHKERRQ(ierr);
   ierr = pTatinLogBasicDMDA(user,"Pressure",dap);CHKERRQ(ierr);
 
+  ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(user->stokes_ctx);CHKERRQ(ierr);
+
   /* generate energy solver */
   /* NOTE - Generating the thermal solver here will ensure that the initial geometry on the mechanical model is copied */
   /* NOTE - Calling pTatinPhysCompActivate_Energy() after pTatin3dCreateMaterialPoints() is essential */
@@ -1317,7 +1319,8 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
       
       ierr = DMCreateGlobalVector(cdm,&q2_coor_k);CHKERRQ(ierr);
       ierr = pTatinModel_UpdateMeshGeometry(model,user,X);CHKERRQ(ierr);
-      
+      ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(user->stokes_ctx);CHKERRQ(ierr);
+
       ierr = DMGetCoordinates(dav,&q2_coor);CHKERRQ(ierr);
       ierr = VecCopy(q2_coor,q2_coor_k);CHKERRQ(ierr);
       ierr = VecCopy(tmp,q2_coor);CHKERRQ(ierr);

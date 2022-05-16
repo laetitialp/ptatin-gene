@@ -991,6 +991,7 @@ PetscErrorCode GenerateICStateFromModelDefinition(pTatinCtx *pctx)
 
   /* mesh geometry */
   ierr = pTatinModel_ApplyInitialMeshGeometry(model,user);CHKERRQ(ierr);
+  ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(user->stokes_ctx);CHKERRQ(ierr);
   if (activate_energy) {
     ierr = DMDAProjectCoordinatesQ2toQ1(dmv,dmenergy,energy->energy_mesh_type);CHKERRQ(ierr);
   }
@@ -1411,6 +1412,7 @@ PetscErrorCode DummyRun(pTatinCtx pctx,Vec v1,Vec v2)
 
     /* update mesh */
     ierr = pTatinModel_UpdateMeshGeometry(model,pctx,X_s);CHKERRQ(ierr);
+    ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(user->stokes_ctx);CHKERRQ(ierr);
 
     /* update mesh coordinate hierarchy */
     ierr = DMDARestrictCoordinatesHierarchy(mgctx.dav_hierarchy,mgctx.nlevels);CHKERRQ(ierr);
