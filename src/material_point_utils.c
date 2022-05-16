@@ -51,6 +51,7 @@
 #include "material_point_utils.h"
 #include "element_utils_q2.h"
 #include "element_utils_q1.h"
+#include "stokes_output.h"
 
 PetscErrorCode MaterialPointGeneric_VTKWriteBinaryAppendedHeaderAllFields(FILE *vtk_fp,DataBucket db,int *byte_offset,const int nfields,const MaterialPointField list[])
 {
@@ -1498,12 +1499,10 @@ PetscErrorCode SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierar
       ierr = PetscViewerPopFormat(viewer);CHKERRQ(ierr);
       ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
       
-      /*
       if (surfQ) {
         PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"SwarmUpdateProperties_LocalL2Proj_Stokes_%D",k-1);
-        ierr = SurfaceQuadratureViewParaview_Stokes2(surfQ[i],mfi[],NULL,name);CHKERRQ(ierr);
+        ierr = SurfaceQuadratureViewParaview_Stokes2(surfQ[k],mfi[k],NULL,name);CHKERRQ(ierr);
       }
-      */
     }
 
   }
