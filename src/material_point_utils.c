@@ -626,7 +626,7 @@ PetscErrorCode QPntSurfCoefStokes_ProjectQ1_Surface(SurfaceQuadrature surfQ,Mesh
     cell_side   = mfi->facet_label[f]; /* side label */
     cell_index  = mfi->facet_cell_index[f];
     
-    ierr = SurfaceQuadratureGetCellData_Stokes(surfQ,all_surf_gausspoints,cell_index,&cell_surf_gausspoints);CHKERRQ(ierr);
+    ierr = SurfaceQuadratureGetCellData_Stokes(surfQ,all_surf_gausspoints,f,&cell_surf_gausspoints);CHKERRQ(ierr);
     
     ierr = Q2GetElementLocalIndicesDOF(el_lidx,1,(PetscInt*)&elnidx[nen*cell_index]);CHKERRQ(ierr);
     ierr = DMDAGetScalarElementField(cell_eta,nen,(PetscInt*)&elnidx[nen*cell_index],(PetscReal*)LA_eta);CHKERRQ(ierr);
