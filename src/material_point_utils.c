@@ -601,9 +601,76 @@ void pTatinConstructNI_Q1_on_Q2_3D(const double _xi[],double Ni[])
 
 }
 
+
+PetscErrorCode QPntSurfCoefStokes_ProjectQ1_Surface(SurfaceQuadrature surfQ,MeshFacetInfo mfi,
+                                               DM clone,
+                                               PetscReal range_eta[],PetscReal range_rho[],
+                                               const PetscScalar *LA_eta,
+                                               const PetscScalar *LA_rho)
+{
+  PetscReal xi_qp_surf[3],NIu_0[Q2_NODES_PER_EL_3D],NiQ1_p[8];
+  QPntSurfCoefStokes *all_surf_gausspoints,*cell_surf_gausspoints;
+  PetscScalar cell_eta[Q2_NODES_PER_EL_3D],cell_rho[Q2_NODES_PER_EL_3D];
+  PetscInt el_lidx[U_BASIS_FUNCTIONS];
+  PetscInt p,i,f;
+  PetscInt nel,nen,ngp;
+  const PetscInt *elnidx;
+  PetscErrorCode ierr;
+  
+  ierr = DMDAGetElements_pTatinQ2P1(clone,&nel,&nen,&elnidx);CHKERRQ(ierr);
+  ierr = SurfaceQuadratureGetAllCellData_Stokes(surfQ,&all_surf_gausspoints);CHKERRQ(ierr);
+  
+  for (f=0; f<mfi->n_facets; f++) {
+    PetscInt cell_index,cell_side;
+    
+    cell_side   = mfi->facet_label[f]; /* side label */
+    cell_index  = mfi->facet_cell_index[f];
+    
+    ierr = SurfaceQuadratureGetCellData_Stokes(surfQ,all_surf_gausspoints,cell_index,&cell_surf_gausspoints);CHKERRQ(ierr);
+    
+    ierr = Q2GetElementLocalIndicesDOF(el_lidx,1,(PetscInt*)&elnidx[nen*cell_index]);CHKERRQ(ierr);
+    ierr = DMDAGetScalarElementField(cell_eta,nen,(PetscInt*)&elnidx[nen*cell_index],(PetscReal*)LA_eta);CHKERRQ(ierr);
+    ierr = DMDAGetScalarElementField(cell_rho,nen,(PetscInt*)&elnidx[nen*cell_index],(PetscReal*)LA_rho);CHKERRQ(ierr);
+    
+    ngp = surfQ->npoints;
+    for (p=0; p<ngp; p++) {
+      
+      xi_qp_surf[0] = surfQ->gp3[cell_side][p].xi;
+      xi_qp_surf[1] = surfQ->gp3[cell_side][p].eta;
+      xi_qp_surf[2] = surfQ->gp3[cell_side][p].zeta;
+      ierr = PetscMemzero(NIu_0,sizeof(PetscReal)*Q2_NODES_PER_EL_3D);CHKERRQ(ierr);
+      pTatinConstructNI_Q1_3D(xi_qp_surf,NiQ1_p);
+      NIu_0[0] = NiQ1_p[0];
+      NIu_0[2] = NiQ1_p[1];
+      NIu_0[6] = NiQ1_p[2];
+      NIu_0[8] = NiQ1_p[3];
+      NIu_0[0+18] = NiQ1_p[4];
+      NIu_0[2+18] = NiQ1_p[5];
+      NIu_0[6+18] = NiQ1_p[6];
+      NIu_0[8+18] = NiQ1_p[7];
+      
+      cell_surf_gausspoints[p].eta = 0.0;
+      cell_surf_gausspoints[p].rho = 0.0;
+      for (i=0; i<Q2_NODES_PER_EL_3D; i++) {
+        cell_surf_gausspoints[p].eta += NIu_0[i] * cell_eta[i];
+        cell_surf_gausspoints[p].rho += NIu_0[i] * cell_rho[i];
+      }
+      if (range_eta) {
+        if (cell_surf_gausspoints[p].eta < range_eta[0]) { cell_surf_gausspoints[p].eta = range_eta[0]; }
+        if (cell_surf_gausspoints[p].eta > range_eta[1]) { cell_surf_gausspoints[p].eta = range_eta[1]; }
+      }
+      if (range_rho) {
+        if (cell_surf_gausspoints[p].rho < range_rho[0]) { cell_surf_gausspoints[p].rho = range_rho[0]; }
+        if (cell_surf_gausspoints[p].rho > range_rho[1]) { cell_surf_gausspoints[p].rho = range_rho[1]; }
+      }
+    }
+  }
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode _SwarmUpdateGaussPropertiesLocalL2ProjectionQ1_MPntPStokes(
                                                                           DM clone,Vec properties_A1,Vec properties_A2,Vec properties_B,
-                                                                          const int npoints,MPntStd mp_std[],MPntPStokes mp_stokes[],Quadrature Q)
+                                                                          const int npoints,MPntStd mp_std[],MPntPStokes mp_stokes[],Quadrature Q,SurfaceQuadrature surfQ,MeshFacetInfo mfi)
 {
   PetscScalar Ni_p[Q2_NODES_PER_EL_3D];
   PetscScalar NiQ1_p[8];
@@ -787,6 +854,10 @@ PetscErrorCode _SwarmUpdateGaussPropertiesLocalL2ProjectionQ1_MPntPStokes(
     }
   }
 
+  if (surfQ) {
+    ierr = QPntSurfCoefStokes_ProjectQ1_Surface(surfQ,mfi,clone,range_eta,range_rho,(const PetscReal*)LA_properties_A1,(const PetscReal*)LA_properties_A2);CHKERRQ(ierr);
+  }
+  
   ierr = VecRestoreArray(Lproperties_A2,&LA_properties_A2);CHKERRQ(ierr);
   ierr = VecRestoreArray(Lproperties_A1,&LA_properties_A1);CHKERRQ(ierr);
 
@@ -839,7 +910,7 @@ PetscErrorCode SwarmUpdateGaussPropertiesOne2OneMap_MPntPStokes(const int npoint
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes(const int npoints,MPntStd mp_std[],MPntPStokes mp_stokes[],DM da,Quadrature Q)
+PetscErrorCode SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes(const int npoints,MPntStd mp_std[],MPntPStokes mp_stokes[],DM da,Quadrature Q,SurfaceQuadrature surfQ,MeshFacetInfo mfi)
 {
   PetscInt  dof;
   DM        clone;
@@ -864,7 +935,7 @@ PetscErrorCode SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes(const 
   /* compute */
   ierr = _SwarmUpdateGaussPropertiesLocalL2ProjectionQ1_MPntPStokes(
                 clone, properties_A1,properties_A2,properties_B,
-                npoints, mp_std,mp_stokes, Q );CHKERRQ(ierr);
+                npoints, mp_std,mp_stokes, Q, surfQ, mfi );CHKERRQ(ierr);
 
   /* view */
   view = PETSC_FALSE;
@@ -2787,6 +2858,50 @@ PetscErrorCode MProjection_P0Projection_onto_Q2_MPntPStokes_Level(
   /* destroy */
   ierr = DMDestroy(&clone);CHKERRQ(ierr);
 
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode QPntSurfCoefStokes_ProjectP0_Surface(MeshFacetInfo mfi,Quadrature Q,SurfaceQuadrature surfQ)
+{
+  PetscInt f,q,vol_nqp,surf_nqp;
+  double avg_eta,avg_rho;
+  
+  QPntVolCoefStokes  *vol_qpoints,*cell_vol_qpoints;
+  QPntSurfCoefStokes *surf_qpoints,*cell_surf_qpoints;
+  PetscErrorCode     ierr;
+  
+  
+  PetscFunctionBegin;
+  
+  ierr = VolumeQuadratureGetAllCellData_Stokes(Q,&vol_qpoints);CHKERRQ(ierr);
+  vol_nqp = Q->npoints;
+  ierr = SurfaceQuadratureGetAllCellData_Stokes(surfQ,&surf_qpoints);CHKERRQ(ierr);
+  surf_nqp = surfQ->npoints;
+  
+  for (f=0; f<mfi->n_facets; f++) {
+    PetscInt facet_index,cell_side,cell_index;
+    
+    facet_index = f; /* facet local index */
+    cell_side   = mfi->facet_label[facet_index]; /* side label */
+    cell_index  = mfi->facet_cell_index[facet_index];
+
+    ierr = VolumeQuadratureGetCellData_Stokes(Q,vol_qpoints,cell_index,&cell_vol_qpoints);CHKERRQ(ierr);
+    avg_eta = 0.0;
+    avg_rho = 0.0;
+    for (q=0; q<vol_nqp; q++) {
+      avg_eta += cell_vol_qpoints[q].eta;
+      avg_rho += cell_vol_qpoints[q].rho;
+    }
+    avg_eta /= (double)vol_nqp;
+    avg_rho /= (double)vol_nqp;
+    ierr = SurfaceQuadratureGetCellData_Stokes(surfQ,surf_qpoints,facet_index,&cell_surf_qpoints);CHKERRQ(ierr);
+    
+    for (q=0; q<surf_nqp; q++) {
+      cell_surf_qpoints[q].eta = avg_eta;
+      cell_surf_qpoints[q].rho = avg_rho;
+    }
+    
+  }
   PetscFunctionReturn(0);
 }
 

@@ -36,6 +36,7 @@
 #include "MPntPStokes_def.h"
 #include "MPntPStokesPl_def.h"
 #include "MPntPEnergy_def.h"
+#include "mesh_entity.h"
 #include "quadrature.h"
 
 /* add material points into the list */
@@ -67,7 +68,7 @@ PetscErrorCode SwarmViewGeneric_ParaView(DataBucket db,const int nfields,const M
 
 /* projections [fine grid] */
 PetscErrorCode MPntPStokesProj_P0(CoefficientAveragingType type,const int npoints,MPntStd mp_std[],MPntPStokes mp_stokes[],DM da,Quadrature Q);
-PetscErrorCode SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes(const int npoints,MPntStd mp_std[],MPntPStokes mp_stokes[],DM da,Quadrature Q);
+PetscErrorCode SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes(const int npoints,MPntStd mp_std[],MPntPStokes mp_stokes[],DM da,Quadrature Q,SurfaceQuadrature surfQ,MeshFacetInfo mfi);
 PetscErrorCode SwarmUpdateGaussPropertiesOne2OneMap_MPntPStokes(const int npoints,MPntStd mp_std[],MPntPStokes mp_stokes[],Quadrature Q);
 
 /* projection [for levels in a hierarchy] */
@@ -75,6 +76,12 @@ PetscErrorCode SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierar
 
 PetscErrorCode MProjection_P0Projection_onto_Q2_MPntPStokes_Level(CoefficientAveragingType eta_type,CoefficientAveragingType rho_type,const int npoints,MPntStd mp_std[],MPntPStokes mp_stokes[],PetscInt nlevels,DM da[],PetscInt level,Quadrature Q_level);
 
+PetscErrorCode QPntSurfCoefStokes_ProjectP0_Surface(MeshFacetInfo mfi,Quadrature Q,SurfaceQuadrature surfQ);
+PetscErrorCode QPntSurfCoefStokes_ProjectQ1_Surface(SurfaceQuadrature surfQ,MeshFacetInfo mfi,
+                                                    DM clone,
+                                                    PetscReal range_eta[],PetscReal range_rho[],
+                                                    const PetscScalar *LA_eta,
+                                                    const PetscScalar *LA_rho);
 
 /* depreciated */
 PetscErrorCode MaterialPointQuadraturePointProjectionC0_Q2Stokes(DM da,DataBucket materialpoint_db,MaterialPointField field,const int member,Quadrature Q);
