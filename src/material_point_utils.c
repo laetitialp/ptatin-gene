@@ -1435,14 +1435,21 @@ PetscErrorCode SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierar
   PetscOptionsGetBool(NULL,NULL,"-view_projected_marker_fields",&view,&flg);
   if (view) {
     PetscViewer viewer;
+    char name[PETSC_MAX_PATH_LEN];
 
-    ierr = PetscViewerASCIIOpen(PETSC_COMM_WORLD, "SwarmUpdateProperties_LocalL2Proj_Stokes_fine.vtk", &viewer);CHKERRQ(ierr);
+    PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"SwarmUpdateProperties_LocalL2Proj_Stokes_%D.vtk",nlevels-1);
+    ierr = PetscViewerASCIIOpen(PETSC_COMM_WORLD,name,&viewer);CHKERRQ(ierr);
     ierr = PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_VTK);CHKERRQ(ierr);
     ierr = DMView(clone[nlevels-1], viewer);CHKERRQ(ierr);
     ierr = VecView(properties_A1[nlevels-1], viewer);CHKERRQ(ierr);
     ierr = VecView(properties_A2[nlevels-1], viewer);CHKERRQ(ierr);
     ierr = PetscViewerPopFormat(viewer);CHKERRQ(ierr);
     ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
+    
+    if (surfQ) {
+      PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"SwarmUpdateProperties_LocalL2Proj_Stokes_%D",nlevels-1);
+      ierr = SurfaceQuadratureViewParaview_Stokes2(surfQ[nlevels-1],mfi[nlevels-1],NULL,name);CHKERRQ(ierr);
+    }
   }
 
   ptype = 0;
