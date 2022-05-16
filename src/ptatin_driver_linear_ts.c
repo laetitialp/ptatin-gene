@@ -1022,7 +1022,11 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
   mfi[nlevels-1] = user->stokes_ctx->mfi;
   surfQ[nlevels-1] = user->stokes_ctx->surfQ;
 
+  for (k=0; k<nlevels-1; k++) {
+    ierr = SurfaceQuadratureGeometryUpdate_Stokes(surfQ[k],mfi[k]);CHKERRQ(ierr);
+  }
 
+  
   /* define bc's for hiearchy */
   ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,dav_hierarchy,user->model,user);CHKERRQ(ierr);
 
@@ -1180,7 +1184,10 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
 
     /* update mesh coordinate hierarchy */
     ierr = DMDARestrictCoordinatesHierarchy(dav_hierarchy,nlevels);CHKERRQ(ierr);
-
+    for (k=0; k<nlevels-1; k++) {
+      ierr = SurfaceQuadratureGeometryUpdate_Stokes(surfQ[k],mfi[k]);CHKERRQ(ierr);
+    }
+    
     /* 3 Update local coordinates and communicate */
     ierr = MaterialPointStd_UpdateCoordinates(user->materialpoint_db,dav_hierarchy[nlevels-1],user->materialpoint_ex);CHKERRQ(ierr);
 
