@@ -4,6 +4,7 @@
 
 #include <petsc.h>
 #include <petscdm.h>
+#include <element_type_Q2.h>
 
 typedef enum { MESH_ENTITY_CELL=0, MESH_ENTITY_FACET, MESH_ENTITY_VERTEX } MeshEntityType;
 
