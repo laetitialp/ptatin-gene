@@ -50,7 +50,7 @@ PetscErrorCode _SurfaceQuadratureViewParaviewVTU_Stokes(SurfaceQuadrature surfQ,
   QPntSurfCoefStokes *all_qpoint;
   QPntSurfCoefStokes *cell_qpoint;
   FILE* fp = NULL;
-  double *normal,*tangent1,*tangent2,*traction,xp,yp,zp;
+  double *normal,*tangent1,*tangent2,xp,yp,zp;
   QPntSurfCoefStokes *qpoint;
   DM             cda;
   Vec            gcoords;
@@ -172,20 +172,6 @@ PetscErrorCode _SurfaceQuadratureViewParaviewVTU_Stokes(SurfaceQuadrature surfQ,
   }
   fprintf(fp, "      </DataArray>\n");
 
-  /* traction */
-  fprintf(fp, "      <DataArray type=\"Float32\" Name=\"traction\" NumberOfComponents=\"3\" format=\"ascii\">\n");
-  for (fe=start; fe<end; fe++) {
-    ierr =  SurfaceQuadratureGetCellData_Stokes(surfQ,all_qpoint,fe,&cell_qpoint);CHKERRQ(ierr);
-    for (n=0; n<ngp; n++) {
-      qpoint = &cell_qpoint[n];
-
-      QPntSurfCoefStokesGetField_surface_traction(qpoint,&traction);
-      fprintf(fp, "      %1.4e %1.4e %1.4e\n", traction[0], traction[1], traction[2] );
-    }
-  }
-  fprintf(fp, "      </DataArray>\n");
-
-  
   /* eta/rho */
   fprintf(fp, "      <DataArray type=\"Float32\" Name=\"eta\" NumberOfComponents=\"1\" format=\"ascii\">\n");
   for (fe=start; fe<end; fe++) {
@@ -297,7 +283,6 @@ PetscErrorCode _SurfaceQuadratureViewParaviewPVTU_Stokes(const char prefix[],con
   fprintf(fp,"      <PDataArray type=\"Float32\" Name=\"normal\" NumberOfComponents=\"3\"/>\n");
   fprintf(fp,"      <PDataArray type=\"Float32\" Name=\"tangent1\" NumberOfComponents=\"3\"/>\n");
   fprintf(fp,"      <PDataArray type=\"Float32\" Name=\"tangent2\" NumberOfComponents=\"3\"/>\n");
-  fprintf(fp,"      <PDataArray type=\"Float32\" Name=\"traction\" NumberOfComponents=\"3\"/>\n");
   fprintf(fp,"      <PDataArray type=\"Float32\" Name=\"eta\" NumberOfComponents=\"1\"/>\n");
   fprintf(fp,"      <PDataArray type=\"Float32\" Name=\"rho\" NumberOfComponents=\"1\"/>\n");
 
