@@ -964,7 +964,7 @@ PetscErrorCode SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes(const 
 
 PetscErrorCode _SwarmUpdateGaussPropertiesLocalL2ProjectionQ1_MPntPStokes_InterpolateToQuadratePoints(
                                                                           DM clone,Vec properties_A1,Vec properties_A2,
-                                                                          Quadrature Q)
+                                                                          Quadrature Q,SurfaceQuadrature surfQ,MeshFacetInfo mfi)
 {
   PetscScalar NiQ1_p[8];
   PetscScalar Ae1[Q2_NODES_PER_EL_3D], Ae2[Q2_NODES_PER_EL_3D];
@@ -986,22 +986,9 @@ PetscErrorCode _SwarmUpdateGaussPropertiesLocalL2ProjectionQ1_MPntPStokes_Interp
 
   PetscFunctionBegin;
 
-  ierr = DMGetLocalVector(clone,&Lproperties_A1);CHKERRQ(ierr);   ierr = VecZeroEntries(Lproperties_A1);CHKERRQ(ierr);
-  ierr = DMGetLocalVector(clone,&Lproperties_A2);CHKERRQ(ierr);   ierr = VecZeroEntries(Lproperties_A2);CHKERRQ(ierr);
-
-  ierr = VecGetArray(Lproperties_A1,&LA_properties_A1);CHKERRQ(ierr);
-  ierr = VecGetArray(Lproperties_A2,&LA_properties_A2);CHKERRQ(ierr);
-
   ierr = DMDAGetElements_pTatinQ2P1(clone,&nel,&nen,&elnidx);CHKERRQ(ierr);
 
   ierr = VolumeQuadratureGetAllCellData_Stokes(Q,&all_gausspoints);CHKERRQ(ierr);
-
-  /* scatter to quadrature points */
-  ierr = DMLocalToGlobalBegin(clone,Lproperties_A1,ADD_VALUES,properties_A1);CHKERRQ(ierr);
-  ierr = DMLocalToGlobalEnd(  clone,Lproperties_A1,ADD_VALUES,properties_A1);CHKERRQ(ierr);
-
-  ierr = DMLocalToGlobalBegin(clone,Lproperties_A2,ADD_VALUES,properties_A2);CHKERRQ(ierr);
-  ierr = DMLocalToGlobalEnd(  clone,Lproperties_A2,ADD_VALUES,properties_A2);CHKERRQ(ierr);
 
   /* ========================================= */
 
@@ -1027,6 +1014,9 @@ PetscErrorCode _SwarmUpdateGaussPropertiesLocalL2ProjectionQ1_MPntPStokes_Interp
   }
 
   PetscTime(&t0);
+  ierr = DMGetLocalVector(clone,&Lproperties_A1);CHKERRQ(ierr);
+  ierr = DMGetLocalVector(clone,&Lproperties_A2);CHKERRQ(ierr);
+  
   ierr = VecZeroEntries(Lproperties_A1);CHKERRQ(ierr);
   ierr = VecZeroEntries(Lproperties_A2);CHKERRQ(ierr);
 
@@ -1088,6 +1078,11 @@ PetscErrorCode _SwarmUpdateGaussPropertiesLocalL2ProjectionQ1_MPntPStokes_Interp
     }
   }
 
+  if (surfQ) {
+    ierr = QPntSurfCoefStokes_ProjectQ1_Surface(surfQ,mfi,clone,range_eta,range_rho,(const PetscReal*)LA_properties_A1,(const PetscReal*)LA_properties_A2);CHKERRQ(ierr);
+  }
+  
+  
   ierr = VecRestoreArray(Lproperties_A2,&LA_properties_A2);CHKERRQ(ierr);
   ierr = VecRestoreArray(Lproperties_A1,&LA_properties_A1);CHKERRQ(ierr);
 
@@ -1488,7 +1483,7 @@ PetscErrorCode SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierar
         break;
     }
 
-    ierr = _SwarmUpdateGaussPropertiesLocalL2ProjectionQ1_MPntPStokes_InterpolateToQuadratePoints(clone[k-1],properties_A1[k-1],properties_A2[k-1],Q[k-1]);CHKERRQ(ierr);
+    ierr = _SwarmUpdateGaussPropertiesLocalL2ProjectionQ1_MPntPStokes_InterpolateToQuadratePoints(clone[k-1],properties_A1[k-1],properties_A2[k-1],Q[k-1],NULL,NULL);CHKERRQ(ierr);
 
     if (view) {
       PetscViewer viewer;
