@@ -605,9 +605,8 @@ void pTatinConstructNI_Q1_on_Q2_3D(const double _xi[],double Ni[])
 
 PetscErrorCode QPntSurfCoefStokes_ProjectQ1_Surface(SurfaceQuadrature surfQ,MeshFacetInfo mfi,
                                                DM clone,
-                                               PetscReal range_eta[],PetscReal range_rho[],
-                                               const PetscScalar *LA_eta,
-                                               const PetscScalar *LA_rho)
+                                               const PetscScalar LA_eta[],
+                                               const PetscScalar LA_rho[])
 {
   PetscReal xi_qp_surf[3],NIu_0[Q2_NODES_PER_EL_3D],NiQ1_p[8];
   QPntSurfCoefStokes *all_surf_gausspoints,*cell_surf_gausspoints;
@@ -655,14 +654,6 @@ PetscErrorCode QPntSurfCoefStokes_ProjectQ1_Surface(SurfaceQuadrature surfQ,Mesh
       for (i=0; i<Q2_NODES_PER_EL_3D; i++) {
         cell_surf_gausspoints[p].eta += NIu_0[i] * cell_eta[i];
         cell_surf_gausspoints[p].rho += NIu_0[i] * cell_rho[i];
-      }
-      if (range_eta) {
-        if (cell_surf_gausspoints[p].eta < range_eta[0]) { cell_surf_gausspoints[p].eta = range_eta[0]; }
-        if (cell_surf_gausspoints[p].eta > range_eta[1]) { cell_surf_gausspoints[p].eta = range_eta[1]; }
-      }
-      if (range_rho) {
-        if (cell_surf_gausspoints[p].rho < range_rho[0]) { cell_surf_gausspoints[p].rho = range_rho[0]; }
-        if (cell_surf_gausspoints[p].rho > range_rho[1]) { cell_surf_gausspoints[p].rho = range_rho[1]; }
       }
     }
   }
@@ -856,7 +847,7 @@ PetscErrorCode _SwarmUpdateGaussPropertiesLocalL2ProjectionQ1_MPntPStokes(
   }
 
   if (surfQ) {
-    ierr = QPntSurfCoefStokes_ProjectQ1_Surface(surfQ,mfi,clone,range_eta,range_rho,(const PetscReal*)LA_properties_A1,(const PetscReal*)LA_properties_A2);CHKERRQ(ierr);
+    ierr = QPntSurfCoefStokes_ProjectQ1_Surface(surfQ,mfi,clone,(const PetscReal*)LA_properties_A1,(const PetscReal*)LA_properties_A2);CHKERRQ(ierr);
   }
   
   ierr = VecRestoreArray(Lproperties_A2,&LA_properties_A2);CHKERRQ(ierr);
@@ -1080,7 +1071,7 @@ PetscErrorCode _SwarmUpdateGaussPropertiesLocalL2ProjectionQ1_MPntPStokes_Interp
   }
 
   if (surfQ) {
-    ierr = QPntSurfCoefStokes_ProjectQ1_Surface(surfQ,mfi,clone,range_eta,range_rho,(const PetscReal*)LA_properties_A1,(const PetscReal*)LA_properties_A2);CHKERRQ(ierr);
+    ierr = QPntSurfCoefStokes_ProjectQ1_Surface(surfQ,mfi,clone,(const PetscReal*)LA_properties_A1,(const PetscReal*)LA_properties_A2);CHKERRQ(ierr);
   }
   
   

@@ -79,7 +79,6 @@ PetscErrorCode MProjection_P0Projection_onto_Q2_MPntPStokes_Level(CoefficientAve
 PetscErrorCode QPntSurfCoefStokes_ProjectP0_Surface(MeshFacetInfo mfi,Quadrature Q,SurfaceQuadrature surfQ);
 PetscErrorCode QPntSurfCoefStokes_ProjectQ1_Surface(SurfaceQuadrature surfQ,MeshFacetInfo mfi,
                                                     DM clone,
-                                                    PetscReal range_eta[],PetscReal range_rho[],
                                                     const PetscScalar *LA_eta,
                                                     const PetscScalar *LA_rho);
 
