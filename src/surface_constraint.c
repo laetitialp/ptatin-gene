@@ -105,7 +105,6 @@ PetscErrorCode SurfaceConstraintSetDM(SurfaceConstraint sc, DM dm)
   if (sc->fi) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"MeshFacetInfo is already set");
   sc->dm = dm;
   
-  if (sc->fi) SETERRQ(PetscObjectComm((PetscObject)sc->dm),PETSC_ERR_USER,"sc->fi already set");
   // build facet info for the domain
   ierr = MeshFacetInfoCreate(&sc->fi);CHKERRQ(ierr);
   ierr = MeshFacetInfoSetUp(sc->fi,dm);CHKERRQ(ierr);
@@ -153,7 +152,41 @@ PetscErrorCode SurfaceConstraintViewer(SurfaceConstraint sc,PetscViewer v)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode SurfaceConstraintSetType(SurfaceConstraint sc, SurfaceConstraintType type, PetscBool residual_only, PetscBool operator_only)
+PetscErrorCode SurfaceConstraintSetOperatorOnly(SurfaceConstraint sc)
+{
+  PetscErrorCode ierr;
+  switch (sc->type) {
+    case SC_NONE:
+      PetscPrintf(PETSC_COMM_SELF,"[Warning] SurfaceConstraintSetOperatorOnly: operator_only = true has no effect with type SC_NONE as it does not support operators");
+      break;
+    case SC_TRACTION:
+      PetscPrintf(PETSC_COMM_SELF,"[Warning] SurfaceConstraintSetOperatorOnly: operator_only = true has no effect with type SC_TRACTION as it does not support operators");
+      break;
+    default:
+      break;
+  }
+  ierr = _ops_operator_only(sc);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode SurfaceConstraintSetResidualOnly(SurfaceConstraint sc)
+{
+  PetscErrorCode ierr;
+  switch (sc->type) {
+    case SC_NONE:
+      PetscPrintf(PETSC_COMM_SELF,"[Warning] SurfaceConstraintSetResidualOnly: residual_only = true has no effect with type SC_NONE as it does not support operators");
+      break;
+    case SC_TRACTION:
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"residual_only = true not valid with SC_TRACTION as it does not support operators");
+      break;
+    default:
+      break;
+  }
+  ierr = _ops_residual_only(sc);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode SurfaceConstraintSetType(SurfaceConstraint sc, SurfaceConstraintType type)
 {
   PetscErrorCode ierr;
 
@@ -176,19 +209,10 @@ PetscErrorCode SurfaceConstraintSetType(SurfaceConstraint sc, SurfaceConstraintT
   switch (type) {
     case SC_NONE:
       ierr = _SetType_NONE(sc);CHKERRQ(ierr);
-      if (residual_only) {
-        PetscPrintf(PETSC_COMM_SELF,"[Warning] SurfaceConstraintSetType: residual_only = true has no effect with type SC_NONE");
-      }
-      if (operator_only) {
-        PetscPrintf(PETSC_COMM_SELF,"[Warning] SurfaceConstraintSetType: operator_only = true has no effect with type SC_NONE");
-      }
       break;
 
     case SC_TRACTION:
       ierr = _SetType_TRACTION(sc);CHKERRQ(ierr);
-      if (operator_only) {
-        PetscPrintf(PETSC_COMM_SELF,"[Warning] SurfaceConstraintSetType: operator_only = true has no effect with type SC_TRACTION");
-      }
       break;
 
     default:
@@ -199,13 +223,6 @@ PetscErrorCode SurfaceConstraintSetType(SurfaceConstraint sc, SurfaceConstraintT
   DataBucketSetInitialSizes(sc->properties_db,1,1);
   DataBucketSetSizes(sc->properties_db,0,-1);
 
-  if (residual_only) {
-    ierr = _ops_residual_only(sc);CHKERRQ(ierr);
-  }
-  if (operator_only) {
-    ierr = _ops_operator_only(sc);CHKERRQ(ierr);
-  }
-  
   PetscFunctionReturn(0);
 }
 
@@ -236,8 +253,45 @@ PetscErrorCode SurfaceConstraintGetFacets(SurfaceConstraint sc, MeshEntity *f)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode SurfaceConstraintDuplicate(SurfaceConstraint sc, SurfaceConstraint *dup)
+PetscErrorCode SurfaceConstraintDuplicate(SurfaceConstraint sc, MeshFacetInfo mfi, SurfaceQuadrature surfQ, SurfaceConstraint *_dup)
 {
+  PetscErrorCode ierr;
+  SurfaceConstraint dup;
+  *_dup = NULL;
+  
+  ierr = SurfaceConstraintCreateWithFacetInfo(mfi,&dup);CHKERRQ(ierr);
+  ierr = SurfaceConstraintSetQuadrature(dup,surfQ);CHKERRQ(ierr);
+  if (sc->name) {
+    ierr = SurfaceConstraintSetName(dup,sc->name);CHKERRQ(ierr);
+  }
+  ierr = SurfaceConstraintSetType(dup,sc->type);CHKERRQ(ierr);
+  dup->linear = sc->linear;
+  *_dup = dup;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode SurfaceConstraintDuplicateOperatorA11(SurfaceConstraint sc, MeshFacetInfo mfi, SurfaceQuadrature surfQ, SurfaceConstraint *_dup)
+{
+  PetscErrorCode ierr;
+  SurfaceConstraint dup;
+  *_dup = NULL;
+
+  ierr = SurfaceConstraintDuplicate(sc,mfi,surfQ,&dup);CHKERRQ(ierr);
+  if (sc->ops.action_Auu || sc->ops.asmb_Auu) {
+    ierr = _ops_operator_only(dup);CHKERRQ(ierr);
+    dup->ops.action_A = NULL;
+    dup->ops.asmb_A   = NULL;
+    dup->ops.diag_A   = NULL;
+    
+    dup->ops.action_Aup = NULL;
+    dup->ops.asmb_Aup   = NULL;
+    
+    dup->ops.action_Apu = NULL;
+    dup->ops.asmb_Apu   = NULL;
+    *_dup = dup;
+  } else {
+    ierr = SurfaceConstraintDestroy(&dup);CHKERRQ(ierr);
+  }
   PetscFunctionReturn(0);
 }
 

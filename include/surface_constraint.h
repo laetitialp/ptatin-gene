@@ -70,11 +70,15 @@ PetscErrorCode SurfaceConstraintCreateWithFacetInfo(MeshFacetInfo mfi,SurfaceCon
 PetscErrorCode SurfaceConstraintViewer(SurfaceConstraint sc,PetscViewer v);
 PetscErrorCode SurfaceConstraintReset(SurfaceConstraint sc);
 PetscErrorCode SurfaceConstraintSetName(SurfaceConstraint sc, const char name[]);
-PetscErrorCode SurfaceConstraintSetType(SurfaceConstraint sc, SurfaceConstraintType type, PetscBool residual_only, PetscBool operator_only);
+PetscErrorCode SurfaceConstraintSetType(SurfaceConstraint sc, SurfaceConstraintType type);
 PetscErrorCode SurfaceConstraintSetQuadrature(SurfaceConstraint sc, SurfaceQuadrature q);
 PetscErrorCode SurfaceConstraintGetFacets(SurfaceConstraint sc, MeshEntity *f);
 
+PetscErrorCode SurfaceConstraintDuplicate(SurfaceConstraint sc, MeshFacetInfo mfi, SurfaceQuadrature surfQ, SurfaceConstraint *_dup);
+PetscErrorCode SurfaceConstraintDuplicateOperatorA11(SurfaceConstraint sc, MeshFacetInfo mfi, SurfaceQuadrature surfQ, SurfaceConstraint *_dup);
 
+PetscErrorCode SurfaceConstraintSetResidualOnly(SurfaceConstraint sc);
+PetscErrorCode SurfaceConstraintSetOperatorOnly(SurfaceConstraint sc);
 
 typedef PetscErrorCode (*SurfConstraintSetter)(void*);
 typedef PetscErrorCode (*SurfConstraintSetTraction)(Facet,const PetscReal*,PetscReal*,void*);
