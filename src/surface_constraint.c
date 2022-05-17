@@ -177,17 +177,17 @@ PetscErrorCode SurfaceConstraintSetType(SurfaceConstraint sc, SurfaceConstraintT
     case SC_NONE:
       ierr = _SetType_NONE(sc);CHKERRQ(ierr);
       if (residual_only) {
-        PetscPrintf(PETSC_COMM_WORLD,"[Warning] SurfaceConstraintSetType: residual_only = true has no effect with type SC_NONE");
+        PetscPrintf(PETSC_COMM_SELF,"[Warning] SurfaceConstraintSetType: residual_only = true has no effect with type SC_NONE");
       }
       if (operator_only) {
-        PetscPrintf(PETSC_COMM_WORLD,"[Warning] SurfaceConstraintSetType: operator_only = true has no effect with type SC_NONE");
+        PetscPrintf(PETSC_COMM_SELF,"[Warning] SurfaceConstraintSetType: operator_only = true has no effect with type SC_NONE");
       }
       break;
 
     case SC_TRACTION:
       ierr = _SetType_TRACTION(sc);CHKERRQ(ierr);
       if (operator_only) {
-        PetscPrintf(PETSC_COMM_WORLD,"[Warning] SurfaceConstraintSetType: operator_only = true has no effect with type SC_TRACTION");
+        PetscPrintf(PETSC_COMM_SELF,"[Warning] SurfaceConstraintSetType: operator_only = true has no effect with type SC_TRACTION");
       }
       break;
 
@@ -500,7 +500,7 @@ static PetscErrorCode _FormFunctionLocal_Fu_TRACTION(SurfaceConstraint sc,DM dau
     ierr = DMDASetValuesLocalStencil_AddValues_Stokes_Velocity(Ru,vel_el_lidx,Fe);CHKERRQ(ierr);
   }
   PetscTime(&t1);
-  PetscPrintf(PETSC_COMM_WORLD,"Assembled int_S N traction dS, = %1.4e (sec)\n",t1-t0);
+  PetscPrintf(PetscObjectComm((PetscObject)dau),"Assembled int_S N traction dS, = %1.4e (sec)\n",t1-t0);
   
   DataBucketRestoreEntriesdByName(sc->properties_db,"traction",(void**)&domain_traction_qp);
   ierr = VecRestoreArrayRead(gcoords,&LA_gcoords);CHKERRQ(ierr);

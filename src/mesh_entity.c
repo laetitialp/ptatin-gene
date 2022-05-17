@@ -658,7 +658,7 @@ PetscErrorCode MeshFacetMarkByBoundary(MeshEntity e, MeshFacetInfo fi, PetscBool
   ctx = (MarkDomainFaceContext*)data;
 
   if (mark) {
-    PetscPrintf(PETSC_COMM_WORLD,"[Warning] MeshFacetMarkBoundary: over-riding method ctx->mark() with provided method mark()");
+    PetscPrintf(PETSC_COMM_SELF,"[Warning] MeshFacetMarkBoundary: over-riding method ctx->mark() with provided method mark()");
     ctx->mark = mark;
   }
 
