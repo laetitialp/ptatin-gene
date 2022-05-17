@@ -12,7 +12,7 @@ typedef struct _p_MeshEntity *MeshEntity;
 
 struct _p_MeshEntity {
   PetscInt       range_index[2];
-  PetscInt       n_entities;
+  PetscInt       n_entities,n_entities_global;
   PetscInt       *local_index;
   char           *name;
   MeshEntityType type;
@@ -23,6 +23,7 @@ struct _p_MeshEntity {
 
 
 PetscErrorCode MeshEntityView(MeshEntity e);
+PetscErrorCode MeshEntityViewer(MeshEntity e,PetscViewer v);
 PetscErrorCode MeshEntityCreate(MeshEntity *_e);
 PetscErrorCode MeshEntityDestroy(MeshEntity *_e);
 PetscErrorCode MeshEntityIncrementRef(MeshEntity e);
@@ -75,12 +76,23 @@ PetscErrorCode FacetDestroy(Facet *_f);
 PetscErrorCode MeshFacetCreate(const char name[], DM dm, MeshEntity *e);
 PetscErrorCode MeshFacetDestroy(MeshEntity *e);
 
+typedef struct {
+  PetscInt n_domain_faces;
+  HexElementFace domain_face[30];
+  PetscBool (*mark)(Facet,void*);
+  void *user_data;
+} MarkDomainFaceContext;
+
 PetscErrorCode MeshFacetMark(MeshEntity e, MeshFacetInfo fi, PetscBool (*mark)(Facet,void*), void *data);
 PetscErrorCode MeshFacetMarkDomainFaces(MeshEntity e, MeshFacetInfo fi,PetscInt nsides, HexElementFace sides[]);
 PetscErrorCode MeshFacetMarkDomainFaceSubset(
                                              MeshEntity e, MeshFacetInfo fi,
                                              PetscInt nsides, HexElementFace sides[],
                                              PetscBool (*mark)(Facet,void*), void *data);
+
+PetscErrorCode MarkDomainFaceContextInit(MarkDomainFaceContext *ctx);
+PetscErrorCode MeshFacetMarkByBoundary(MeshEntity e, MeshFacetInfo fi, PetscBool (*mark)(Facet,void*), void *data);
+
 
 PetscErrorCode MeshEntityViewPV(PetscInt n,MeshEntity m[]);
 

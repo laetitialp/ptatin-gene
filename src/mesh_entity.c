@@ -6,16 +6,33 @@
 #include <dmda_element_q2p1.h>
 #include <mesh_entity.h>
 
+//typedef enum { MESH_ENTITY_CELL=0, MESH_ENTITY_FACET, MESH_ENTITY_VERTEX } MeshEntityType;
+const char *MeshEntityTypeNames[] = { "cell", "facet", "vertex", 0 };
 
 PetscErrorCode MeshEntityView(MeshEntity e)
 {
-  PetscErrorCode ierr;
-  PetscPrintf(PETSC_COMM_SELF,"MeshEntity: %s\n",e->name);
-  PetscPrintf(PETSC_COMM_SELF,"  type: %D\n",(PetscInt)e->type);
-  PetscPrintf(PETSC_COMM_SELF,"  n_entities: %D\n",e->n_entities);
-  PetscPrintf(PETSC_COMM_SELF,"  range: [ %D , %D )\n",e->range_index[0],e->range_index[1]);
-  PetscPrintf(PETSC_COMM_SELF,"  empty?: %D\n",(PetscInt)e->empty);
-  PetscPrintf(PETSC_COMM_SELF,"  set_values_called?: %D\n",(PetscInt)e->set_values_called);
+  MPI_Comm comm = PetscObjectComm((PetscObject)e->dm);
+  if (e->name) { PetscPrintf(comm,"MeshEntity: %s\n",e->name); }
+  else { PetscPrintf(comm,"MeshEntity:\n"); }
+  PetscPrintf(comm,"  type: %s\n",MeshEntityTypeNames[(PetscInt)e->type]);
+  PetscPrintf(comm,"  n_entities: %D (global)\n",e->n_entities_global);
+  PetscPrintf(comm,"  range: [ %D , %D )\n",e->range_index[0],e->range_index[1]);
+  PetscPrintf(comm,"  empty?: %D\n",(PetscInt)e->empty);
+  PetscPrintf(comm,"  set_values_called?: %D\n",(PetscInt)e->set_values_called);
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode MeshEntityViewer(MeshEntity e,PetscViewer v)
+{
+  if (e->name) { PetscViewerASCIIPrintf(v,"MeshEntity: %s\n",e->name); }
+  else { PetscViewerASCIIPrintf(v,"MeshEntity:\n"); }
+  PetscViewerASCIIPushTab(v);
+  PetscViewerASCIIPrintf(v,"type: %s\n",MeshEntityTypeNames[(PetscInt)e->type]);
+  PetscViewerASCIIPrintf(v,"n_entities: %D (global)\n",e->n_entities_global);
+  PetscViewerASCIIPrintf(v,"range: [ %D , %D )\n",e->range_index[0],e->range_index[1]);
+  PetscViewerASCIIPrintf(v,"empty?: %D\n",(PetscInt)e->empty);
+  PetscViewerASCIIPrintf(v,"set_values_called?: %D\n",(PetscInt)e->set_values_called);
+  PetscViewerASCIIPopTab(v);
   PetscFunctionReturn(0);
 }
 
@@ -41,6 +58,7 @@ PetscErrorCode MeshEntityDestroy(MeshEntity *_e)
   
   if (!_e) PetscFunctionReturn(0);
   e = *_e;
+  if (!e) PetscFunctionReturn(0);
   e->ref_cnt--;
   if (e->ref_cnt > 0) PetscFunctionReturn(0);
   
@@ -92,6 +110,7 @@ PetscErrorCode MeshEntitySetDM(MeshEntity e,DM dm)
   PetscFunctionReturn(0);
 }
 
+/* Collective on e->dm */
 PetscErrorCode MeshEntitySetValues(MeshEntity e,PetscInt len, const PetscInt vals[])
 {
   InsertMode mode = INSERT_VALUES;
@@ -121,6 +140,8 @@ PetscErrorCode MeshEntitySetValues(MeshEntity e,PetscInt len, const PetscInt val
   if (e->n_entities == 0) {
     e->empty = PETSC_TRUE;
   }
+  e->n_entities_global = e->n_entities;
+  ierr = MPI_Allreduce(MPI_IN_PLACE,&e->n_entities_global,1,MPIU_INT,MPI_SUM,PetscObjectComm((PetscObject)e->dm));CHKERRQ(ierr);
   e->set_values_called = PETSC_TRUE;
   PetscFunctionReturn(0);
 }
@@ -179,6 +200,7 @@ PetscErrorCode MeshFacetInfoDestroy(MeshFacetInfo *_e)
   
   if (!_e) PetscFunctionReturn(0);
   e = *_e;
+  if (!e) PetscFunctionReturn(0);
   e->ref_cnt--;
   if (e->ref_cnt > 0) PetscFunctionReturn(0);
 
@@ -339,6 +361,7 @@ PetscErrorCode MeshFacetInfoCreate2(DM dm,MeshFacetInfo *_e)
   PetscFunctionReturn(0);
 }
 
+/* Collective on e->dm */
 PetscErrorCode MeshFacetInfoGetCoords(MeshFacetInfo e)
 {
   PetscErrorCode ierr;
@@ -350,6 +373,7 @@ PetscErrorCode MeshFacetInfoGetCoords(MeshFacetInfo e)
   PetscFunctionReturn(0);
 }
 
+/* Collective on e->dm */
 PetscErrorCode MeshFacetInfoRestoreCoords(MeshFacetInfo e)
 {
   PetscErrorCode ierr;
@@ -458,6 +482,7 @@ PetscErrorCode FacetPack(Facet f, PetscInt index, MeshFacetInfo fi)
   PetscFunctionReturn(0);
 }
 
+/* Collective on e->dm */
 PetscErrorCode MeshFacetMark(MeshEntity e, MeshFacetInfo fi, PetscBool (*mark)(Facet,void*), void *data)
 {
   PetscErrorCode ierr;
@@ -496,6 +521,7 @@ PetscErrorCode MeshFacetMark(MeshEntity e, MeshFacetInfo fi, PetscBool (*mark)(F
   PetscFunctionReturn(0);
 }
 
+/* Collective on e->dm */
 PetscErrorCode MeshFacetMarkDomainFaces(
                       MeshEntity e, MeshFacetInfo fi,
                       PetscInt nsides, HexElementFace sides[])
@@ -536,6 +562,7 @@ PetscErrorCode MeshFacetMarkDomainFaces(
   PetscFunctionReturn(0);
 }
 
+/* Collective on e->dm */
 PetscErrorCode MeshFacetMarkDomainFaceSubset(
                                         MeshEntity e, MeshFacetInfo fi,
                                         PetscInt nsides, HexElementFace sides[],
@@ -594,6 +621,54 @@ PetscErrorCode MeshFacetMarkDomainFaceSubset(
   PetscFunctionReturn(0);
 }
 
+/*
+ 
+  MeshFacetMarkByBoundary() provides the same API as the general setter MeshFacetMark().
+ 
+  Usage:
+ 
+  MarkDomainFaceContext ctx;
+  MarkDomainFaceContextInit(&ctx);
+  n_domain_faces = 3;
+  ctx.domain_face[0] = HEX_FACE_Pxi;
+  ctx.domain_face[1] = HEX_FACE_Nxi;
+  ctx.domain_face[2] = HEX_FACE_Peta;
+ 
+  ctx.mark = user_code_to_select_facet; // This will result in MeshFacetMarkDomainFaceSubset() being called.
+  ctx.user_data = (void*)pointer_to_any_user_data; // only used if ctx.mark != NULL
+  ctx.mark = NULL; // This will result in MeshFacetMarkDomainFaces() being called.
+ 
+*/
+PetscErrorCode MarkDomainFaceContextInit(MarkDomainFaceContext *ctx)
+{
+  PetscErrorCode ierr;
+  ctx->n_domain_faces = 0;
+  ierr = PetscMemzero(ctx->domain_face,30*sizeof(HexElementFace));
+  ctx->mark = NULL;
+  ctx->user_data = NULL;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode MeshFacetMarkByBoundary(MeshEntity e, MeshFacetInfo fi, PetscBool (*mark)(Facet,void*), void *data)
+{
+  PetscErrorCode ierr;
+  MarkDomainFaceContext *ctx = NULL;
+  
+  if (!data) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Require non-NULL data. Expected pointer to MarkDomainFaceContext");
+  ctx = (MarkDomainFaceContext*)data;
+
+  if (mark) {
+    PetscPrintf(PETSC_COMM_WORLD,"[Warning] MeshFacetMarkBoundary: over-riding method ctx->mark() with provided method mark()");
+    ctx->mark = mark;
+  }
+
+  if (ctx->mark) {
+    ierr = MeshFacetMarkDomainFaceSubset(e,fi,ctx->n_domain_faces,ctx->domain_face,ctx->mark,ctx->user_data);CHKERRQ(ierr);
+  } else {
+    ierr = MeshFacetMarkDomainFaces(e,fi,ctx->n_domain_faces,ctx->domain_face);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
 
 /* Basic MeshEntity viewer */
 PetscErrorCode _MeshEntityView_Facet(MeshEntity me, PetscInt tag, PetscInt fileindex)
