@@ -182,6 +182,7 @@ PetscErrorCode pTatin_EvaluateRheologyNonlinearitiesMarkers(pTatinCtx user,DM da
       SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"P1 marker->quadrature projection not supported");
       break;
         case 4:
+            PetscPrintf(PETSC_COMM_WORLD,"** WARNING [pTatin_EvaluateRheologyNonlinearitiesMarkers] ** Fine level will not have interpolated surface data using coefficient_projection_type = 3\n");
             ierr = SwarmUpdateGaussPropertiesOne2OneMap_MPntPStokes(npoints,mp_std,mp_stokes,stokes->volQ);CHKERRQ(ierr);
             break;
 
