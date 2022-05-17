@@ -89,6 +89,11 @@ PetscErrorCode SurfaceConstraintSetValues_TRACTION(SurfaceConstraint sc,
                                                    void *data);
 
 
+PetscErrorCode SurfaceConstraintSetValues(SurfaceConstraint sc,
+                                          SurfConstraintSetter set,
+                                          void *data);
 
+PetscErrorCode _SurfaceConstraintViewParaviewVTU(SurfaceConstraint sc,const char name[]);
+PetscErrorCode SurfaceConstraintViewParaview(SurfaceConstraint sc, const char path[], const char prefix[]);
 
 #endif
