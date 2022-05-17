@@ -558,8 +558,7 @@ PetscErrorCode SurfaceQuadratureGeometryUpdate_Stokes(SurfaceQuadrature Q,MeshFa
                    Q->face_id,fe,gp, Q->gp2[gp].xi,Q->gp2[gp].eta, Q->gp3[gp].xi,Q->gp3[gp].eta,Q->gp3[gp].zeta,
                    xp,yp,zp);
       */
-      printf("x = %+1.4e %+1.4e %+1.4e | n = %+1.4e %+1.4e %+1.4e\n",xp,yp,zp,normal[0],normal[1],normal[2]);
-
+      //printf("x = %+1.4e %+1.4e %+1.4e | n = %+1.4e %+1.4e %+1.4e\n",xp,yp,zp,normal[0],normal[1],normal[2]);
     }
   }
   ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
