@@ -232,6 +232,7 @@ static PetscErrorCode _MeshFacetInfoSetUp(MeshFacetInfo e)
   cnt = 0;
 
   //case HEX_FACE_Pxi:
+  if (si+ni == M) {
   eli = lmx - 1;
   for (elk=0; elk<lmz; elk++) {
     for (elj=0; elj<lmy; elj++) {
@@ -240,10 +241,11 @@ static PetscErrorCode _MeshFacetInfoSetUp(MeshFacetInfo e)
       e->facet_label[cnt] = (PetscInt)HEX_FACE_Pxi;
       cnt++;
     }
-  }
+  }}
 
   
   //case HEX_FACE_Nxi:
+  if (si == 0) {
   eli = 0;
   for (elk=0; elk<lmz; elk++) {
     for (elj=0; elj<lmy; elj++) {
@@ -252,10 +254,11 @@ static PetscErrorCode _MeshFacetInfoSetUp(MeshFacetInfo e)
       e->facet_label[cnt] = (PetscInt)HEX_FACE_Nxi;
       cnt++;
     }
-  }
+  }}
 
   
   //case HEX_FACE_Peta:
+  if (sj+nj == N) {
   elj = lmy - 1;
   for (elk=0; elk<lmz; elk++) {
     for (eli=0; eli<lmx; eli++) {
@@ -264,10 +267,11 @@ static PetscErrorCode _MeshFacetInfoSetUp(MeshFacetInfo e)
       e->facet_label[cnt] = (PetscInt)HEX_FACE_Peta;
       cnt++;
     }
-  }
+  }}
   
   
   //case HEX_FACE_Neta:
+  if (sj == 0) {
   elj = 0;
   for (elk=0; elk<lmz; elk++) {
     for (eli=0; eli<lmx; eli++) {
@@ -276,10 +280,11 @@ static PetscErrorCode _MeshFacetInfoSetUp(MeshFacetInfo e)
       e->facet_label[cnt] = (PetscInt)HEX_FACE_Neta;
       cnt++;
     }
-  }
+  }}
 
   
   //case HEX_FACE_Pzeta:
+  if (sk+nk == P) {
   elk = lmz - 1;
   for (elj=0; elj<lmy; elj++) {
     for (eli=0; eli<lmx; eli++) {
@@ -288,10 +293,11 @@ static PetscErrorCode _MeshFacetInfoSetUp(MeshFacetInfo e)
       e->facet_label[cnt] = (PetscInt)HEX_FACE_Pzeta;
       cnt++;
     }
-  }
+  }}
   
-    
+  
   //case HEX_FACE_Nzeta:
+  if (sk == 0) {
   elk = 0;
   for (elj=0; elj<lmy; elj++) {
     for (eli=0; eli<lmx; eli++) {
@@ -300,7 +306,7 @@ static PetscErrorCode _MeshFacetInfoSetUp(MeshFacetInfo e)
       e->facet_label[cnt] = (PetscInt)HEX_FACE_Nzeta;
       cnt++;
     }
-  }
+  }}
   
   PetscFunctionReturn(0);
 }
