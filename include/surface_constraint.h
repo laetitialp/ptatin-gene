@@ -9,7 +9,7 @@
 #include <mesh_entity.h>
 
 typedef enum {
-  SC_NONE = 1,
+  SC_NONE = 0,
   SC_TRACTION,
   SC_FSSA,
   SC_NITSCHE_DIRICHLET,
@@ -56,7 +56,10 @@ struct _p_SurfaceConstraint {
   void                         *data; /* for implementations */
   SurfaceQuadrature     quadrature;
   PetscErrorCode        (*user_set_values)(void*);
-  void                  *user_data;
+  void                  *user_data_set_values;
+  PetscErrorCode        (*user_mark_facets)(void*);
+  void                  *user_data_mark_facets;
+  char                  *name;
 };
 
 
@@ -64,6 +67,9 @@ PetscErrorCode SurfaceConstraintCreate(SurfaceConstraint *_sc);
 PetscErrorCode SurfaceConstraintDestroy(SurfaceConstraint *_sc);
 PetscErrorCode SurfaceConstraintSetDM(SurfaceConstraint sc, DM dm);
 PetscErrorCode SurfaceConstraintCreateWithFacetInfo(MeshFacetInfo mfi,SurfaceConstraint *_sc);
+PetscErrorCode SurfaceConstraintViewer(SurfaceConstraint sc,PetscViewer v);
+PetscErrorCode SurfaceConstraintReset(SurfaceConstraint sc);
+PetscErrorCode SurfaceConstraintSetName(SurfaceConstraint sc, const char name[]);
 PetscErrorCode SurfaceConstraintSetType(SurfaceConstraint sc, SurfaceConstraintType type, PetscBool residual_only, PetscBool operator_only);
 PetscErrorCode SurfaceConstraintSetQuadrature(SurfaceConstraint sc, SurfaceQuadrature q);
 PetscErrorCode SurfaceConstraintGetFacets(SurfaceConstraint sc, MeshEntity *f);

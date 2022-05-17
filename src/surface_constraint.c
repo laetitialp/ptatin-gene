@@ -16,6 +16,17 @@
 
 #include <surface_constraint.h>
 
+/*
+typedef enum {
+  SC_NONE = 1,
+  SC_TRACTION,
+  SC_FSSA,
+  SC_NITSCHE_DIRICHLET,
+  SC_NITSCHE_NAVIER_SLIP,
+  SC_NITSCHE_A_NAVIER_SLIP
+} SurfaceConstraintType;
+*/
+const char *SurfaceConstraintTypeNames[] = { "none", "traction", "fssa", "nitsche_dirichlet", "nitsche_navier_slip", "nitsche_custom_navier_slip", 0 };
 
 static PetscErrorCode _ops_residual_only(SurfaceConstraint sc);
 static PetscErrorCode _ops_operator_only(SurfaceConstraint sc);
@@ -47,18 +58,20 @@ PetscErrorCode SurfaceConstraintDestroy(SurfaceConstraint *_sc)
   
   if (!_sc) PetscFunctionReturn(0);
   sc = *_sc;
-  
+  if (!sc) PetscFunctionReturn(0);
+
   if (sc->ops.destroy) { ierr = sc->ops.destroy(sc);CHKERRQ(ierr); }
+  sc->data = NULL;
   ierr = MeshFacetInfoDestroy(&sc->fi);CHKERRQ(ierr);
   ierr = MeshFacetDestroy(&sc->facets);CHKERRQ(ierr);
-  DataBucketDestroy(&sc->properties_db);CHKERRQ(ierr);
+  DataBucketDestroy(&sc->properties_db);
+  ierr = PetscFree(sc->name);CHKERRQ(ierr);
   
   ierr = PetscFree(sc);CHKERRQ(ierr);
   *_sc = NULL;
   
   PetscFunctionReturn(0);
 }
-
 
 PetscErrorCode SurfaceConstraintCreateWithFacetInfo(MeshFacetInfo mfi,SurfaceConstraint *_sc)
 {
@@ -71,7 +84,10 @@ PetscErrorCode SurfaceConstraintCreateWithFacetInfo(MeshFacetInfo mfi,SurfaceCon
   sc->dm = mfi->dm;
   
   // build facet info for the domain
-  ierr = MeshFacetInfoCreate2(sc->dm,&sc->fi);CHKERRQ(ierr);
+  //ierr = MeshFacetInfoCreate2(sc->dm,&sc->fi);CHKERRQ(ierr);
+  ierr = MeshFacetInfoIncrementRef(mfi);CHKERRQ(ierr);
+  if (sc->fi) { ierr = MeshFacetInfoDestroy(&sc->fi);CHKERRQ(ierr); }
+  sc->fi = mfi;
   
   // create empty facet list named "default"
   ierr = MeshFacetCreate("default",sc->dm,&sc->facets);CHKERRQ(ierr);
@@ -89,6 +105,7 @@ PetscErrorCode SurfaceConstraintSetDM(SurfaceConstraint sc, DM dm)
   if (sc->fi) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"MeshFacetInfo is already set");
   sc->dm = dm;
   
+  if (sc->fi) SETERRQ(PetscObjectComm((PetscObject)sc->dm),PETSC_ERR_USER,"sc->fi already set");
   // build facet info for the domain
   ierr = MeshFacetInfoCreate(&sc->fi);CHKERRQ(ierr);
   ierr = MeshFacetInfoSetUp(sc->fi,dm);CHKERRQ(ierr);
@@ -101,22 +118,77 @@ PetscErrorCode SurfaceConstraintSetDM(SurfaceConstraint sc, DM dm)
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode SurfaceConstraintSetName(SurfaceConstraint sc, const char name[])
+{
+  PetscErrorCode ierr;
+  ierr = PetscFree(sc->name);CHKERRQ(ierr);
+  sc->name = NULL;
+  if (name) {
+    ierr = PetscStrallocpy(name,&sc->name);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode SurfaceConstraintReset(SurfaceConstraint sc)
+{
+  PetscErrorCode ierr;
+  ierr = MeshEntityReset(sc->facets);CHKERRQ(ierr);
+  DataBucketSetSizes(sc->properties_db,0,-1);
+  sc->user_set_values = NULL;
+  sc->user_data_set_values = NULL;
+  sc->user_mark_facets = NULL;
+  sc->user_data_mark_facets = NULL;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode SurfaceConstraintViewer(SurfaceConstraint sc,PetscViewer v)
+{
+  PetscErrorCode ierr;
+  if (sc->name) { PetscViewerASCIIPrintf(v,"SurfaceConstraint: %s\n",sc->name); }
+  else { PetscViewerASCIIPrintf(v,"SurfaceConstraint:\n"); }
+  PetscViewerASCIIPushTab(v);
+  PetscViewerASCIIPrintf(v,"type: %s\n",SurfaceConstraintTypeNames[(PetscInt)sc->type]);
+  ierr = MeshEntityViewer(sc->facets,v);CHKERRQ(ierr);
+  PetscViewerASCIIPopTab(v);
+  PetscFunctionReturn(0);
+}
 
 PetscErrorCode SurfaceConstraintSetType(SurfaceConstraint sc, SurfaceConstraintType type, PetscBool residual_only, PetscBool operator_only)
 {
   PetscErrorCode ierr;
 
   if (sc->type != SC_NONE) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"SurfaceConstraint type already set");
-  
+  /*
+  if (type == sc->type) {
+    ierr = SurfaceConstraintReset(sc);CHKERRQ(ierr);
+    PetscFunctionReturn(0);
+  }
+  if (type != sc->type && sc->type != SC_NONE) {
+    ierr = SurfaceConstraintReset(sc);CHKERRQ(ierr);
+    if (sc->ops.destroy) { ierr = sc->ops.destroy(sc);CHKERRQ(ierr); }
+    sc->data = NULL;
+    DataBucketDestroy(&sc->properties_db);
+    DataBucketCreate(&sc->properties_db);
+  }
+  */
   sc->type = type;
 
   switch (type) {
     case SC_NONE:
       ierr = _SetType_NONE(sc);CHKERRQ(ierr);
+      if (residual_only) {
+        PetscPrintf(PETSC_COMM_WORLD,"[Warning] SurfaceConstraintSetType: residual_only = true has no effect with type SC_NONE");
+      }
+      if (operator_only) {
+        PetscPrintf(PETSC_COMM_WORLD,"[Warning] SurfaceConstraintSetType: operator_only = true has no effect with type SC_NONE");
+      }
       break;
 
     case SC_TRACTION:
       ierr = _SetType_TRACTION(sc);CHKERRQ(ierr);
+      if (operator_only) {
+        PetscPrintf(PETSC_COMM_WORLD,"[Warning] SurfaceConstraintSetType: operator_only = true has no effect with type SC_TRACTION");
+      }
       break;
 
     default:
@@ -161,6 +233,11 @@ PetscErrorCode SurfaceConstraintGetFacets(SurfaceConstraint sc, MeshEntity *f)
   if (f) {
     *f = sc->facets;
   }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode SurfaceConstraintDuplicate(SurfaceConstraint sc, SurfaceConstraint *dup)
+{
   PetscFunctionReturn(0);
 }
 
@@ -217,6 +294,7 @@ static PetscErrorCode _SetType_NONE(SurfaceConstraint sc)
 }
 
 /* TRACTION */
+#if 0
 static PetscErrorCode _SetUp_TRACTION(SurfaceConstraint sc)
 {
   PetscErrorCode ierr;
@@ -236,6 +314,7 @@ static PetscErrorCode _SetUp_TRACTION(SurfaceConstraint sc)
   
   PetscFunctionReturn(0);
 }
+#endif
 
 PetscErrorCode user_traction_set_constant(Facet F,
                                           const PetscReal qp_coor[],
@@ -265,12 +344,14 @@ PetscErrorCode SurfaceConstraintSetValues_TRACTION(SurfaceConstraint sc,
   double         elcoords[3*Q2_NODES_PER_EL_3D];
 
   
+  if (!sc->dm) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->dm. Must call SurfaceConstraintSetDM() first");
+  if (!sc->quadrature) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->surfQ. Must call SurfaceConstraintSetQuadrature() first");
+  if (!sc->facets->set_values_called) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Facets have not been selected");
+
   if (sc->type != SC_TRACTION) {
-    printf("[ignoring] SurfaceConstraintSetValues_TRACTION() called with different type\n");
+    PetscPrintf(PetscObjectComm((PetscObject)sc->dm),"[ignoring] SurfaceConstraintSetValues_TRACTION() called with different type\n");
     PetscFunctionReturn(0);
   }
-
-  if (!sc->quadrature) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Must call SurfaceConstraintSetQuadrature() first");
 
   /* resize traction qp data */
   ierr = _resize_facet_quadrature_data(sc);CHKERRQ(ierr);
@@ -285,7 +366,7 @@ PetscErrorCode SurfaceConstraintSetValues_TRACTION(SurfaceConstraint sc,
     facet_index = sc->facets->local_index[e]; /* facet local index */
     cell_side  = sc->fi->facet_label[facet_index]; /* side label */
     cell_index = sc->fi->facet_cell_index[facet_index];
-    printf("cell_side %d\n",cell_side);
+    //printf("cell_side %d\n",cell_side);
     
     ierr = FacetPack(cell_facet, facet_index, sc->fi);CHKERRQ(ierr);
 
@@ -430,7 +511,7 @@ static PetscErrorCode _FormFunctionLocal_Fu_TRACTION(SurfaceConstraint sc,DM dau
 static PetscErrorCode _SetType_TRACTION(SurfaceConstraint sc)
 {
   /* set methods */
-  sc->ops.setup = _SetUp_TRACTION;
+  //sc->ops.setup = _SetUp_TRACTION;
   sc->ops.residual_F  = NULL;
   sc->ops.residual_Fu = _FormFunctionLocal_Fu_TRACTION;
   sc->ops.residual_Fp = NULL;
