@@ -613,7 +613,7 @@ PetscErrorCode SurfaceConstraintSetValues(SurfaceConstraint sc,SurfCSetValuesGen
 
     case SC_NITSCHE_DIRICHLET:
       SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"NITSCHE_DIRICHLET not yet available");
-      ierr = SurfaceConstraintSetValues_NITSCHE_DIRICHLET(sc, (SurfCSetValuesTraction)set, data);CHKERRQ(ierr);
+      //ierr = SurfaceConstraintSetValues_NITSCHE_DIRICHLET(sc, (SurfCSetValuesTraction)set, data);CHKERRQ(ierr);
       break;
 
     case SC_NITSCHE_NAVIER_SLIP:
