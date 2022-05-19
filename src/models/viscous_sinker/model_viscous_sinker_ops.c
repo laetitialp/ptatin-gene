@@ -468,7 +468,7 @@ PetscErrorCode ModelApplyBoundaryCondition_ViscousSinker(pTatinCtx user,void *ct
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ModelApplyBoundaryConditionMG_ViscousSinker(PetscInt nl,BCList bclist[],DM dav[],pTatinCtx user,void *ctx)
+PetscErrorCode ModelApplyBoundaryConditionMG_ViscousSinker(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[],pTatinCtx user,void *ctx)
 {
   ModelViscousSinkerCtx *data = (ModelViscousSinkerCtx*)ctx;
   PetscScalar zero = 0.0;

@@ -309,7 +309,7 @@ PetscErrorCode ModelApplyBoundaryCondition_Indentor(pTatinCtx user,void *ctx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ModelApplyBoundaryConditionMG_Indentor(PetscInt nl,BCList bclist[],DM dav[],pTatinCtx user,void *ctx)
+PetscErrorCode ModelApplyBoundaryConditionMG_Indentor(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[],pTatinCtx user,void *ctx)
 {
   PetscScalar zero = 0.0;
   PetscInt n;

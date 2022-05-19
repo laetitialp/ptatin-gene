@@ -34,6 +34,7 @@
 #include "petscvec.h"
 #include "ptatin3d.h"
 #include "dmda_bcs.h"
+#include "surfbclist.h"
 
 typedef enum {
   PTATIN_MODEL_INIT=0,
@@ -79,7 +80,7 @@ PetscErrorCode pTatinModel_UpdateMeshGeometry(pTatinModel model,pTatinCtx ctx,Ve
 PetscErrorCode pTatinModel_ApplyInitialMaterialGeometry(pTatinModel model,pTatinCtx ctx);
 PetscErrorCode pTatinModel_ApplyInitialMeshGeometry(pTatinModel model,pTatinCtx ctx);
 PetscErrorCode pTatinModel_ApplyBoundaryCondition(pTatinModel model,pTatinCtx ctx);
-PetscErrorCode pTatinModel_ApplyBoundaryConditionMG(PetscInt nl,BCList bclist[],DM dav[],pTatinModel model,pTatinCtx ctx);
+PetscErrorCode pTatinModel_ApplyBoundaryConditionMG(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[],pTatinModel model,pTatinCtx ctx);
 PetscErrorCode pTatinModel_ApplyMaterialBoundaryCondition(pTatinModel model,pTatinCtx ctx);
 PetscErrorCode pTatinModel_ApplyInitialSolution(pTatinModel model,pTatinCtx ctx,Vec X);
 PetscErrorCode pTatinModel_ApplyInitialStokesVariableMarkers(pTatinModel model,pTatinCtx ctx,Vec X);

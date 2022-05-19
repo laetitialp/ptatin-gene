@@ -619,7 +619,7 @@ PetscErrorCode ModelApplyBoundaryCondition_SD3D(pTatinCtx ptatinctx,void *modelc
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ModelApplyBoundaryConditionMG_SD3D(PetscInt nl,BCList bclist[],DM dav[],pTatinCtx ptatinctx,void *modelctx)
+PetscErrorCode ModelApplyBoundaryConditionMG_SD3D(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[],pTatinCtx ptatinctx,void *modelctx)
 {
   SD3DCtx        *modeldata = (SD3DCtx*)modelctx;
   PetscInt       n;

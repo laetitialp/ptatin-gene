@@ -337,7 +337,7 @@ PetscErrorCode ModelApplyBoundaryCondition_MultilayerFolding(pTatinCtx c,void *c
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ModelApplyBoundaryConditionMG_MultilayerFolding(PetscInt nl,BCList bclist[],DM dav[],pTatinCtx user,void *ctx)
+PetscErrorCode ModelApplyBoundaryConditionMG_MultilayerFolding(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[],pTatinCtx user,void *ctx)
 {
   ModelMultilayerFoldingCtx *data = (ModelMultilayerFoldingCtx*)ctx;
   PetscErrorCode ierr;

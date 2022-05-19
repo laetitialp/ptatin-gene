@@ -593,7 +593,7 @@ static PetscErrorCode ModelApplyBoundaryCondition_Rift3D_T(pTatinCtx user,void *
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ModelApplyBoundaryConditionMG_Rift3D_T(PetscInt nl,BCList bclist[],DM dav[],pTatinCtx user,void *ctx)
+static PetscErrorCode ModelApplyBoundaryConditionMG_Rift3D_T(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[],pTatinCtx user,void *ctx)
 {
   ModelRift3D_TCtx *data = (ModelRift3D_TCtx*)ctx;
   PetscInt         n;

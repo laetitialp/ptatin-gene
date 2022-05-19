@@ -407,7 +407,7 @@ PetscErrorCode ModelApplyBoundaryCondition_iPLUS(pTatinCtx c,void *ctx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ModelApplyBoundaryConditionMG_iPLUS(PetscInt nl,BCList bclist[],DM dav[],pTatinCtx c,void *ctx)
+PetscErrorCode ModelApplyBoundaryConditionMG_iPLUS(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[],pTatinCtx c,void *ctx)
 {
   iPLUSCtx       *data = (iPLUSCtx*)ctx;
   PetscInt       n;

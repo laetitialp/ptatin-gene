@@ -172,7 +172,7 @@ PetscErrorCode ModelApplyBoundaryCondition_AdvDiffExample(pTatinCtx c,void *ctx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ModelApplyBoundaryConditionMG_AdvDiffExample(PetscInt nl,BCList bclist[],DM dav[],pTatinCtx user,void *ctx)
+PetscErrorCode ModelApplyBoundaryConditionMG_AdvDiffExample(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[],pTatinCtx user,void *ctx)
 {
   PetscInt       n;
 

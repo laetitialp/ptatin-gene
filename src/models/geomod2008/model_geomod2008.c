@@ -367,7 +367,7 @@ PetscErrorCode ModelApplyBoundaryCondition_GeoMod2008(pTatinCtx c,void *ctx)
 }
 
 /* wrapper function for applying boundary condition on all multi-grid levels */
-PetscErrorCode ModelApplyStokesVelocityBoundaryConditionMG_GeoMod2008(PetscInt nl,BCList bclist[],DM dav[],pTatinCtx user,void *ctx)
+PetscErrorCode ModelApplyStokesVelocityBoundaryConditionMG_GeoMod2008(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[],pTatinCtx user,void *ctx)
 {
   PetscInt       n;
   PetscErrorCode ierr;

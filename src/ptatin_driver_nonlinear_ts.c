@@ -1196,7 +1196,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver(int argc,char **a
   u_bclist[nlevels-1] = stokes->u_bclist;
 
   /* Coarse grid setup: Configure boundary conditions */
-  ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,dav_hierarchy,model,user);CHKERRQ(ierr);
+  ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,NULL,dav_hierarchy,model,user);CHKERRQ(ierr);
 
   /* set all pointers into mg context */
   mlctx.is_stokes_field     = is_stokes_field;
@@ -1535,7 +1535,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver(int argc,char **a
     /* Fine level setup */
     ierr = pTatinModel_ApplyBoundaryCondition(model,user);CHKERRQ(ierr);
     /* Coarse grid setup: Configure boundary conditions */
-    ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,dav_hierarchy,model,user);CHKERRQ(ierr);
+    ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,NULL,dav_hierarchy,model,user);CHKERRQ(ierr);
 
     /* solve energy equation */
     //
@@ -1885,7 +1885,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
   u_bclist[nlevels-1] = stokes->u_bclist;
 
   /* Coarse grid setup: Configure boundary conditions */
-  ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,dav_hierarchy,model,user);CHKERRQ(ierr);
+  ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,NULL,dav_hierarchy,model,user);CHKERRQ(ierr);
 
   /* set all pointers into mg context */
   mlctx.is_stokes_field     = is_stokes_field;
@@ -2323,7 +2323,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
     /* Fine level setup */
     ierr = pTatinModel_ApplyBoundaryCondition(model,user);CHKERRQ(ierr);
     /* Coarse grid setup: Configure boundary conditions */
-    ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,dav_hierarchy,model,user);CHKERRQ(ierr);
+    ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,NULL,dav_hierarchy,model,user);CHKERRQ(ierr);
 
     /* solve energy equation */
     //
@@ -2665,7 +2665,7 @@ PetscErrorCode experimental_pTatin3d_nonlinear_viscous_forward_model_driver(int 
   u_bclist[nlevels-1] = stokes->u_bclist;
 
   /* Coarse grid setup: Configure boundary conditions */
-  ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,dav_hierarchy,model,user);CHKERRQ(ierr);
+  ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,NULL,dav_hierarchy,model,user);CHKERRQ(ierr);
 
   /* set all pointers into mg context */
   mlctx.is_stokes_field     = is_stokes_field;
@@ -2974,7 +2974,7 @@ PetscErrorCode experimental_pTatin3d_nonlinear_viscous_forward_model_driver(int 
     /* Fine level setup */
     ierr = pTatinModel_ApplyBoundaryCondition(model,user);CHKERRQ(ierr);
     /* Coarse grid setup: Configure boundary conditions */
-    ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,dav_hierarchy,model,user);CHKERRQ(ierr);
+    ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,NULL,dav_hierarchy,model,user);CHKERRQ(ierr);
 
     /* solve energy equation */
     //

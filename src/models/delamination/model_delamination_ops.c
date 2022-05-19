@@ -277,7 +277,7 @@ PetscErrorCode ModelApplyBoundaryCondition_Delamination(pTatinCtx user,void *ctx
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ModelApplyBoundaryConditionMG_Delamination(PetscInt nl,BCList bclist[],DM dav[],pTatinCtx user,void *ctx)
+PetscErrorCode ModelApplyBoundaryConditionMG_Delamination(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[],pTatinCtx user,void *ctx)
 {
   ModelDelaminationCtx *data = (ModelDelaminationCtx*)ctx;
   PetscInt       n;

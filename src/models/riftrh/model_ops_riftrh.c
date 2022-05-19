@@ -597,7 +597,7 @@ PetscErrorCode ModelApplyBoundaryCondition_Riftrh(pTatinCtx c,void *ctx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ModelApplyBoundaryConditionMG_Riftrh(PetscInt nl,BCList bclist[],DM dav[],pTatinCtx user,void *ctx)
+PetscErrorCode ModelApplyBoundaryConditionMG_Riftrh(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[],pTatinCtx user,void *ctx)
 {
   PetscInt n;
   ModelRiftrhCtx *data = (ModelRiftrhCtx*)ctx;

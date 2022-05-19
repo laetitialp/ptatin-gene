@@ -170,7 +170,7 @@ PetscErrorCode pTatinModelSetFunctionPointer(pTatinModel model,pTatinModelOperat
       model->FP_pTatinModel_ApplyBoundaryCondition = ( PetscErrorCode(*)(pTatinCtx,void*) )func;
       break;
     case PTATIN_MODEL_APPLY_BCMG:
-      model->FP_pTatinModel_ApplyBoundaryConditionMG = ( PetscErrorCode(*)(PetscInt,BCList*,DM*,pTatinCtx,void*) )func;
+      model->FP_pTatinModel_ApplyBoundaryConditionMG = ( PetscErrorCode(*)(PetscInt,BCList*,SurfBCList*,DM*,pTatinCtx,void*) )func;
       break;
     case PTATIN_MODEL_APPLY_MAT_BC:
       model->FP_pTatinModel_ApplyMaterialBoundaryCondition = ( PetscErrorCode(*)(pTatinCtx,void*) )func;
@@ -508,7 +508,7 @@ PetscErrorCode pTatinModel_ApplyBoundaryCondition(pTatinModel model,pTatinCtx ct
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode pTatinModel_ApplyBoundaryConditionMG(PetscInt nl,BCList bclist[],DM dav[],pTatinModel model,pTatinCtx ctx)
+PetscErrorCode pTatinModel_ApplyBoundaryConditionMG(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[],pTatinModel model,pTatinCtx ctx)
 {
   PetscErrorCode ierr;
   PetscFunctionBegin;
@@ -516,7 +516,7 @@ PetscErrorCode pTatinModel_ApplyBoundaryConditionMG(PetscInt nl,BCList bclist[],
   ierr = PetscLogEventBegin(PTATIN_ModelApplyBoundaryConditionMG,0,0,0,0);CHKERRQ(ierr);
   if (!model->disable_apply_bc_mg) {
     if (model->FP_pTatinModel_ApplyBoundaryConditionMG) {
-      ierr = model->FP_pTatinModel_ApplyBoundaryConditionMG(nl,bclist,dav,ctx,model->model_data);CHKERRQ(ierr);
+      ierr = model->FP_pTatinModel_ApplyBoundaryConditionMG(nl,bclist,surf_bclist,dav,ctx,model->model_data);CHKERRQ(ierr);
     } else {
       SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_SUP,"  [pTatinModel]: -ptatin_model \"%s\" wasn't prodivided with the operation \"ApplyBoundaryConditionMG\"",model->model_name );
     }

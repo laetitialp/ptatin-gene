@@ -125,7 +125,7 @@ PetscErrorCode ModelApplyBoundaryCondition_Template(pTatinCtx c,void *ctx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ModelApplyBoundaryConditionMG_Template(PetscInt nl,BCList bclist[],DM dav[],pTatinCtx c,void *ctx)
+PetscErrorCode ModelApplyBoundaryConditionMG_Template(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[],pTatinCtx c,void *ctx)
 {
   ModelTemplateCtx *data;
   PetscInt         n;

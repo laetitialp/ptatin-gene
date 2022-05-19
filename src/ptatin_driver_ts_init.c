@@ -416,7 +416,7 @@ PetscErrorCode HMG_SetUp(AuuMultiLevelCtx *mlctx, pTatinCtx user)
   u_bclist[nlevels-1] = stokes->u_bclist;
 
   /* Coarse grid setup: Configure boundary conditions */
-  ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,dav_hierarchy,model,user);CHKERRQ(ierr);
+  ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,NULL,dav_hierarchy,model,user);CHKERRQ(ierr);
 
   /* set all pointers into mg context */
   mlctx->is_stokes_field     = is_stokes_field;
@@ -1460,7 +1460,7 @@ PetscErrorCode DummyRun(pTatinCtx pctx,Vec v1,Vec v2)
     /* Fine level setup */
     ierr = pTatinModel_ApplyBoundaryCondition(model,pctx);CHKERRQ(ierr);
     /* Coarse grid setup: Configure boundary conditions */
-    ierr = pTatinModel_ApplyBoundaryConditionMG(mgctx.nlevels,mgctx.u_bclist,mgctx.dav_hierarchy,model,pctx);CHKERRQ(ierr);
+    ierr = pTatinModel_ApplyBoundaryConditionMG(mgctx.nlevels,mgctx.u_bclist,NULL,mgctx.dav_hierarchy,model,pctx);CHKERRQ(ierr);
 
     /* solve energy + mechanics */
     /* (i) solve energy equation */

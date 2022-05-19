@@ -897,6 +897,7 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
   Mat            interpolation_v[10],interpolation_eta[10];
   Quadrature     volQ[10];
   BCList         u_bclist[10];
+  SurfBCList     surf_bclist[10];
   SurfaceQuadrature surfQ[10];
   MeshFacetInfo     mfi[10];
   PetscInt       step;
@@ -1026,9 +1027,48 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
     ierr = SurfaceQuadratureGeometryUpdate_Stokes(surfQ[k],mfi[k]);CHKERRQ(ierr);
   }
 
+  /* define surface boundary list on coarse grids */
+  for (k=0; k<nlevels-1; k++) {
+    ierr = SurfBCListCreate(mfi[k]->dm,surfQ[k],mfi[k],&surf_bclist[k]);CHKERRQ(ierr);
+  }
+  surf_bclist[nlevels-1] = user->stokes_ctx->surf_bclist;
+
+  // populate
+  {
+    PetscInt nc;
+    SurfBCList surf_fine = surf_bclist[nlevels-1];
+    PetscPrintf(PETSC_COMM_WORLD,"[SurfBCList hierarchy]\n");
+    for (k=0; k<nlevels-1; k++) {
+      PetscPrintf(PETSC_COMM_WORLD,"  level %d\n",k);
+      // for all methods in fine level
+      for (nc=0; nc<surf_fine->sc_nreg; nc++) {
+        SurfaceConstraint sc_coarse = NULL;
+        SurfaceConstraint sc_coarse_A11 = NULL;
+        PetscPrintf(PETSC_COMM_WORLD,"    checking for \"%s\"\n",surf_fine->sc_list[nc]->name);
+        // query coarse
+        ierr = SurfBCListGetConstraint(surf_bclist[k],surf_fine->sc_list[nc]->name,&sc_coarse);CHKERRQ(ierr);
+        if (!sc_coarse) {
+          PetscPrintf(PETSC_COMM_WORLD,"    not found... duplicating\n");
+          ierr = SurfaceConstraintDuplicateOperatorA11(surf_fine->sc_list[nc],mfi[k],surfQ[k],&sc_coarse_A11);CHKERRQ(ierr);
+          if (sc_coarse_A11) { // constraint supports A11
+            PetscBool inserted = PETSC_FALSE;
+            PetscPrintf(PETSC_COMM_WORLD,"      fine level duplicate supports A11... inserting into level\n");
+            ierr = SurfBCListInsertConstraint(surf_bclist[k],sc_coarse_A11,&inserted);CHKERRQ(ierr);
+            if (inserted) {
+              PetscPrintf(PETSC_COMM_WORLD,"        insertion successful\n");
+            }
+          } else {
+            PetscPrintf(PETSC_COMM_WORLD,"      fine level duplicate does not supports A11... ignoring\n");
+          }
+        }
+      }
+    }
+  }
+  
+
   
   /* define bc's for hiearchy */
-  ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,dav_hierarchy,user->model,user);CHKERRQ(ierr);
+  ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,surf_bclist,dav_hierarchy,user->model,user);CHKERRQ(ierr);
 
   /* work vector for solution and residual */
   ierr = DMCreateGlobalVector(multipys_pack,&X);CHKERRQ(ierr);
@@ -1221,7 +1261,7 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
     /* Fine level setup */
     ierr = pTatinModel_ApplyBoundaryCondition(model,user);CHKERRQ(ierr);
     /* Coarse grid setup: Configure boundary conditions */
-    ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,dav_hierarchy,model,user);CHKERRQ(ierr);
+    ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,surf_bclist,dav_hierarchy,model,user);CHKERRQ(ierr);
 
     /* solve */
     /* a) configure stokes opertors */
@@ -1320,6 +1360,7 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
     ierr = SurfaceQuadratureDestroy(&surfQ[k]);CHKERRQ(ierr);
   }
   for (k=0; k<nlevels-1; k++) {
+    ierr = SurfBCListDestroy(&surf_bclist[k]);CHKERRQ(ierr);
     ierr = BCListDestroy(&u_bclist[k]);CHKERRQ(ierr);
   }
   for (k=0; k<nlevels-1; k++) {

@@ -202,7 +202,7 @@ PetscErrorCode ModelApplyBoundaryCondition_StaticBoxTM(pTatinCtx c,void *ctx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ModelApplyBoundaryConditionMG_StaticBoxTM(PetscInt nl,BCList bclist[],DM dav[],pTatinCtx c,void *ctx)
+PetscErrorCode ModelApplyBoundaryConditionMG_StaticBoxTM(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[],pTatinCtx c,void *ctx)
 {
   PetscScalar    zero = 0.0;
   PetscInt       n;

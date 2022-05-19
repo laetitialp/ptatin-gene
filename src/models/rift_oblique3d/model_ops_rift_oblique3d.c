@@ -1156,7 +1156,7 @@ PetscErrorCode ModelApplyBoundaryCondition_Rift_oblique3d(pTatinCtx c,void *ctx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ModelApplyBoundaryConditionMG_Rift_oblique3d(PetscInt nl,BCList bclist[],DM dav[],pTatinCtx user,void *ctx)
+PetscErrorCode ModelApplyBoundaryConditionMG_Rift_oblique3d(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[],pTatinCtx user,void *ctx)
 {
   ModelRift_oblique3dCtx *data = (ModelRift_oblique3dCtx*)ctx;
   PetscInt       n;

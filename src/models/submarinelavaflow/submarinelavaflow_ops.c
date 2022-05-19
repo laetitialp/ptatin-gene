@@ -345,7 +345,7 @@ PetscErrorCode SubmarineLavaFlow_EnergyBC(BCList bclist,DM daT,pTatinCtx c,Subma
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ModelApplyBoundaryConditionMG_SubmarineLavaFlow(PetscInt nl,BCList bclist[],DM dav[],pTatinCtx c,void *ctx)
+PetscErrorCode ModelApplyBoundaryConditionMG_SubmarineLavaFlow(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[],pTatinCtx c,void *ctx)
 {
   PetscInt n;
   SubmarineLavaFlowCtx *data = (SubmarineLavaFlowCtx*)ctx;

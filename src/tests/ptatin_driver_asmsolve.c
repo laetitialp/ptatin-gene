@@ -1049,7 +1049,7 @@ PetscErrorCode pTatin3d_gmg2_material_points(int argc,char **argv)
   }
   u_bclist[nlevels-1] = user->stokes_ctx->u_bclist;
 
-  ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,dav_hierarchy,user->model,user);CHKERRQ(ierr);
+  ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,NULL,dav_hierarchy,user->model,user);CHKERRQ(ierr);
 
 
   /* ============================================== */

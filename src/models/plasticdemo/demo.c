@@ -563,7 +563,7 @@ PetscErrorCode ModelApplyBoundaryCondition_PD(pTatinCtx ptatinctx,void *modelctx
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ModelApplyBoundaryConditionMG_PD(PetscInt nl,BCList bclist[],DM dav[],pTatinCtx ptatinctx,void *modelctx)
+PetscErrorCode ModelApplyBoundaryConditionMG_PD(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[],pTatinCtx ptatinctx,void *modelctx)
 {
   ModelCtx         *modeldata = (ModelCtx*)modelctx;
   PetscInt         n;

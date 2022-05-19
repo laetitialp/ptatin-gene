@@ -385,7 +385,7 @@ PetscErrorCode ModelApplyBoundaryCondition_Subduction_Initiation2d(pTatinCtx c,v
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ModelApplyBoundaryConditionMG_Subduction_Initiation2d(PetscInt nl,BCList bclist[],DM dav[],pTatinCtx c,void *ctx)
+PetscErrorCode ModelApplyBoundaryConditionMG_Subduction_Initiation2d(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[],pTatinCtx c,void *ctx)
 {
   ModelSubduction_Initiation2dCtx *data = (ModelSubduction_Initiation2dCtx*)ctx;
   PetscInt       n;

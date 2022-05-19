@@ -277,7 +277,7 @@ PetscErrorCode ModelApplyBoundaryCondition_Thermal_Convection2d(pTatinCtx c,void
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ModelApplyBoundaryConditionMG_Thermal_Convection2d(PetscInt nl,BCList bclist[],DM dav[],pTatinCtx c,void *ctx)
+PetscErrorCode ModelApplyBoundaryConditionMG_Thermal_Convection2d(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[],pTatinCtx c,void *ctx)
 {
   ModelThermal_Convection2dCtx *data = (ModelThermal_Convection2dCtx*)ctx;
   PetscInt       n;

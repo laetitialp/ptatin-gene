@@ -42,7 +42,7 @@ struct _p_pTatinModel {
   PetscErrorCode (*FP_pTatinModel_ApplyInitialSolution)(pTatinCtx,Vec,void*);
   PetscErrorCode (*FP_pTatinModel_ApplyInitialStokesVariableMarkers)(pTatinCtx,Vec,void*);
   PetscErrorCode (*FP_pTatinModel_ApplyBoundaryCondition)(pTatinCtx,void*);
-  PetscErrorCode (*FP_pTatinModel_ApplyBoundaryConditionMG)(PetscInt,BCList*,DM*,pTatinCtx,void*);
+  PetscErrorCode (*FP_pTatinModel_ApplyBoundaryConditionMG)(PetscInt,BCList*,SurfBCList*,DM*,pTatinCtx,void*);
   PetscErrorCode (*FP_pTatinModel_ApplyMaterialBoundaryCondition)(pTatinCtx,void*);
   PetscErrorCode (*FP_pTatinModel_ApplyInitialMeshGeometry)(pTatinCtx,void*);
   PetscErrorCode (*FP_pTatinModel_ApplyInitialMaterialGeometry)(pTatinCtx,void*);
