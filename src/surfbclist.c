@@ -106,6 +106,29 @@ PetscErrorCode SurfBCListGetConstraint(SurfBCList sl, const char name[], Surface
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode SurfBCListInsertConstraint(SurfBCList sl, SurfaceConstraint sc, PetscBool *inserted)
+{
+  PetscBool found;
+  PetscInt index;
+  PetscErrorCode ierr;
+  
+  if (inserted) { *inserted = PETSC_FALSE; }
+  if (!sc) { PetscFunctionReturn(0); }
+  
+  if (!sl->mfi) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"SurfBCList requires a non-NULL MeshFacetInfo object");
+  if (!sl->surfQ) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"SurfBCList requires a non-NULL SurfaceQuadrature object");
+  
+  found = _find_name_and_index(sl,sc->name,&index);
+  if (found) SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_SUP,"SurfaceConstraint with name %s already registered",sc->name);
+  
+  /* append to list */
+  ierr = PetscRealloc(sizeof(SurfaceConstraint)*(sl->sc_nreg + 1),&sl->sc_list);CHKERRQ(ierr);
+  sl->sc_list[sl->sc_nreg] = sc;
+  sl->sc_nreg++;
+  if (inserted) { *inserted = PETSC_TRUE; }  
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode SurfBCListEvaluate(SurfBCList sl)
 {
   

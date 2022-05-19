@@ -32,6 +32,7 @@ static PetscErrorCode _ops_operator_only(SurfaceConstraint sc);
 
 static PetscErrorCode _SetType_NONE(SurfaceConstraint sc);
 static PetscErrorCode _SetType_TRACTION(SurfaceConstraint sc);
+static PetscErrorCode _SetType_FSSA(SurfaceConstraint sc);
 
 PetscErrorCode SurfaceConstraintCreate(SurfaceConstraint *_sc)
 {
@@ -213,6 +214,10 @@ PetscErrorCode SurfaceConstraintSetType(SurfaceConstraint sc, SurfaceConstraintT
 
     case SC_TRACTION:
       ierr = _SetType_TRACTION(sc);CHKERRQ(ierr);
+      break;
+
+    case SC_FSSA:
+      ierr = _SetType_FSSA(sc);CHKERRQ(ierr);
       break;
 
     default:
@@ -398,29 +403,6 @@ static PetscErrorCode _SetType_NONE(SurfaceConstraint sc)
   sc->type = SC_NONE;
   PetscFunctionReturn(0);
 }
-
-/* TRACTION */
-#if 0
-static PetscErrorCode _SetUp_TRACTION(SurfaceConstraint sc)
-{
-  PetscErrorCode ierr;
-  PetscInt nfaces;
-  
-  if (!sc->facets->set_values_called) {
-    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Facets have not been selected");
-  }
-  nfaces = sc->facets->n_entities;
-  if (nfaces != 0) {
-    DataBucketSetSizes(sc->properties_db,sc->nqp_facet*nfaces,-1);
-  } else {
-    /* Done in SetType() */
-    //DataBucketSetInitialSizes(sc->properties_db,1,1);
-    //DataBucketSetSizes(sc->properties_db,0,-1);
-  }
-  
-  PetscFunctionReturn(0);
-}
-#endif
 
 PetscErrorCode user_traction_set_constant(Facet F,
                                           const PetscReal qp_coor[],
@@ -626,9 +608,109 @@ static PetscErrorCode _SetType_TRACTION(SurfaceConstraint sc)
   /* insert properties into quadrature bucket */
   DataBucketRegisterField(sc->properties_db,"traction",sizeof(PetscReal)*3,NULL);
   DataBucketFinalize(sc->properties_db);
-  
+  sc->type = SC_TRACTION;
   PetscFunctionReturn(0);
 }
+
+static PetscErrorCode _FormFunctionLocal_Fu_FSSA_diag(SurfaceConstraint sc,DM dau,const PetscScalar ufield[],DM dap,const PetscScalar pfield[],PetscScalar Ru[]);
+static PetscErrorCode _FormFunctionLocal_Fu_FSSA(SurfaceConstraint sc,DM dau,const PetscScalar ufield[],DM dap,const PetscScalar pfield[],PetscScalar Ru[]);
+static PetscErrorCode _FormJacobianCell_A11_FSSA_diag(SurfaceConstraint sc,DM dau,PetscScalar Ae[]);
+static PetscErrorCode _FormJacobianCell_A11_FSSA(SurfaceConstraint sc,DM dau,PetscScalar Ae[]);
+
+typedef struct {
+  PetscBool use_diag_approximation;
+  PetscReal theta;
+  PetscReal dt;
+} FSSA_Context;
+
+static PetscErrorCode _Destroy_FSSA(SurfaceConstraint sc)
+{
+  FSSA_Context *ctx;
+  PetscErrorCode ierr;
+  if (sc->data) {
+    ctx = (FSSA_Context*)sc->data;
+    ierr = PetscFree(ctx);CHKERRQ(ierr);
+    sc->data = NULL;
+  }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode _SetType_FSSA(SurfaceConstraint sc)
+{
+  FSSA_Context *ctx;
+  PetscErrorCode ierr;
+  
+  /* set methods */
+  sc->ops.setup = NULL;
+  sc->ops.destroy = _Destroy_FSSA;
+  sc->ops.residual_F  = NULL;
+  sc->ops.residual_Fu = _FormFunctionLocal_Fu_FSSA_diag;
+  sc->ops.asmb_Auu    = _FormJacobianCell_A11_FSSA_diag;
+  sc->ops.residual_Fp = NULL;
+  /* allocate implementation data */
+  ierr = PetscMalloc1(1,&ctx);CHKERRQ(ierr);
+  ctx->use_diag_approximation = PETSC_TRUE;
+  ctx->theta = 0.5;
+  ctx->dt = 0.0;
+  sc->data = (void*)ctx;
+  /* insert properties into quadrature bucket */
+  DataBucketFinalize(sc->properties_db);
+  sc->type = SC_FSSA;
+ PetscFunctionReturn(0);
+}
+
+static PetscErrorCode _FormFunctionLocal_Fu_FSSA_diag(SurfaceConstraint sc,DM dau,const PetscScalar ufield[],DM dap,const PetscScalar pfield[],PetscScalar Ru[])
+{
+  PetscErrorCode ierr;
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode _FormFunctionLocal_Fu_FSSA(SurfaceConstraint sc,DM dau,const PetscScalar ufield[],DM dap,const PetscScalar pfield[],PetscScalar Ru[])
+{
+  PetscErrorCode ierr;
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode _FormJacobianCell_A11_FSSA_diag(SurfaceConstraint sc,DM dau,PetscScalar Ae[])
+{
+  PetscErrorCode ierr;
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode _FormJacobianCell_A11_FSSA(SurfaceConstraint sc,DM dau,PetscScalar Ae[])
+{
+  PetscErrorCode ierr;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode SurfaceConstraintFSSA_SetParams(SurfaceConstraint sc,PetscBool use_diag,PetscReal theta)
+{
+  FSSA_Context *ctx;
+  if (sc->type != SC_FSSA) PetscFunctionReturn(0);
+  ctx = (FSSA_Context*)sc->data;
+  ctx->use_diag_approximation = use_diag;
+  if (ctx->use_diag_approximation) {
+    sc->ops.residual_Fu = _FormFunctionLocal_Fu_FSSA_diag;
+    sc->ops.asmb_Auu    = _FormJacobianCell_A11_FSSA_diag;
+  } else {
+    sc->ops.residual_Fu = _FormFunctionLocal_Fu_FSSA;
+    sc->ops.asmb_Auu    = _FormJacobianCell_A11_FSSA;
+  }
+  if (theta > 0) {
+    ctx->theta = theta;
+  }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode SurfaceConstraintFSSA_SetTimestep(SurfaceConstraint sc,PetscReal dt)
+{
+  FSSA_Context *ctx;
+  if (sc->type != SC_FSSA) PetscFunctionReturn(0);
+  ctx = (FSSA_Context*)sc->data;
+  ctx->dt = dt;
+  PetscFunctionReturn(0);
+}
+
 
 
 

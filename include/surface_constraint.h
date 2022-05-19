@@ -33,7 +33,7 @@ struct _SurfaceConstraintOps {
   PetscErrorCode (*diag_A)(void);
   
   PetscErrorCode (*action_Auu)(void);
-  PetscErrorCode (*asmb_Auu)(void);
+  PetscErrorCode (*asmb_Auu)(SurfaceConstraint,DM,PetscScalar*);
   PetscErrorCode (*diag_Auu)(void);
   
   PetscErrorCode (*action_Aup)(void);

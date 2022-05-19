@@ -23,6 +23,7 @@ PetscErrorCode SurfBCListDestroy(SurfBCList *_sl);
 PetscErrorCode SurfBCListCreate(DM dm, SurfaceQuadrature surfQ, MeshFacetInfo mfi, SurfBCList *_sl);
 PetscErrorCode SurfBCListAddConstraint(SurfBCList sl, const char name[], SurfaceConstraint *_sc);
 PetscErrorCode SurfBCListGetConstraint(SurfBCList sl, const char name[], SurfaceConstraint *_sc);
+PetscErrorCode SurfBCListInsertConstraint(SurfBCList sl, SurfaceConstraint sc, PetscBool *inserted);
 PetscErrorCode SurfBCListViewer(SurfBCList sl,PetscViewer v);
 
 #endif
