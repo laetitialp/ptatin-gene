@@ -393,7 +393,7 @@ PetscErrorCode user_traction_set_constant(Facet F,
 }
 
 PetscErrorCode SurfaceConstraintSetValues_TRACTION(SurfaceConstraint sc,
-                                         PetscErrorCode (*set)(Facet,const PetscReal*,PetscReal*,void*),
+                                         SurfCSetValuesTraction set,
                                          void *data)
 {
   PetscInt e,facet_index,cell_side,cell_index,q,qp_offset;
@@ -589,10 +589,7 @@ static PetscErrorCode _SetType_TRACTION(SurfaceConstraint sc)
 
 
 
-PetscErrorCode SurfaceConstraintSetValues(
-                    SurfaceConstraint sc,
-                    SurfConstraintSetter set,
-                    void *data)
+PetscErrorCode SurfaceConstraintSetValues(SurfaceConstraint sc,SurfCSetValuesGeneric set,void *data)
 
 {
   PetscErrorCode ierr;
@@ -607,17 +604,36 @@ PetscErrorCode SurfaceConstraintSetValues(
       break;
 
     case SC_TRACTION:
-      ierr = SurfaceConstraintSetValues_TRACTION(sc, (SurfConstraintSetTraction)set, data);CHKERRQ(ierr);
+      ierr = SurfaceConstraintSetValues_TRACTION(sc, (SurfCSetValuesTraction)set, data);CHKERRQ(ierr);
       break;
-      
+
+    case SC_FSSA:
+      PetscPrintf(PETSC_COMM_SELF,"[Warning] SurfaceConstraintSetValues: type FSSA does not have a setter");
+      break;
+
+    case SC_NITSCHE_DIRICHLET:
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"NITSCHE_DIRICHLET not yet available");
+      ierr = SurfaceConstraintSetValues_NITSCHE_DIRICHLET(sc, (SurfCSetValuesTraction)set, data);CHKERRQ(ierr);
+      break;
+
+    case SC_NITSCHE_NAVIER_SLIP:
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"NITSCHE_NAVIER_SLIP not yet available");
+      //ierr = SurfaceConstraintSetValues_NITSCHE_NAVIER_SLIP(sc, (SurfCSetValuesTraction)set, data);CHKERRQ(ierr);
+      break;
+
+    case SC_NITSCHE_CUSTOM_SLIP:
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"NITSCHE_CUSTOM_SLIP not yet available");
+      //ierr = SurfaceConstraintSetValues_NITSCHE_CUSTOM_SLIP(sc, (SurfCSetValuesTraction)set, data);CHKERRQ(ierr);
+      break;
+
     default:
       break;
   }
-  
-  
-  
   PetscFunctionReturn(0);
 }
+
+
+
 
 
 #include <output_paraview.h>
