@@ -20,7 +20,7 @@
 # ----------------------------------------------------------------------------
 
 # Use default petsc compilation flags + petsc cflags
-export TATIN_CFLAGS	= -std=gnu99 -Wall -pedantic-errors
+export TATIN_CFLAGS	= -std=gnu99 -Wall -pedantic-errors -Wgnu-empty-initializer
 
 # <example> Enforce debug ptatin build (independent of petsc configuration)
 #export TATIN_CFLAGS	= -std=gnu99 -O0 -Wall -g
