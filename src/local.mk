@@ -88,6 +88,7 @@ libptatin3d-y.c += $(call thisdir, \
   quantity.c \
   mesh_entity.c \
   surface_constraint.c \
+  surfbclist.c \
 )
 
 libptatin3d-$(CONFIG_CUDA).cu += $(call thisdir, \
