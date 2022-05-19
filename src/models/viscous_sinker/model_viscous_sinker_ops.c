@@ -739,54 +739,6 @@ PetscErrorCode ModelApplyInitialMeshGeometry_ViscousSinker(pTatinCtx c,void *ctx
      ierr = DMDABilinearizeQ2Elements(c->stokes_ctx->dav);CHKERRQ(ierr);
      }
   */
-
-  PhysCompStokesUpdateSurfaceQuadratureGeometry(c->stokes_ctx);
-  //SurfaceQuadratureViewParaview_Stokes(c->stokes_ctx,"./","squad");
-  
-  
-  {
-    SurfaceConstraint sc;
-    PhysCompStokes    stokes;
-    SurfaceQuadrature quad;
-    MeshEntity        facets;
-    
-    ierr = pTatinGetStokesContext(c,&stokes);CHKERRQ(ierr);
-    ierr = PhysCompStokesGetSurfaceQuadrature(stokes,&quad);CHKERRQ(ierr);
-    
-    ierr = SurfaceConstraintCreateWithFacetInfo(c->stokes_ctx->mfi,&sc);CHKERRQ(ierr);
-    ierr = SurfaceConstraintSetType(sc,SC_TRACTION,PETSC_TRUE,PETSC_FALSE);CHKERRQ(ierr);
-    ierr = SurfaceConstraintSetQuadrature(sc,quad);CHKERRQ(ierr);
-
-    ierr = SurfaceConstraintGetFacets(sc,&facets);CHKERRQ(ierr);
-    ierr = MeshEntitySetName(facets,"bc1");CHKERRQ(ierr);
-    /*
-    {
-      PetscInt       nsides;
-      HexElementFace sides[] = { HEX_FACE_Pxi, HEX_FACE_Neta };
-      nsides = sizeof(sides) / sizeof(HexElementFace);
-      ierr = MeshFacetMarkDomainFaces(facets,sc->fi,nsides,sides);CHKERRQ(ierr);
-    }
-    */
-    /*
-    {
-      ierr = MeshFacetMark(facets,sc->fi,facet_mark,NULL);CHKERRQ(ierr);
-    }
-    */
-    
-    {
-      PetscInt       nsides;
-      HexElementFace sides[] = { HEX_FACE_Pxi, HEX_FACE_Peta, HEX_FACE_Nxi };
-      nsides = sizeof(sides) / sizeof(HexElementFace);
-      ierr = MeshFacetMarkDomainFaceSubset(facets,sc->fi,nsides,sides,facet_mark,NULL);CHKERRQ(ierr);
-    }
-    
-
-    ierr = SurfaceConstraintSetValues_TRACTION(sc,set,NULL);CHKERRQ(ierr);
-
-    ierr = MeshEntityViewPV(1,&facets);CHKERRQ(ierr);
-    ierr = MeshEntityView(facets);CHKERRQ(ierr);
-
-  }
   
   PetscFunctionReturn(0);
 }
