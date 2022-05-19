@@ -46,6 +46,7 @@ struct _p_PhysCompStokes {
   MeshFacetInfo           mfi;
   PetscBool               use_mf_stokes;
   PetscReal               gravity_vector[3];
+  SurfBCList              surf_bclist;
 };
 
 #endif

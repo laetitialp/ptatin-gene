@@ -36,6 +36,7 @@
 #include "QPntSurfCoefStokes_def.h"
 #include "dmda_bcs.h"
 #include "mesh_entity.h"
+#include "surfbclist.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -52,6 +53,7 @@ PetscErrorCode PhysCompCreateMesh_Stokes3d(const PetscInt mx,const PetscInt my,c
 PetscErrorCode PhysCompCreateBoundaryList_Stokes(PhysCompStokes ctx);
 PetscErrorCode PhysCompCreateVolumeQuadrature_Stokes(PhysCompStokes ctx);
 PetscErrorCode PhysCompCreateSurfaceQuadrature_Stokes(PhysCompStokes ctx);
+PetscErrorCode PhysCompCreateSurfaceBoundaryList_Stokes(PhysCompStokes ctx);
 
 PetscErrorCode PhysCompStokesSetGravityUnitVector(PhysCompStokes ctx,PetscReal grav[]);
 PetscErrorCode PhysCompStokesScaleGravityVector(PhysCompStokes ctx,PetscReal fac);

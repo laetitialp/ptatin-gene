@@ -103,6 +103,7 @@ PetscErrorCode PhysCompDestroy_Stokes(PhysCompStokes *ctx)
   if (!ctx) {PetscFunctionReturn(0);}
   user = *ctx;
 
+  if (user->surf_bclist) { ierr = SurfBCListDestroy(&user->surf_bclist);CHKERRQ(ierr); }
   if (user->mfi) { ierr = MeshFacetInfoDestroy(&user->mfi);CHKERRQ(ierr); }
   if (user->surfQ) { ierr = SurfaceQuadratureDestroy(&user->surfQ);CHKERRQ(ierr); }
   if (user->volQ) { ierr = QuadratureDestroy(&user->volQ);CHKERRQ(ierr); }
@@ -205,6 +206,16 @@ PetscErrorCode PhysCompCreateBoundaryList_Stokes(PhysCompStokes ctx)
   /* pressure bc's */
   ctx->p_bclist = NULL;
 
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode PhysCompCreateSurfaceBoundaryList_Stokes(PhysCompStokes ctx)
+{
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  if (!ctx->mfi) { SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"MeshFacetInfo (mfi) must be non-NULL"); }
+  if (!ctx->surfQ) { SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"SurfaceQuadrature (surfQ) must be non-NULL"); }
+  ierr = SurfBCListCreate(ctx->mfi->dm,ctx->surfQ,ctx->mfi,&ctx->surf_bclist);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
