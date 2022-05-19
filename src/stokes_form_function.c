@@ -536,6 +536,18 @@ PetscErrorCode FormFunction_Stokes(SNES snes,Vec X,Vec F,void *ctx)
   /* profiling */
   //ierr = FormFunctionLocal_profile(stokes,dau,LA_Uloc,dap,LA_Ploc,LA_FPloc);CHKERRQ(ierr);
 
+  //printf("residual\n");
+  //ierr = SurfBCListViewer(stokes->surf_bclist,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);
+  {
+    PetscInt k;
+    SurfBCList surfbc = stokes->surf_bclist;
+    
+    for (k=0; k<surfbc->sc_nreg; k++) {
+      ierr = SurfaceConstraintOps_EvaluateFu(surfbc->sc_list[k],dau,LA_Uloc,dap,LA_Ploc,LA_FUloc, PETSC_FALSE);CHKERRQ(ierr);
+      ierr = SurfaceConstraintOps_EvaluateFp(surfbc->sc_list[k],dau,LA_Uloc,dap,LA_Ploc,LA_FPloc, PETSC_FALSE);CHKERRQ(ierr);
+    }
+  }
+  
   ierr = VecRestoreArray(FPloc,&LA_FPloc);CHKERRQ(ierr);
   ierr = VecRestoreArray(FUloc,&LA_FUloc);CHKERRQ(ierr);
   ierr = VecRestoreArray(Ploc,&LA_Ploc);CHKERRQ(ierr);
