@@ -248,7 +248,11 @@ PetscErrorCode SurfaceConstraintSetFacets(SurfaceConstraint sc, MeshEntity facet
 PetscErrorCode SurfaceConstraintGetFacets(SurfaceConstraint sc, MeshEntity *f)
 {
   if (f) {
-    *f = sc->facets;
+    if (sc) {
+      *f = sc->facets;
+    } else {
+      *f = NULL;
+    }
   }
   PetscFunctionReturn(0);
 }
@@ -340,6 +344,45 @@ static PetscErrorCode _resize_facet_quadrature_data(SurfaceConstraint sc)
   //DataBucketSetSizes(sc->properties_db,sc->nqp_facet*nfacets,-1);
   // call set initial sizes will memset(0) all data which will help debug issues when set_values has not been called.
   DataBucketSetInitialSizes(sc->properties_db,sc->nqp_facet*nfacets,-1);
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode SurfaceConstraintOps_EvaluateF(SurfaceConstraint sc,
+                                              DM dau,const PetscScalar ufield[],DM dap,const PetscScalar pfield[],PetscScalar Ru[],
+                                              PetscBool error_if_null)
+{
+  PetscErrorCode ierr;
+  if (sc->ops.residual_F) {
+    ierr = sc->ops.residual_F(sc,dau,ufield,dap,pfield,Ru);CHKERRQ(ierr);
+  } else {
+    if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_EvaluateF[name %s]: residual_F = NULL",sc->name);
+  }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode SurfaceConstraintOps_EvaluateFu(SurfaceConstraint sc,
+                                              DM dau,const PetscScalar ufield[],DM dap,const PetscScalar pfield[],PetscScalar Ru[],
+                                              PetscBool error_if_null)
+{
+  PetscErrorCode ierr;
+  if (sc->ops.residual_Fu) {
+    ierr = sc->ops.residual_Fu(sc,dau,ufield,dap,pfield,Ru);CHKERRQ(ierr);
+  } else {
+    if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_EvaluateF[name %s]: residual_Fu = NULL",sc->name);
+  }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode SurfaceConstraintOps_EvaluateFp(SurfaceConstraint sc,
+                                              DM dau,const PetscScalar ufield[],DM dap,const PetscScalar pfield[],PetscScalar Ru[],
+                                              PetscBool error_if_null)
+{
+  PetscErrorCode ierr;
+  if (sc->ops.residual_Fp) {
+    ierr = sc->ops.residual_Fp(sc,dau,ufield,dap,pfield,Ru);CHKERRQ(ierr);
+  } else {
+    if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_EvaluateF[name %s]: residual_Fp = NULL",sc->name);
+  }
   PetscFunctionReturn(0);
 }
 

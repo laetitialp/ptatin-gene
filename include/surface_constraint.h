@@ -112,4 +112,13 @@ PetscErrorCode SurfaceConstraintSetValues(SurfaceConstraint sc,
 PetscErrorCode _SurfaceConstraintViewParaviewVTU(SurfaceConstraint sc,const char name[]);
 PetscErrorCode SurfaceConstraintViewParaview(SurfaceConstraint sc, const char path[], const char prefix[]);
 
+PetscErrorCode SurfaceConstraintOps_EvaluateF(SurfaceConstraint sc,
+                                              DM dau,const PetscScalar ufield[],DM dap,const PetscScalar pfield[],PetscScalar Ru[],
+                                              PetscBool error_if_null);
+PetscErrorCode SurfaceConstraintOps_EvaluateFu(SurfaceConstraint sc,
+                                               DM dau,const PetscScalar ufield[],DM dap,const PetscScalar pfield[],PetscScalar Ru[],
+                                               PetscBool error_if_null);
+PetscErrorCode SurfaceConstraintOps_EvaluateFp(SurfaceConstraint sc,
+                                               DM dau,const PetscScalar ufield[],DM dap,const PetscScalar pfield[],PetscScalar Ru[],
+                                               PetscBool error_if_null);
 #endif
