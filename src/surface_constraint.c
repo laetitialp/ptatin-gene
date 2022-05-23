@@ -352,6 +352,7 @@ static PetscErrorCode _resize_facet_quadrature_data(SurfaceConstraint sc)
   PetscFunctionReturn(0);
 }
 
+/* residual */
 PetscErrorCode SurfaceConstraintOps_EvaluateF(SurfaceConstraint sc,
                                               DM dau,const PetscScalar ufield[],DM dap,const PetscScalar pfield[],PetscScalar Ru[],
                                               PetscBool error_if_null)
@@ -390,6 +391,126 @@ PetscErrorCode SurfaceConstraintOps_EvaluateFp(SurfaceConstraint sc,
   }
   PetscFunctionReturn(0);
 }
+
+/* action */
+PetscErrorCode SurfaceConstraintOps_ActionA(SurfaceConstraint sc,
+                                              DM dau,const PetscScalar ufield[],
+                                              DM dap,const PetscScalar pfield[],
+                                              PetscScalar Yu[],PetscScalar Yp[],
+                                              PetscBool error_if_null)
+{
+  PetscErrorCode ierr;
+  if (sc->ops.action_A) {
+    //ierr = sc->ops.action_A(sc,dau,ufield,dap,pfield,Yu,Yp);CHKERRQ(ierr);
+  } else {
+    if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_ActionA[name %s]: action_A = NULL",sc->name);
+  }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode SurfaceConstraintOps_ActionA11(SurfaceConstraint sc,
+                                            DM dau,const PetscScalar ufield[],
+                                            PetscScalar Yu[],
+                                            PetscBool error_if_null)
+{
+  PetscErrorCode ierr;
+  if (sc->ops.action_Auu) {
+    ierr = sc->ops.action_Auu(sc,dau,ufield,Yu);CHKERRQ(ierr);
+  } else {
+    if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_ActionAuu[name %s]: action_Auu = NULL",sc->name);
+  }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode SurfaceConstraintOps_ActionA12(SurfaceConstraint sc,
+                                            DM dau,
+                                            DM dap,const PetscScalar pfield[],
+                                            PetscScalar Yu[],
+                                            PetscBool error_if_null)
+{
+  PetscErrorCode ierr;
+  if (sc->ops.action_A) {
+    ierr = sc->ops.action_Aup(sc,dau,dap,pfield,Yu);CHKERRQ(ierr);
+  } else {
+    if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_ActionAup[name %s]: action_Aup = NULL",sc->name);
+  }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode SurfaceConstraintOps_ActionA21(SurfaceConstraint sc,
+                                            DM dau,const PetscScalar ufield[],
+                                            DM dap,
+                                            PetscScalar Yp[],
+                                            PetscBool error_if_null)
+{
+  PetscErrorCode ierr;
+  if (sc->ops.action_Apu) {
+    ierr = sc->ops.action_Apu(sc,dau,ufield,dap,Yp);CHKERRQ(ierr);
+  } else {
+    if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_ActionA21[name %s]: action_A21 = NULL",sc->name);
+  }
+  PetscFunctionReturn(0);
+}
+
+/* assemble */
+PetscErrorCode SurfaceConstraintOps_AssembleA11(SurfaceConstraint sc,
+                                              DM dau,PetscReal Ae[],
+                                              PetscBool error_if_null)
+{
+  PetscErrorCode ierr;
+  if (sc->ops.action_Auu) {
+    ierr = sc->ops.asmb_Auu(sc,dau,Ae);CHKERRQ(ierr);
+  } else {
+    if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_AssembleAuu[name %s]: asmb_Auu = NULL",sc->name);
+  }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode SurfaceConstraintOps_AssembleA12(SurfaceConstraint sc,
+                                              DM dau,
+                                              DM dap,
+                                              PetscScalar Ae[],
+                                              PetscBool error_if_null)
+{
+  PetscErrorCode ierr;
+  if (sc->ops.action_A) {
+    ierr = sc->ops.asmb_Aup(sc,dau,dap,Ae);CHKERRQ(ierr);
+  } else {
+    if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_AssembleAup[name %s]: asmb_Aup = NULL",sc->name);
+  }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode SurfaceConstraintOps_AssembleA21(SurfaceConstraint sc,
+                                              DM dau,
+                                              DM dap,
+                                              PetscScalar Ae[],
+                                              PetscBool error_if_null)
+{
+  PetscErrorCode ierr;
+  if (sc->ops.action_Apu) {
+    ierr = sc->ops.asmb_Apu(sc,dau,dap,Ae);CHKERRQ(ierr);
+  } else {
+    if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_AseembleA21[name %s]: asmb_Apu = NULL",sc->name);
+  }
+  PetscFunctionReturn(0);
+}
+
+/* assemble diag */
+PetscErrorCode SurfaceConstraintOps_AssembleDiagA11(SurfaceConstraint sc,
+                                                DM dau,PetscReal Ae[],
+                                                PetscBool error_if_null)
+{
+  PetscErrorCode ierr;
+  if (sc->ops.action_Auu) {
+    ierr = sc->ops.diag_Auu(sc,dau,Ae);CHKERRQ(ierr);
+  } else {
+    if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_DiagAuu[name %s]: diag_Auu = NULL",sc->name);
+  }
+  PetscFunctionReturn(0);
+}
+
+
 
 
 /* NONE */
