@@ -557,7 +557,7 @@ PetscErrorCode pTatin3dStokesReportMeshHierarchy(PetscInt nlevels,DM dav_hierarc
 
 PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_stokes_field[],
     PetscInt nlevels,DM dav_hierarchy[],Mat interpolation_v[],
-    BCList u_bclist[],Quadrature volQ[],
+    BCList u_bclist[],Quadrature volQ[],SurfBCList surf_bclist[],
     Mat *_A,Mat operatorA11[],Mat *_B,Mat operatorB11[])
 {
   Mat            A,B;
@@ -677,7 +677,7 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
 
           if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: Re-discretisation :: matrix free operator \n", k);
           ierr = MatA11MFCreate(&A11Ctx);CHKERRQ(ierr);
-          ierr = MatA11MFSetup(A11Ctx,dav_hierarchy[k],volQ[k],u_bclist[k]);CHKERRQ(ierr);
+          ierr = MatA11MFSetup(A11Ctx,dav_hierarchy[k],volQ[k],u_bclist[k],surf_bclist[k]);CHKERRQ(ierr);
 
           ierr = StokesQ2P1CreateMatrix_MFOperator_A11(A11Ctx,&Auu);CHKERRQ(ierr);
           ierr = MatShellGetMatA11MF(Auu,&mf);CHKERRQ(ierr);
@@ -1109,7 +1109,7 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
 
   /* configure stokes opertors */
   ierr = pTatin3dCreateStokesOperators(user->stokes_ctx,is_stokes_field,
-      nlevels,dav_hierarchy,interpolation_v,u_bclist,volQ,
+      nlevels,dav_hierarchy,interpolation_v,u_bclist,volQ,surf_bclist,
       &A,operatorA11,&B,operatorB11);CHKERRQ(ierr);
 
   /* write the initial fields */
@@ -1266,7 +1266,7 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
     /* solve */
     /* a) configure stokes opertors */
     ierr = pTatin3dCreateStokesOperators(user->stokes_ctx,is_stokes_field,
-        nlevels,dav_hierarchy,interpolation_v,u_bclist,volQ,
+        nlevels,dav_hierarchy,interpolation_v,u_bclist,volQ,surf_bclist,
         &A,operatorA11,&B,operatorB11);CHKERRQ(ierr);
     /* b) create solver */
     ierr = SNESCreate(PETSC_COMM_WORLD,&snes);CHKERRQ(ierr);

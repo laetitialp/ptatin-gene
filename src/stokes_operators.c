@@ -174,6 +174,7 @@ PetscErrorCode MatStokesMFSetup(MatStokesMF StkCtx,PhysCompStokes user)
   StkCtx->volQ        = user->volQ;
   StkCtx->u_bclist    = user->u_bclist;
   StkCtx->p_bclist    = user->p_bclist;
+  StkCtx->surf_bclist = user->surf_bclist;
 
   pack = user->stokes_pack;
 
@@ -223,7 +224,7 @@ PetscErrorCode MatStokesMFSetup(MatStokesMF StkCtx,PhysCompStokes user)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatA11MFSetup(MatA11MF A11Ctx,DM dav,Quadrature volQ,BCList u_bclist)
+PetscErrorCode MatA11MFSetup(MatA11MF A11Ctx,DM dav,Quadrature volQ,BCList u_bclist,SurfBCList surf_bclist)
 {
   PetscErrorCode ierr;
   Vec X;
@@ -238,7 +239,9 @@ PetscErrorCode MatA11MFSetup(MatA11MF A11Ctx,DM dav,Quadrature volQ,BCList u_bcl
   A11Ctx->daUVW       = dav;           ierr = PetscObjectReference((PetscObject)dav);CHKERRQ(ierr);
   A11Ctx->volQ        = volQ;
   A11Ctx->u_bclist    = u_bclist;
+  A11Ctx->surf_bclist = surf_bclist;
 
+  
   /* Fetch the DA's */
   dau = dav;
 
@@ -416,6 +419,7 @@ PetscErrorCode MatStokesMFCopy(MatStokesMF A,MatStokesMF *B)
 
   Stk->u_bclist = A->u_bclist;
   Stk->p_bclist = A->p_bclist;
+  Stk->surf_bclist = A->surf_bclist;
   Stk->volQ     = A->volQ;
 
   Stk->stokes_pack  = A->stokes_pack;    ierr = PetscObjectReference((PetscObject)A->stokes_pack);CHKERRQ(ierr);
@@ -449,6 +453,7 @@ PetscErrorCode MatA11MFCopy(MatA11MF A,MatA11MF *B)
   A11->Mu    = A->Mu;
 
   A11->u_bclist = A->u_bclist;
+  A11->surf_bclist = A->surf_bclist;
   A11->volQ     = A->volQ;
 
   A11->isU   = A->isU;             if (A->isU) { ierr = PetscObjectReference((PetscObject)A->isU);CHKERRQ(ierr); }
@@ -480,6 +485,7 @@ PetscErrorCode MatCopy_StokesMF_A11MF(MatStokesMF A,MatA11MF *B)
   A11->mu       = A->mu;
   A11->Mu       = A->Mu;
   A11->u_bclist = A->u_bclist;
+  A11->surf_bclist = A->surf_bclist;
   A11->volQ     = A->volQ;
   A11->isU      = A->isU;   if (A->isU)   { ierr = PetscObjectReference((PetscObject)A->isU);  CHKERRQ(ierr); }
   A11->isV      = A->isV;   if (A->isV)   { ierr = PetscObjectReference((PetscObject)A->isV);  CHKERRQ(ierr); }
@@ -929,6 +935,10 @@ PetscErrorCode MatMult_MFStokes_A(Mat A,Vec X,Vec Y)
   ierr = MFStokesWrapper_A(ctx->volQ,dau,LA_XUloc,dap,LA_XPloc,LA_YUloc,LA_YPloc);CHKERRQ(ierr);
 #endif
 
+  // action A
+  ierr = SurfBCList_ActionA(ctx->surf_bclist,dau,LA_XUloc,dap,LA_XPloc,LA_YUloc,LA_YPloc);CHKERRQ(ierr);
+
+  
   ierr = VecRestoreArray(YPloc,&LA_YPloc);CHKERRQ(ierr);
   ierr = VecRestoreArray(YUloc,&LA_YUloc);CHKERRQ(ierr);
   ierr = VecRestoreArray(XPloc,&LA_XPloc);CHKERRQ(ierr);
@@ -1184,6 +1194,10 @@ PetscErrorCode MatMult_MFStokes_A11(Mat A,Vec X,Vec Y)
   /* momentum */
   ierr = (*ctx->SpMVOp_MatMult)(ctx,ctx->volQ,dau,LA_XUloc,LA_YUloc);CHKERRQ(ierr);
 
+  // action A11
+  ierr = SurfBCList_ActionA11(ctx->surf_bclist,dau,LA_XUloc,LA_YUloc);CHKERRQ(ierr);
+
+  
   ierr = VecRestoreArray(YUloc,&LA_YUloc);CHKERRQ(ierr);
   ierr = VecRestoreArray(XUloc,&LA_XUloc);CHKERRQ(ierr);
 
@@ -1325,6 +1339,10 @@ PetscErrorCode MatMult_MFStokes_A12(Mat A,Vec X,Vec Y)
   ierr = MFStokesWrapper_A12(ctx->volQ,dau,dap,LA_XPloc,LA_YUloc);CHKERRQ(ierr);
 #endif
 
+  // action A12
+  ierr = SurfBCList_ActionA12(ctx->surf_bclist,dau,dap,LA_XPloc,LA_YUloc);CHKERRQ(ierr);
+
+  
   ierr = VecRestoreArray(YUloc,&LA_YUloc);CHKERRQ(ierr);
   ierr = VecRestoreArray(XPloc,&LA_XPloc);CHKERRQ(ierr);
 
@@ -1458,6 +1476,9 @@ PetscErrorCode MatMult_MFStokes_A21(Mat A,Vec X,Vec Y)
   /* div */
   ierr = MFStokesWrapper_A21(ctx->volQ,dau,dap,LA_XUloc,LA_YPloc);CHKERRQ(ierr);
 
+  // action A21
+  ierr = SurfBCList_ActionA21(ctx->surf_bclist,dau,LA_XUloc,dap,LA_YPloc);CHKERRQ(ierr);
+  
   ierr = VecRestoreArray(YPloc,&LA_YPloc);CHKERRQ(ierr);
   ierr = VecRestoreArray(XUloc,&LA_XUloc);CHKERRQ(ierr);
 
