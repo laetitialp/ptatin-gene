@@ -265,8 +265,8 @@ PetscErrorCode eval_F_fas(SNES snes,Vec X,Vec F,void *data)
 
   ierr = SNESGetApplicationContext(snes,(void*)&fv);CHKERRQ(ierr);
   ierr = SNESGetDM(snes,&dm);CHKERRQ(ierr);
-  printf("fv %p\n",fv);
-  printf("dm %p\n",dm);
+  printf("fv %p\n",(void*)fv);
+  printf("dm %p\n",(void*)dm);
   
   PetscFunctionReturn(0);
 }
@@ -293,13 +293,13 @@ PetscErrorCode t3_warp_mms(void)
   ierr = PetscOptionsGetInt(NULL,NULL,"-nlvl",&nlevels,NULL);CHKERRQ(ierr);
 
   ierr = create_level(m,&fvl[0]);CHKERRQ(ierr);
-  printf("fvl[0] %p\n",fvl[0]);
+  printf("fvl[0] %p\n",(void*)fvl[0]);
   for (k=1; k<nlevels; k++) {
     m[0] *= 2;
     m[1] *= 2;
     m[2] *= 2;
     ierr = create_level(m,&fvl[k]);CHKERRQ(ierr);
-    printf("  fvl[%d] %p\n",k,fvl[k]);
+    printf("  fvl[%d] %p\n",k,(void*)fvl[k]);
   }
   
   fv = fvl[nlevels-1];
@@ -307,7 +307,7 @@ PetscErrorCode t3_warp_mms(void)
   for (k=0; k<nlevels; k++) {
     ierr = DMClone(fvl[k]->dm_fv,&dmc[k]);CHKERRQ(ierr);
     ierr = DMDASetInterpolationType(dmc[k],DMDA_Q0);CHKERRQ(ierr);
-    printf("dmc[%d] %p\n",k,dmc[k]);
+    printf("dmc[%d] %p\n",k,(void*)dmc[k]);
   }
 
   /*
@@ -342,7 +342,7 @@ PetscErrorCode t3_warp_mms(void)
 
 
   ierr = SNESSetFromOptions(snes);CHKERRQ(ierr);
-  printf("snes %p \n",snes);
+  printf("snes %p \n",(void*)snes);
 
   
   //ierr = SNESSetType(snes,SNESFAS);CHKERRQ(ierr);
@@ -352,7 +352,7 @@ PetscErrorCode t3_warp_mms(void)
     SNES lsnes,smooth;
     ierr = SNESFASGetCycleSNES(snes,k,&lsnes);CHKERRQ(ierr);
     ierr = SNESSetApplicationContext(lsnes,(void*)fvl[k]);CHKERRQ(ierr);
-    printf("lsnes %p \n",lsnes);
+    printf("lsnes %p \n",(void*)lsnes);
     ierr = SNESFASCycleGetSmootherDown(lsnes, &smooth);CHKERRQ(ierr);
     ierr = SNESSetApplicationContext(smooth,(void*)fvl[k]);CHKERRQ(ierr);
     ierr = SNESFASCycleGetSmootherUp(lsnes, &smooth);CHKERRQ(ierr);
@@ -364,7 +364,7 @@ PetscErrorCode t3_warp_mms(void)
     SNES lsnes;
     ierr = SNESFASGetCoarseSolve(snes,&lsnes);CHKERRQ(ierr);
     ierr = SNESSetApplicationContext(lsnes,(void*)fvl[0]);CHKERRQ(ierr);
-    printf("lsnes %p [coarse]\n",lsnes);
+    printf("lsnes %p [coarse]\n",(void*)lsnes);
   }
   
   ierr = SNESSolve(snes,rhs,X);CHKERRQ(ierr);
@@ -425,14 +425,14 @@ PetscErrorCode t3_warp_mms_r(void)
   ierr = create_level(m,&fvl[0]);CHKERRQ(ierr);
   ierr = DMDASetRefinementFactor(fvl[0]->dm_fv,rfac,rfac,rfac);CHKERRQ(ierr);
   
-  printf("fvl[0] %p\n",fvl[0]);
+  printf("fvl[0] %p\n",(void*)fvl[0]);
   for (k=1; k<nlevels; k++) {
     m[0] *= rfac;
     m[1] *= rfac;
     m[2] *= rfac;
     ierr = create_level(m,&fvl[k]);CHKERRQ(ierr);
     ierr = DMDASetRefinementFactor(fvl[k]->dm_fv,rfac,rfac,rfac);CHKERRQ(ierr);
-    printf("  fvl[%d] %p\n",k,fvl[k]);
+    printf("  fvl[%d] %p\n",k,(void*)fvl[k]);
   }
   
   fv = fvl[nlevels-1];
@@ -443,17 +443,17 @@ PetscErrorCode t3_warp_mms_r(void)
     ierr = DMClone(fvl[k]->dm_fv,&dmc[k]);CHKERRQ(ierr);
     ierr = DMDASetInterpolationType(dmc[k],DMDA_Q0);CHKERRQ(ierr);
     ierr = DMDASetRefinementFactor(dmc[k],8,8,8);CHKERRQ(ierr);
-    printf("dmc[%d] %p\n",k,dmc[k]);
+    printf("dmc[%d] %p\n",k,(void*)dmc[k]);
   }
   */
 
   ierr = DMClone(fvl[0]->dm_fv,&dmc[0]);CHKERRQ(ierr);
   ierr = DMDASetInterpolationType(dmc[0],DMDA_Q0);CHKERRQ(ierr);
   ierr = DMDASetRefinementFactor(dmc[0],rfac,rfac,rfac);CHKERRQ(ierr);
-  printf("dmc[0] %p\n",dmc[0]);
+  printf("dmc[0] %p\n",(void*)dmc[0]);
   for (k=1; k<nlevels; k++) {
     ierr = DMRefine(dmc[k-1],PETSC_COMM_WORLD,&dmc[k]);CHKERRQ(ierr);
-    printf("dmc[%d] %p\n",k,dmc[k]);
+    printf("dmc[%d] %p\n",k,(void*)dmc[k]);
     ierr = DMDASetInterpolationType(dmc[k],DMDA_Q0);CHKERRQ(ierr);
     ierr = DMDASetRefinementFactor(dmc[k],rfac,rfac,rfac);CHKERRQ(ierr);
   }
@@ -482,7 +482,7 @@ PetscErrorCode t3_warp_mms_r(void)
   
   
   ierr = SNESSetFromOptions(snes);CHKERRQ(ierr);
-  printf("snes %p \n",snes);
+  printf("snes %p \n",(void*)snes);
   
   
   //ierr = SNESSetType(snes,SNESFAS);CHKERRQ(ierr);
@@ -492,7 +492,7 @@ PetscErrorCode t3_warp_mms_r(void)
     SNES lsnes,smooth;
     ierr = SNESFASGetCycleSNES(snes,k,&lsnes);CHKERRQ(ierr);
     ierr = SNESSetApplicationContext(lsnes,(void*)fvl[k]);CHKERRQ(ierr);
-    printf("lsnes %p \n",lsnes);
+    printf("lsnes %p \n",(void*)lsnes);
     ierr = SNESFASCycleGetSmootherDown(lsnes, &smooth);CHKERRQ(ierr);
     ierr = SNESSetApplicationContext(smooth,(void*)fvl[k]);CHKERRQ(ierr);
     ierr = SNESFASCycleGetSmootherUp(lsnes, &smooth);CHKERRQ(ierr);
@@ -504,7 +504,7 @@ PetscErrorCode t3_warp_mms_r(void)
     SNES lsnes;
     ierr = SNESFASGetCoarseSolve(snes,&lsnes);CHKERRQ(ierr);
     ierr = SNESSetApplicationContext(lsnes,(void*)fvl[0]);CHKERRQ(ierr);
-    printf("lsnes %p [coarse]\n",lsnes);
+    printf("lsnes %p [coarse]\n",(void*)lsnes);
   }
   
   ierr = SNESSolve(snes,rhs,X);CHKERRQ(ierr);
