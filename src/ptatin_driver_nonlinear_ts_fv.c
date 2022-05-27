@@ -1098,6 +1098,7 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
   ierr = MatAssemblyBegin(B,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd  (B,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
 
+#if 0
   /*
   {
     KSP ksp;
@@ -1257,7 +1258,7 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
       ierr = KSPSetOperators(sub_ksp[1],SchurA,SchurB);CHKERRQ(ierr);
     }
   }
-
+#endif
   
   /* Buu preconditioner for all other levels in the hierarchy */
   {
