@@ -919,6 +919,8 @@ PetscErrorCode ApplyDeviatoricValuePlusLithostaticPressure_SurfQuadratureStokes_
   const PetscInt     *elnidx_lp;
   PetscScalar        el_coords[NSD*NODES_PER_EL_Q1_3D];
   PetscReal          el_lithop[Q1_NODES_PER_EL_3D];
+  PetscReal          xi_centroid[] = {0.0,0.0,0.0};
+  PetscReal          NiQ1_centroid[Q1_NODES_PER_EL_3D];
   PetscErrorCode     ierr;
   
   PetscFunctionBegin;
@@ -938,6 +940,9 @@ PetscErrorCode ApplyDeviatoricValuePlusLithostaticPressure_SurfQuadratureStokes_
   ierr = DMGlobalToLocalEnd  (da,X,INSERT_VALUES,LP_local);CHKERRQ(ierr);
   ierr = VecGetArray(LP_local,&LA_LP_local);CHKERRQ(ierr);
   
+  /* Evaluate basis function at cell local centroid (0.0,0.0,0.0)*/
+  EvaluateBasis_Q1_3D(xi_centroid,NiQ1_centroid);
+
   for (f=0; f<face_list_n; f++) {
     ierr = PhysCompStokesGetSurfaceQuadrature(stokes,face_location[f],&surfQ_face);CHKERRQ(ierr);
     ierr = SurfaceQuadratureGetQuadratureInfo(surfQ_face,&nqp,NULL,&qp3d);CHKERRQ(ierr);
@@ -947,7 +952,7 @@ PetscErrorCode ApplyDeviatoricValuePlusLithostaticPressure_SurfQuadratureStokes_
 
     for (c=0; c<nfaces; c++) {
       PetscInt  eidx;
-      PetscReal tau;
+      PetscReal tau,y_centroid;
       /* Get the element index */
       eidx = element_list[c];
       /* get coords for the element */
@@ -957,11 +962,14 @@ PetscErrorCode ApplyDeviatoricValuePlusLithostaticPressure_SurfQuadratureStokes_
       /* Get the surface quadrature data of the element */
       ierr = SurfaceQuadratureGetCellData_Stokes(surfQ_face,surfQ_coeff,c,&surfQ_cell_coeff);CHKERRQ(ierr);
       
-      tau = 0.0;
-      if (face_location[f] == HEX_FACE_Pzeta) {
+      /* The following ensures a cellwise constant deviatoric stress */
+      tau = 0.0; // default deviatoric stress
+      if (face_location[f] == HEX_FACE_Pzeta) { // face KMAX
+        y_centroid = 0.0; 
         for (k=0;k<Q1_NODES_PER_EL_3D;k++) {
-          if (el_coords[3*k + 1] > -0.5) {
-            tau = 15.0;
+          y_centroid += el_coords[3*k+1]*NiQ1_centroid[k]; // Compute cell centroid y coord
+          if (y_centroid > -0.5) { // if cell centroid y coord is above 50 km
+            tau = 5.0/(-0.5) * y_centroid; // Compute a linearly increasing deviator from 0.0 to the numerator value
           }
         }
       }
