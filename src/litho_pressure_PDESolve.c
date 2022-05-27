@@ -968,9 +968,9 @@ PetscErrorCode ApplyDeviatoricValuePlusLithostaticPressure_SurfQuadratureStokes_
         y_centroid = 0.0; 
         for (k=0;k<Q1_NODES_PER_EL_3D;k++) {
           y_centroid += el_coords[3*k+1]*NiQ1_centroid[k]; // Compute cell centroid y coord
-          if (y_centroid > -0.5) { // if cell centroid y coord is above 50 km
-            tau = 5.0/(-0.5) * y_centroid; // Compute a linearly increasing deviator from 0.0 to the numerator value
-          }
+        }
+        if (y_centroid > -0.5) { // if cell centroid y coord is above 50 km
+          tau = 5.0/(-0.5) * y_centroid; // Compute a linearly increasing deviator from 0.0 to the numerator value
         }
       }
 
