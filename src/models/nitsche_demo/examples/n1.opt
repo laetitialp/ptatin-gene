@@ -1,0 +1,55 @@
+#
+# ./ptatin_driver_linear_ts.app
+#
+
+
+# ---- Select model ---- #
+-ptatin_model nitsche_demo
+-output_path n1
+
+
+# Boundary condition type
+#  -bc 0 : no slip everywhere + free surface
+#  -bc 1 : no slip everywhere + free surface (Nitsche Dirichlet)
+#  -bc 2 : free slip everywhere + free surface (Nitsche Navier slip)
+#-bc 0 # pass
+-bc 2
+
+# Mesh resolution
+-mx 8
+-my 8
+-mz 8
+
+# Material point resolution per cell
+-lattice_layout_Nx 3
+-lattice_layout_Ny 3
+-lattice_layout_Nz 3
+
+# ---- Define ptatin timestepping/io parameters ---- #
+-nsteps 0
+-output_frequency 1
+-dt_min 1.0e-6
+-dt_max 0.5
+
+
+
+# ---- Solver configuration ---- #
+-A11_operator_type 0
+-dau_nlevels 1
+-fieldsplit_p_ksp_type preonly
+-fieldsplit_p_pc_type jacobi
+-fieldsplit_u_ksp_monitor
+-fieldsplit_u_ksp_rtol 1.0e-1
+-fieldsplit_u_ksp_type fgmres
+-fieldsplit_u_pc_type mg
+-fieldsplit_u_pc_mg_levels 1
+-fieldsplit_u_mg_coarse_pc_type lu
+-fieldsplit_u_mg_levels_0_pc_type lu
+-ksp_type fgmres
+-ksp_rtol 1.0e-6
+-log_summary
+-pc_fieldsplit_schur_fact_type upper
+-pc_fieldsplit_type schur
+-pc_type fieldsplit
+-snes_type ksponly
+-stk_velocity_dm_mat_type aij
