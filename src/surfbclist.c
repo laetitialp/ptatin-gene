@@ -242,7 +242,7 @@ PetscErrorCode SurfBCList_AssembleAij(SurfBCList surfbc,
   
   if (!surfbc) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"SurfBCList is NULL. This indiates a setup error has occurred");
   for (k=0; k<surfbc->sc_nreg; k++) {
-    if (ij[0] == ij[1] == 0) {
+    if (ij[0] == 0 && ij[1] == 0) {
       ierr = SurfaceConstraintOps_AssembleA11(surfbc->sc_list[k],dau,A, PETSC_FALSE);CHKERRQ(ierr);
     } else if (ij[0] == 0 && ij[1] == 1) {
       ierr = SurfaceConstraintOps_AssembleA12(surfbc->sc_list[k],dau,dap,A, PETSC_FALSE);CHKERRQ(ierr);
