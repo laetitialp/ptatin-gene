@@ -14,6 +14,7 @@
 #include <ptatin3d_stokes.h>
 
 #include <surface_constraint.h>
+#include <sc_generic.h>
 
 /*
 typedef enum {
@@ -32,6 +33,8 @@ static PetscErrorCode _ops_operator_only(SurfaceConstraint sc);
 
 static PetscErrorCode _SetType_NONE(SurfaceConstraint sc);
 static PetscErrorCode _SetType_TRACTION(SurfaceConstraint sc);
+static PetscErrorCode _SetType_DUMMY(SurfaceConstraint sc);
+PetscErrorCode _SetType_DEMO(SurfaceConstraint sc);
 static PetscErrorCode _SetType_FSSA(SurfaceConstraint sc);
 
 PetscErrorCode SurfaceConstraintCreate(SurfaceConstraint *_sc)
@@ -214,6 +217,13 @@ PetscErrorCode SurfaceConstraintSetType(SurfaceConstraint sc, SurfaceConstraintT
 
     case SC_TRACTION:
       ierr = _SetType_TRACTION(sc);CHKERRQ(ierr);
+      break;
+
+    case SC_DUMMY:
+      ierr = _SetType_DUMMY(sc);CHKERRQ(ierr);
+      break;
+    case SC_DEMO:
+      ierr = _SetType_DEMO(sc);CHKERRQ(ierr);
       break;
 
     case SC_FSSA:
@@ -401,7 +411,7 @@ PetscErrorCode SurfaceConstraintOps_ActionA(SurfaceConstraint sc,
 {
   PetscErrorCode ierr;
   if (sc->ops.action_A) {
-    //ierr = sc->ops.action_A(sc,dau,ufield,dap,pfield,Yu,Yp);CHKERRQ(ierr);
+    ierr = sc->ops.action_A(sc,dau,ufield,dap,pfield,Yu,Yp);CHKERRQ(ierr);
   } else {
     if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_ActionA[name %s]: action_A = NULL",sc->name);
   }
@@ -429,7 +439,7 @@ PetscErrorCode SurfaceConstraintOps_ActionA12(SurfaceConstraint sc,
                                             PetscBool error_if_null)
 {
   PetscErrorCode ierr;
-  if (sc->ops.action_A) {
+  if (sc->ops.action_Aup) {
     ierr = sc->ops.action_Aup(sc,dau,dap,pfield,Yu);CHKERRQ(ierr);
   } else {
     if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_ActionAup[name %s]: action_Aup = NULL",sc->name);
@@ -454,12 +464,12 @@ PetscErrorCode SurfaceConstraintOps_ActionA21(SurfaceConstraint sc,
 
 /* assemble */
 PetscErrorCode SurfaceConstraintOps_AssembleA11(SurfaceConstraint sc,
-                                              DM dau,PetscReal Ae[],
+                                              DM dau,Mat A,
                                               PetscBool error_if_null)
 {
   PetscErrorCode ierr;
-  if (sc->ops.action_Auu) {
-    ierr = sc->ops.asmb_Auu(sc,dau,Ae);CHKERRQ(ierr);
+  if (sc->ops.asmb_Auu) {
+    ierr = sc->ops.asmb_Auu(sc,dau,A);CHKERRQ(ierr);
   } else {
     if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_AssembleAuu[name %s]: asmb_Auu = NULL",sc->name);
   }
@@ -469,12 +479,12 @@ PetscErrorCode SurfaceConstraintOps_AssembleA11(SurfaceConstraint sc,
 PetscErrorCode SurfaceConstraintOps_AssembleA12(SurfaceConstraint sc,
                                               DM dau,
                                               DM dap,
-                                              PetscScalar Ae[],
+                                              Mat A,
                                               PetscBool error_if_null)
 {
   PetscErrorCode ierr;
-  if (sc->ops.action_A) {
-    ierr = sc->ops.asmb_Aup(sc,dau,dap,Ae);CHKERRQ(ierr);
+  if (sc->ops.asmb_Aup) {
+    ierr = sc->ops.asmb_Aup(sc,dau,dap,A);CHKERRQ(ierr);
   } else {
     if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_AssembleAup[name %s]: asmb_Aup = NULL",sc->name);
   }
@@ -484,12 +494,12 @@ PetscErrorCode SurfaceConstraintOps_AssembleA12(SurfaceConstraint sc,
 PetscErrorCode SurfaceConstraintOps_AssembleA21(SurfaceConstraint sc,
                                               DM dau,
                                               DM dap,
-                                              PetscScalar Ae[],
+                                              Mat A,
                                               PetscBool error_if_null)
 {
   PetscErrorCode ierr;
-  if (sc->ops.action_Apu) {
-    ierr = sc->ops.asmb_Apu(sc,dau,dap,Ae);CHKERRQ(ierr);
+  if (sc->ops.asmb_Apu) {
+    ierr = sc->ops.asmb_Apu(sc,dau,dap,A);CHKERRQ(ierr);
   } else {
     if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_AseembleA21[name %s]: asmb_Apu = NULL",sc->name);
   }
@@ -502,7 +512,7 @@ PetscErrorCode SurfaceConstraintOps_AssembleDiagA11(SurfaceConstraint sc,
                                                 PetscBool error_if_null)
 {
   PetscErrorCode ierr;
-  if (sc->ops.action_Auu) {
+  if (sc->ops.diag_Auu) {
     ierr = sc->ops.diag_Auu(sc,dau,Ae);CHKERRQ(ierr);
   } else {
     if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_DiagAuu[name %s]: diag_Auu = NULL",sc->name);
@@ -735,8 +745,8 @@ static PetscErrorCode _SetType_TRACTION(SurfaceConstraint sc)
 
 static PetscErrorCode _FormFunctionLocal_Fu_FSSA_diag(SurfaceConstraint sc,DM dau,const PetscScalar ufield[],DM dap,const PetscScalar pfield[],PetscScalar Ru[]);
 static PetscErrorCode _FormFunctionLocal_Fu_FSSA(SurfaceConstraint sc,DM dau,const PetscScalar ufield[],DM dap,const PetscScalar pfield[],PetscScalar Ru[]);
-static PetscErrorCode _FormJacobianCell_A11_FSSA_diag(SurfaceConstraint sc,DM dau,PetscScalar Ae[]);
-static PetscErrorCode _FormJacobianCell_A11_FSSA(SurfaceConstraint sc,DM dau,PetscScalar Ae[]);
+static PetscErrorCode _FormJacobianCell_A11_FSSA_diag(SurfaceConstraint sc,DM dau,Mat A);
+static PetscErrorCode _FormJacobianCell_A11_FSSA(SurfaceConstraint sc,DM dau,Mat A);
 
 typedef struct {
   PetscBool use_diag_approximation;
@@ -792,13 +802,13 @@ static PetscErrorCode _FormFunctionLocal_Fu_FSSA(SurfaceConstraint sc,DM dau,con
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode _FormJacobianCell_A11_FSSA_diag(SurfaceConstraint sc,DM dau,PetscScalar Ae[])
+static PetscErrorCode _FormJacobianCell_A11_FSSA_diag(SurfaceConstraint sc,DM dau,Mat A)
 {
   PetscErrorCode ierr;
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode _FormJacobianCell_A11_FSSA(SurfaceConstraint sc,DM dau,PetscScalar Ae[])
+static PetscErrorCode _FormJacobianCell_A11_FSSA(SurfaceConstraint sc,DM dau,Mat A)
 {
   PetscErrorCode ierr;
   PetscFunctionReturn(0);
@@ -833,6 +843,420 @@ PetscErrorCode SurfaceConstraintFSSA_SetTimestep(SurfaceConstraint sc,PetscReal 
 }
 
 
+/* ======================== */
+
+typedef struct {
+  PetscBool setup;
+} Dummy_Context;
+
+static PetscErrorCode _Destroy_Dummy(SurfaceConstraint sc)
+{
+  Dummy_Context *ctx;
+  PetscErrorCode ierr;
+  if (sc->data) {
+    ctx = (Dummy_Context*)sc->data;
+    ierr = PetscFree(ctx);CHKERRQ(ierr);
+    sc->data = NULL;
+  }
+  PetscFunctionReturn(0);
+}
+
+typedef struct {
+  QPntSurfCoefStokes *boundary_qp;
+} DummyForm_Context;
+
+static PetscErrorCode _dummy_form_access(StokesForm *form)
+{
+  PetscErrorCode ierr;
+  SurfaceConstraint sc;
+  SurfaceQuadrature boundary_q;
+  DummyForm_Context *formdata;
+  Dummy_Context *data;
+  
+  printf("Form[Dummy]: access()\n");
+  formdata = (DummyForm_Context*)form->data;
+  
+  sc = form->sc;
+  data = (Dummy_Context*)sc->data;
+  printf("data->setup %d\n",data->setup);
+  
+  boundary_q = sc->quadrature;
+  ierr = SurfaceQuadratureGetAllCellData_Stokes(boundary_q,&formdata->boundary_qp);CHKERRQ(ierr);
+  
+  //DataBucketGetEntriesdByName(sc->properties_db,"traction",(void**)&traction_qp);
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode _dummy_form_restore(StokesForm *form)
+{
+  PetscErrorCode ierr;
+  SurfaceConstraint sc;
+  DummyForm_Context *formdata;
+
+  printf("Form[Dummy]: restore()\n");
+  formdata = (DummyForm_Context*)form->data;
+
+  sc = form->sc;
+  
+  //DataBucketRestoreEntriesdByName(sc->properties_db,"traction",(void**)&traction_qp);
+  formdata->boundary_qp = NULL;
+  
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode StokesFormSetupContext_Dummy(StokesForm *F,DummyForm_Context *formdata)
+{
+  PetscErrorCode ierr;
+ 
+  /* data */
+  ierr = PetscMemzero(formdata,sizeof(DummyForm_Context));CHKERRQ(ierr);
+  F->data = (void*)formdata;
+  
+  /* methods */
+  F->access  = _dummy_form_access;
+  F->restore = _dummy_form_restore;
+  F->apply   = NULL;
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode _dummy_form_apply_ResidualF1(StokesForm *form,PetscReal ds[],PetscReal F[])
+{
+  Dummy_Context      *scdata = NULL;
+  DummyForm_Context  *formdata = NULL;
+  PetscInt           sq_index,sc_index;
+  PetscInt           bs_1=1,bs_2=1; /* block size of data 1 and data 2 */
+  QPntSurfCoefStokes *qx = NULL;
+  double             *normal,eta;
+  FunctionSpace      *test = form->test;
+  
+  //printf("  Form[Dummy]: apply_F1()\n");
+  
+  scdata   = (Dummy_Context*)form->sc->data;
+  formdata = (DummyForm_Context*)form->data;
+  sc_index = form->facet_sc_i * bs_1 * form->nqp  + bs_1 * form->point_i;
+  sq_index = form->facet_i * bs_2 * form->nqp  + bs_2 * form->point_i;
+ 
+  qx = &formdata->boundary_qp[sq_index];
+  normal = qx->normal;
+  eta    = qx->eta;
+  //qy = &formdata->constraint_qp[sc_index];
+  
+  /*
+   auto-generated-func(
+      test->W, test->Wx,test->Wy,test->Wz,
+      form->X[0]->W, form->X[0]->Wx,form->X[0]->Wy,form->X[0]->Wz,
+      form->X[1]->W, form->X[1]->Wx,form->X[1]->Wy,form->X[1]->Wz,
+      form->u_elfield_0, form->u_elfield_1, form->u_elfield_2,
+      form->p_elfield_0,
+      qx->normal, qx->eta, formdata->xxx, scdata->yyy,
+      *ds,F);
+   
+   for (q=0; q<form->nqp; q++) {
+     PetscInt basis_offset_t = test->nbasis * q;
+     PetscReal *wt = &test->W[basis_offset];
+     PetscInt basis_offset_0 = form->X[0]->nbasis * q;
+     PetscReal *w0 = &formX[0]->W[basis_offset_0];
+     PetscInt basis_offset_1 = form->X[1]->nbasis * q;
+     PetscReal *w1 = &formX[1]->W[basis_offset_1];
+
+     auto-generated-func(
+       wt, wtx,wty,wtz,
+       w0, w0x,w0y,w0z,
+       w1, w1x,w1y,w1z, ...
+
+   }
+  */
+  
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode _Residual_F1_Dummy(
+  SurfaceConstraint sc,
+  DM dau,const PetscScalar ufield[],
+  DM dap,const PetscScalar pfield[],
+  PetscScalar Ru[])
+{
+  PetscErrorCode ierr;
+  StokesForm F;
+  DummyForm_Context formdata;
+  
+  printf("_Residual_F1_Dummy\n");
+  
+  {
+    ierr = StokesFormInit(&F,FORM_RESIDUAL,sc);CHKERRQ(ierr);
+    ierr = StokeFormSetFunctionSpace_Q2P1(&F);CHKERRQ(ierr);
+    ierr = StokesFormSetupContext_Dummy(&F,&formdata);CHKERRQ(ierr);
+    F.apply = _dummy_form_apply_ResidualF1;
+  }
+  
+  ierr = generic_facet_action(&F,
+                              &F.u, /* test function */
+                              dau, /* coordinates */
+                              dau,ufield, /* velocity */
+                              dap,pfield, /* pressure */
+                              Ru);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode _dummy_form_apply_ResidualF2(StokesForm *form,PetscReal ds[],PetscReal F[])
+{
+  //printf("  Form[Dummy]: apply_F2()\n");
+  
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode _Residual_F2_Dummy(
+                                         SurfaceConstraint sc,
+                                         DM dau,const PetscScalar ufield[],
+                                         DM dap,const PetscScalar pfield[],
+                                         PetscScalar Rp[])
+{
+  PetscErrorCode ierr;
+  StokesForm F;
+  DummyForm_Context formdata;
+  
+  printf("_Residual_F2_Dummy\n");
+  
+  ierr = StokesFormInit(&F,FORM_RESIDUAL,sc);CHKERRQ(ierr);
+  ierr = StokeFormSetFunctionSpace_Q2P1(&F);CHKERRQ(ierr);
+#if 0
+  /* data */
+  ierr = PetscMemzero(&formdata,sizeof(DummyForm_Context));CHKERRQ(ierr);
+  F.data = (void*)&formdata;
+  /* methods */
+  F.access  = _dummy_form_access;
+  F.restore = _dummy_form_restore;
+  F.apply   = _dummy_form_apply_ResidualF2;
+#endif
+  ierr = StokesFormSetupContext_Dummy(&F,&formdata);CHKERRQ(ierr);
+  F.apply = _dummy_form_apply_ResidualF2;
+  
+  ierr = generic_facet_action(&F,
+                              &F.p, /* test function */
+                              dau, /* coordinates */
+                              dau,ufield, /* velocity */
+                              dap,pfield, /* pressure */
+                              Rp);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
+
+static PetscErrorCode _dummy_form_apply_SpMVA11(StokesForm *form,PetscReal ds[],PetscReal F[])
+{
+  PetscErrorCode ierr;
+  
+  //printf("  Form[Dummy]: apply_A11()\n");
+  
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode _SpMV_A11_Dummy(
+  SurfaceConstraint sc,
+  DM dau,const PetscScalar ufield[],
+  PetscScalar Yu[])
+{
+  PetscErrorCode ierr;
+  StokesForm F;
+  DummyForm_Context formdata;
+  
+  printf("_SpMV_A11_Dummy\n");
+  {
+    MeshEntity facets;
+    ierr = SurfaceConstraintGetFacets(sc,&facets);CHKERRQ(ierr);
+    printf("  > total facets %d : marked facets %d\n",sc->fi->n_facets,facets->n_entities);
+  }
+
+  ierr = StokesFormInit(&F,FORM_SPMV,sc);CHKERRQ(ierr);
+  ierr = StokeFormSetFunctionSpace_Q2P1(&F);CHKERRQ(ierr);
+  ierr = StokesFormSetupContext_Dummy(&F,&formdata);CHKERRQ(ierr);
+  F.apply = _dummy_form_apply_SpMVA11;
+  
+  ierr = generic_facet_action(&F,
+                              &F.u, /* test function */
+                              dau, /* coordinates */
+                              dau,ufield, /* velocity */
+                              NULL,NULL, /* pressure */
+                              Yu);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode _dummy_form_apply_SpMVA12(StokesForm *form,PetscReal ds[],PetscReal F[])
+{
+  Dummy_Context      *scdata = NULL;
+  DummyForm_Context  *formdata = NULL;
+  PetscInt           sq_index,sc_index;
+  PetscInt           bs_1=1,bs_2=1; /* block size of data 1 and data 2 */
+  QPntSurfCoefStokes *qx = NULL;
+  double             *normal,eta;
+  FunctionSpace      *test = form->test,*trial = form->trial;
+  
+  //printf("  Form[Dummy]: apply_A12()\n");
+  
+  scdata   = (Dummy_Context*)form->sc->data;
+  formdata = (DummyForm_Context*)form->data;
+  sc_index = form->facet_sc_i * bs_1 * form->nqp  + bs_1 * form->point_i;
+  sq_index = form->facet_i * bs_2 * form->nqp  + bs_2 * form->point_i;
+  
+  qx = &formdata->boundary_qp[sq_index];
+  normal = qx->normal;
+  eta    = qx->eta;
+
+  
+  
+  
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode _SpMV_A12_Dummy(
+  SurfaceConstraint sc,
+  DM dau,
+  DM dap,const PetscScalar pfield[],
+  PetscScalar Yu[])
+{
+  PetscErrorCode ierr;
+  StokesForm F;
+  DummyForm_Context formdata;
+  
+  printf("_SpMV_A12_Dummy\n");
+  
+  ierr = StokesFormInit(&F,FORM_SPMV,sc);CHKERRQ(ierr);
+  ierr = StokeFormSetFunctionSpace_Q2P1(&F);CHKERRQ(ierr);
+  ierr = StokesFormSetupContext_Dummy(&F,&formdata);CHKERRQ(ierr);
+  F.apply = _dummy_form_apply_SpMVA12;
+  
+  ierr = generic_facet_action(&F,
+                              &F.u, /* test function */
+                              dau, /* coordinates */
+                              dau,NULL, /* velocity */
+                              dap,pfield, /* pressure */
+                              Yu);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode _dummy_form_apply_SpMVA21(StokesForm *form,PetscReal ds[],PetscReal F[])
+{
+  //printf("  Form[Dummy]: apply_A21()\n");
+  
+  
+  
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode _SpMV_A21_Dummy(
+                                      SurfaceConstraint sc,
+                                      DM dau,const PetscScalar ufield[],
+                                      DM dap,
+                                      PetscScalar Yp[])
+{
+  PetscErrorCode ierr;
+  StokesForm F;
+  DummyForm_Context formdata;
+  
+  printf("_SpMV_A21_Dummy\n");
+  
+  ierr = StokesFormInit(&F,FORM_SPMV,sc);CHKERRQ(ierr);
+  ierr = StokeFormSetFunctionSpace_Q2P1(&F);CHKERRQ(ierr);
+  ierr = StokesFormSetupContext_Dummy(&F,&formdata);CHKERRQ(ierr);
+  F.apply = _dummy_form_apply_SpMVA21;
+  
+  ierr = generic_facet_action(&F,
+                              &F.p, /* test function */
+                              dau, /* coordinates */
+                              dau,ufield, /* velocity */
+                              dap,NULL, /* pressure */
+                              Yp);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode _dummy_form_apply_SpMV_A11_A12(StokesForm *form,PetscReal ds[],PetscReal F[])
+{
+  //printf("  Form[Dummy]: apply_A11_A12()\n");
+  //printf("               call residual Fu with RHS data set to zero\n");
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode _dummy_form_apply_SpMV_A21_A22(StokesForm *form,PetscReal ds[],PetscReal F[])
+{
+  //printf("  Form[Dummy]: apply_A21_A22()\n");
+  //printf("               call residual Fp with RHS data set to zero\n");
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode _SpMV_A_Dummy(
+                                    SurfaceConstraint sc,
+                                    DM dau,const PetscScalar ufield[],
+                                    DM dap,const PetscScalar pfield[],
+                                    PetscScalar Yu[],PetscScalar Yp[])
+{
+  PetscErrorCode ierr;
+  StokesForm F;
+  DummyForm_Context formdata;
+  
+  printf("_SpMV_A_Dummy\n");
+  
+  ierr = StokesFormInit(&F,FORM_RESIDUAL,sc);CHKERRQ(ierr);
+  ierr = StokeFormSetFunctionSpace_Q2P1(&F);CHKERRQ(ierr);
+  ierr = StokesFormSetupContext_Dummy(&F,&formdata);CHKERRQ(ierr);
+  F.apply = _dummy_form_apply_SpMV_A11_A12;
+  
+  ierr = generic_facet_action(&F,
+                              &F.u, /* test function */
+                              dau, /* coordinates */
+                              dau,ufield, /* velocity */
+                              dap,pfield, /* pressure */
+                              Yu);CHKERRQ(ierr);
+
+  ierr = StokesFormInit(&F,FORM_RESIDUAL,sc);CHKERRQ(ierr);
+  ierr = StokeFormSetFunctionSpace_Q2P1(&F);CHKERRQ(ierr);
+  ierr = StokesFormSetupContext_Dummy(&F,&formdata);CHKERRQ(ierr);
+  F.apply = _dummy_form_apply_SpMV_A21_A22;
+  
+  ierr = generic_facet_action(&F,
+                              &F.p, /* test function */
+                              dau, /* coordinates */
+                              dau,ufield, /* velocity */
+                              dap,pfield, /* pressure */
+                              Yp);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode _SetType_DUMMY(SurfaceConstraint sc)
+{
+  Dummy_Context *ctx;
+  PetscErrorCode ierr;
+  
+  /* set methods */
+  sc->ops.setup = NULL;
+  sc->ops.destroy = _Destroy_Dummy;
+  sc->ops.residual_F  = NULL;
+  
+  sc->ops.residual_Fu = _Residual_F1_Dummy;
+  sc->ops.residual_Fp = _Residual_F2_Dummy;
+  
+  sc->ops.action_A    = _SpMV_A_Dummy;
+  sc->ops.action_Auu  = _SpMV_A11_Dummy;
+  sc->ops.action_Aup  = _SpMV_A12_Dummy;
+  sc->ops.action_Apu  = _SpMV_A21_Dummy;
+  
+  /* allocate implementation data */
+  ierr = PetscMalloc1(1,&ctx);CHKERRQ(ierr);
+  ctx->setup = PETSC_TRUE;
+  sc->data = (void*)ctx;
+  /* insert properties into quadrature bucket */
+  DataBucketFinalize(sc->properties_db);
+  sc->type = SC_DUMMY;
+  PetscFunctionReturn(0);
+}
+
+
+/* ======================== */
 
 
 PetscErrorCode SurfaceConstraintSetValues(SurfaceConstraint sc,SurfCSetValuesGeneric set,void *data)
@@ -851,6 +1275,13 @@ PetscErrorCode SurfaceConstraintSetValues(SurfaceConstraint sc,SurfCSetValuesGen
 
     case SC_TRACTION:
       ierr = SurfaceConstraintSetValues_TRACTION(sc, (SurfCSetValuesTraction)set, data);CHKERRQ(ierr);
+      break;
+
+    case SC_DUMMY:
+      PetscPrintf(PETSC_COMM_SELF,"[Warning] SurfaceConstraintSetValues: type DUMMY does not have a setter");
+      break;
+    case SC_DEMO:
+      PetscPrintf(PETSC_COMM_SELF,"[Warning] SurfaceConstraintSetValues: type DEMO does not have a setter");
       break;
 
     case SC_FSSA:

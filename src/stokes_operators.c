@@ -60,6 +60,7 @@
 #include "dmda_duplicate.h"
 #include "dmda_bcs.h"
 #include "quadrature.h"
+#include "surfbclist.h"
 
 #include "stokes_operators.h"
 #include "stokes_operators_mf.h"
@@ -593,7 +594,7 @@ PetscErrorCode MatCreateSubMatrix_MFStokes_A(Mat A,IS isr,IS isc,MatReuse cll,Ma
           ierr = MatZeroEntries(*B);CHKERRQ(ierr);
         }
         //PetscPrintf(PETSC_COMM_WORLD,"ierr = AssembleAUU_Stokes();CHKERRQ(ierr);  TODO \n");
-        ierr = MatAssemble_StokesA_AUU(*B,ctx->daUVW,ctx->u_bclist,ctx->volQ);CHKERRQ(ierr);
+        ierr = MatAssemble_StokesA_AUU(*B,ctx->daUVW,ctx->u_bclist,ctx->volQ,ctx->surf_bclist);CHKERRQ(ierr);
       } else {
         if (cll==MAT_INITIAL_MATRIX) {
           PetscPrintf(PetscObjectComm((PetscObject)A),"  defining matrix free operator\n");
@@ -1090,7 +1091,8 @@ PetscErrorCode MatGetDiagonal_MFStokes_A11(Mat A,Vec X)
 
   /* A11 from momentum */
   ierr = MFStokesWrapper_diagA11(ctx->volQ,dau,LA_XUloc);CHKERRQ(ierr);
-
+  ierr = SurfBCList_AssembleDiagA11(ctx->surf_bclist,dau,LA_XUloc);CHKERRQ(ierr);
+  
   ierr = VecRestoreArray(XUloc,&LA_XUloc);CHKERRQ(ierr);
 
   /* do global fem summation */

@@ -159,7 +159,7 @@ PetscErrorCode compare_mf_A11(PhysCompStokes user,Quadrature volQ_2x2x2)
   ierr = DMSetMatType(da,MATAIJ);CHKERRQ(ierr);
   ierr = DMCreateMatrix(da,&B);CHKERRQ(ierr);
   PetscTime(&t0);
-  ierr = MatAssemble_StokesA_AUU(B,da,user->u_bclist,user->volQ);CHKERRQ(ierr);
+  ierr = MatAssemble_StokesA_AUU(B,da,user->u_bclist,user->volQ,user->surf_bclist);CHKERRQ(ierr);
   PetscTime(&t1);
   tl = (double)(t1 - t0);
   ierr = MPI_Allreduce(&tl,&timeMIN,1,MPI_DOUBLE,MPI_MIN,PETSC_COMM_WORLD);CHKERRQ(ierr);

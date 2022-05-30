@@ -41,6 +41,7 @@
 #include "dmda_bcs.h"
 #include "dmda_element_q2p1.h"
 #include "quadrature.h"
+#include "surfbclist.h"
 
 
 //#define PTAT3D_LOG_ASM_OP
@@ -112,7 +113,7 @@ void FormStokes3D_transB_isoD_B( const int npe,
 }
 
 
-PetscErrorCode MatAssemble_StokesA_AUU(Mat A,DM dau,BCList u_bclist,Quadrature volQ)
+PetscErrorCode MatAssemble_StokesA_AUU(Mat A,DM dau,BCList u_bclist,Quadrature volQ,SurfBCList surf_bclist)
 {
   PetscErrorCode ierr;
   PetscInt       p,ngp;
@@ -284,7 +285,11 @@ PetscErrorCode MatAssemble_StokesA_AUU(Mat A,DM dau,BCList u_bclist,Quadrature v
   ierr = BCListInsertScaling(A,NUM_GINDICES,(PetscInt*)GINDICES,u_bclist);CHKERRQ(ierr);
   ierr = ISLocalToGlobalMappingRestoreIndices(ltog, &GINDICES);CHKERRQ(ierr);
 
-
+  {
+    const PetscInt ij[] = { 0, 0 };
+    //ierr = SurfBCList_AssembleAij(surf_bclist,ij,dau,NULL,NULL);CHKERRQ(ierr);
+  }
+  
   ierr = MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   PetscTime(&t1);
@@ -449,7 +454,7 @@ PetscErrorCode MatAssemble_StokesPC_ScaledMassMatrix(Mat A,DM dau,DM dap,BCList 
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatAssemble_StokesA_A12(Mat A,DM dau,DM dap,BCList u_bclist,BCList p_bclist,Quadrature volQ)
+PetscErrorCode MatAssemble_StokesA_A12(Mat A,DM dau,DM dap,BCList u_bclist,BCList p_bclist,Quadrature volQ,SurfBCList surf_bclist)
 {
   PetscErrorCode ierr;
   PetscInt       p,ngp;
@@ -581,6 +586,11 @@ PetscErrorCode MatAssemble_StokesA_A12(Mat A,DM dau,DM dap,BCList u_bclist,BCLis
   ierr = ISLocalToGlobalMappingRestoreIndices(ltog, &GINDICES_u);CHKERRQ(ierr);
   ierr = ISLocalToGlobalMappingRestoreIndices(ltog, &GINDICES_p);CHKERRQ(ierr);
 
+  {
+    const PetscInt ij[] = { 0, 1 };
+    //ierr = SurfBCList_AssembleAij(surf_bclist,ij,dau,dap,NULL);CHKERRQ(ierr);
+  }
+
   ierr = MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   PetscTime(&t1);
@@ -592,7 +602,7 @@ PetscErrorCode MatAssemble_StokesA_A12(Mat A,DM dau,DM dap,BCList u_bclist,BCLis
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatAssemble_StokesA_A21(Mat A,DM dau,DM dap,BCList u_bclist,BCList p_bclist,Quadrature volQ)
+PetscErrorCode MatAssemble_StokesA_A21(Mat A,DM dau,DM dap,BCList u_bclist,BCList p_bclist,Quadrature volQ,SurfBCList surf_bclist)
 {
   PetscErrorCode ierr;
   PetscInt       p,ngp;
@@ -723,6 +733,11 @@ PetscErrorCode MatAssemble_StokesA_A21(Mat A,DM dau,DM dap,BCList u_bclist,BCLis
   }
   ierr = ISLocalToGlobalMappingRestoreIndices(ltog, &GINDICES_u);CHKERRQ(ierr);
   ierr = ISLocalToGlobalMappingRestoreIndices(ltog, &GINDICES_p);CHKERRQ(ierr);
+
+  {
+    const PetscInt ij[] = { 1, 0 };
+    //ierr = SurfBCList_AssembleAij(surf_bclist,ij,dau,dap,NULL);CHKERRQ(ierr);
+  }
 
   ierr = MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);

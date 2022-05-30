@@ -11,6 +11,8 @@
 typedef enum {
   SC_NONE = 0,
   SC_TRACTION,
+  SC_DUMMY,
+  SC_DEMO,
   SC_FSSA,
   SC_NITSCHE_DIRICHLET,
   SC_NITSCHE_NAVIER_SLIP,
@@ -38,7 +40,7 @@ struct _SurfaceConstraintOps {
   PetscErrorCode (*action_Auu)(SurfaceConstraint sc,
                                DM dau,const PetscScalar ufield[],
                                PetscScalar Yu[]);
-  PetscErrorCode (*asmb_Auu)(SurfaceConstraint,DM,PetscScalar*);
+  PetscErrorCode (*asmb_Auu)(SurfaceConstraint,DM,Mat);
   PetscErrorCode (*diag_Auu)(SurfaceConstraint,DM,PetscScalar*);
   
   PetscErrorCode (*action_Aup)(SurfaceConstraint sc,
@@ -48,7 +50,7 @@ struct _SurfaceConstraintOps {
   PetscErrorCode (*asmb_Aup)(SurfaceConstraint sc,
                              DM dau,
                              DM dap,
-                             PetscScalar Ae[]);
+                             Mat A);
   
   PetscErrorCode (*action_Apu)(SurfaceConstraint sc,
                                DM dau,const PetscScalar ufield[],
@@ -57,7 +59,7 @@ struct _SurfaceConstraintOps {
   PetscErrorCode (*asmb_Apu)(SurfaceConstraint sc,
                              DM dau,
                              DM dap,
-                             PetscScalar Ae[]);
+                             Mat A);
 };
 
 struct _p_SurfaceConstraint {
@@ -160,17 +162,17 @@ PetscErrorCode SurfaceConstraintOps_ActionA21(SurfaceConstraint sc,
                                               PetscBool error_if_null);
 
 PetscErrorCode SurfaceConstraintOps_AssembleA11(SurfaceConstraint sc,
-                                                DM dau,PetscReal Ae[],
+                                                DM dau,Mat A,
                                                 PetscBool error_if_null);
 PetscErrorCode SurfaceConstraintOps_AssembleA12(SurfaceConstraint sc,
                                                 DM dau,
                                                 DM dap,
-                                                PetscScalar Ae[],
+                                                Mat A,
                                                 PetscBool error_if_null);
 PetscErrorCode SurfaceConstraintOps_AssembleA21(SurfaceConstraint sc,
                                                 DM dau,
                                                 DM dap,
-                                                PetscScalar Ae[],
+                                                Mat A,
                                                 PetscBool error_if_null);
 
 PetscErrorCode SurfaceConstraintOps_AssembleDiagA11(SurfaceConstraint sc,
