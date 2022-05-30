@@ -1375,7 +1375,7 @@ void DataBucketRestoreEntriesdByName(DataBucket db,const char name[],void *data[
   *data = NULL;
 }
 
-void DataBucketRegisterDouble(DataBucket db,const char name[],int blocksize)
+void DataBucketRegister_double(DataBucket db,const char name[],int blocksize)
 {
   DataBucketRegisterField(db,name,sizeof(double)*blocksize,NULL);
 }
