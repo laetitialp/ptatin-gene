@@ -177,4 +177,7 @@ PetscErrorCode SurfaceConstraintOps_AssembleA21(SurfaceConstraint sc,
 PetscErrorCode SurfaceConstraintOps_AssembleDiagA11(SurfaceConstraint sc,
                                                     DM dau,PetscReal Ae[],
                                                     PetscBool error_if_null);
+
+PetscErrorCode _sc_get_hF(HexElementFace side,PetscReal elcoor[],PetscReal *hf);
+
 #endif

@@ -915,7 +915,7 @@ static PetscErrorCode _form_residual_F1(StokesForm *form,PetscReal ds[],PetscRea
   qp_offset = 1*(form->nqp * form->facet_sc_i + form->point_i);
   uDn  = formdata->sc_udotn_qp[qp_offset];
   
-  gamma = scdata->penalty * eta;
+  gamma = scdata->penalty * eta * 4.0 / form->hF;
   
   nitsche_navier_q2_3d_residual_w(form->test->W, form->test->Wx, form->test->Wy, form->test->Wz,
                                      form->X[0]->W, form->X[0]->Wx, form->X[0]->Wy, form->X[0]->Wz,
@@ -944,7 +944,7 @@ static PetscErrorCode _form_residual_F2(StokesForm *form,PetscReal ds[],PetscRea
   qp_offset = 1*(form->nqp * form->facet_sc_i + form->point_i);
   uDn  = formdata->sc_udotn_qp[qp_offset];
   
-  gamma = scdata->penalty * eta;
+  gamma = scdata->penalty * eta * 4.0 / form->hF;
   
   nitsche_navier_q2_3d_residual_q(form->test->W, form->test->Wx, form->test->Wy, form->test->Wz,
                                      form->X[0]->W, form->X[0]->Wx, form->X[0]->Wy, form->X[0]->Wz,
@@ -1023,7 +1023,7 @@ static PetscErrorCode _form_spmv_A11(StokesForm *form,PetscReal ds[],PetscReal F
   qp_offset = 1*(form->nqp * form->facet_sc_i + form->point_i);
   uDn  = formdata->sc_udotn_qp[qp_offset];
   
-  gamma = scdata->penalty * eta;
+  gamma = scdata->penalty * eta * 4.0 / form->hF;
 
   nitsche_navier_q2_3d_spmv_wu(form->test->W, form->test->Wx, form->test->Wy, form->test->Wz,
                                   form->trial->W, form->trial->Wx, form->trial->Wy, form->trial->Wz,
@@ -1049,7 +1049,7 @@ static PetscErrorCode _form_spmv_A12(StokesForm *form,PetscReal ds[],PetscReal F
   qp_offset = 1*(form->nqp * form->facet_sc_i + form->point_i);
   uDn  = formdata->sc_udotn_qp[qp_offset];
   
-  gamma = scdata->penalty * eta;
+  gamma = scdata->penalty * eta * 4.0 / form->hF;
   
   nitsche_navier_q2_3d_spmv_wp(form->test->W, form->test->Wx, form->test->Wy, form->test->Wz,
                                   form->trial->W, form->trial->Wx, form->trial->Wy, form->trial->Wz,
@@ -1075,7 +1075,7 @@ static PetscErrorCode _form_spmv_A21(StokesForm *form,PetscReal ds[],PetscReal F
   qp_offset = 1*(form->nqp * form->facet_sc_i + form->point_i);
   uDn  = formdata->sc_udotn_qp[qp_offset];
   
-  gamma = scdata->penalty * eta;
+  gamma = scdata->penalty * eta * 4.0 / form->hF;
   
   nitsche_navier_q2_3d_spmv_qu(form->test->W, form->test->Wx, form->test->Wy, form->test->Wz,
                                   form->trial->W, form->trial->Wx, form->trial->Wy, form->trial->Wz,
@@ -1170,7 +1170,7 @@ static PetscErrorCode _form_asmb_A11(StokesForm *form,PetscReal ds[],PetscReal A
   qp_offset = 1*(form->nqp * form->facet_sc_i + form->point_i);
   uDn  = formdata->sc_udotn_qp[qp_offset];
   
-  gamma = scdata->penalty * eta;
+  gamma = scdata->penalty * eta * 4.0 / form->hF;
   
   nitsche_navier_q2_3d_asmb_wu(form->test->W, form->test->Wx, form->test->Wy, form->test->Wz,
                                   form->trial->W, form->trial->Wx, form->trial->Wy, form->trial->Wz,
@@ -1197,7 +1197,7 @@ static PetscErrorCode _form_asmb_A12(StokesForm *form,PetscReal ds[],PetscReal A
   qp_offset = 1*(form->nqp * form->facet_sc_i + form->point_i);
   uDn  = formdata->sc_udotn_qp[qp_offset];
   
-  gamma = scdata->penalty * eta;
+  gamma = scdata->penalty * eta * 4.0 / form->hF;
   
   nitsche_navier_q2_3d_asmb_wp(form->test->W, form->test->Wx, form->test->Wy, form->test->Wz,
                                   form->trial->W, form->trial->Wx, form->trial->Wy, form->trial->Wz,
@@ -1222,7 +1222,7 @@ static PetscErrorCode _form_asmb_A21(StokesForm *form,PetscReal ds[],PetscReal A
   qp_offset = 1*(form->nqp * form->facet_sc_i + form->point_i);
   uDn  = formdata->sc_udotn_qp[qp_offset];
   
-  gamma = scdata->penalty * eta;
+  gamma = scdata->penalty * eta * 4.0 / form->hF;
   
   nitsche_navier_q2_3d_asmb_qu(form->test->W, form->test->Wx, form->test->Wy, form->test->Wz,
                                   form->trial->W, form->trial->Wx, form->trial->Wy, form->trial->Wz,
@@ -1348,7 +1348,7 @@ static PetscErrorCode _form_spmv_wA(StokesForm *form,PetscReal ds[],PetscReal F[
   //udotn  = &formdata->sc_udotn_qp[qp_offset];
   uDn = 0.0;
   
-  gamma = scdata->penalty * eta;
+  gamma = scdata->penalty * eta * 4.0 / form->hF;
   
   nitsche_navier_q2_3d_residual_w(form->test->W, form->test->Wx, form->test->Wy, form->test->Wz,
                                      form->X[0]->W, form->X[0]->Wx, form->X[0]->Wy, form->X[0]->Wz,
@@ -1377,7 +1377,7 @@ static PetscErrorCode _form_spmv_qA(StokesForm *form,PetscReal ds[],PetscReal F[
   
   uDn = 0.0;
   
-  gamma = scdata->penalty * eta;
+  gamma = scdata->penalty * eta * 4.0 / form->hF;
   
   nitsche_navier_q2_3d_residual_q(form->test->W, form->test->Wx, form->test->Wy, form->test->Wz,
                                      form->X[0]->W, form->X[0]->Wx, form->X[0]->Wy, form->X[0]->Wz,
@@ -1463,7 +1463,7 @@ PetscErrorCode _SetType_NITSCHE_NAVIER_SLIP(SurfaceConstraint sc)
   /* allocate implementation data */
   ierr = PetscMalloc1(1,&ctx);CHKERRQ(ierr);
   ctx->setup = PETSC_TRUE;
-  ctx->penalty = 20.0 * 100.0;
+  ctx->penalty = 20.0 * 1.0e2 * 0.5;
   sc->data = (void*)ctx;
   
   /* insert properties into quadrature bucket */

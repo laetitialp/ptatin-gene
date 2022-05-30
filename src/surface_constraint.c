@@ -1251,3 +1251,102 @@ PetscErrorCode SurfaceConstraintViewParaview(SurfaceConstraint sc, const char pa
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode _sc_get_hF(HexElementFace side,PetscReal elcoor[],PetscReal *hf)
+{
+  PetscInt k,d;
+  const PetscInt center = 4;
+  PetscReal dx,dx2,maxh = 0.0;
+  
+  switch (side) {
+    case HEX_FACE_Pxi:
+    {
+      const PetscInt fid[] = { 2,5,8, 11,14,17, 20,23,26 };
+      for (k=0; k<9; k++) {
+        dx2 = 0.0;
+        for (d=0; d<3; d++) {
+          dx = elcoor[3*fid[k]+d] - elcoor[3*fid[center]+d];
+          dx2 += dx*dx;
+        }
+        maxh = PetscMax(maxh,dx2);
+      }
+    }
+      break;
+
+    case HEX_FACE_Nxi:
+    {
+      const PetscInt fid[] = { 6,3,0, 15,12,9,  24,21,18 };
+      for (k=0; k<9; k++) {
+        dx2 = 0.0;
+        for (d=0; d<3; d++) {
+          dx = elcoor[3*fid[k]+d] - elcoor[3*fid[center]+d];
+          dx2 += dx*dx;
+        }
+        maxh = PetscMax(maxh,dx2);
+      }
+    }
+      break;
+      
+    case HEX_FACE_Peta:
+    {
+      const PetscInt fid[] = { 8,7,6, 17,16,15, 26,25,24 };
+      for (k=0; k<9; k++) {
+        dx2 = 0.0;
+        for (d=0; d<3; d++) {
+          dx = elcoor[3*fid[k]+d] - elcoor[3*fid[center]+d];
+          dx2 += dx*dx;
+        }
+        maxh = PetscMax(maxh,dx2);
+      }
+    }
+      break;
+      
+    case HEX_FACE_Neta:
+    {
+      const PetscInt fid[] = { 0,1,2, 9,10,11, 18,19,20 };
+      for (k=0; k<9; k++) {
+        dx2 = 0.0;
+        for (d=0; d<3; d++) {
+          dx = elcoor[3*fid[k]+d] - elcoor[3*fid[center]+d];
+          dx2 += dx*dx;
+        }
+        maxh = PetscMax(maxh,dx2);
+      }
+    }
+      break;
+      
+    case HEX_FACE_Pzeta:
+    {
+      const PetscInt fid[] = { 18,19,20, 21,22,23, 24,25,26 };
+      for (k=0; k<9; k++) {
+        dx2 = 0.0;
+        for (d=0; d<3; d++) {
+          dx = elcoor[3*fid[k]+d] - elcoor[3*fid[center]+d];
+          dx2 += dx*dx;
+        }
+        maxh = PetscMax(maxh,dx2);
+      }
+    }
+      break;
+      
+    case HEX_FACE_Nzeta:
+    {
+      const PetscInt fid[] = { 2,1,0, 5,4,3, 8,7,6 };
+      for (k=0; k<9; k++) {
+        dx2 = 0.0;
+        for (d=0; d<3; d++) {
+          dx = elcoor[3*fid[k]+d] - elcoor[3*fid[center]+d];
+          dx2 += dx*dx;
+        }
+        maxh = PetscMax(maxh,dx2);
+      }
+    }
+      break;
+      
+    default:
+      break;
+  }
+  
+  *hf = PetscSqrtReal(maxh) * 2.0;
+  
+  PetscFunctionReturn(0);
+}

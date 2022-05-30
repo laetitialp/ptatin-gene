@@ -42,6 +42,7 @@ struct _p_StokesForm {
   PetscReal *u_elfield_0,*u_elfield_1,*u_elfield_2;
   PetscReal *p_elfield_0;
   FunctionSpace *test,*trial;
+  PetscReal hF;
 };
 
 PetscErrorCode FunctionSpaceSet_VelocityQ1(FunctionSpace *s);

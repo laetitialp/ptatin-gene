@@ -108,6 +108,7 @@ PetscErrorCode StokesFormFlush(StokesForm *f)
   f->facet_sc_i = -1;
   f->facet_i = -1;
   f->point_i = -1;
+  f->hF = 0.0;
   f->test = NULL;
   f->trial = NULL;
   PetscFunctionReturn(0);
@@ -369,6 +370,8 @@ PetscErrorCode generic_facet_action(StokesForm *form,
       form->facet_sc_i = fe; /* required to access qp data associated with SurfacConstraint */
       form->facet_i    = facet_index; /* required to access qp data assocuated with SurfaceQuadrature */
       form->point_i    = q; /* Required for point-wise iterator */
+      
+      ierr = _sc_get_hF(cell_side,form->x_elfield,&form->hF);CHKERRQ(ierr);
       
       ierr = form->apply(form,&fac,Fe);CHKERRQ(ierr);
     }
@@ -632,6 +635,8 @@ PetscErrorCode generic_facet_assemble(StokesForm *form,
       form->facet_i    = facet_index; /* required to access qp data assocuated with SurfaceQuadrature */
       form->point_i    = q; /* Required for point-wise iterator */
       
+      ierr = _sc_get_hF(cell_side,form->x_elfield,&form->hF);CHKERRQ(ierr);
+
       ierr = form->apply(form,&fac,Ae_ij);CHKERRQ(ierr);
     }
 
@@ -882,6 +887,8 @@ PetscErrorCode generic_facet_assemble_diagonal(StokesForm *form,
       form->facet_i    = facet_index; /* required to access qp data assocuated with SurfaceQuadrature */
       form->point_i    = q; /* Required for point-wise iterator */
       
+      ierr = _sc_get_hF(cell_side,form->x_elfield,&form->hF);CHKERRQ(ierr);
+
       ierr = form->apply(form,&fac,Ae_ij);CHKERRQ(ierr);
     }
     
