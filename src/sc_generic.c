@@ -407,14 +407,13 @@ PetscErrorCode generic_facet_assemble(StokesForm *form,
                                     Mat A)
 {
   PetscErrorCode ierr;
-  PetscReal *Ae_ij;
+  PetscReal *Ae_ij = NULL;
   PetscReal elcoords[3*Q2_NODES_PER_EL_3D];
   PetscReal N[Q2_NODES_PER_EL_3D];
   PetscReal Nxi[3][Q2_NODES_PER_EL_3D],Nx[3][Q2_NODES_PER_EL_3D];
   PetscReal M[P_BASIS_FUNCTIONS];
   //PetscReal Mxi[3][P_BASIS_FUNCTIONS],Mx[3][P_BASIS_FUNCTIONS];
   PetscInt size = 0;
-  PetscReal *Ae = NULL;
   PetscBool require_U = PETSC_FALSE;
   PetscBool require_P = PETSC_FALSE;
   PetscBool use_set_values_local = PETSC_FALSE;
@@ -676,14 +675,13 @@ PetscErrorCode generic_facet_assemble_diagonal(StokesForm *form,
                                       Vec diagA)
 {
   PetscErrorCode ierr;
-  PetscReal *Ae_ij;
+  PetscReal *Ae_ij = NULL;
   PetscReal elcoords[3*Q2_NODES_PER_EL_3D];
   PetscReal N[Q2_NODES_PER_EL_3D];
   PetscReal Nxi[3][Q2_NODES_PER_EL_3D],Nx[3][Q2_NODES_PER_EL_3D];
   PetscReal M[P_BASIS_FUNCTIONS];
   //PetscReal Mxi[3][P_BASIS_FUNCTIONS],Mx[3][P_BASIS_FUNCTIONS];
   PetscInt size = 0;
-  PetscReal *Ae = NULL;
   PetscBool require_U = PETSC_FALSE;
   PetscBool require_P = PETSC_FALSE;
   PetscBool use_set_values_local = PETSC_FALSE;

@@ -11,7 +11,6 @@
 typedef enum {
   SC_NONE = 0,
   SC_TRACTION,
-  SC_DUMMY,
   SC_DEMO,
   SC_FSSA,
   SC_NITSCHE_DIRICHLET,
