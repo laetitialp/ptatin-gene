@@ -938,7 +938,6 @@ PetscErrorCode MatMult_MFStokes_A(Mat A,Vec X,Vec Y)
 
   // action A
   ierr = SurfBCList_ActionA(ctx->surf_bclist,dau,LA_XUloc,dap,LA_XPloc,LA_YUloc,LA_YPloc);CHKERRQ(ierr);
-
   
   ierr = VecRestoreArray(YPloc,&LA_YPloc);CHKERRQ(ierr);
   ierr = VecRestoreArray(YUloc,&LA_YUloc);CHKERRQ(ierr);
@@ -1198,7 +1197,6 @@ PetscErrorCode MatMult_MFStokes_A11(Mat A,Vec X,Vec Y)
 
   // action A11
   ierr = SurfBCList_ActionA11(ctx->surf_bclist,dau,LA_XUloc,LA_YUloc);CHKERRQ(ierr);
-
   
   ierr = VecRestoreArray(YUloc,&LA_YUloc);CHKERRQ(ierr);
   ierr = VecRestoreArray(XUloc,&LA_XUloc);CHKERRQ(ierr);
@@ -1343,7 +1341,6 @@ PetscErrorCode MatMult_MFStokes_A12(Mat A,Vec X,Vec Y)
 
   // action A12
   ierr = SurfBCList_ActionA12(ctx->surf_bclist,dau,dap,LA_XPloc,LA_YUloc);CHKERRQ(ierr);
-
   
   ierr = VecRestoreArray(YUloc,&LA_YUloc);CHKERRQ(ierr);
   ierr = VecRestoreArray(XPloc,&LA_XPloc);CHKERRQ(ierr);

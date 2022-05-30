@@ -287,7 +287,7 @@ PetscErrorCode MatAssemble_StokesA_AUU(Mat A,DM dau,BCList u_bclist,Quadrature v
 
   {
     const PetscInt ij[] = { 0, 0 };
-    //ierr = SurfBCList_AssembleAij(surf_bclist,ij,dau,NULL,NULL);CHKERRQ(ierr);
+    ierr = SurfBCList_AssembleAij(surf_bclist,ij,dau,NULL,A);CHKERRQ(ierr);
   }
   
   ierr = MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
@@ -588,7 +588,7 @@ PetscErrorCode MatAssemble_StokesA_A12(Mat A,DM dau,DM dap,BCList u_bclist,BCLis
 
   {
     const PetscInt ij[] = { 0, 1 };
-    //ierr = SurfBCList_AssembleAij(surf_bclist,ij,dau,dap,NULL);CHKERRQ(ierr);
+    ierr = SurfBCList_AssembleAij(surf_bclist,ij,dau,dap,A);CHKERRQ(ierr);
   }
 
   ierr = MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
@@ -736,7 +736,7 @@ PetscErrorCode MatAssemble_StokesA_A21(Mat A,DM dau,DM dap,BCList u_bclist,BCLis
 
   {
     const PetscInt ij[] = { 1, 0 };
-    //ierr = SurfBCList_AssembleAij(surf_bclist,ij,dau,dap,NULL);CHKERRQ(ierr);
+    ierr = SurfBCList_AssembleAij(surf_bclist,ij,dau,dap,A);CHKERRQ(ierr);
   }
 
   ierr = MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
