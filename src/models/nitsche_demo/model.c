@@ -89,8 +89,7 @@ static PetscErrorCode const_ud(Facet F,const PetscReal qp_coor[],PetscReal uD[],
   PetscFunctionReturn(0);
 }
 
-
-PetscErrorCode bctype_no_slip_nitsche(SurfBCList surflist,PetscBool insert_not_fouund)
+PetscErrorCode bctype_no_slip_nitsche(SurfBCList surflist,PetscBool insert_if_not_fouund)
 {
   SurfaceConstraint sc;
   MeshEntity        facets;
@@ -99,8 +98,12 @@ PetscErrorCode bctype_no_slip_nitsche(SurfBCList surflist,PetscBool insert_not_f
   
   ierr = SurfBCListGetConstraint(surflist,"boundary",&sc);CHKERRQ(ierr);
   if (!sc) {
-    ierr = SurfBCListAddConstraint(surflist,"boundary",&sc);CHKERRQ(ierr);
+    if (insert_if_not_fouund) {
+      ierr = SurfBCListAddConstraint(surflist,"boundary",&sc);CHKERRQ(ierr);
+      ierr = SurfaceConstraintSetType(sc,SC_NITSCHE_DIRICHLET);CHKERRQ(ierr);
+    } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint not found");
   }
+  
   ierr = SurfaceConstraintGetFacets(sc,&facets);CHKERRQ(ierr);
   
   {
@@ -110,7 +113,6 @@ PetscErrorCode bctype_no_slip_nitsche(SurfBCList surflist,PetscBool insert_not_f
     ierr = MeshFacetMarkDomainFaces(facets,sc->fi,nsides,sides);CHKERRQ(ierr);
   }
   
-  ierr = SurfaceConstraintSetType(sc,SC_NITSCHE_DIRICHLET);CHKERRQ(ierr);
   SURFC_CHKSETVALS(SC_NITSCHE_DIRICHLET,const_ud);
   {
     PetscReal uD_c[] = {0.0, 0.0, 0.0};
@@ -119,6 +121,7 @@ PetscErrorCode bctype_no_slip_nitsche(SurfBCList surflist,PetscBool insert_not_f
   PetscFunctionReturn(0);
 }
 
+
 static PetscErrorCode const_udotn(Facet F,const PetscReal qp_coor[],PetscReal udotn[],void *data)
 {
   PetscReal *input = (PetscReal*)data;
@@ -126,8 +129,7 @@ static PetscErrorCode const_udotn(Facet F,const PetscReal qp_coor[],PetscReal ud
   PetscFunctionReturn(0);
 }
 
-
-PetscErrorCode bctype_slip_nitsche(SurfBCList surflist,PetscBool insert_not_fouund)
+PetscErrorCode bctype_slip_nitsche(SurfBCList surflist,PetscBool insert_if_not_fouund)
 {
   SurfaceConstraint sc;
   MeshEntity        facets;
@@ -136,7 +138,10 @@ PetscErrorCode bctype_slip_nitsche(SurfBCList surflist,PetscBool insert_not_fouu
   
   ierr = SurfBCListGetConstraint(surflist,"boundary",&sc);CHKERRQ(ierr);
   if (!sc) {
-    ierr = SurfBCListAddConstraint(surflist,"boundary",&sc);CHKERRQ(ierr);
+    if (insert_if_not_fouund) {
+      ierr = SurfBCListAddConstraint(surflist,"boundary",&sc);CHKERRQ(ierr);
+      ierr = SurfaceConstraintSetType(sc,SC_NITSCHE_NAVIER_SLIP);CHKERRQ(ierr);
+    } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint not found");
   }
   ierr = SurfaceConstraintGetFacets(sc,&facets);CHKERRQ(ierr);
   
@@ -147,7 +152,6 @@ PetscErrorCode bctype_slip_nitsche(SurfBCList surflist,PetscBool insert_not_fouu
     ierr = MeshFacetMarkDomainFaces(facets,sc->fi,nsides,sides);CHKERRQ(ierr);
   }
   
-  ierr = SurfaceConstraintSetType(sc,SC_NITSCHE_NAVIER_SLIP);CHKERRQ(ierr);
   SURFC_CHKSETVALS(SC_NITSCHE_NAVIER_SLIP,const_ud);
   {
     PetscReal uD_c[] = {0.0};
