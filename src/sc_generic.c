@@ -81,6 +81,7 @@ PetscErrorCode StokesFormInit(StokesForm *f,FormType type,SurfaceConstraint sc)
   ierr = PetscMemzero(f,sizeof(StokesForm));CHKERRQ(ierr);
   f->type = type;
   if (sc) { f->sc = sc; }
+  f->nqp = sc->nqp_facet;
   f->cell_i = -1;
   f->facet_sc_i = -1;
   f->facet_i = -1;
@@ -417,7 +418,7 @@ PetscErrorCode generic_facet_assemble(StokesForm *form,
   PetscBool require_U = PETSC_FALSE;
   PetscBool require_P = PETSC_FALSE;
   PetscBool use_set_values_local = PETSC_FALSE;
-  ISLocalToGlobalMapping ltog_u,ltog_p;
+  ISLocalToGlobalMapping ltog_u = NULL,ltog_p = NULL;
   const PetscInt *GINDICES_p;
   const PetscInt *GINDICES_u;
   PetscInt       NUM_GINDICES_u,ge_eqnums_u[3*Q2_NODES_PER_EL_3D];
@@ -656,8 +657,12 @@ PetscErrorCode generic_facet_assemble(StokesForm *form,
     ierr = form->restore(form);CHKERRQ(ierr);
   }
   
-  ierr = ISLocalToGlobalMappingRestoreIndices(ltog_u, &GINDICES_u);CHKERRQ(ierr);
-  ierr = ISLocalToGlobalMappingRestoreIndices(ltog_p, &GINDICES_p);CHKERRQ(ierr);
+  if (dau) {
+    ierr = ISLocalToGlobalMappingRestoreIndices(ltog_u, &GINDICES_u);CHKERRQ(ierr);
+  }
+  if (dap) {
+    ierr = ISLocalToGlobalMappingRestoreIndices(ltog_p, &GINDICES_p);CHKERRQ(ierr);
+  }
 
   ierr = VecRestoreArrayRead(gcoords,&LA_gcoords);CHKERRQ(ierr);
   
@@ -685,7 +690,7 @@ PetscErrorCode generic_facet_assemble_diagonal(StokesForm *form,
   PetscBool require_U = PETSC_FALSE;
   PetscBool require_P = PETSC_FALSE;
   PetscBool use_set_values_local = PETSC_FALSE;
-  ISLocalToGlobalMapping ltog;
+  ISLocalToGlobalMapping ltog = NULL;
   const PetscInt *GINDICES;
   PetscInt       NUM_GINDICES;
   PetscInt ge_eqnums_u[3*Q2_NODES_PER_EL_3D],ge_eqnums_p[P_BASIS_FUNCTIONS];
@@ -902,7 +907,9 @@ PetscErrorCode generic_facet_assemble_diagonal(StokesForm *form,
     ierr = form->restore(form);CHKERRQ(ierr);
   }
   
-  ierr = ISLocalToGlobalMappingRestoreIndices(ltog, &GINDICES);CHKERRQ(ierr);
+  if (ltog) {
+    ierr = ISLocalToGlobalMappingRestoreIndices(ltog, &GINDICES);CHKERRQ(ierr);
+  }
   
   ierr = VecRestoreArrayRead(gcoords,&LA_gcoords);CHKERRQ(ierr);
   
