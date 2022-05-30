@@ -35,7 +35,16 @@ static PetscErrorCode _SetType_NONE(SurfaceConstraint sc);
 static PetscErrorCode _SetType_TRACTION(SurfaceConstraint sc);
 static PetscErrorCode _SetType_FSSA(SurfaceConstraint sc);
 PetscErrorCode _SetType_DEMO(SurfaceConstraint sc);
+
 PetscErrorCode _SetType_NITSCHE_DIRICHLET(SurfaceConstraint sc);
+PetscErrorCode SurfaceConstraintSetValues_NITSCHE_DIRICHLET(SurfaceConstraint sc,
+                                                            SurfCSetValuesNitscheDirichlet set,
+                                                            void *data);
+
+PetscErrorCode _SetType_NITSCHE_NAVIER_SLIP(SurfaceConstraint sc);
+PetscErrorCode SurfaceConstraintSetValues_NITSCHE_NAVIER_SLIP(SurfaceConstraint sc,
+                                                              SurfCSetValuesNitscheNavierSlip set,
+                                                              void *data);
 
 PetscErrorCode SurfaceConstraintCreate(SurfaceConstraint *_sc)
 {
@@ -231,6 +240,10 @@ PetscErrorCode SurfaceConstraintSetType(SurfaceConstraint sc, SurfaceConstraintT
       ierr = _SetType_NITSCHE_DIRICHLET(sc);CHKERRQ(ierr);
       break;
 
+    case SC_NITSCHE_NAVIER_SLIP:
+      ierr = _SetType_NITSCHE_NAVIER_SLIP(sc);CHKERRQ(ierr);
+      break;
+
     default:
       SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_SUP,"SurfaceConstraint type %d not implemented",(int)type);
       break;
@@ -343,7 +356,7 @@ static PetscErrorCode _ops_operator_only(SurfaceConstraint sc)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode _resize_facet_quadrature_data(SurfaceConstraint sc)
+PetscErrorCode _resize_facet_quadrature_data(SurfaceConstraint sc)
 {
   PetscInt nfacets;
   if (!sc->facets->set_values_called) {
@@ -617,7 +630,7 @@ PetscErrorCode SurfaceConstraintSetValues_TRACTION(SurfaceConstraint sc,
     ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx[nen*cell_index],(PetscReal*)sc->fi->_mesh_coor);CHKERRQ(ierr);
 
     //qp_offset = sc->nqp_facet * facet_index; /* offset into entire domain qp list */
-    qp_offset = sc->nqp_facet * e; /* offset into entire domain qp list */
+    qp_offset = sc->nqp_facet * e; /* offset into facet qp list */
     for (q=0; q<sc->nqp_facet; q++) {
 
       {
@@ -895,13 +908,11 @@ PetscErrorCode SurfaceConstraintSetValues(SurfaceConstraint sc,SurfCSetValuesGen
       break;
 
     case SC_NITSCHE_DIRICHLET:
-      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"NITSCHE_DIRICHLET not yet available");
-      //ierr = SurfaceConstraintSetValues_NITSCHE_DIRICHLET(sc, (SurfCSetValuesTraction)set, data);CHKERRQ(ierr);
+      ierr = SurfaceConstraintSetValues_NITSCHE_DIRICHLET(sc, (SurfCSetValuesNitscheDirichlet)set, data);CHKERRQ(ierr);
       break;
 
     case SC_NITSCHE_NAVIER_SLIP:
-      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"NITSCHE_NAVIER_SLIP not yet available");
-      //ierr = SurfaceConstraintSetValues_NITSCHE_NAVIER_SLIP(sc, (SurfCSetValuesTraction)set, data);CHKERRQ(ierr);
+      ierr = SurfaceConstraintSetValues_NITSCHE_NAVIER_SLIP(sc, (SurfCSetValuesNitscheNavierSlip)set, data);CHKERRQ(ierr);
       break;
 
     case SC_NITSCHE_CUSTOM_SLIP:
