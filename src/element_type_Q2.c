@@ -818,11 +818,13 @@ void compute_volume_geometry_Q2_3D( const double coords[], const double **GNi, d
     printf( "*****           |J| = %1.6e  \n", detJ );
   }
 
-  for( i=0; i<npe; i++ ) {
-    // GNx[i][I] = \sum_j iJ[i][j] * GNi[j][I] // correct //
-    GNx[0][i] = iJ[0][0]*GNi[0][i] + iJ[0][1]*GNi[1][i] + iJ[0][2]*GNi[2][i];
-    GNx[1][i] = iJ[1][0]*GNi[0][i] + iJ[1][1]*GNi[1][i] + iJ[1][2]*GNi[2][i];
-    GNx[2][i] = iJ[2][0]*GNi[0][i] + iJ[2][1]*GNi[1][i] + iJ[2][2]*GNi[2][i];
+  if (GNx) {
+    for( i=0; i<npe; i++ ) {
+      // GNx[i][I] = \sum_j iJ[i][j] * GNi[j][I] // correct //
+      GNx[0][i] = iJ[0][0]*GNi[0][i] + iJ[0][1]*GNi[1][i] + iJ[0][2]*GNi[2][i];
+      GNx[1][i] = iJ[1][0]*GNi[0][i] + iJ[1][1]*GNi[1][i] + iJ[1][2]*GNi[2][i];
+      GNx[2][i] = iJ[2][0]*GNi[0][i] + iJ[2][1]*GNi[1][i] + iJ[2][2]*GNi[2][i];
+    }
   }
 
   *det_J = detJ;

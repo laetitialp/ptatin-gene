@@ -1871,6 +1871,7 @@ static PetscErrorCode _form_spmv_wA(StokesForm *form,PetscReal ds[],PetscReal F[
   uD[0] = uD[1] = uD[2] = 0.0;
   
   gamma = scdata->penalty * eta * 4.0 / form->hF;
+  //printf("  ** 4/hF %+1.4e\n",4.0/form->hF);
   
   nitsche_dirichlet_q2_3d_residual_w(form->test->W, form->test->Wx, form->test->Wy, form->test->Wz,
                                      form->X[0]->W, form->X[0]->Wx, form->X[0]->Wy, form->X[0]->Wz,
@@ -1943,6 +1944,13 @@ static PetscErrorCode sc_spmv_A(
   
   printf("_SpMV_A\n");
 
+  /*
+  {PetscReal penalty;
+  ierr = compute_global_penalty_nitsche(sc,1,&penalty);CHKERRQ(ierr);
+    printf("penalty %+1.4e\n",penalty);
+  }
+  */
+  
   printf("_Residual_A11X1_A12X2\n");
   ierr = StokesFormSetup_Demo(&F,sc,&formdata);CHKERRQ(ierr);
   ierr = StoksFormConfigureAction_AuResidual(&F,V_X1);CHKERRQ(ierr);
@@ -1986,7 +1994,7 @@ PetscErrorCode _SetType_NITSCHE_DIRICHLET(SurfaceConstraint sc)
   /* allocate implementation data */
   ierr = PetscMalloc1(1,&ctx);CHKERRQ(ierr);
   ctx->setup = PETSC_TRUE;
-  ctx->penalty = 20.0 * 1.0e2 * 0.5;
+  ctx->penalty = 20.0 * (1.0e2 * 0.5);
   sc->data = (void*)ctx;
   
   /* insert properties into quadrature bucket */
