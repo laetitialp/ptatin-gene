@@ -10,6 +10,7 @@
 #include <surface_constraint.h>
 #include <sc_generic.h>
 
+//#define SC_DEBUG
 
 PetscErrorCode FunctionSpaceSet_VelocityQ1(FunctionSpace *s)
 {
@@ -191,18 +192,24 @@ PetscErrorCode generic_facet_action(StokesForm *form,
     
     if (ufield) {
       if (pfield) {
+#ifdef SC_DEBUG
         printf("action will define residual F1\n");
+#endif
         if (form->type != FORM_RESIDUAL) SETERRQ(comm,PETSC_ERR_USER,"Both u,p fields provided but form->type is not FORM_RESIDUAL");
         require_P = PETSC_TRUE;
       } else {
+#ifdef SC_DEBUG
         printf("action will define SpMV A11 X1\n");
+#endif
         if (form->type != FORM_SPMV) SETERRQ(comm,PETSC_ERR_USER,"form->type is not FORM_SPMV");
         form->trial = &form->u;
       }
     } else if (pfield) {
       if (ufield) { // done above - maps to residual F1
       } else {
+#ifdef SC_DEBUG
         printf("action will define SpMV A12 X2\n");
+#endif
         if (form->type != FORM_SPMV) SETERRQ(comm,PETSC_ERR_USER,"form->type is not FORM_SPMV");
         if (!dap) SETERRQ(comm,PETSC_ERR_USER,"SpMV A12 requires dap be non-NULL");
         form->trial = &form->p;
@@ -219,11 +226,15 @@ PetscErrorCode generic_facet_action(StokesForm *form,
     
     if (ufield) {
       if (pfield) {
+#ifdef SC_DEBUG
         printf("action will define residual F2\n");
+#endif
         if (form->type != FORM_RESIDUAL) SETERRQ(comm,PETSC_ERR_USER,"Both u,p fields provided but form->type is not FORM_RESIDUAL");
         require_U = PETSC_TRUE;
       } else {
+#ifdef SC_DEBUG
         printf("action will define SpMV A21 X1\n");
+#endif
         if (form->type != FORM_SPMV) SETERRQ(comm,PETSC_ERR_USER,"form->type is not FORM_SPMV");
         if (!dau) SETERRQ(comm,PETSC_ERR_USER,"SpMV A21 requires dau be non-NULL");
         form->trial = &form->u;
@@ -232,7 +243,9 @@ PetscErrorCode generic_facet_action(StokesForm *form,
     } else if (pfield) {
       if (ufield) { // done above - maps to residual F2
       } else {
+#ifdef SC_DEBUG
         printf("action will define SpMV A22 X2\n");
+#endif
         if (form->type != FORM_SPMV) SETERRQ(comm,PETSC_ERR_USER,"form->type is not FORM_SPMV");
         form->trial = &form->p;
       }
