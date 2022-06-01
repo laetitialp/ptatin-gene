@@ -654,7 +654,7 @@ PetscErrorCode generic_facet_assemble(StokesForm *form,
     }
 
     if (use_set_values_local) {
-      ierr = MatSetValuesLocal(A, test_size,test_lidx, trial_size,trial_gidx, Ae_ij,ADD_VALUES);CHKERRQ(ierr);
+      ierr = MatSetValuesLocal(A, test_size,test_lidx, trial_size,trial_lidx, Ae_ij,ADD_VALUES);CHKERRQ(ierr);
     } else {
       ierr = MatSetValues(A, test_size,test_gidx, trial_size,trial_gidx, Ae_ij,ADD_VALUES);CHKERRQ(ierr);
     }
