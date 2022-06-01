@@ -271,8 +271,8 @@ PetscErrorCode ApplyInitialMaterialGeometry_SingleInclusion(pTatinCtx c)
   eta0 = rheology->const_eta0[0] = 1.0;
   eta1 = rheology->const_eta0[1] = 1.0;
   
-  rho0 = rheology->const_rho0[0] = 1.0;
-  rho1 = rheology->const_rho0[1] = 2.1;
+  rho0 = rheology->const_rho0[0] = 1.0e3;
+  rho1 = rheology->const_rho0[1] = 1.001e3;
 
 
   origin[0] = 0.5 * Lx;
