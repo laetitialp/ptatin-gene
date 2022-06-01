@@ -79,4 +79,4 @@
   -fieldsplit_u_mg_levels_ksp_max_it 8
   -fieldsplit_u_mg_levels_ksp_norm_type NONE
     #---- Coarse Grid ----#
-    -fieldsplit_u_mg_coarse_pc_type cholesky
+    -fieldsplit_u_mg_coarse_pc_type bjacobi

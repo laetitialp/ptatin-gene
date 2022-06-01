@@ -301,6 +301,15 @@ static PetscErrorCode ModelOutput_SCTest(pTatinCtx c,Vec X,const char prefix[],v
   sprintf(mp_file_prefix,"%s_mpoints",prefix);
   ierr = SwarmViewGeneric_ParaView(materialpoint_db,nf,mp_prop_list,c->outputpath,mp_file_prefix);CHKERRQ(ierr);
 
+  {
+    PhysCompStokes    stokes;
+    SurfaceConstraint sc;
+    ierr = pTatinGetStokesContext(c,&stokes);CHKERRQ(ierr);
+    ierr = SurfBCListGetConstraint(stokes->surf_bclist,"boundary",&sc);CHKERRQ(ierr);
+    ierr = SurfaceConstraintViewParaview(sc, pvoutputdir, "boundary");CHKERRQ(ierr);
+    ierr = SurfBCListGetConstraint(stokes->surf_bclist,"bc_traction",&sc);CHKERRQ(ierr);
+    ierr = SurfaceConstraintViewParaview(sc, pvoutputdir, "bc_traction");CHKERRQ(ierr); 
+  }
   // tests for alternate (output/load)ing of "single file marker" formats
   //ierr = SwarmDataWriteToPetscVec(c->materialpoint_db,prefix);CHKERRQ(ierr);
   //ierr = SwarmDataLoadFromPetscVec(c->materialpoint_db,prefix);CHKERRQ(ierr);
@@ -319,6 +328,26 @@ static PetscErrorCode const_udotn(Facet F,const PetscReal qp_coor[],PetscReal ud
   PetscReal *input = (PetscReal*)data;
   udotn[0] = input[0];
   PetscFunctionReturn(0);
+}
+
+static PetscErrorCode const_traction(Facet F,const PetscReal qp_coor[],PetscReal traction[],void *data)
+{
+  PetscReal *input = (PetscReal*)data;
+  traction[0] = input[0];
+  traction[1] = input[1];
+  traction[2] = input[2];
+  PetscFunctionReturn(0);
+}
+
+PetscBool MarkFacetsHalfFace(Facet facet,void *data)
+{
+  PetscBool selected_facet = PETSC_FALSE;
+
+  if (facet->centroid[1] > -1.0 && facet->label != HEX_FACE_Peta){
+    selected_facet = PETSC_TRUE;
+  }
+
+  return selected_facet;
 }
 
 static PetscErrorCode BCTypeSlipNitscheFreeSurface(SurfBCList surflist,PetscBool insert_if_not_found)
@@ -349,6 +378,35 @@ static PetscErrorCode BCTypeSlipNitscheFreeSurface(SurfBCList surflist,PetscBool
     PetscReal uD_c[] = {0.0};
     ierr = SurfaceConstraintSetValues(sc,(SurfCSetValuesGeneric)const_udotn,(void*)uD_c);CHKERRQ(ierr);
   }
+
+  ierr = SurfBCListGetConstraint(surflist,"bc_traction",&sc);CHKERRQ(ierr);
+  if (!sc) {
+    if (insert_if_not_found) {
+      ierr = SurfBCListAddConstraint(surflist,"bc_traction",&sc);CHKERRQ(ierr);
+      ierr = SurfaceConstraintSetType(sc,SC_TRACTION);CHKERRQ(ierr);
+    } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint not found");
+  }
+  ierr = SurfaceConstraintGetFacets(sc,&facets);CHKERRQ(ierr);
+  
+  /*
+  {
+    PetscInt       nsides;
+    HexElementFace sides[] = { HEX_FACE_Nxi, HEX_FACE_Pxi, HEX_FACE_Nzeta, HEX_FACE_Pzeta };
+    nsides = sizeof(sides) / sizeof(HexElementFace);
+    ierr = MeshFacetMarkDomainFaces(facets,sc->fi,nsides,sides);CHKERRQ(ierr);
+  }
+  */
+
+  {
+    ierr = MeshFacetMark(facets,sc->fi,MarkFacetsHalfFace,NULL);CHKERRQ(ierr);
+  }
+  
+  SURFC_CHKSETVALS(SC_TRACTION,const_traction);
+  {
+    PetscReal traction[] = {0.0, -20.0, 0.0};
+    ierr = SurfaceConstraintSetValues(sc,(SurfCSetValuesGeneric)const_traction,(void*)traction);CHKERRQ(ierr);
+  }
+
   PetscFunctionReturn(0);
 }
 
@@ -377,7 +435,7 @@ static PetscErrorCode ModelApplyBoundaryConditionMG(PetscInt nl,BCList bclist[],
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
 
   for (n=0; n<nl; n++) {
-    ierr = BCTypeSlipNitscheFreeSurface(surf_bclist[n],PETSC_FALSE);CHKERRQ(ierr);
+    ierr = BCTypeSlipNitscheFreeSurface(surf_bclist[n],PETSC_TRUE);CHKERRQ(ierr);
   }
 
   PetscFunctionReturn(0);
