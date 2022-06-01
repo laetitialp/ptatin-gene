@@ -1159,7 +1159,7 @@ static PetscErrorCode sc_spmv_A21(
 #endif
   ierr = StokesFormSetup_Demo(&F,sc,&formdata);CHKERRQ(ierr);
   ierr = StoksFormConfigureAction_SpMV(&F,M_A21);CHKERRQ(ierr);
-  ierr = generic_facet_action(&F, &F.u, dmu, dmu,ufield, dmp,NULL, Y);CHKERRQ(ierr);
+  ierr = generic_facet_action(&F, &F.p, dmu, dmu,ufield, dmp,NULL, Y);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
