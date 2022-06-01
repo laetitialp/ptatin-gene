@@ -1350,3 +1350,126 @@ PetscErrorCode _sc_get_hF(HexElementFace side,PetscReal elcoor[],PetscReal *hf)
   
   PetscFunctionReturn(0);
 }
+
+
+PetscErrorCode compute_surface_volume_ratio(SurfaceConstraint sc,PetscInt fe,PetscReal elcoords[],PetscReal *A_on_V)
+{
+  PetscInt facet_index,cell_side,cell_index;
+  PetscInt q,nqp_v,nqp_s;
+  QPoint3d qp3[27];
+  QPoint2d *qp2 = NULL;
+  PetscReal Ae = 0.0,Ve = 0.0,volJ_q,surfJ_q;
+  ConformingElementFamily element = NULL;
+  double __GNi[3 * 27];
+  const double *GNi[] = { &__GNi[0], &__GNi[27], &__GNi[2*27] };
+  
+  element = sc->fi->element;
+  facet_index = sc->facets->local_index[fe]; /* facet local index */
+  cell_side  = sc->fi->facet_label[facet_index]; /* side label */
+  cell_index = sc->fi->facet_cell_index[facet_index];
+  
+  
+  /* compute the volume */
+  element->generate_volume_quadrature_3D(&nqp_v,qp3);
+  Ve = 0.0;
+  for (q=0; q<nqp_v; q++) {
+    element->basis_GNI_3D(&qp3[q],(double**)GNi);
+    element->compute_volume_geometry_3D(elcoords,GNi,NULL,&volJ_q);
+    Ve += qp3[q].w * volJ_q;
+  }
+  
+  /* compute the area */
+  nqp_s = sc->quadrature->npoints;
+  qp2 = sc->quadrature->gp2[cell_side];
+  
+  Ae = 0.0;
+  for (q=0; q<nqp_s; q++) {
+    element->compute_surface_geometry_3D(
+                                         element,
+                                         elcoords,    // should contain 27 points with dimension 3 (x,y,z) //
+                                         cell_side,   // edge index 0,...,7 //
+                                         &qp2[q],     // should contain 1 point with dimension 2 (xi,eta)   //
+                                         NULL,NULL,&surfJ_q); // n0[],t0 contains 1 point with dimension 3 (x,y,z) //
+    Ae += qp2[q].w * surfJ_q;
+  }
+  *A_on_V = Ae / Ve;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode compute_penalty_nitsche_warburton(SurfaceConstraint sc,PetscInt fe,PetscReal elcoords[],PetscReal *penalty)
+{
+  PetscReal A_on_V;
+  PetscReal p = 2.0; // poly degree
+  PetscReal d = 3.0; // spatial dimension
+  PetscErrorCode ierr;
+  ierr = compute_surface_volume_ratio(sc,fe,elcoords,&A_on_V);CHKERRQ(ierr);
+  *penalty = ((p + 1.0) * (p + d) / d) * A_on_V;
+  PetscFunctionReturn(0);
+}
+
+/*
+ Koen Hillewaert
+ Development of the discontinuous Galerkin method for high-resolution, large scale CFD and acoustics in industrial geometries. 
+ Presses univ. de Louvain, 2013.
+
+ Table 3.1
+*/
+PetscErrorCode compute_penalty_nitsche_hillewaert(SurfaceConstraint sc,PetscInt fe,PetscReal elcoords[],PetscReal *penalty)
+{
+  PetscReal A_on_V;
+  PetscReal p = 2.0; // poly degree
+  PetscErrorCode ierr;
+  ierr = compute_surface_volume_ratio(sc,fe,elcoords,&A_on_V);CHKERRQ(ierr);
+  *penalty = (p + 1.0) * (p + 1.0) * A_on_V;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode compute_global_penalty_nitsche(SurfaceConstraint sc,PetscInt type,PetscReal *penalty)
+{
+  PetscErrorCode ierr;
+  PetscReal      penalty_k,penalty_local = 0.0;
+  PetscInt       fe,facet_index,cell_index;
+  const PetscInt *elnidx;
+  PetscInt       nel,nen;
+  double         elcoords[3*Q2_NODES_PER_EL_3D];
+  
+  ierr = MeshFacetInfoGetCoords(sc->fi);CHKERRQ(ierr);
+  ierr = DMDAGetElements_pTatinQ2P1(sc->fi->dm,&nel,&nen,&elnidx);CHKERRQ(ierr);
+
+  switch (type) {
+    case 0:
+      for (fe=0; fe<sc->facets->n_entities; fe++) {
+        facet_index = sc->facets->local_index[fe]; /* facet local index */
+        cell_index = sc->fi->facet_cell_index[facet_index];
+        
+        ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx[nen*cell_index],(PetscReal*)sc->fi->_mesh_coor);CHKERRQ(ierr);
+        
+        ierr = compute_penalty_nitsche_warburton(sc,fe,elcoords,&penalty_k);CHKERRQ(ierr);
+        penalty_local = PetscMax(penalty_local,penalty_k);
+      }
+      break;
+
+    case 1:
+      for (fe=0; fe<sc->facets->n_entities; fe++) {
+        facet_index = sc->facets->local_index[fe]; /* facet local index */
+        cell_index = sc->fi->facet_cell_index[facet_index];
+        
+        ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx[nen*cell_index],(PetscReal*)sc->fi->_mesh_coor);CHKERRQ(ierr);
+        
+        ierr = compute_penalty_nitsche_hillewaert(sc,fe,elcoords,&penalty_k);CHKERRQ(ierr);
+        penalty_local = PetscMax(penalty_local,penalty_k);
+      }
+      break;
+
+    default:
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Only type {0, 1} supported");
+      break;
+  }
+  
+  ierr = MeshFacetInfoRestoreCoords(sc->fi);CHKERRQ(ierr);
+  
+  ierr = MPI_Allreduce(&penalty_local,penalty,1,MPIU_REAL,MPIU_MAX,PetscObjectComm((PetscObject)sc->fi->dm));CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+

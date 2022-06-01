@@ -474,7 +474,7 @@ PetscErrorCode MatAssemble_StokesA_A12(Mat A,DM dau,DM dap,BCList u_bclist,BCLis
   const PetscInt *elnidx_u;
   const PetscInt *elnidx_p;
   PetscReal      elcoords[3*Q2_NODES_PER_EL_3D];
-  ISLocalToGlobalMapping ltog;
+  ISLocalToGlobalMapping ltog_u,ltog_p;
   const PetscInt *GINDICES_p;
   const PetscInt *GINDICES_u;
   PetscInt       NUM_GINDICES_p,ge_eqnums_p[P_BASIS_FUNCTIONS];
@@ -500,12 +500,12 @@ PetscErrorCode MatAssemble_StokesA_A12(Mat A,DM dau,DM dap,BCList u_bclist,BCLis
   ierr = DMGetCoordinatesLocal(dau,&gcoords);CHKERRQ(ierr);
   ierr = VecGetArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
 
-  ierr = DMGetLocalToGlobalMapping(dau, &ltog);CHKERRQ(ierr);
-  ierr = ISLocalToGlobalMappingGetSize(ltog, &NUM_GINDICES_u);CHKERRQ(ierr);
-  ierr = ISLocalToGlobalMappingGetIndices(ltog, &GINDICES_u);CHKERRQ(ierr);
-  ierr = DMGetLocalToGlobalMapping(dap, &ltog);CHKERRQ(ierr);
-  ierr = ISLocalToGlobalMappingGetSize(ltog, &NUM_GINDICES_p);CHKERRQ(ierr);
-  ierr = ISLocalToGlobalMappingGetIndices(ltog, &GINDICES_p);CHKERRQ(ierr);
+  ierr = DMGetLocalToGlobalMapping(dau, &ltog_u);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetSize(ltog_u, &NUM_GINDICES_u);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetIndices(ltog_u, &GINDICES_u);CHKERRQ(ierr);
+  ierr = DMGetLocalToGlobalMapping(dap, &ltog_p);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetSize(ltog_p, &NUM_GINDICES_p);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetIndices(ltog_p, &GINDICES_p);CHKERRQ(ierr);
   if (u_bclist) {
     ierr = BCListApplyDirichletMask(NUM_GINDICES_u,(PetscInt*)GINDICES_u,u_bclist);CHKERRQ(ierr);
   }
@@ -589,8 +589,8 @@ PetscErrorCode MatAssemble_StokesA_A12(Mat A,DM dau,DM dap,BCList u_bclist,BCLis
   if (p_bclist) {
     ierr = BCListRemoveDirichletMask(NUM_GINDICES_p,(PetscInt*)GINDICES_p,p_bclist);CHKERRQ(ierr);
   }
-  ierr = ISLocalToGlobalMappingRestoreIndices(ltog, &GINDICES_u);CHKERRQ(ierr);
-  ierr = ISLocalToGlobalMappingRestoreIndices(ltog, &GINDICES_p);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingRestoreIndices(ltog_u, &GINDICES_u);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingRestoreIndices(ltog_p, &GINDICES_p);CHKERRQ(ierr);
 
   {
     const PetscInt ij[] = { 0, 1 };
@@ -622,7 +622,7 @@ PetscErrorCode MatAssemble_StokesA_A21(Mat A,DM dau,DM dap,BCList u_bclist,BCLis
   const PetscInt *elnidx_u;
   const PetscInt *elnidx_p;
   PetscReal      elcoords[3*Q2_NODES_PER_EL_3D];
-  ISLocalToGlobalMapping ltog;
+  ISLocalToGlobalMapping ltog_u,ltog_p;
   const PetscInt *GINDICES_p;
   PetscInt       NUM_GINDICES_p,ge_eqnums_p[P_BASIS_FUNCTIONS];
   const PetscInt *GINDICES_u;
@@ -648,12 +648,12 @@ PetscErrorCode MatAssemble_StokesA_A21(Mat A,DM dau,DM dap,BCList u_bclist,BCLis
   ierr = DMGetCoordinatesLocal(dau,&gcoords);CHKERRQ(ierr);
   ierr = VecGetArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
 
-  ierr = DMGetLocalToGlobalMapping(dau, &ltog);CHKERRQ(ierr);
-  ierr = ISLocalToGlobalMappingGetSize(ltog, &NUM_GINDICES_u);CHKERRQ(ierr);
-  ierr = ISLocalToGlobalMappingGetIndices(ltog, &GINDICES_u);CHKERRQ(ierr);
-  ierr = DMGetLocalToGlobalMapping(dap, &ltog);CHKERRQ(ierr);
-  ierr = ISLocalToGlobalMappingGetSize(ltog, &NUM_GINDICES_p);CHKERRQ(ierr);
-  ierr = ISLocalToGlobalMappingGetIndices(ltog, &GINDICES_p);CHKERRQ(ierr);
+  ierr = DMGetLocalToGlobalMapping(dau, &ltog_u);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetSize(ltog_u, &NUM_GINDICES_u);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetIndices(ltog_u, &GINDICES_u);CHKERRQ(ierr);
+  ierr = DMGetLocalToGlobalMapping(dap, &ltog_p);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetSize(ltog_p, &NUM_GINDICES_p);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetIndices(ltog_p, &GINDICES_p);CHKERRQ(ierr);
   if (u_bclist) {
     ierr = BCListApplyDirichletMask(NUM_GINDICES_u,(PetscInt*)GINDICES_u,u_bclist);CHKERRQ(ierr);
   }
@@ -737,8 +737,8 @@ PetscErrorCode MatAssemble_StokesA_A21(Mat A,DM dau,DM dap,BCList u_bclist,BCLis
   if (p_bclist) {
     ierr = BCListRemoveDirichletMask(NUM_GINDICES_p,(PetscInt*)GINDICES_p,p_bclist);CHKERRQ(ierr);
   }
-  ierr = ISLocalToGlobalMappingRestoreIndices(ltog, &GINDICES_u);CHKERRQ(ierr);
-  ierr = ISLocalToGlobalMappingRestoreIndices(ltog, &GINDICES_p);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingRestoreIndices(ltog_u, &GINDICES_u);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingRestoreIndices(ltog_p, &GINDICES_p);CHKERRQ(ierr);
 
   {
     const PetscInt ij[] = { 1, 0 };

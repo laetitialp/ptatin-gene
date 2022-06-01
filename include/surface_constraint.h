@@ -179,5 +179,8 @@ PetscErrorCode SurfaceConstraintOps_AssembleDiagA11(SurfaceConstraint sc,
                                                     PetscBool error_if_null);
 
 PetscErrorCode _sc_get_hF(HexElementFace side,PetscReal elcoor[],PetscReal *hf);
+PetscErrorCode compute_penalty_nitsche_warburton(SurfaceConstraint sc,PetscInt fe,PetscReal elcoords[],PetscReal *penalty);
+PetscErrorCode compute_penalty_nitsche_hillewaert(SurfaceConstraint sc,PetscInt fe,PetscReal elcoords[],PetscReal *penalty);
+PetscErrorCode compute_global_penalty_nitsche(SurfaceConstraint sc,PetscInt type,PetscReal *penalty);
 
 #endif
