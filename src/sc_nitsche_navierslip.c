@@ -1463,7 +1463,7 @@ PetscErrorCode _SetType_NITSCHE_NAVIER_SLIP(SurfaceConstraint sc)
   /* allocate implementation data */
   ierr = PetscMalloc1(1,&ctx);CHKERRQ(ierr);
   ctx->setup = PETSC_TRUE;
-  ctx->penalty = 20.0 * 1.0e2 * 0.5;
+  ctx->penalty = 200.0 * 1.0e2 * 0.5;
   sc->data = (void*)ctx;
   
   /* insert properties into quadrature bucket */
