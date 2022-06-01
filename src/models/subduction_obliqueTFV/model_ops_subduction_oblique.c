@@ -1993,7 +1993,6 @@ PetscErrorCode MaterialPointResolutionMask_BoundaryFaces(DM dav, pTatinCtx ctx, 
   esk = esk/2;
 
   /* max(x) face */
-  /*
   if (esi + lmx == mx) { 
     iel = lmx-1;
     for (kel=0; kel<lmz; kel++) {
@@ -2003,7 +2002,7 @@ PetscErrorCode MaterialPointResolutionMask_BoundaryFaces(DM dav, pTatinCtx ctx, 
       }
     }
   }
-  */
+  
   /* min(x) face */
   if (esi == 0) {
     iel = 0;
