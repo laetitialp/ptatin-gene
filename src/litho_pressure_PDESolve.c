@@ -952,7 +952,7 @@ PetscErrorCode ApplyDeviatoricValuePlusLithostaticPressure_SurfQuadratureStokes_
 
     for (c=0; c<nfaces; c++) {
       PetscInt  eidx;
-      PetscReal tau,y_centroid;
+      PetscReal tau,y_centroid,Pl_centroid,yield;
       /* Get the element index */
       eidx = element_list[c];
       /* get coords for the element */
@@ -965,12 +965,17 @@ PetscErrorCode ApplyDeviatoricValuePlusLithostaticPressure_SurfQuadratureStokes_
       /* The following ensures a cellwise constant deviatoric stress */
       tau = 0.0; // default deviatoric stress
       if (face_location[f] == HEX_FACE_Pzeta) { // face KMAX
-        y_centroid = 0.0; 
+        y_centroid = 0.0;
+        Pl_centroid = 0.0;
         for (k=0;k<Q1_NODES_PER_EL_3D;k++) {
           y_centroid += el_coords[3*k+1]*NiQ1_centroid[k]; // Compute cell centroid y coord
+          Pl_centroid += el_lithop[k]*NiQ1_centroid[k];
         }
         if (y_centroid > -0.5) { // if cell centroid y coord is above 50 km
-          tau = 5.0/(-0.5) * y_centroid; // Compute a linearly increasing deviator from 0.0 to the numerator value
+          //tau = 5.0/(-0.5) * y_centroid; // Compute a linearly increasing deviator from 0.0 to the numerator value
+          tau = 50.0;
+          yield = 2.0*cos(M_PI/6.0) + Pl_centroid*sin(M_PI/6.0); //Approx of the DP yield function
+          if (tau > yield) { tau = yield; } // Ensures that the deviatoric stress is not crazily above the yield stress
         }
       }
 
