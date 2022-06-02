@@ -1431,7 +1431,7 @@ PetscErrorCode ModelApplyTractionFromLithoPressure(pTatinCtx user, Vec X_stokes)
   ierr = MatSetFromOptions(J);CHKERRQ(ierr);
   
   ierr = SNESSolve_LithoPressure(LP,J,LP->X,LP->F,user);CHKERRQ(ierr);
-
+/*
   {
     PetscViewer viewer;
     char        fname[256];
@@ -1444,7 +1444,7 @@ PetscErrorCode ModelApplyTractionFromLithoPressure(pTatinCtx user, Vec X_stokes)
     ierr = VecView(LP->X,viewer);CHKERRQ(ierr);
     ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
   }
-
+*/
   face_list_n = 5;
   /* Apply the lithostatic pressure on surface quadrature points */
   //ierr = ApplyLithostaticPressure_SurfQuadratureStokes_FullFace(user->stokes_ctx,LP->da,LP->X,face_list,face_list_n);CHKERRQ(ierr);
