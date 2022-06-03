@@ -255,14 +255,14 @@ PetscErrorCode SurfBCList_AssembleAij(SurfBCList surfbc,
 
 PetscErrorCode SurfBCList_AssembleDiagA11(SurfBCList surfbc,
                                       DM dau,
-                                      PetscScalar Ae[])
+                                      Vec diagA)
 {
   PetscErrorCode ierr;
   PetscInt k;
   
   if (!surfbc) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"SurfBCList is NULL. This indiates a setup error has occurred");
   for (k=0; k<surfbc->sc_nreg; k++) {
-    ierr = SurfaceConstraintOps_AssembleDiagA11(surfbc->sc_list[k],dau,Ae, PETSC_FALSE);CHKERRQ(ierr);
+    ierr = SurfaceConstraintOps_AssembleDiagA11(surfbc->sc_list[k],dau,diagA, PETSC_FALSE);CHKERRQ(ierr);
   }
   PetscFunctionReturn(0);
 }

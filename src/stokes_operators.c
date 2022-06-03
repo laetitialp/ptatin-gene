@@ -1092,7 +1092,6 @@ PetscErrorCode MatGetDiagonal_MFStokes_A11(Mat A,Vec X)
 
   /* A11 from momentum */
   ierr = MFStokesWrapper_diagA11(ctx->volQ,dau,LA_XUloc);CHKERRQ(ierr);
-  ierr = SurfBCList_AssembleDiagA11(ctx->surf_bclist,dau,LA_XUloc);CHKERRQ(ierr);
   
   ierr = VecRestoreArray(XUloc,&LA_XUloc);CHKERRQ(ierr);
 
@@ -1101,6 +1100,8 @@ PetscErrorCode MatGetDiagonal_MFStokes_A11(Mat A,Vec X)
   ierr = DMLocalToGlobalEnd  (dau,XUloc,ADD_VALUES,X);CHKERRQ(ierr);
 
   ierr = DMRestoreLocalVector(dau,&XUloc);CHKERRQ(ierr);
+
+  ierr = SurfBCList_AssembleDiagA11(ctx->surf_bclist,dau,X);CHKERRQ(ierr);
 
   /* modify X for the boundary conditions, x_k = scale_k(x_k) */
 

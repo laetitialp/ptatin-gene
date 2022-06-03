@@ -541,13 +541,13 @@ PetscErrorCode SurfaceConstraintOps_AssembleA21(SurfaceConstraint sc,
 
 /* assemble diag */
 PetscErrorCode SurfaceConstraintOps_AssembleDiagA11(SurfaceConstraint sc,
-                                                DM dau,PetscReal Ae[],
+                                                DM dau,Vec diagA,
                                                 PetscBool error_if_null)
 {
   PetscErrorCode ierr;
   if (sc->ops.diag_Auu) {
     ierr = _sc_check_sizes(sc);CHKERRQ(ierr);
-    ierr = sc->ops.diag_Auu(sc,dau,Ae);CHKERRQ(ierr);
+    ierr = sc->ops.diag_Auu(sc,dau,diagA);CHKERRQ(ierr);
   } else {
     if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_DiagAuu[name %s]: diag_Auu = NULL",sc->name);
   }

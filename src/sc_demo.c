@@ -407,7 +407,7 @@ static PetscErrorCode StoksFormConfigureAction_AssembleDiagonal(StokesForm *form
 }
 
 /* surface constraint methods */
-static PetscErrorCode sc_asmbdiag_A11(SurfaceConstraint sc, DM dmu, PetscScalar A[])
+static PetscErrorCode sc_asmbdiag_A11(SurfaceConstraint sc, DM dmu, Vec diagA)
 {
   PetscErrorCode  ierr;
   StokesForm      F;
@@ -416,7 +416,7 @@ static PetscErrorCode sc_asmbdiag_A11(SurfaceConstraint sc, DM dmu, PetscScalar 
   printf("_AssembleDiagonal_A11\n");
   ierr = StokesFormSetup_Demo(&F,sc,&formdata);CHKERRQ(ierr);
   ierr = StoksFormConfigureAction_AssembleDiagonal(&F,M_A11);CHKERRQ(ierr);
-  //ierr = generic_facet_assemble_diagonal(&F, &F.u, dmu, A);CHKERRQ(ierr);
+  ierr = generic_facet_assemble_diagonal(&F, &F.u,dmu,  dmu, diagA);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 

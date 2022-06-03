@@ -1461,8 +1461,24 @@ static PetscErrorCode sc_asmb_A21(SurfaceConstraint sc, DM dmu, DM dmp, Mat A)
 
 /* assemble diagonal */
 /* point-wise kernels */
-static PetscErrorCode _form_asmbdiag_A11(StokesForm *form,PetscReal ds[],PetscReal A[])
+static PetscErrorCode _form_asmbdiag_A11(StokesForm *form,PetscReal ds[],PetscReal diagA[])
 {
+  SCContextDemo   *scdata;
+  FormContextDemo *formdata;
+  PetscReal       gamma,eta,*normal;
+  
+  scdata   = (void*)form->sc->data;
+  formdata = (void*)form->data;
+  
+  eta    = (PetscReal) formdata->boundary_qp[ form->nqp * form->facet_i + form->point_i ].eta;
+  normal = (PetscReal*)formdata->boundary_qp[ form->nqp * form->facet_i + form->point_i ].normal;
+  gamma = scdata->penalty * eta * 4.0 / form->hF;
+  
+  nitsche_navier_q2_3d_asmbdiag_wu(form->test->W, form->test->Wx, form->test->Wy, form->test->Wz,
+                               form->trial->W, form->trial->Wx, form->trial->Wy, form->trial->Wz,
+                               eta, gamma, normal,  // parameter
+                               ds[0], diagA);
+  
   PetscFunctionReturn(0);
 }
 
@@ -1483,7 +1499,7 @@ static PetscErrorCode StoksFormConfigureAction_AssembleDiagonal(StokesForm *form
 }
 
 /* surface constraint methods */
-static PetscErrorCode sc_asmbdiag_A11(SurfaceConstraint sc, DM dmu, PetscScalar A[])
+static PetscErrorCode sc_asmbdiag_A11(SurfaceConstraint sc, DM dmu, Vec diagA)
 {
   PetscErrorCode  ierr;
   StokesForm      F;
@@ -1494,7 +1510,7 @@ static PetscErrorCode sc_asmbdiag_A11(SurfaceConstraint sc, DM dmu, PetscScalar 
 #endif
   ierr = StokesFormSetup_Demo(&F,sc,&formdata);CHKERRQ(ierr);
   ierr = StoksFormConfigureAction_AssembleDiagonal(&F,M_A11);CHKERRQ(ierr);
-  //ierr = generic_facet_assemble_diagonal(&F, &F.u, dmu, A);CHKERRQ(ierr);
+  ierr = generic_facet_assemble_diagonal(&F, &F.u, dmu, dmu, diagA);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 

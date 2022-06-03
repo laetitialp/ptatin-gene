@@ -33,14 +33,12 @@ struct _SurfaceConstraintOps {
                              DM dau,const PetscScalar ufield[],
                              DM dap,const PetscScalar pfield[],
                              PetscScalar Yu[],PetscScalar Yp[]);
-  //PetscErrorCode (*asmb_A)(void);
-  //PetscErrorCode (*diag_A)(void);
   
   PetscErrorCode (*action_Auu)(SurfaceConstraint sc,
                                DM dau,const PetscScalar ufield[],
                                PetscScalar Yu[]);
   PetscErrorCode (*asmb_Auu)(SurfaceConstraint,DM,Mat);
-  PetscErrorCode (*diag_Auu)(SurfaceConstraint,DM,PetscScalar*);
+  PetscErrorCode (*diag_Auu)(SurfaceConstraint,DM,Vec);
   
   PetscErrorCode (*action_Aup)(SurfaceConstraint sc,
                                DM dau,
@@ -175,7 +173,7 @@ PetscErrorCode SurfaceConstraintOps_AssembleA21(SurfaceConstraint sc,
                                                 PetscBool error_if_null);
 
 PetscErrorCode SurfaceConstraintOps_AssembleDiagA11(SurfaceConstraint sc,
-                                                    DM dau,PetscReal Ae[],
+                                                    DM dau,Vec diagA,
                                                     PetscBool error_if_null);
 
 PetscErrorCode _sc_get_hF(HexElementFace side,PetscReal elcoor[],PetscReal *hf);
