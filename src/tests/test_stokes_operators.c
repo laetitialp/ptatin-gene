@@ -477,7 +477,8 @@ PetscErrorCode compare_mf_A(PhysCompStokes user)
   ierr = DMCompositeGetAccess(pack,x,&xu,&xp);CHKERRQ(ierr);
   ierr = VecSetRandom(xu,NULL);CHKERRQ(ierr);
   ierr = VecSetRandom(xp,NULL);CHKERRQ(ierr);
-  //    ierr = VecZeroEntries(xp);CHKERRQ(ierr);
+  //ierr = VecZeroEntries(xu);CHKERRQ(ierr);
+  //ierr = VecZeroEntries(xp);CHKERRQ(ierr);
   ierr = DMCompositeRestoreAccess(pack,x,&xu,&xp);CHKERRQ(ierr);
 
   ierr = VecDuplicate(x,&y);CHKERRQ(ierr);

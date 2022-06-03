@@ -90,6 +90,9 @@ PetscErrorCode StokesFormInit(StokesForm *f,FormType type,SurfaceConstraint sc)
   PetscFunctionReturn(0);
 }
 
+/*
+ Initializes all memebers set / modified by generic_facet_{action,assemble,diagon}()
+*/
 PetscErrorCode StokesFormFlush(StokesForm *f)
 {
   f->u.W = NULL;
