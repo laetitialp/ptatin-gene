@@ -1757,3 +1757,12 @@ PetscErrorCode SurfaceConstraintSetValues_NITSCHE_NAVIER_SLIP(SurfaceConstraint 
   
   PetscFunctionReturn(0);
 }
+
+PetscErrorCode SurfaceConstraintNitscheNavierSlip_SetPenalty(SurfaceConstraint sc,PetscReal penalty)
+{
+  SCContextDemo   *scdata = NULL;
+  if (sc->type != SC_NITSCHE_NAVIER_SLIP) PetscFunctionReturn(0);
+  scdata = (SCContextDemo*)sc->data;
+  scdata->penalty = penalty;
+  PetscFunctionReturn(0);
+}

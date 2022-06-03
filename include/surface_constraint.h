@@ -181,4 +181,7 @@ PetscErrorCode compute_penalty_nitsche_warburton(SurfaceConstraint sc,PetscInt f
 PetscErrorCode compute_penalty_nitsche_hillewaert(SurfaceConstraint sc,PetscInt fe,PetscReal elcoords[],PetscReal *penalty);
 PetscErrorCode compute_global_penalty_nitsche(SurfaceConstraint sc,PetscInt type,PetscReal *penalty);
 
+PetscErrorCode SurfaceConstraintNitscheDirichlet_SetPenalty(SurfaceConstraint sc,PetscReal penalty);
+PetscErrorCode SurfaceConstraintNitscheNavierSlip_SetPenalty(SurfaceConstraint sc,PetscReal penalty);
+
 #endif

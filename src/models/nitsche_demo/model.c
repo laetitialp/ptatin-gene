@@ -101,6 +101,7 @@ PetscErrorCode bctype_no_slip_nitsche(SurfBCList surflist,PetscBool insert_if_no
     if (insert_if_not_fouund) {
       ierr = SurfBCListAddConstraint(surflist,"boundary",&sc);CHKERRQ(ierr);
       ierr = SurfaceConstraintSetType(sc,SC_NITSCHE_DIRICHLET);CHKERRQ(ierr);
+      ierr = SurfaceConstraintNitscheDirichlet_SetPenalty(sc,1.0e5);CHKERRQ(ierr);
     } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint not found");
   }
   
@@ -141,6 +142,7 @@ PetscErrorCode bctype_slip_nitsche(SurfBCList surflist,PetscBool insert_if_not_f
     if (insert_if_not_fouund) {
       ierr = SurfBCListAddConstraint(surflist,"boundary",&sc);CHKERRQ(ierr);
       ierr = SurfaceConstraintSetType(sc,SC_NITSCHE_NAVIER_SLIP);CHKERRQ(ierr);
+      ierr = SurfaceConstraintNitscheNavierSlip_SetPenalty(sc,1.0e5);CHKERRQ(ierr);
     } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint not found");
   }
   ierr = SurfaceConstraintGetFacets(sc,&facets);CHKERRQ(ierr);
