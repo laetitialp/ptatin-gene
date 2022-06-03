@@ -369,6 +369,14 @@ PetscErrorCode BCListGetDofIdx(BCList list,PetscInt *Lg,PetscInt **dofidx_global
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode BCListGetLocalIndices(BCList list,PetscInt *n,PetscInt **idx)
+{
+  PetscErrorCode ierr;
+  ierr = BCListGetDofIdx(list,NULL,NULL,n,idx);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+
 PetscBool BCListEvaluator_constant( PetscScalar position[], PetscScalar *value, void *ctx )
 {
   PetscBool   impose_dirichlet = PETSC_TRUE;
@@ -1061,3 +1069,181 @@ PetscErrorCode BCListInsertScaling(Mat A,PetscInt N_EQNS, PetscInt gidx[],BCList
 
   PetscFunctionReturn(0);
 }
+
+#include "ptatin3d_defs.h"
+#include "dmda_element_q2p1.h"
+
+PetscErrorCode MatZeroRows_BCList(Mat A,BCList list,DM dmu,DM dmp)
+{
+  PetscErrorCode ierr;
+  PetscInt k,L,e,d,size;
+  PetscInt *idx;
+  PetscInt ge_eqnums_u[3*Q2_NODES_PER_EL_3D],ge_eqnums_p[P_BASIS_FUNCTIONS];
+  PetscInt ge_eqnum_row,*ge_eqnums_col = NULL;
+  ISLocalToGlobalMapping ltog_u = NULL,ltog_p = NULL;
+  const PetscInt *lidx_u,*lidx_p;
+  const PetscInt *gidx_u,*gidx_p;
+  PetscInt nel,nen_u,nen_p,numidx_u,numidx_p;
+  PetscReal *vals = NULL;
+  
+  
+  ierr = BCListGetLocalIndices(list,&L,&idx);CHKERRQ(ierr);
+
+  if (dmp) {
+    // use pressure basis as columns
+    size = P_BASIS_FUNCTIONS;
+    ge_eqnums_col = ge_eqnums_p;
+  } else {
+    size = 3 * Q2_NODES_PER_EL_3D;
+    ge_eqnums_col = ge_eqnums_u;
+  }
+  
+  ierr = PetscCalloc1(size,&vals);CHKERRQ(ierr);
+  
+  ierr = DMGetLocalToGlobalMapping(dmu,&ltog_u);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetSize(ltog_u,&numidx_u);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetIndices(ltog_u,&gidx_u);CHKERRQ(ierr);
+  
+  if (dmp) {
+    ierr = DMGetLocalToGlobalMapping(dmp,&ltog_p);CHKERRQ(ierr);
+    ierr = ISLocalToGlobalMappingGetSize(ltog_p,&numidx_p);CHKERRQ(ierr);
+    ierr = ISLocalToGlobalMappingGetIndices(ltog_p,&gidx_p);CHKERRQ(ierr);
+  }
+  
+  ierr = DMDAGetElements_pTatinQ2P1(dmu,&nel,&nen_u,&lidx_u);CHKERRQ(ierr);
+  if (dmp) {
+    ierr = DMDAGetElements_pTatinQ2P1(dmp,&nel,&nen_p,&lidx_p);CHKERRQ(ierr);
+  }
+  
+  for (e=0; e<nel; e++) {
+
+    /* get global indices */
+    for (k=0; k<Q2_NODES_PER_EL_3D; k++) {
+      const int _nid = lidx_u[nen_u*e + k];
+      ge_eqnums_u[3*k  ] = gidx_u[3*_nid  ];
+      ge_eqnums_u[3*k+1] = gidx_u[3*_nid+1];
+      ge_eqnums_u[3*k+2] = gidx_u[3*_nid+2];
+    }
+    if (dmp) {
+      for (k=0; k<P_BASIS_FUNCTIONS; k++) {
+        const int _nid = lidx_p[nen_p*e + k];
+        ge_eqnums_p[k] = gidx_p[_nid];
+      }
+    }
+    
+    for (k=0; k<Q2_NODES_PER_EL_3D; k++) {
+      PetscInt _nid = lidx_u[nen_u*e + k];
+
+      for (d=0; d<3; d++) {
+        PetscInt _did = 3 * _nid + d;
+        
+        if (idx[_did] == BCList_DIRICHLET) {
+          ge_eqnum_row = ge_eqnums_u[3*k+d];
+          ierr = MatSetValues(A,1,&ge_eqnum_row,size,ge_eqnums_col,vals,INSERT_VALUES);CHKERRQ(ierr);
+        }
+      }
+    }
+    
+  }
+  
+  if (ltog_u) {
+    ierr = ISLocalToGlobalMappingRestoreIndices(ltog_u,&gidx_u);CHKERRQ(ierr);
+  }
+  if (ltog_p) {
+    ierr = ISLocalToGlobalMappingRestoreIndices(ltog_p,&gidx_p);CHKERRQ(ierr);
+  }
+  ierr = PetscFree(vals);CHKERRQ(ierr);
+  
+  ierr = MatAssemblyBegin(A,MAT_FLUSH_ASSEMBLY);CHKERRQ(ierr);
+  ierr = MatAssemblyEnd(A,MAT_FLUSH_ASSEMBLY);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode MatZeroCols_BCList(Mat A,BCList list,DM dmu,DM dmp)
+{
+  PetscErrorCode ierr;
+  PetscInt k,L,e,d,size;
+  PetscInt *idx;
+  PetscInt ge_eqnums_u[3*Q2_NODES_PER_EL_3D],ge_eqnums_p[P_BASIS_FUNCTIONS];
+  PetscInt ge_eqnum_col,*ge_eqnums_row = NULL;
+  ISLocalToGlobalMapping ltog_u = NULL,ltog_p = NULL;
+  const PetscInt *lidx_u,*lidx_p;
+  const PetscInt *gidx_u,*gidx_p;
+  PetscInt nel,nen_u,nen_p,numidx_u,numidx_p;
+  PetscReal *vals = NULL;
+  
+  
+  ierr = BCListGetLocalIndices(list,&L,&idx);CHKERRQ(ierr);
+  
+  if (dmp) {
+    // use pressure basis as rows
+    size = P_BASIS_FUNCTIONS;
+    ge_eqnums_row = ge_eqnums_p;
+  } else {
+    size = 3 * Q2_NODES_PER_EL_3D;
+    ge_eqnums_row = ge_eqnums_u;
+  }
+  
+  ierr = PetscCalloc1(size,&vals);CHKERRQ(ierr);
+  
+  ierr = DMGetLocalToGlobalMapping(dmu,&ltog_u);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetSize(ltog_u,&numidx_u);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetIndices(ltog_u,&gidx_u);CHKERRQ(ierr);
+  
+  if (dmp) {
+    ierr = DMGetLocalToGlobalMapping(dmp,&ltog_p);CHKERRQ(ierr);
+    ierr = ISLocalToGlobalMappingGetSize(ltog_p,&numidx_p);CHKERRQ(ierr);
+    ierr = ISLocalToGlobalMappingGetIndices(ltog_p,&gidx_p);CHKERRQ(ierr);
+  }
+  
+  ierr = DMDAGetElements_pTatinQ2P1(dmu,&nel,&nen_u,&lidx_u);CHKERRQ(ierr);
+  if (dmp) {
+    ierr = DMDAGetElements_pTatinQ2P1(dmp,&nel,&nen_p,&lidx_p);CHKERRQ(ierr);
+  }
+  
+  for (e=0; e<nel; e++) {
+    
+    /* get global indices */
+    for (k=0; k<Q2_NODES_PER_EL_3D; k++) {
+      const int _nid = lidx_u[nen_u*e + k];
+      ge_eqnums_u[3*k  ] = gidx_u[3*_nid  ];
+      ge_eqnums_u[3*k+1] = gidx_u[3*_nid+1];
+      ge_eqnums_u[3*k+2] = gidx_u[3*_nid+2];
+    }
+    if (dmp) {
+      for (k=0; k<P_BASIS_FUNCTIONS; k++) {
+        const int _nid = lidx_p[nen_p*e + k];
+        ge_eqnums_p[k] = gidx_p[_nid];
+      }
+    }
+    
+    for (k=0; k<Q2_NODES_PER_EL_3D; k++) {
+      PetscInt _nid = lidx_u[nen_u*e + k];
+      
+      for (d=0; d<3; d++) {
+        PetscInt _did = 3 * _nid + d;
+        
+        if (idx[_did] == BCList_DIRICHLET) {
+          ge_eqnum_col = ge_eqnums_u[3*k+d];
+          ierr = MatSetValues(A,size,ge_eqnums_row,1,&ge_eqnum_col,vals,INSERT_VALUES);CHKERRQ(ierr);
+        }
+      }
+    }
+    
+  }
+  
+  if (ltog_u) {
+    ierr = ISLocalToGlobalMappingRestoreIndices(ltog_u,&gidx_u);CHKERRQ(ierr);
+  }
+  if (ltog_p) {
+    ierr = ISLocalToGlobalMappingRestoreIndices(ltog_p,&gidx_p);CHKERRQ(ierr);
+  }
+  ierr = PetscFree(vals);CHKERRQ(ierr);
+  
+  ierr = MatAssemblyBegin(A,MAT_FLUSH_ASSEMBLY);CHKERRQ(ierr);
+  ierr = MatAssemblyEnd(A,MAT_FLUSH_ASSEMBLY);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+

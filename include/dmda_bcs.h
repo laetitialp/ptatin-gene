@@ -101,4 +101,7 @@ PetscErrorCode BCListApplyDirichletMask(PetscInt N_EQNS, PetscInt gidx[],BCList 
 PetscErrorCode BCListRemoveDirichletMask(PetscInt N_EQNS, PetscInt gidx[],BCList list);
 PetscErrorCode BCListInsertScaling(Mat A,PetscInt N_EQNS, PetscInt gidx[],BCList list);
 
+PetscErrorCode MatZeroRows_BCList(Mat A,BCList list,DM dmu,DM dmp);
+PetscErrorCode MatZeroCols_BCList(Mat A,BCList list,DM dmu,DM dmp);
+
 #endif
