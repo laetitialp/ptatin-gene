@@ -512,12 +512,10 @@ PetscErrorCode _SetType_DEMO(SurfaceConstraint sc)
   sc->ops.action_Aup  = sc_spmv_A12;
   sc->ops.action_Apu  = sc_spmv_A21;
   
-  sc->ops.asmb_A   = NULL; /* always null */
   sc->ops.asmb_Auu = sc_asmb_A11;
   sc->ops.asmb_Aup = sc_asmb_A12;
   sc->ops.asmb_Apu = sc_asmb_A21;
   
-  sc->ops.diag_A   = NULL; /* always null */
   sc->ops.diag_Auu = sc_asmbdiag_A11;
   
   /* allocate implementation data */

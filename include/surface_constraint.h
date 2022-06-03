@@ -33,8 +33,8 @@ struct _SurfaceConstraintOps {
                              DM dau,const PetscScalar ufield[],
                              DM dap,const PetscScalar pfield[],
                              PetscScalar Yu[],PetscScalar Yp[]);
-  PetscErrorCode (*asmb_A)(void);
-  PetscErrorCode (*diag_A)(void);
+  //PetscErrorCode (*asmb_A)(void);
+  //PetscErrorCode (*diag_A)(void);
   
   PetscErrorCode (*action_Auu)(SurfaceConstraint sc,
                                DM dau,const PetscScalar ufield[],

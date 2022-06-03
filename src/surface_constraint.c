@@ -313,8 +313,6 @@ PetscErrorCode SurfaceConstraintDuplicateOperatorA11(SurfaceConstraint sc, MeshF
   if (sc->ops.action_Auu || sc->ops.asmb_Auu) {
     ierr = _ops_operator_only(dup);CHKERRQ(ierr);
     dup->ops.action_A = NULL;
-    dup->ops.asmb_A   = NULL;
-    dup->ops.diag_A   = NULL;
     
     dup->ops.action_Aup = NULL;
     dup->ops.asmb_Aup   = NULL;
@@ -332,8 +330,6 @@ PetscErrorCode SurfaceConstraintDuplicateOperatorA11(SurfaceConstraint sc, MeshF
 static PetscErrorCode _ops_residual_only(SurfaceConstraint sc)
 {
   sc->ops.action_A = NULL;
-  sc->ops.asmb_A   = NULL;
-  sc->ops.diag_A   = NULL;
 
   sc->ops.action_Auu = NULL;
   sc->ops.asmb_Auu   = NULL;
