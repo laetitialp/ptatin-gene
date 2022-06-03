@@ -344,10 +344,11 @@ PetscErrorCode MeshFacetInfoSetUp(MeshFacetInfo e, DM dm)
   for (k=0; k<6; k++) {
     e->facet_label_offset[k+1] = e->facet_label_offset[k] + nface_list[k];
   }
+  /*
   for (k=0; k<6; k++) {
     printf("f-s %d | f-e %d\n",e->facet_label_offset[k],e->facet_label_offset[k+1]);
   }
-  
+  */
   ierr = PetscMalloc1(e->n_facets,&e->facet_cell_index);CHKERRQ(ierr);
   ierr = PetscMalloc1(e->n_facets,&e->facet_label);CHKERRQ(ierr);
   
