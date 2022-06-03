@@ -280,6 +280,15 @@ static PetscErrorCode ModelApplyBoundaryConditionMG(PetscInt nl,BCList bclist[],
       }
       break;
 
+    case 3:
+      for (n=0; n<nl; n++) {
+        ierr = bctype_no_slip_base_3(dav[n],bclist[n]);CHKERRQ(ierr);
+      }
+      for (n=0; n<nl; n++) {
+        ierr = bctype_slip_nitsche_3(surf_bclist[n],PETSC_FALSE);CHKERRQ(ierr);
+      }
+      break;
+
     default:
       break;
   }
