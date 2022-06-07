@@ -16,6 +16,15 @@
 
 //#define SC_DEBUG
 
+
+//
+// fe_form_compiler.py version: 2e5cc249d08f3c46a934672fb1b54d654e0a3086
+// sympy version: 1.6.1
+// using common substring elimination: True
+//
+
+#include <stdio.h>
+#include <math.h>
 //
 // -gamma*(uD[0]*w0[i]*wNt[i] + uD[1]*w1[i]*wNt[i] + uD[2]*w2[i]*wNt[i]) + gamma*(u0[j]*uN[j]*w0[i]*wNt[i] + u1[j]*uN[j]*w1[i]*wNt[i] + u2[j]*uN[j]*w2[i]*wNt[i]) - u0[j]*uN[j]*(2.0*eta*n[0]*w0[i]*wdNtx0[i] + 2.0*eta*n[1]*(0.5*w0[i]*wdNtx1[i] + 0.5*w1[i]*wdNtx0[i]) + 2.0*eta*n[2]*(0.5*w0[i]*wdNtx2[i] + 0.5*w2[i]*wdNtx0[i])) - u1[j]*uN[j]*(2.0*eta*n[0]*(0.5*w0[i]*wdNtx1[i] + 0.5*w1[i]*wdNtx0[i]) + 2.0*eta*n[1]*w1[i]*wdNtx1[i] + 2.0*eta*n[2]*(0.5*w1[i]*wdNtx2[i] + 0.5*w2[i]*wdNtx1[i])) - u2[j]*uN[j]*(2.0*eta*n[0]*(0.5*w0[i]*wdNtx2[i] + 0.5*w2[i]*wdNtx0[i]) + 2.0*eta*n[1]*(0.5*w1[i]*wdNtx2[i] + 0.5*w2[i]*wdNtx1[i]) + 2.0*eta*n[2]*w2[i]*wdNtx2[i]) + uD[0]*(2.0*eta*n[0]*w0[i]*wdNtx0[i] + 2.0*eta*n[1]*(0.5*w0[i]*wdNtx1[i] + 0.5*w1[i]*wdNtx0[i]) + 2.0*eta*n[2]*(0.5*w0[i]*wdNtx2[i] + 0.5*w2[i]*wdNtx0[i])) + uD[1]*(2.0*eta*n[0]*(0.5*w0[i]*wdNtx1[i] + 0.5*w1[i]*wdNtx0[i]) + 2.0*eta*n[1]*w1[i]*wdNtx1[i] + 2.0*eta*n[2]*(0.5*w1[i]*wdNtx2[i] + 0.5*w2[i]*wdNtx1[i])) + uD[2]*(2.0*eta*n[0]*(0.5*w0[i]*wdNtx2[i] + 0.5*w2[i]*wdNtx0[i]) + 2.0*eta*n[1]*(0.5*w1[i]*wdNtx2[i] + 0.5*w2[i]*wdNtx1[i]) + 2.0*eta*n[2]*w2[i]*wdNtx2[i]) - w0[i]*wNt[i]*(2.0*eta*n[0]*u0[j]*udNx0[j] + 2.0*eta*n[1]*(0.5*u0[j]*udNx1[j] + 0.5*u1[j]*udNx0[j]) + 2.0*eta*n[2]*(0.5*u0[j]*udNx2[j] + 0.5*u2[j]*udNx0[j])) - w1[i]*wNt[i]*(2.0*eta*n[0]*(0.5*u0[j]*udNx1[j] + 0.5*u1[j]*udNx0[j]) + 2.0*eta*n[1]*u1[j]*udNx1[j] + 2.0*eta*n[2]*(0.5*u1[j]*udNx2[j] + 0.5*u2[j]*udNx1[j])) - w2[i]*wNt[i]*(2.0*eta*n[0]*(0.5*u0[j]*udNx2[j] + 0.5*u2[j]*udNx0[j]) + 2.0*eta*n[1]*(0.5*u1[j]*udNx2[j] + 0.5*u2[j]*udNx1[j]) + 2.0*eta*n[2]*u2[j]*udNx2[j])
 //
@@ -32,13 +41,8 @@
 // trial function[0]:        uN[j]
 // trial function[0] derivs: [udNx0[j], udNx1[j], udNx2[j]]
 //
-// test function[0] dim:          3
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     27
-//
-// trial function[0] dim:         3
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    27
+// test function[0] dim: 3 spatial dim: 3 numcoeff:  27
+// trial function[0] dim: 3 spatial dim: 3 numcoeff:  27
 //
 // ---------------------------------------------------
 //
@@ -96,13 +100,8 @@ void nitsche_dirichlet_q2_3d_asmb_wu(
 // trial function[0]:        uN[j]
 // trial function[0] derivs: [udNx0[j], udNx1[j], udNx2[j]]
 //
-// test function[0] dim:          3
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     27
-//
-// trial function[0] dim:         3
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    27
+// test function[0] dim: 3 spatial dim: 3 numcoeff:  27
+// trial function[0] dim: 3 spatial dim: 3 numcoeff:  27
 //
 // ---------------------------------------------------
 //
@@ -154,13 +153,8 @@ void nitsche_dirichlet_q2_3d_asmbdiag_wu(
 // trial function[0]:        uN[j]
 // trial function[0] derivs: [udNx0[j], udNx1[j], udNx2[j]]
 //
-// test function[0] dim:          3
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     27
-//
-// trial function[0] dim:         3
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    27
+// test function[0] dim: 3 spatial dim: 3 numcoeff:  27
+// trial function[0] dim: 3 spatial dim: 3 numcoeff:  27
 //
 // ---------------------------------------------------
 //
@@ -174,18 +168,18 @@ void nitsche_dirichlet_q2_3d_spmv_wu(
                                      double scale, double F[])
 {
   int i,j;
-  double u0j_udNx1j = 0.0;
-  double u1j_udNx1j = 0.0;
-  double u2j_udNx1j = 0.0;
   double u0j_uNj = 0.0;
-  double u1j_udNx2j = 0.0;
   double u0j_udNx0j = 0.0;
-  double u2j_udNx2j = 0.0;
-  double u2j_uNj = 0.0;
+  double u0j_udNx1j = 0.0;
   double u0j_udNx2j = 0.0;
-  double u1j_udNx0j = 0.0;
-  double u2j_udNx0j = 0.0;
   double u1j_uNj = 0.0;
+  double u1j_udNx0j = 0.0;
+  double u1j_udNx1j = 0.0;
+  double u1j_udNx2j = 0.0;
+  double u2j_uNj = 0.0;
+  double u2j_udNx0j = 0.0;
+  double u2j_udNx1j = 0.0;
+  double u2j_udNx2j = 0.0;
   for (j=0; j<27; j++) { // u_nbasis_0
     u0j_uNj += u0[j]*uN[j];
     u1j_uNj += u1[j]*uN[j];
@@ -250,13 +244,8 @@ void nitsche_dirichlet_q2_3d_spmv_wu(
 // trial function[0]:        pN[j]
 // trial function[0] derivs: [pdNx0[j], pdNx1[j], pdNx2[j]]
 //
-// test function[0] dim:          3
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     27
-//
-// trial function[0] dim:         1
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    4
+// test function[0] dim: 3 spatial dim: 3 numcoeff:  27
+// trial function[0] dim: 1 spatial dim: 3 numcoeff:   4
 //
 // ---------------------------------------------------
 //
@@ -284,13 +273,8 @@ void nitsche_dirichlet_q2_3d_asmb_wp(
 // trial function[0]:        pN[j]
 // trial function[0] derivs: [pdNx0[j], pdNx1[j], pdNx2[j]]
 //
-// test function[0] dim:          3
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     27
-//
-// trial function[0] dim:         1
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    4
+// test function[0] dim: 3 spatial dim: 3 numcoeff:  27
+// trial function[0] dim: 1 spatial dim: 3 numcoeff:   4
 //
 // ---------------------------------------------------
 //
@@ -321,13 +305,8 @@ void nitsche_dirichlet_q2_3d_spmv_wp(
 // trial function[0]:        uN[j]
 // trial function[0] derivs: [udNx0[j], udNx1[j], udNx2[j]]
 //
-// test function[0] dim:          1
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     4
-//
-// trial function[0] dim:         3
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    27
+// test function[0] dim: 1 spatial dim: 3 numcoeff:   4
+// trial function[0] dim: 3 spatial dim: 3 numcoeff:  27
 //
 // ---------------------------------------------------
 //
@@ -355,13 +334,8 @@ void nitsche_dirichlet_q2_3d_asmb_qu(
 // trial function[0]:        uN[j]
 // trial function[0] derivs: [udNx0[j], udNx1[j], udNx2[j]]
 //
-// test function[0] dim:          1
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     4
-//
-// trial function[0] dim:         3
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    27
+// test function[0] dim: 1 spatial dim: 3 numcoeff:   4
+// trial function[0] dim: 3 spatial dim: 3 numcoeff:  27
 //
 // ---------------------------------------------------
 //
@@ -390,13 +364,8 @@ void nitsche_dirichlet_q2_3d_spmv_qu(
 // trial function[0]:        pN[j]
 // trial function[0] derivs: [pdNx0[j], pdNx1[j], pdNx2[j]]
 //
-// test function[0] dim:          1
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     4
-//
-// trial function[0] dim:         1
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    4
+// test function[0] dim: 1 spatial dim: 3 numcoeff:   4
+// trial function[0] dim: 1 spatial dim: 3 numcoeff:   4
 //
 // ---------------------------------------------------
 //
@@ -422,13 +391,8 @@ void nitsche_dirichlet_q2_3d_asmb_qp(
 // trial function[0]:        pN[j]
 // trial function[0] derivs: [pdNx0[j], pdNx1[j], pdNx2[j]]
 //
-// test function[0] dim:          1
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     4
-//
-// trial function[0] dim:         1
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    4
+// test function[0] dim: 1 spatial dim: 3 numcoeff:   4
+// trial function[0] dim: 1 spatial dim: 3 numcoeff:   4
 //
 // ---------------------------------------------------
 //
@@ -454,13 +418,8 @@ void nitsche_dirichlet_q2_3d_asmbdiag_qp(
 // trial function[0]:        pN[j]
 // trial function[0] derivs: [pdNx0[j], pdNx1[j], pdNx2[j]]
 //
-// test function[0] dim:          1
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     4
-//
-// trial function[0] dim:         1
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    4
+// test function[0] dim: 1 spatial dim: 3 numcoeff:   4
+// trial function[0] dim: 1 spatial dim: 3 numcoeff:   4
 //
 // ---------------------------------------------------
 //
@@ -469,6 +428,141 @@ void nitsche_dirichlet_q2_3d_spmv_qp(
                                      double pN[], double pdNx0[], double pdNx1[], double pdNx2[],
                                      double p0[],
                                      double scale, double F[])
+{
+  int i,j;
+  for (i=0; i<4; i++) { // q_nbasis
+    F[1*i + 0] += scale * (0);
+  }
+}
+
+
+// key: w_up
+//
+// ---------------------------------------------------
+//
+// test function[0] coeff:   [w0[i], w1[i], w2[i]]
+// test function[0]:         wNt[i]
+// test function[0] derivs:  [wdNtx0[i], wdNtx1[i], wdNtx2[i]]
+//
+// trial function[0] coeff:  [u0[j], u1[j], u2[j]]
+// trial function[0]:        uN[j]
+// trial function[0] derivs: [udNx0[j], udNx1[j], udNx2[j]]
+//
+// trial function[1] coeff:  [p0[j]]
+// trial function[1]:        pN[j]
+// trial function[1] derivs: [pdNx0[j], pdNx1[j], pdNx2[j]]
+//
+// test function[0] dim: 3 spatial dim: 3 numcoeff:  27
+// trial function[0] dim: 3 spatial dim: 3 numcoeff:  27
+// trial function[1] dim: 1 spatial dim: 3 numcoeff:   4
+//
+// ---------------------------------------------------
+//
+void nitsche_dirichlet_q2_3d_spmv_w_up(
+                                       double wNt[], double wdNtx0[], double wdNtx1[], double wdNtx2[],
+                                       double uN[], double udNx0[], double udNx1[], double udNx2[],
+                                       double pN[], double pdNx0[], double pdNx1[], double pdNx2[],
+                                       double u0[], double u1[], double u2[],
+                                       double p0[],
+                                       double eta,  // parameter
+                                       double gamma,  // parameter
+                                       double n[],  // parameter
+                                       double scale, double F[])
+{
+  int i,j;
+  double u0j_uNj = 0.0;
+  double u0j_udNx0j = 0.0;
+  double u0j_udNx1j = 0.0;
+  double u0j_udNx2j = 0.0;
+  double u1j_uNj = 0.0;
+  double u1j_udNx0j = 0.0;
+  double u1j_udNx1j = 0.0;
+  double u1j_udNx2j = 0.0;
+  double u2j_uNj = 0.0;
+  double u2j_udNx0j = 0.0;
+  double u2j_udNx1j = 0.0;
+  double u2j_udNx2j = 0.0;
+  for (j=0; j<27; j++) { // u_nbasis_0
+    u0j_uNj += u0[j]*uN[j];
+    u1j_uNj += u1[j]*uN[j];
+    u2j_uNj += u2[j]*uN[j];
+    u0j_udNx0j += u0[j]*udNx0[j];
+    u0j_udNx1j += u0[j]*udNx1[j];
+    u0j_udNx2j += u0[j]*udNx2[j];
+    u1j_udNx0j += u1[j]*udNx0[j];
+    u1j_udNx1j += u1[j]*udNx1[j];
+    u1j_udNx2j += u1[j]*udNx2[j];
+    u2j_udNx0j += u2[j]*udNx0[j];
+    u2j_udNx1j += u2[j]*udNx1[j];
+    u2j_udNx2j += u2[j]*udNx2[j];
+  }
+  for (i=0; i<27; i++) { // w_nbasis
+    {
+      double tce0, tce1, tce2, tce3, tce4, tce5, tce6;
+      tce0 = 2.0*eta*n[0];
+      tce1 = 1.0*eta;
+      tce2 = n[0]*tce1;
+      tce3 = n[1]*tce1;
+      tce4 = tce3*wNt[i];
+      tce5 = n[2]*tce1;
+      tce6 = tce5*wNt[i];
+      F[3*i + 0] += scale * (gamma*u0j_uNj*wNt[i] - tce0*u0j_uNj*wdNtx0[i] - tce0*u0j_udNx0j*wNt[i] - tce2*u1j_uNj*wdNtx1[i] - tce2*u2j_uNj*wdNtx2[i] - tce3*u0j_uNj*wdNtx1[i] - tce4*u0j_udNx1j - tce4*u1j_udNx0j - tce5*u0j_uNj*wdNtx2[i] - tce6*u0j_udNx2j - tce6*u2j_udNx0j);
+    }
+    {
+      double tce0, tce1, tce2, tce3, tce4, tce5, tce6;
+      tce0 = 1.0*eta;
+      tce1 = n[0]*tce0;
+      tce2 = tce1*wNt[i];
+      tce3 = n[1]*tce0;
+      tce4 = 2.0*eta*n[1];
+      tce5 = n[2]*tce0;
+      tce6 = tce5*wNt[i];
+      F[3*i + 1] += scale * (gamma*u1j_uNj*wNt[i] - tce1*u1j_uNj*wdNtx0[i] - tce2*u0j_udNx1j - tce2*u1j_udNx0j - tce3*u0j_uNj*wdNtx0[i] - tce3*u2j_uNj*wdNtx2[i] - tce4*u1j_uNj*wdNtx1[i] - tce4*u1j_udNx1j*wNt[i] - tce5*u1j_uNj*wdNtx2[i] - tce6*u1j_udNx2j - tce6*u2j_udNx1j);
+    }
+    {
+      double tce0, tce1, tce2, tce3, tce4, tce5, tce6;
+      tce0 = 1.0*eta;
+      tce1 = n[0]*tce0;
+      tce2 = tce1*wNt[i];
+      tce3 = n[1]*tce0;
+      tce4 = tce3*wNt[i];
+      tce5 = n[2]*tce0;
+      tce6 = 2.0*eta*n[2];
+      F[3*i + 2] += scale * (gamma*u2j_uNj*wNt[i] - tce1*u2j_uNj*wdNtx0[i] - tce2*u0j_udNx2j - tce2*u2j_udNx0j - tce3*u2j_uNj*wdNtx1[i] - tce4*u1j_udNx2j - tce4*u2j_udNx1j - tce5*u0j_uNj*wdNtx0[i] - tce5*u1j_uNj*wdNtx1[i] - tce6*u2j_uNj*wdNtx2[i] - tce6*u2j_udNx2j*wNt[i]);
+    }
+  }
+}
+
+
+// key: q_up
+//
+// ---------------------------------------------------
+//
+// test function[0] coeff:   [q0[i]]
+// test function[0]:         qNt[i]
+// test function[0] derivs:  [qdNtx0[i], qdNtx1[i], qdNtx2[i]]
+//
+// trial function[0] coeff:  [u0[j], u1[j], u2[j]]
+// trial function[0]:        uN[j]
+// trial function[0] derivs: [udNx0[j], udNx1[j], udNx2[j]]
+//
+// trial function[1] coeff:  [p0[j]]
+// trial function[1]:        pN[j]
+// trial function[1] derivs: [pdNx0[j], pdNx1[j], pdNx2[j]]
+//
+// test function[0] dim: 1 spatial dim: 3 numcoeff:   4
+// trial function[0] dim: 3 spatial dim: 3 numcoeff:  27
+// trial function[1] dim: 1 spatial dim: 3 numcoeff:   4
+//
+// ---------------------------------------------------
+//
+void nitsche_dirichlet_q2_3d_spmv_q_up(
+                                       double qNt[], double qdNtx0[], double qdNtx1[], double qdNtx2[],
+                                       double uN[], double udNx0[], double udNx1[], double udNx2[],
+                                       double pN[], double pdNx0[], double pdNx1[], double pdNx2[],
+                                       double u0[], double u1[], double u2[],
+                                       double p0[],
+                                       double scale, double F[])
 {
   int i,j;
   for (i=0; i<4; i++) { // q_nbasis
@@ -493,17 +587,9 @@ void nitsche_dirichlet_q2_3d_spmv_qp(
 // trial function[1]:        pN[j]
 // trial function[1] derivs: [pdNx0[j], pdNx1[j], pdNx2[j]]
 //
-// test function[0] dim:          3
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     27
-//
-// trial function[0] dim:         3
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    27
-//
-// trial function[1] dim:         1
-// trial function[1] spatial dim: 3
-// trial function[1] numcoeff:    4
+// test function[0] dim: 3 spatial dim: 3 numcoeff:  27
+// trial function[0] dim: 3 spatial dim: 3 numcoeff:  27
+// trial function[1] dim: 1 spatial dim: 3 numcoeff:   4
 //
 // ---------------------------------------------------
 //
@@ -520,18 +606,18 @@ void nitsche_dirichlet_q2_3d_residual_w(
                                         double scale, double F[])
 {
   int i,j;
-  double u0j_udNx1j = 0.0;
-  double u1j_udNx1j = 0.0;
-  double u2j_udNx1j = 0.0;
   double u0j_uNj = 0.0;
-  double u1j_udNx2j = 0.0;
   double u0j_udNx0j = 0.0;
-  double u2j_udNx2j = 0.0;
-  double u2j_uNj = 0.0;
+  double u0j_udNx1j = 0.0;
   double u0j_udNx2j = 0.0;
-  double u1j_udNx0j = 0.0;
-  double u2j_udNx0j = 0.0;
   double u1j_uNj = 0.0;
+  double u1j_udNx0j = 0.0;
+  double u1j_udNx1j = 0.0;
+  double u1j_udNx2j = 0.0;
+  double u2j_uNj = 0.0;
+  double u2j_udNx0j = 0.0;
+  double u2j_udNx1j = 0.0;
+  double u2j_udNx2j = 0.0;
   for (j=0; j<27; j++) { // u_nbasis_0
     u0j_uNj += u0[j]*uN[j];
     u1j_uNj += u1[j]*uN[j];
@@ -620,17 +706,9 @@ void nitsche_dirichlet_q2_3d_residual_w(
 // trial function[1]:        pN[j]
 // trial function[1] derivs: [pdNx0[j], pdNx1[j], pdNx2[j]]
 //
-// test function[0] dim:          1
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     4
-//
-// trial function[0] dim:         3
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    27
-//
-// trial function[1] dim:         1
-// trial function[1] spatial dim: 3
-// trial function[1] numcoeff:    4
+// test function[0] dim: 1 spatial dim: 3 numcoeff:   4
+// trial function[0] dim: 3 spatial dim: 3 numcoeff:  27
+// trial function[1] dim: 1 spatial dim: 3 numcoeff:   4
 //
 // ---------------------------------------------------
 //
@@ -647,676 +725,6 @@ void nitsche_dirichlet_q2_3d_residual_q(
     F[1*i + 0] += scale * (0);
   }
 }
-
-
-#if 0
-//
-// -gamma*(uD[0]*w0[i]*wNt[i] + uD[1]*w1[i]*wNt[i] + uD[2]*w2[i]*wNt[i]) + gamma*(u0[j]*uN[j]*w0[i]*wNt[i] + u1[j]*uN[j]*w1[i]*wNt[i] + u2[j]*uN[j]*w2[i]*wNt[i]) - u0[j]*uN[j]*(2.0*eta*n[1]*(0.5*w0[i]*wdNtx1[i] + 0.5*w1[i]*wdNtx0[i]) + 2.0*eta*n[2]*(0.5*w0[i]*wdNtx2[i] + 0.5*w2[i]*wdNtx0[i]) + n[0]*(2.0*eta*w0[i]*wdNtx0[i] - 1.0*q0[i]*qNt[i])) - u1[j]*uN[j]*(2.0*eta*n[0]*(0.5*w0[i]*wdNtx1[i] + 0.5*w1[i]*wdNtx0[i]) + 2.0*eta*n[2]*(0.5*w1[i]*wdNtx2[i] + 0.5*w2[i]*wdNtx1[i]) + n[1]*(2.0*eta*w1[i]*wdNtx1[i] - 1.0*q0[i]*qNt[i])) - u2[j]*uN[j]*(2.0*eta*n[0]*(0.5*w0[i]*wdNtx2[i] + 0.5*w2[i]*wdNtx0[i]) + 2.0*eta*n[1]*(0.5*w1[i]*wdNtx2[i] + 0.5*w2[i]*wdNtx1[i]) + n[2]*(2.0*eta*w2[i]*wdNtx2[i] - 1.0*q0[i]*qNt[i])) + uD[0]*(2.0*eta*n[1]*(0.5*w0[i]*wdNtx1[i] + 0.5*w1[i]*wdNtx0[i]) + 2.0*eta*n[2]*(0.5*w0[i]*wdNtx2[i] + 0.5*w2[i]*wdNtx0[i]) + n[0]*(2.0*eta*w0[i]*wdNtx0[i] - 1.0*q0[i]*qNt[i])) + uD[1]*(2.0*eta*n[0]*(0.5*w0[i]*wdNtx1[i] + 0.5*w1[i]*wdNtx0[i]) + 2.0*eta*n[2]*(0.5*w1[i]*wdNtx2[i] + 0.5*w2[i]*wdNtx1[i]) + n[1]*(2.0*eta*w1[i]*wdNtx1[i] - 1.0*q0[i]*qNt[i])) + uD[2]*(2.0*eta*n[0]*(0.5*w0[i]*wdNtx2[i] + 0.5*w2[i]*wdNtx0[i]) + 2.0*eta*n[1]*(0.5*w1[i]*wdNtx2[i] + 0.5*w2[i]*wdNtx1[i]) + n[2]*(2.0*eta*w2[i]*wdNtx2[i] - 1.0*q0[i]*qNt[i])) - w0[i]*wNt[i]*(2.0*eta*n[1]*(0.5*u0[j]*udNx1[j] + 0.5*u1[j]*udNx0[j]) + 2.0*eta*n[2]*(0.5*u0[j]*udNx2[j] + 0.5*u2[j]*udNx0[j]) + n[0]*(2.0*eta*u0[j]*udNx0[j] - 1.0*p0[j]*pN[j])) - w1[i]*wNt[i]*(2.0*eta*n[0]*(0.5*u0[j]*udNx1[j] + 0.5*u1[j]*udNx0[j]) + 2.0*eta*n[2]*(0.5*u1[j]*udNx2[j] + 0.5*u2[j]*udNx1[j]) + n[1]*(2.0*eta*u1[j]*udNx1[j] - 1.0*p0[j]*pN[j])) - w2[i]*wNt[i]*(2.0*eta*n[0]*(0.5*u0[j]*udNx2[j] + 0.5*u2[j]*udNx0[j]) + 2.0*eta*n[1]*(0.5*u1[j]*udNx2[j] + 0.5*u2[j]*udNx1[j]) + n[2]*(2.0*eta*u2[j]*udNx2[j] - 1.0*p0[j]*pN[j]))
-//
-
-// key: wu
-//
-// ---------------------------------------------------
-//
-// test function[0] coeff:   [w0[i], w1[i], w2[i]]
-// test function[0]:         wNt[i]
-// test function[0] derivs:  [wdNtx0[i], wdNtx1[i], wdNtx2[i]]
-//
-// trial function[0] coeff:  [u0[j], u1[j], u2[j]]
-// trial function[0]:        uN[j]
-// trial function[0] derivs: [udNx0[j], udNx1[j], udNx2[j]]
-//
-// test function[0] dim:          3
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     27
-//
-// trial function[0] dim:         3
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    27
-//
-// ---------------------------------------------------
-//
-void nitsche_dirichlet_q2_3d_asmb_wu(
-                                     double wNt[], double wdNtx0[], double wdNtx1[], double wdNtx2[],
-                                     double uN[], double udNx0[], double udNx1[], double udNx2[],
-                                     double eta,  // parameter
-                                     double gamma,  // parameter
-                                     double n[],  // parameter
-                                     double scale, double A[])
-{
-  int i,j;
-  for (i=0; i<27; i++) { // w_nbasis
-    for (j=0; j<27; j++) { // u_nbasis
-      {
-        double tce0, tce1, tce2, tce3;
-        tce0 = 2.0*eta*n[0];
-        tce1 = 1.0*eta;
-        tce2 = n[1]*tce1;
-        tce3 = n[2]*tce1;
-        A[(3*i + 0)*81 + (3*j + 0)] += scale * (gamma*uN[j]*wNt[i] - tce0*uN[j]*wdNtx0[i] - tce0*udNx0[j]*wNt[i] - tce2*uN[j]*wdNtx1[i] - tce2*udNx1[j]*wNt[i] - tce3*uN[j]*wdNtx2[i] - tce3*udNx2[j]*wNt[i]);
-      }
-      A[(3*i + 0)*81 + (3*j + 1)] += scale * (-1.0*eta*(n[0]*uN[j]*wdNtx1[i] + n[1]*udNx0[j]*wNt[i]));
-      A[(3*i + 0)*81 + (3*j + 2)] += scale * (-1.0*eta*(n[0]*uN[j]*wdNtx2[i] + n[2]*udNx0[j]*wNt[i]));
-      A[(3*i + 1)*81 + (3*j + 0)] += scale * (-1.0*eta*(n[0]*udNx1[j]*wNt[i] + n[1]*uN[j]*wdNtx0[i]));
-      {
-        double tce0, tce1, tce2, tce3;
-        tce0 = 1.0*eta;
-        tce1 = n[0]*tce0;
-        tce2 = 2.0*eta*n[1];
-        tce3 = n[2]*tce0;
-        A[(3*i + 1)*81 + (3*j + 1)] += scale * (gamma*uN[j]*wNt[i] - tce1*uN[j]*wdNtx0[i] - tce1*udNx0[j]*wNt[i] - tce2*uN[j]*wdNtx1[i] - tce2*udNx1[j]*wNt[i] - tce3*uN[j]*wdNtx2[i] - tce3*udNx2[j]*wNt[i]);
-      }
-      A[(3*i + 1)*81 + (3*j + 2)] += scale * (-1.0*eta*(n[1]*uN[j]*wdNtx2[i] + n[2]*udNx1[j]*wNt[i]));
-      A[(3*i + 2)*81 + (3*j + 0)] += scale * (-1.0*eta*(n[0]*udNx2[j]*wNt[i] + n[2]*uN[j]*wdNtx0[i]));
-      A[(3*i + 2)*81 + (3*j + 1)] += scale * (-1.0*eta*(n[1]*udNx2[j]*wNt[i] + n[2]*uN[j]*wdNtx1[i]));
-      {
-        double tce0, tce1, tce2, tce3;
-        tce0 = 1.0*eta;
-        tce1 = n[0]*tce0;
-        tce2 = n[1]*tce0;
-        tce3 = 2.0*eta*n[2];
-        A[(3*i + 2)*81 + (3*j + 2)] += scale * (gamma*uN[j]*wNt[i] - tce1*uN[j]*wdNtx0[i] - tce1*udNx0[j]*wNt[i] - tce2*uN[j]*wdNtx1[i] - tce2*udNx1[j]*wNt[i] - tce3*uN[j]*wdNtx2[i] - tce3*udNx2[j]*wNt[i]);
-      }
-    }}
-}
-//
-// ---------------------------------------------------
-//
-// test function[0] coeff:   [w0[i], w1[i], w2[i]]
-// test function[0]:         wNt[i]
-// test function[0] derivs:  [wdNtx0[i], wdNtx1[i], wdNtx2[i]]
-//
-// trial function[0] coeff:  [u0[j], u1[j], u2[j]]
-// trial function[0]:        uN[j]
-// trial function[0] derivs: [udNx0[j], udNx1[j], udNx2[j]]
-//
-// test function[0] dim:          3
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     27
-//
-// trial function[0] dim:         3
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    27
-//
-// ---------------------------------------------------
-//
-void nitsche_dirichlet_q2_3d_asmbdiag_wu(
-                                         double wNt[], double wdNtx0[], double wdNtx1[], double wdNtx2[],
-                                         double uN[], double udNx0[], double udNx1[], double udNx2[],
-                                         double eta,  // parameter
-                                         double gamma,  // parameter
-                                         double n[],  // parameter
-                                         double scale, double F[])
-{
-  int i,j;
-  for (i=0; i<27; i++) { // w_nbasis
-    j = i;
-    {
-      double tce0, tce1, tce2, tce3;
-      tce0 = 2.0*eta*n[0];
-      tce1 = 1.0*eta;
-      tce2 = n[1]*tce1;
-      tce3 = n[2]*tce1;
-      F[3*i + 0] += scale * (gamma*uN[j]*wNt[i] - tce0*uN[j]*wdNtx0[i] - tce0*udNx0[j]*wNt[i] - tce2*uN[j]*wdNtx1[i] - tce2*udNx1[j]*wNt[i] - tce3*uN[j]*wdNtx2[i] - tce3*udNx2[j]*wNt[i]);
-    }
-    {
-      double tce0, tce1, tce2, tce3;
-      tce0 = 1.0*eta;
-      tce1 = n[0]*tce0;
-      tce2 = 2.0*eta*n[1];
-      tce3 = n[2]*tce0;
-      F[3*i + 1] += scale * (gamma*uN[j]*wNt[i] - tce1*uN[j]*wdNtx0[i] - tce1*udNx0[j]*wNt[i] - tce2*uN[j]*wdNtx1[i] - tce2*udNx1[j]*wNt[i] - tce3*uN[j]*wdNtx2[i] - tce3*udNx2[j]*wNt[i]);
-    }
-    {
-      double tce0, tce1, tce2, tce3;
-      tce0 = 1.0*eta;
-      tce1 = n[0]*tce0;
-      tce2 = n[1]*tce0;
-      tce3 = 2.0*eta*n[2];
-      F[3*i + 2] += scale * (gamma*uN[j]*wNt[i] - tce1*uN[j]*wdNtx0[i] - tce1*udNx0[j]*wNt[i] - tce2*uN[j]*wdNtx1[i] - tce2*udNx1[j]*wNt[i] - tce3*uN[j]*wdNtx2[i] - tce3*udNx2[j]*wNt[i]);
-    }
-  }
-}
-//
-// ---------------------------------------------------
-//
-// test function[0] coeff:   [w0[i], w1[i], w2[i]]
-// test function[0]:         wNt[i]
-// test function[0] derivs:  [wdNtx0[i], wdNtx1[i], wdNtx2[i]]
-//
-// trial function[0] coeff:  [u0[j], u1[j], u2[j]]
-// trial function[0]:        uN[j]
-// trial function[0] derivs: [udNx0[j], udNx1[j], udNx2[j]]
-//
-// test function[0] dim:          3
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     27
-//
-// trial function[0] dim:         3
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    27
-//
-// ---------------------------------------------------
-//
-void nitsche_dirichlet_q2_3d_spmv_wu(
-                                     double wNt[], double wdNtx0[], double wdNtx1[], double wdNtx2[],
-                                     double uN[], double udNx0[], double udNx1[], double udNx2[],
-                                     double u0[], double u1[], double u2[],
-                                     double eta,  // parameter
-                                     double gamma,  // parameter
-                                     double n[],  // parameter
-                                     double scale, double F[])
-{
-  int i,j;
-  double u0j_udNx2j = 0.0;
-  double u1j_udNx2j = 0.0;
-  double u0j_udNx0j = 0.0;
-  double u1j_uNj = 0.0;
-  double u2j_udNx1j = 0.0;
-  double u0j_udNx1j = 0.0;
-  double u0j_uNj = 0.0;
-  double u2j_uNj = 0.0;
-  double u2j_udNx0j = 0.0;
-  double u1j_udNx0j = 0.0;
-  double u1j_udNx1j = 0.0;
-  double u2j_udNx2j = 0.0;
-  for (j=0; j<27; j++) { // u_nbasis_0
-    u0j_uNj += u0[j]*uN[j];
-    u1j_uNj += u1[j]*uN[j];
-    u2j_uNj += u2[j]*uN[j];
-    u0j_udNx0j += u0[j]*udNx0[j];
-    u0j_udNx1j += u0[j]*udNx1[j];
-    u0j_udNx2j += u0[j]*udNx2[j];
-    u1j_udNx0j += u1[j]*udNx0[j];
-    u1j_udNx1j += u1[j]*udNx1[j];
-    u1j_udNx2j += u1[j]*udNx2[j];
-    u2j_udNx0j += u2[j]*udNx0[j];
-    u2j_udNx1j += u2[j]*udNx1[j];
-    u2j_udNx2j += u2[j]*udNx2[j];
-  }
-  for (i=0; i<27; i++) { // w_nbasis
-    {
-      double tce0, tce1, tce2, tce3, tce4, tce5, tce6;
-      tce0 = 2.0*eta*n[0];
-      tce1 = 1.0*eta;
-      tce2 = n[0]*tce1;
-      tce3 = n[1]*tce1;
-      tce4 = tce3*wNt[i];
-      tce5 = n[2]*tce1;
-      tce6 = tce5*wNt[i];
-      F[3*i + 0] += scale * (gamma*u0j_uNj*wNt[i] - tce0*u0j_uNj*wdNtx0[i] - tce0*u0j_udNx0j*wNt[i] - tce2*u1j_uNj*wdNtx1[i] - tce2*u2j_uNj*wdNtx2[i] - tce3*u0j_uNj*wdNtx1[i] - tce4*u0j_udNx1j - tce4*u1j_udNx0j - tce5*u0j_uNj*wdNtx2[i] - tce6*u0j_udNx2j - tce6*u2j_udNx0j);
-    }
-    {
-      double tce0, tce1, tce2, tce3, tce4, tce5, tce6;
-      tce0 = 1.0*eta;
-      tce1 = n[0]*tce0;
-      tce2 = tce1*wNt[i];
-      tce3 = n[1]*tce0;
-      tce4 = 2.0*eta*n[1];
-      tce5 = n[2]*tce0;
-      tce6 = tce5*wNt[i];
-      F[3*i + 1] += scale * (gamma*u1j_uNj*wNt[i] - tce1*u1j_uNj*wdNtx0[i] - tce2*u0j_udNx1j - tce2*u1j_udNx0j - tce3*u0j_uNj*wdNtx0[i] - tce3*u2j_uNj*wdNtx2[i] - tce4*u1j_uNj*wdNtx1[i] - tce4*u1j_udNx1j*wNt[i] - tce5*u1j_uNj*wdNtx2[i] - tce6*u1j_udNx2j - tce6*u2j_udNx1j);
-    }
-    {
-      double tce0, tce1, tce2, tce3, tce4, tce5, tce6;
-      tce0 = 1.0*eta;
-      tce1 = n[0]*tce0;
-      tce2 = tce1*wNt[i];
-      tce3 = n[1]*tce0;
-      tce4 = tce3*wNt[i];
-      tce5 = n[2]*tce0;
-      tce6 = 2.0*eta*n[2];
-      F[3*i + 2] += scale * (gamma*u2j_uNj*wNt[i] - tce1*u2j_uNj*wdNtx0[i] - tce2*u0j_udNx2j - tce2*u2j_udNx0j - tce3*u2j_uNj*wdNtx1[i] - tce4*u1j_udNx2j - tce4*u2j_udNx1j - tce5*u0j_uNj*wdNtx0[i] - tce5*u1j_uNj*wdNtx1[i] - tce6*u2j_uNj*wdNtx2[i] - tce6*u2j_udNx2j*wNt[i]);
-    }
-  }
-}
-
-
-// key: wp
-//
-// ---------------------------------------------------
-//
-// test function[0] coeff:   [w0[i], w1[i], w2[i]]
-// test function[0]:         wNt[i]
-// test function[0] derivs:  [wdNtx0[i], wdNtx1[i], wdNtx2[i]]
-//
-// trial function[0] coeff:  [p0[j]]
-// trial function[0]:        pN[j]
-// trial function[0] derivs: [pdNx0[j], pdNx1[j], pdNx2[j]]
-//
-// test function[0] dim:          3
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     27
-//
-// trial function[0] dim:         1
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    4
-//
-// ---------------------------------------------------
-//
-void nitsche_dirichlet_q2_3d_asmb_wp(
-                                     double wNt[], double wdNtx0[], double wdNtx1[], double wdNtx2[],
-                                     double pN[], double pdNx0[], double pdNx1[], double pdNx2[],
-                                     double n[],  // parameter
-                                     double scale, double A[])
-{
-  int i,j;
-  for (i=0; i<27; i++) { // w_nbasis
-    for (j=0; j<4; j++) { // p_nbasis
-      A[(3*i + 0)*4 + (1*j + 0)] += scale * (1.0*n[0]*pN[j]*wNt[i]);
-      A[(3*i + 1)*4 + (1*j + 0)] += scale * (1.0*n[1]*pN[j]*wNt[i]);
-      A[(3*i + 2)*4 + (1*j + 0)] += scale * (1.0*n[2]*pN[j]*wNt[i]);
-    }}
-}
-//
-// ---------------------------------------------------
-//
-// test function[0] coeff:   [w0[i], w1[i], w2[i]]
-// test function[0]:         wNt[i]
-// test function[0] derivs:  [wdNtx0[i], wdNtx1[i], wdNtx2[i]]
-//
-// trial function[0] coeff:  [p0[j]]
-// trial function[0]:        pN[j]
-// trial function[0] derivs: [pdNx0[j], pdNx1[j], pdNx2[j]]
-//
-// test function[0] dim:          3
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     27
-//
-// trial function[0] dim:         1
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    4
-//
-// ---------------------------------------------------
-//
-void nitsche_dirichlet_q2_3d_spmv_wp(
-                                     double wNt[], double wdNtx0[], double wdNtx1[], double wdNtx2[],
-                                     double pN[], double pdNx0[], double pdNx1[], double pdNx2[],
-                                     double p0[],
-                                     double n[],  // parameter
-                                     double scale, double F[])
-{
-  int i,j;
-  double p0j_pNj = 0.0;
-  for (j=0; j<4; j++) { // p_nbasis_0
-    p0j_pNj += p0[j]*pN[j];
-  }
-  for (i=0; i<27; i++) { // w_nbasis
-    F[3*i + 0] += scale * (1.0*n[0]*p0j_pNj*wNt[i]);
-    F[3*i + 1] += scale * (1.0*n[1]*p0j_pNj*wNt[i]);
-    F[3*i + 2] += scale * (1.0*n[2]*p0j_pNj*wNt[i]);
-  }
-}
-
-
-// key: qu
-//
-// ---------------------------------------------------
-//
-// test function[0] coeff:   [q0[i]]
-// test function[0]:         qNt[i]
-// test function[0] derivs:  [qdNtx0[i], qdNtx1[i], qdNtx2[i]]
-//
-// trial function[0] coeff:  [u0[j], u1[j], u2[j]]
-// trial function[0]:        uN[j]
-// trial function[0] derivs: [udNx0[j], udNx1[j], udNx2[j]]
-//
-// test function[0] dim:          1
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     4
-//
-// trial function[0] dim:         3
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    27
-//
-// ---------------------------------------------------
-//
-void nitsche_dirichlet_q2_3d_asmb_qu(
-                                     double qNt[], double qdNtx0[], double qdNtx1[], double qdNtx2[],
-                                     double uN[], double udNx0[], double udNx1[], double udNx2[],
-                                     double n[],  // parameter
-                                     double scale, double A[])
-{
-  int i,j;
-  for (i=0; i<4; i++) { // q_nbasis
-    for (j=0; j<27; j++) { // u_nbasis
-      A[(1*i + 0)*81 + (3*j + 0)] += scale * (1.0*n[0]*qNt[i]*uN[j]);
-      A[(1*i + 0)*81 + (3*j + 1)] += scale * (1.0*n[1]*qNt[i]*uN[j]);
-      A[(1*i + 0)*81 + (3*j + 2)] += scale * (1.0*n[2]*qNt[i]*uN[j]);
-    }}
-}
-//
-// ---------------------------------------------------
-//
-// test function[0] coeff:   [q0[i]]
-// test function[0]:         qNt[i]
-// test function[0] derivs:  [qdNtx0[i], qdNtx1[i], qdNtx2[i]]
-//
-// trial function[0] coeff:  [u0[j], u1[j], u2[j]]
-// trial function[0]:        uN[j]
-// trial function[0] derivs: [udNx0[j], udNx1[j], udNx2[j]]
-//
-// test function[0] dim:          1
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     4
-//
-// trial function[0] dim:         3
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    27
-//
-// ---------------------------------------------------
-//
-void nitsche_dirichlet_q2_3d_spmv_qu(
-                                     double qNt[], double qdNtx0[], double qdNtx1[], double qdNtx2[],
-                                     double uN[], double udNx0[], double udNx1[], double udNx2[],
-                                     double u0[], double u1[], double u2[],
-                                     double n[],  // parameter
-                                     double scale, double F[])
-{
-  int i,j;
-  double u1j_uNj = 0.0;
-  double u2j_uNj = 0.0;
-  double u0j_uNj = 0.0;
-  for (j=0; j<27; j++) { // u_nbasis_0
-    u0j_uNj += u0[j]*uN[j];
-    u1j_uNj += u1[j]*uN[j];
-    u2j_uNj += u2[j]*uN[j];
-  }
-  for (i=0; i<4; i++) { // q_nbasis
-    F[1*i + 0] += scale * (1.0*qNt[i]*(n[0]*u0j_uNj + n[1]*u1j_uNj + n[2]*u2j_uNj));
-  }
-}
-
-
-// key: qp
-//
-// ---------------------------------------------------
-//
-// test function[0] coeff:   [q0[i]]
-// test function[0]:         qNt[i]
-// test function[0] derivs:  [qdNtx0[i], qdNtx1[i], qdNtx2[i]]
-//
-// trial function[0] coeff:  [p0[j]]
-// trial function[0]:        pN[j]
-// trial function[0] derivs: [pdNx0[j], pdNx1[j], pdNx2[j]]
-//
-// test function[0] dim:          1
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     4
-//
-// trial function[0] dim:         1
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    4
-//
-// ---------------------------------------------------
-//
-void nitsche_dirichlet_q2_3d_asmb_qp(
-                                     double qNt[], double qdNtx0[], double qdNtx1[], double qdNtx2[],
-                                     double pN[], double pdNx0[], double pdNx1[], double pdNx2[],
-                                     double scale, double A[])
-{
-  int i,j;
-  for (i=0; i<4; i++) { // q_nbasis
-    for (j=0; j<4; j++) { // p_nbasis
-      A[(1*i + 0)*4 + (1*j + 0)] += scale * (0);
-    }}
-}
-//
-// ---------------------------------------------------
-//
-// test function[0] coeff:   [q0[i]]
-// test function[0]:         qNt[i]
-// test function[0] derivs:  [qdNtx0[i], qdNtx1[i], qdNtx2[i]]
-//
-// trial function[0] coeff:  [p0[j]]
-// trial function[0]:        pN[j]
-// trial function[0] derivs: [pdNx0[j], pdNx1[j], pdNx2[j]]
-//
-// test function[0] dim:          1
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     4
-//
-// trial function[0] dim:         1
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    4
-//
-// ---------------------------------------------------
-//
-void nitsche_dirichlet_q2_3d_asmbdiag_qp(
-                                         double qNt[], double qdNtx0[], double qdNtx1[], double qdNtx2[],
-                                         double pN[], double pdNx0[], double pdNx1[], double pdNx2[],
-                                         double scale, double F[])
-{
-  int i,j;
-  for (i=0; i<4; i++) { // q_nbasis
-    j = i;
-    F[1*i + 0] += scale * (0);
-  }
-}
-//
-// ---------------------------------------------------
-//
-// test function[0] coeff:   [q0[i]]
-// test function[0]:         qNt[i]
-// test function[0] derivs:  [qdNtx0[i], qdNtx1[i], qdNtx2[i]]
-//
-// trial function[0] coeff:  [p0[j]]
-// trial function[0]:        pN[j]
-// trial function[0] derivs: [pdNx0[j], pdNx1[j], pdNx2[j]]
-//
-// test function[0] dim:          1
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     4
-//
-// trial function[0] dim:         1
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    4
-//
-// ---------------------------------------------------
-//
-void nitsche_dirichlet_q2_3d_spmv_qp(
-                                     double qNt[], double qdNtx0[], double qdNtx1[], double qdNtx2[],
-                                     double pN[], double pdNx0[], double pdNx1[], double pdNx2[],
-                                     double p0[],
-                                     double scale, double F[])
-{
-  int i,j;
-  for (i=0; i<4; i++) { // q_nbasis
-    F[1*i + 0] += scale * (0);
-  }
-}
-
-
-// key: w
-//
-// ---------------------------------------------------
-//
-// test function[0] coeff:   [w0[i], w1[i], w2[i]]
-// test function[0]:         wNt[i]
-// test function[0] derivs:  [wdNtx0[i], wdNtx1[i], wdNtx2[i]]
-//
-// trial function[0] coeff:  [u0[j], u1[j], u2[j]]
-// trial function[0]:        uN[j]
-// trial function[0] derivs: [udNx0[j], udNx1[j], udNx2[j]]
-//
-// trial function[1] coeff:  [p0[j]]
-// trial function[1]:        pN[j]
-// trial function[1] derivs: [pdNx0[j], pdNx1[j], pdNx2[j]]
-//
-// test function[0] dim:          3
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     27
-//
-// trial function[0] dim:         3
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    27
-//
-// trial function[1] dim:         1
-// trial function[1] spatial dim: 3
-// trial function[1] numcoeff:    4
-//
-// ---------------------------------------------------
-//
-void nitsche_dirichlet_q2_3d_residual_w(
-                                        double wNt[], double wdNtx0[], double wdNtx1[], double wdNtx2[],
-                                        double uN[], double udNx0[], double udNx1[], double udNx2[],
-                                        double pN[], double pdNx0[], double pdNx1[], double pdNx2[],
-                                        double u0[], double u1[], double u2[],
-                                        double p0[],
-                                        double eta,  // parameter
-                                        double gamma,  // parameter
-                                        double n[],  // parameter
-                                        double uD[],  // parameter
-                                        double scale, double F[])
-{
-  int i,j;
-  double p0j_pNj = 0.0;
-  double u0j_udNx2j = 0.0;
-  double u1j_udNx2j = 0.0;
-  double u0j_udNx0j = 0.0;
-  double u1j_uNj = 0.0;
-  double u2j_udNx1j = 0.0;
-  double u0j_udNx1j = 0.0;
-  double u0j_uNj = 0.0;
-  double u2j_uNj = 0.0;
-  double u2j_udNx0j = 0.0;
-  double u1j_udNx0j = 0.0;
-  double u1j_udNx1j = 0.0;
-  double u2j_udNx2j = 0.0;
-  for (j=0; j<27; j++) { // u_nbasis_0
-    u0j_uNj += u0[j]*uN[j];
-    u1j_uNj += u1[j]*uN[j];
-    u2j_uNj += u2[j]*uN[j];
-    u0j_udNx0j += u0[j]*udNx0[j];
-    u0j_udNx1j += u0[j]*udNx1[j];
-    u0j_udNx2j += u0[j]*udNx2[j];
-    u1j_udNx0j += u1[j]*udNx0[j];
-    u1j_udNx1j += u1[j]*udNx1[j];
-    u1j_udNx2j += u1[j]*udNx2[j];
-    u2j_udNx0j += u2[j]*udNx0[j];
-    u2j_udNx1j += u2[j]*udNx1[j];
-    u2j_udNx2j += u2[j]*udNx2[j];
-  }
-  for (j=0; j<4; j++) { // p_nbasis_1
-    p0j_pNj += p0[j]*pN[j];
-  }
-  for (i=0; i<27; i++) { // w_nbasis
-    {
-      double tce0, tce1, tce2, tce3, tce4, tce5, tce6, tce7, tce8, tce9, tce10, tce11, tce12, tce13, tce14, tce15;
-      tce0 = gamma*wNt[i];
-      tce1 = 1.0*n[0];
-      tce2 = 2.0*n[0];
-      tce3 = tce2*wdNtx0[i];
-      tce4 = eta*tce1;
-      tce5 = tce4*wdNtx1[i];
-      tce6 = tce4*wdNtx2[i];
-      tce7 = eta*uD[0];
-      tce8 = n[1]*wdNtx1[i];
-      tce9 = 1.0*eta;
-      tce10 = tce9*u0j_uNj;
-      tce11 = tce9*wNt[i];
-      tce12 = n[1]*tce11;
-      tce13 = 1.0*tce7;
-      tce14 = n[2]*wdNtx2[i];
-      tce15 = n[2]*tce11;
-      F[3*i + 0] += scale * (-eta*tce2*u0j_udNx0j*wNt[i] - eta*tce3*u0j_uNj + p0j_pNj*tce1*wNt[i] + tce0*u0j_uNj - tce0*uD[0] - tce10*tce14 - tce10*tce8 - tce12*u0j_udNx1j - tce12*u1j_udNx0j + tce13*tce14 + tce13*tce8 - tce15*u0j_udNx2j - tce15*u2j_udNx0j + tce3*tce7 - tce5*u1j_uNj + tce5*uD[1] - tce6*u2j_uNj + tce6*uD[2]);
-    }
-    {
-      double tce0, tce1, tce2, tce3, tce4, tce5, tce6, tce7, tce8, tce9, tce10, tce11, tce12, tce13, tce14;
-      tce0 = gamma*wNt[i];
-      tce1 = 1.0*n[1];
-      tce2 = 1.0*eta*wNt[i];
-      tce3 = n[0]*tce2;
-      tce4 = eta*wdNtx0[i];
-      tce5 = n[0]*tce4;
-      tce6 = 1.0*u1j_uNj;
-      tce7 = 1.0*uD[1];
-      tce8 = tce1*tce4;
-      tce9 = 2.0*eta*n[1];
-      tce10 = tce9*wdNtx1[i];
-      tce11 = eta*wdNtx2[i];
-      tce12 = tce1*tce11;
-      tce13 = n[2]*tce11;
-      tce14 = n[2]*tce2;
-      F[3*i + 1] += scale * (p0j_pNj*tce1*wNt[i] + tce0*u1j_uNj - tce0*uD[1] - tce10*u1j_uNj + tce10*uD[1] - tce12*u2j_uNj + tce12*uD[2] - tce13*tce6 + tce13*tce7 - tce14*u1j_udNx2j - tce14*u2j_udNx1j - tce3*u0j_udNx1j - tce3*u1j_udNx0j - tce5*tce6 + tce5*tce7 - tce8*u0j_uNj + tce8*uD[0] - tce9*u1j_udNx1j*wNt[i]);
-    }
-    {
-      double tce0, tce1, tce2, tce3, tce4, tce5, tce6, tce7, tce8, tce9, tce10, tce11, tce12, tce13, tce14;
-      tce0 = gamma*wNt[i];
-      tce1 = 1.0*n[2];
-      tce2 = 1.0*eta*wNt[i];
-      tce3 = n[0]*tce2;
-      tce4 = eta*wdNtx0[i];
-      tce5 = n[0]*tce4;
-      tce6 = 1.0*u2j_uNj;
-      tce7 = 1.0*uD[2];
-      tce8 = n[1]*tce2;
-      tce9 = eta*wdNtx1[i];
-      tce10 = n[1]*tce9;
-      tce11 = tce1*tce4;
-      tce12 = tce1*tce9;
-      tce13 = 2.0*eta*n[2];
-      tce14 = tce13*wdNtx2[i];
-      F[3*i + 2] += scale * (p0j_pNj*tce1*wNt[i] + tce0*u2j_uNj - tce0*uD[2] - tce10*tce6 + tce10*tce7 - tce11*u0j_uNj + tce11*uD[0] - tce12*u1j_uNj + tce12*uD[1] - tce13*u2j_udNx2j*wNt[i] - tce14*u2j_uNj + tce14*uD[2] - tce3*u0j_udNx2j - tce3*u2j_udNx0j - tce5*tce6 + tce5*tce7 - tce8*u1j_udNx2j - tce8*u2j_udNx1j);
-    }
-  }
-}
-
-
-// key: q
-//
-// ---------------------------------------------------
-//
-// test function[0] coeff:   [q0[i]]
-// test function[0]:         qNt[i]
-// test function[0] derivs:  [qdNtx0[i], qdNtx1[i], qdNtx2[i]]
-//
-// trial function[0] coeff:  [u0[j], u1[j], u2[j]]
-// trial function[0]:        uN[j]
-// trial function[0] derivs: [udNx0[j], udNx1[j], udNx2[j]]
-//
-// trial function[1] coeff:  [p0[j]]
-// trial function[1]:        pN[j]
-// trial function[1] derivs: [pdNx0[j], pdNx1[j], pdNx2[j]]
-//
-// test function[0] dim:          1
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     4
-//
-// trial function[0] dim:         3
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    27
-//
-// trial function[1] dim:         1
-// trial function[1] spatial dim: 3
-// trial function[1] numcoeff:    4
-//
-// ---------------------------------------------------
-//
-void nitsche_dirichlet_q2_3d_residual_q(
-                                        double qNt[], double qdNtx0[], double qdNtx1[], double qdNtx2[],
-                                        double uN[], double udNx0[], double udNx1[], double udNx2[],
-                                        double pN[], double pdNx0[], double pdNx1[], double pdNx2[],
-                                        double u0[], double u1[], double u2[],
-                                        double p0[],
-                                        double n[],  // parameter
-                                        double uD[],  // parameter
-                                        double scale, double F[])
-{
-  int i,j;
-  double u1j_uNj = 0.0;
-  double u2j_uNj = 0.0;
-  double u0j_uNj = 0.0;
-  for (j=0; j<27; j++) { // u_nbasis_0
-    u0j_uNj += u0[j]*uN[j];
-    u1j_uNj += u1[j]*uN[j];
-    u2j_uNj += u2[j]*uN[j];
-  }
-  for (i=0; i<4; i++) { // q_nbasis
-    F[1*i + 0] += scale * (1.0*qNt[i]*(n[0]*u0j_uNj - n[0]*uD[0] + n[1]*u1j_uNj - n[1]*uD[1] + n[2]*u2j_uNj - n[2]*uD[2]));
-  }
-}
-#endif
 
 /* >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> */
 
@@ -1445,7 +853,7 @@ static PetscErrorCode _form_residual_F1(StokesForm *form,PetscReal ds[],PetscRea
                                      form->X[0]->W, form->X[0]->Wx, form->X[0]->Wy, form->X[0]->Wz,
                                      form->X[1]->W, form->X[1]->Wx, form->X[1]->Wy, form->X[1]->Wz,
                                      form->u_elfield_0,form->u_elfield_1,form->u_elfield_2,
-                                     form->u_elfield_0,
+                                     form->p_elfield_0,
                                      eta, gamma,
                                      normal, uD,
                                      ds[0], F);
@@ -1474,7 +882,7 @@ static PetscErrorCode _form_residual_F2(StokesForm *form,PetscReal ds[],PetscRea
                                      form->X[0]->W, form->X[0]->Wx, form->X[0]->Wy, form->X[0]->Wz,
                                      form->X[1]->W, form->X[1]->Wx, form->X[1]->Wy, form->X[1]->Wz,
                                      form->u_elfield_0,form->u_elfield_1,form->u_elfield_2,
-                                     form->u_elfield_0,
+                                     form->p_elfield_0,
                                      //normal, uD,
                                      ds[0], F);
   PetscFunctionReturn(0);
@@ -1837,8 +1245,24 @@ static PetscErrorCode sc_asmb_A21(SurfaceConstraint sc, DM dmu, DM dmp, Mat A)
 
 /* assemble diagonal */
 /* point-wise kernels */
-static PetscErrorCode _form_asmbdiag_A11(StokesForm *form,PetscReal ds[],PetscReal A[])
+static PetscErrorCode _form_asmbdiag_A11(StokesForm *form,PetscReal ds[],PetscReal diagA[])
 {
+  SCContextDemo   *scdata;
+  FormContextDemo *formdata;
+  PetscReal       gamma,eta,*normal;
+  
+  scdata   = (void*)form->sc->data;
+  formdata = (void*)form->data;
+  
+  eta    = (PetscReal) formdata->boundary_qp[ form->nqp * form->facet_i + form->point_i ].eta;
+  normal = (PetscReal*)formdata->boundary_qp[ form->nqp * form->facet_i + form->point_i ].normal;
+  gamma = scdata->penalty * eta * 4.0 / form->hF;
+  
+  nitsche_dirichlet_q2_3d_asmbdiag_wu(form->test->W, form->test->Wx, form->test->Wy, form->test->Wz,
+                                   form->trial->W, form->trial->Wx, form->trial->Wy, form->trial->Wz,
+                                   eta, gamma, normal,  // parameter
+                                   ds[0], diagA);
+  
   PetscFunctionReturn(0);
 }
 
@@ -1859,7 +1283,7 @@ static PetscErrorCode StoksFormConfigureAction_AssembleDiagonal(StokesForm *form
 }
 
 /* surface constraint methods */
-static PetscErrorCode sc_asmbdiag_A11(SurfaceConstraint sc, DM dmu, PetscScalar A[])
+static PetscErrorCode sc_asmbdiag_A11(SurfaceConstraint sc, DM dmu, Vec diagA)
 {
   PetscErrorCode  ierr;
   StokesForm      F;
@@ -1870,7 +1294,7 @@ static PetscErrorCode sc_asmbdiag_A11(SurfaceConstraint sc, DM dmu, PetscScalar 
 #endif
   ierr = StokesFormSetup_Demo(&F,sc,&formdata);CHKERRQ(ierr);
   ierr = StoksFormConfigureAction_AssembleDiagonal(&F,M_A11);CHKERRQ(ierr);
-  //ierr = generic_facet_assemble_diagonal(&F, &F.u, dmu, A);CHKERRQ(ierr);
+  ierr = generic_facet_assemble_diagonal(&F, &F.u, dmu, dmu, diagA);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -1893,14 +1317,26 @@ static PetscErrorCode _form_spmv_wA(StokesForm *form,PetscReal ds[],PetscReal F[
   gamma = scdata->penalty * eta * 4.0 / form->hF;
   //printf("  ** 4/hF %+1.4e\n",4.0/form->hF);
   
+  /*
   nitsche_dirichlet_q2_3d_residual_w(form->test->W, form->test->Wx, form->test->Wy, form->test->Wz,
                                      form->X[0]->W, form->X[0]->Wx, form->X[0]->Wy, form->X[0]->Wz,
                                      form->X[1]->W, form->X[1]->Wx, form->X[1]->Wy, form->X[1]->Wz,
                                      form->u_elfield_0,form->u_elfield_1,form->u_elfield_2,
-                                     form->u_elfield_0,
+                                     form->p_elfield_0,
                                      eta, gamma,
                                      normal, uD,
                                      ds[0], F);
+   */
+  
+  nitsche_dirichlet_q2_3d_spmv_w_up(form->test->W, form->test->Wx, form->test->Wy, form->test->Wz,
+                                 form->X[0]->W, form->X[0]->Wx, form->X[0]->Wy, form->X[0]->Wz,
+                                 form->X[1]->W, form->X[1]->Wx, form->X[1]->Wy, form->X[1]->Wz,
+                                 form->u_elfield_0,form->u_elfield_1,form->u_elfield_2,
+                                 form->p_elfield_0,
+                                 eta, gamma,
+                                 normal,
+                                 ds[0], F);
+
   
   PetscFunctionReturn(0);
 }
@@ -1923,13 +1359,23 @@ static PetscErrorCode _form_spmv_qA(StokesForm *form,PetscReal ds[],PetscReal F[
   
   gamma = scdata->penalty * eta * 4.0 / form->hF;
   
+  /*
   nitsche_dirichlet_q2_3d_residual_q(form->test->W, form->test->Wx, form->test->Wy, form->test->Wz,
                                      form->X[0]->W, form->X[0]->Wx, form->X[0]->Wy, form->X[0]->Wz,
                                      form->X[1]->W, form->X[1]->Wx, form->X[1]->Wy, form->X[1]->Wz,
                                      form->u_elfield_0,form->u_elfield_1,form->u_elfield_2,
-                                     form->u_elfield_0,
+                                     form->p_elfield_0,
                                      //normal, uD,
                                      ds[0], F);
+  */
+  
+  nitsche_dirichlet_q2_3d_spmv_q_up(form->test->W, form->test->Wx, form->test->Wy, form->test->Wz,
+                                 form->X[0]->W, form->X[0]->Wx, form->X[0]->Wy, form->X[0]->Wz,
+                                 form->X[1]->W, form->X[1]->Wx, form->X[1]->Wy, form->X[1]->Wz,
+                                 form->u_elfield_0,form->u_elfield_1,form->u_elfield_2,
+                                 form->p_elfield_0,
+                                 ds[0], F);
+
   
   PetscFunctionReturn(0);
 }
@@ -2009,12 +1455,10 @@ PetscErrorCode _SetType_NITSCHE_DIRICHLET(SurfaceConstraint sc)
   sc->ops.action_Aup  = sc_spmv_A12;
   sc->ops.action_Apu  = sc_spmv_A21;
   
-  sc->ops.asmb_A   = NULL; /* always null */
   sc->ops.asmb_Auu = sc_asmb_A11;
   sc->ops.asmb_Aup = sc_asmb_A12;
   sc->ops.asmb_Apu = sc_asmb_A21;
   
-  sc->ops.diag_A   = NULL; /* always null */
   sc->ops.diag_Auu = sc_asmbdiag_A11;
   
   /* allocate implementation data */
@@ -2115,5 +1559,14 @@ PetscErrorCode SurfaceConstraintSetValues_NITSCHE_DIRICHLET(SurfaceConstraint sc
   
   DataBucketRestoreEntriesdByName(sc->properties_db,"uD",(void**)&uD_qp);
   
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode SurfaceConstraintNitscheDirichlet_SetPenalty(SurfaceConstraint sc,PetscReal penalty)
+{
+  SCContextDemo   *scdata = NULL;
+  if (sc->type != SC_NITSCHE_DIRICHLET) PetscFunctionReturn(0);
+  scdata = (SCContextDemo*)sc->data;
+  scdata->penalty = penalty;
   PetscFunctionReturn(0);
 }

@@ -9,11 +9,11 @@
 
 
 # Boundary condition type
-#  -bc 0 : no slip everywhere + free surface
-#  -bc 1 : no slip everywhere + free surface (Nitsche Dirichlet)
-#  -bc 2 : free slip everywhere + free surface (Nitsche Navier slip)
-#-bc 0 # pass
--bc 2
+#  -bc 0 : no slip everywhere (strong) + free surface
+#  -bc 1 : no slip everywhere (Nitsche Dirichlet) + free surface
+#  -bc 2 : free slip everywhere (Nitsche Navier slip) + free surface
+#  -bc 3 : free slip sides (Nitsch Navier slip) + no slip base (strong) + free surface
+-bc 1
 
 # Mesh resolution
 -mx 8

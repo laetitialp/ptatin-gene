@@ -90,6 +90,9 @@ PetscErrorCode StokesFormInit(StokesForm *f,FormType type,SurfaceConstraint sc)
   PetscFunctionReturn(0);
 }
 
+/*
+ Initializes all memebers set / modified by generic_facet_{action,assemble,diagon}()
+*/
 PetscErrorCode StokesFormFlush(StokesForm *f)
 {
   f->u.W = NULL;
@@ -172,7 +175,7 @@ PetscErrorCode generic_facet_action(StokesForm *form,
   comm = PetscObjectComm((PetscObject)dm);
   if (!form->apply) SETERRQ(comm,PETSC_ERR_USER,"Form cannot be applied. form->apply() is NULL");
   
-  if (form->type != FORM_SPMV && form->type != FORM_RESIDUAL) SETERRQ(comm,PETSC_ERR_USER,"Form type must be FORM_SPMV or FORM_RESIDUAL");
+  if (form->type != FORM_SPMV && form->type != FORM_RESIDUAL) SETERRQ1(comm,PETSC_ERR_USER,"Form type must be FORM_SPMV or FORM_RESIDUAL. Found %D",(PetscInt)form->type);
   
   if (ufield && !dau) SETERRQ(comm,PETSC_ERR_USER,"ufield[] required non-NULL dau");
   if (pfield && !dap) SETERRQ(comm,PETSC_ERR_USER,"pfield[] required non-NULL dap");
@@ -458,7 +461,7 @@ PetscErrorCode generic_facet_assemble(StokesForm *form,
   comm = PetscObjectComm((PetscObject)dm);
   if (!form->apply) SETERRQ(comm,PETSC_ERR_USER,"Form cannot be applied. form->apply() is NULL");
   
-  if (form->type != FORM_ASSEMBLE) SETERRQ(comm,PETSC_ERR_USER,"Form type must be FORM_ASSEMBLE");
+  if (form->type != FORM_ASSEMBLE) SETERRQ1(comm,PETSC_ERR_USER,"Form type must be FORM_ASSEMBLE. Found %D",(PetscInt)form->type);
 
   if (test_function == &form->u) {
     if (!dau) SETERRQ(comm,PETSC_ERR_USER,"TestFunction[u]: FORM_ASSEMBLE requires dau be non-NULL");
@@ -653,11 +656,11 @@ PetscErrorCode generic_facet_assemble(StokesForm *form,
       ierr = form->apply(form,&fac,Ae_ij);CHKERRQ(ierr);
     }
 
-    if (use_set_values_local) {
-      ierr = MatSetValuesLocal(A, test_size,test_lidx, trial_size,trial_lidx, Ae_ij,ADD_VALUES);CHKERRQ(ierr);
-    } else {
+    //if (use_set_values_local) {
+    //  ierr = MatSetValuesLocal(A, test_size,test_lidx, trial_size,trial_lidx, Ae_ij,ADD_VALUES);CHKERRQ(ierr);
+    //} else {
       ierr = MatSetValues(A, test_size,test_gidx, trial_size,trial_gidx, Ae_ij,ADD_VALUES);CHKERRQ(ierr);
-    }
+    //}
     
   }
   ierr = MatAssemblyBegin(A,MAT_FLUSH_ASSEMBLY);CHKERRQ(ierr);
@@ -732,7 +735,7 @@ PetscErrorCode generic_facet_assemble_diagonal(StokesForm *form,
   comm = PetscObjectComm((PetscObject)dm);
   if (!form->apply) SETERRQ(comm,PETSC_ERR_USER,"Form cannot be applied. form->apply() is NULL");
   
-  if (form->type != FORM_ASSEMBLE) SETERRQ(comm,PETSC_ERR_USER,"Form type must be FORM_ASSEMBLE");
+  if (form->type != FORM_ASSEMBLE_DIAG) SETERRQ1(comm,PETSC_ERR_USER,"Form type must be FORM_ASSEMBLE_DIAG. Found %D",(PetscInt)form->type);
   if (!dm) SETERRQ(comm,PETSC_ERR_USER,"Form ASSEMBLE_DIAG requires non-NULL dm");
   if (!dmX) SETERRQ(comm,PETSC_ERR_USER,"Form ASSEMBLE_DIAG requires non-NULL dmX");
 
@@ -905,11 +908,11 @@ PetscErrorCode generic_facet_assemble_diagonal(StokesForm *form,
       ierr = form->apply(form,&fac,Ae_ij);CHKERRQ(ierr);
     }
     
-    if (use_set_values_local) {
-      ierr = VecSetValuesLocal(diagA, test_size,test_lidx, Ae_ij,ADD_VALUES);CHKERRQ(ierr);
-    } else {
+    //if (use_set_values_local) {
+    //  ierr = VecSetValuesLocal(diagA, test_size,test_lidx, Ae_ij,ADD_VALUES);CHKERRQ(ierr);
+    //} else {
       ierr = VecSetValues(diagA, test_size,test_gidx, Ae_ij,ADD_VALUES);CHKERRQ(ierr);
-    }
+    //}
     
   }
   ierr = VecAssemblyBegin(diagA);CHKERRQ(ierr);

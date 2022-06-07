@@ -313,8 +313,6 @@ PetscErrorCode SurfaceConstraintDuplicateOperatorA11(SurfaceConstraint sc, MeshF
   if (sc->ops.action_Auu || sc->ops.asmb_Auu) {
     ierr = _ops_operator_only(dup);CHKERRQ(ierr);
     dup->ops.action_A = NULL;
-    dup->ops.asmb_A   = NULL;
-    dup->ops.diag_A   = NULL;
     
     dup->ops.action_Aup = NULL;
     dup->ops.asmb_Aup   = NULL;
@@ -332,8 +330,6 @@ PetscErrorCode SurfaceConstraintDuplicateOperatorA11(SurfaceConstraint sc, MeshF
 static PetscErrorCode _ops_residual_only(SurfaceConstraint sc)
 {
   sc->ops.action_A = NULL;
-  sc->ops.asmb_A   = NULL;
-  sc->ops.diag_A   = NULL;
 
   sc->ops.action_Auu = NULL;
   sc->ops.asmb_Auu   = NULL;
@@ -545,13 +541,13 @@ PetscErrorCode SurfaceConstraintOps_AssembleA21(SurfaceConstraint sc,
 
 /* assemble diag */
 PetscErrorCode SurfaceConstraintOps_AssembleDiagA11(SurfaceConstraint sc,
-                                                DM dau,PetscReal Ae[],
+                                                DM dau,Vec diagA,
                                                 PetscBool error_if_null)
 {
   PetscErrorCode ierr;
   if (sc->ops.diag_Auu) {
     ierr = _sc_check_sizes(sc);CHKERRQ(ierr);
-    ierr = sc->ops.diag_Auu(sc,dau,Ae);CHKERRQ(ierr);
+    ierr = sc->ops.diag_Auu(sc,dau,diagA);CHKERRQ(ierr);
   } else {
     if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_DiagAuu[name %s]: diag_Auu = NULL",sc->name);
   }

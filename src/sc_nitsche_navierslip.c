@@ -16,6 +16,12 @@
 
 //#define SC_DEBUG
 
+
+//
+// fe_form_compiler.py version: 2e5cc249d08f3c46a934672fb1b54d654e0a3086
+// sympy version: 1.6.1
+// using common substring elimination: True
+//
 //
 // -gamma*uDn*(n[0]*w0[i]*wNt[i] + n[1]*w1[i]*wNt[i] + n[2]*w2[i]*wNt[i]) + gamma*(n[0]*u0[j]*uN[j] + n[1]*u1[j]*uN[j] + n[2]*u2[j]*uN[j])*(n[0]*w0[i]*wNt[i] + n[1]*w1[i]*wNt[i] + n[2]*w2[i]*wNt[i]) + uDn*(n[0]*(2.0*eta*n[1]*(0.5*w0[i]*wdNtx1[i] + 0.5*w1[i]*wdNtx0[i]) + 2.0*eta*n[2]*(0.5*w0[i]*wdNtx2[i] + 0.5*w2[i]*wdNtx0[i]) + n[0]*(2.0*eta*w0[i]*wdNtx0[i] - 1.0*q0[i]*qNt[i])) + n[1]*(2.0*eta*n[0]*(0.5*w0[i]*wdNtx1[i] + 0.5*w1[i]*wdNtx0[i]) + 2.0*eta*n[2]*(0.5*w1[i]*wdNtx2[i] + 0.5*w2[i]*wdNtx1[i]) + n[1]*(2.0*eta*w1[i]*wdNtx1[i] - 1.0*q0[i]*qNt[i])) + n[2]*(2.0*eta*n[0]*(0.5*w0[i]*wdNtx2[i] + 0.5*w2[i]*wdNtx0[i]) + 2.0*eta*n[1]*(0.5*w1[i]*wdNtx2[i] + 0.5*w2[i]*wdNtx1[i]) + n[2]*(2.0*eta*w2[i]*wdNtx2[i] - 1.0*q0[i]*qNt[i]))) + (n[0]*(2.0*eta*n[1]*(0.5*u0[j]*udNx1[j] + 0.5*u1[j]*udNx0[j]) + 2.0*eta*n[2]*(0.5*u0[j]*udNx2[j] + 0.5*u2[j]*udNx0[j]) + n[0]*(2.0*eta*u0[j]*udNx0[j] - 1.0*p0[j]*pN[j])) + n[1]*(2.0*eta*n[0]*(0.5*u0[j]*udNx1[j] + 0.5*u1[j]*udNx0[j]) + 2.0*eta*n[2]*(0.5*u1[j]*udNx2[j] + 0.5*u2[j]*udNx1[j]) + n[1]*(2.0*eta*u1[j]*udNx1[j] - 1.0*p0[j]*pN[j])) + n[2]*(2.0*eta*n[0]*(0.5*u0[j]*udNx2[j] + 0.5*u2[j]*udNx0[j]) + 2.0*eta*n[1]*(0.5*u1[j]*udNx2[j] + 0.5*u2[j]*udNx1[j]) + n[2]*(2.0*eta*u2[j]*udNx2[j] - 1.0*p0[j]*pN[j])))*(-n[0]*w0[i]*wNt[i] - n[1]*w1[i]*wNt[i] - n[2]*w2[i]*wNt[i]) + (n[0]*(2.0*eta*n[1]*(0.5*w0[i]*wdNtx1[i] + 0.5*w1[i]*wdNtx0[i]) + 2.0*eta*n[2]*(0.5*w0[i]*wdNtx2[i] + 0.5*w2[i]*wdNtx0[i]) + n[0]*(2.0*eta*w0[i]*wdNtx0[i] - 1.0*q0[i]*qNt[i])) + n[1]*(2.0*eta*n[0]*(0.5*w0[i]*wdNtx1[i] + 0.5*w1[i]*wdNtx0[i]) + 2.0*eta*n[2]*(0.5*w1[i]*wdNtx2[i] + 0.5*w2[i]*wdNtx1[i]) + n[1]*(2.0*eta*w1[i]*wdNtx1[i] - 1.0*q0[i]*qNt[i])) + n[2]*(2.0*eta*n[0]*(0.5*w0[i]*wdNtx2[i] + 0.5*w2[i]*wdNtx0[i]) + 2.0*eta*n[1]*(0.5*w1[i]*wdNtx2[i] + 0.5*w2[i]*wdNtx1[i]) + n[2]*(2.0*eta*w2[i]*wdNtx2[i] - 1.0*q0[i]*qNt[i])))*(-n[0]*u0[j]*uN[j] - n[1]*u1[j]*uN[j] - n[2]*u2[j]*uN[j])
 //
@@ -32,13 +38,8 @@
 // trial function[0]:        uN[j]
 // trial function[0] derivs: [udNx0[j], udNx1[j], udNx2[j]]
 //
-// test function[0] dim:          3
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     27
-//
-// trial function[0] dim:         3
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    27
+// test function[0] dim: 3 spatial dim: 3 numcoeff:  27
+// trial function[0] dim: 3 spatial dim: 3 numcoeff:  27
 //
 // ---------------------------------------------------
 //
@@ -138,13 +139,8 @@ void nitsche_navier_q2_3d_asmb_wu(
 // trial function[0]:        uN[j]
 // trial function[0] derivs: [udNx0[j], udNx1[j], udNx2[j]]
 //
-// test function[0] dim:          3
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     27
-//
-// trial function[0] dim:         3
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    27
+// test function[0] dim: 3 spatial dim: 3 numcoeff:  27
+// trial function[0] dim: 3 spatial dim: 3 numcoeff:  27
 //
 // ---------------------------------------------------
 //
@@ -196,13 +192,8 @@ void nitsche_navier_q2_3d_asmbdiag_wu(
 // trial function[0]:        uN[j]
 // trial function[0] derivs: [udNx0[j], udNx1[j], udNx2[j]]
 //
-// test function[0] dim:          3
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     27
-//
-// trial function[0] dim:         3
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    27
+// test function[0] dim: 3 spatial dim: 3 numcoeff:  27
+// trial function[0] dim: 3 spatial dim: 3 numcoeff:  27
 //
 // ---------------------------------------------------
 //
@@ -216,18 +207,18 @@ void nitsche_navier_q2_3d_spmv_wu(
                                   double scale, double F[])
 {
   int i,j;
-  double u2j_udNx0j = 0.0;
-  double u2j_udNx1j = 0.0;
-  double u1j_udNx2j = 0.0;
   double u0j_uNj = 0.0;
-  double u1j_uNj = 0.0;
+  double u0j_udNx0j = 0.0;
   double u0j_udNx1j = 0.0;
   double u0j_udNx2j = 0.0;
-  double u0j_udNx0j = 0.0;
-  double u1j_udNx1j = 0.0;
+  double u1j_uNj = 0.0;
   double u1j_udNx0j = 0.0;
-  double u2j_udNx2j = 0.0;
+  double u1j_udNx1j = 0.0;
+  double u1j_udNx2j = 0.0;
   double u2j_uNj = 0.0;
+  double u2j_udNx0j = 0.0;
+  double u2j_udNx1j = 0.0;
+  double u2j_udNx2j = 0.0;
   for (j=0; j<27; j++) { // u_nbasis_0
     u0j_uNj += u0[j]*uN[j];
     u1j_uNj += u1[j]*uN[j];
@@ -322,13 +313,8 @@ void nitsche_navier_q2_3d_spmv_wu(
 // trial function[0]:        pN[j]
 // trial function[0] derivs: [pdNx0[j], pdNx1[j], pdNx2[j]]
 //
-// test function[0] dim:          3
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     27
-//
-// trial function[0] dim:         1
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    4
+// test function[0] dim: 3 spatial dim: 3 numcoeff:  27
+// trial function[0] dim: 1 spatial dim: 3 numcoeff:   4
 //
 // ---------------------------------------------------
 //
@@ -357,13 +343,8 @@ void nitsche_navier_q2_3d_asmb_wp(
 // trial function[0]:        pN[j]
 // trial function[0] derivs: [pdNx0[j], pdNx1[j], pdNx2[j]]
 //
-// test function[0] dim:          3
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     27
-//
-// trial function[0] dim:         1
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    4
+// test function[0] dim: 3 spatial dim: 3 numcoeff:  27
+// trial function[0] dim: 1 spatial dim: 3 numcoeff:   4
 //
 // ---------------------------------------------------
 //
@@ -399,13 +380,8 @@ void nitsche_navier_q2_3d_spmv_wp(
 // trial function[0]:        uN[j]
 // trial function[0] derivs: [udNx0[j], udNx1[j], udNx2[j]]
 //
-// test function[0] dim:          1
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     4
-//
-// trial function[0] dim:         3
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    27
+// test function[0] dim: 1 spatial dim: 3 numcoeff:   4
+// trial function[0] dim: 3 spatial dim: 3 numcoeff:  27
 //
 // ---------------------------------------------------
 //
@@ -434,13 +410,8 @@ void nitsche_navier_q2_3d_asmb_qu(
 // trial function[0]:        uN[j]
 // trial function[0] derivs: [udNx0[j], udNx1[j], udNx2[j]]
 //
-// test function[0] dim:          1
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     4
-//
-// trial function[0] dim:         3
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    27
+// test function[0] dim: 1 spatial dim: 3 numcoeff:   4
+// trial function[0] dim: 3 spatial dim: 3 numcoeff:  27
 //
 // ---------------------------------------------------
 //
@@ -487,13 +458,8 @@ void nitsche_navier_q2_3d_spmv_qu(
 // trial function[0]:        pN[j]
 // trial function[0] derivs: [pdNx0[j], pdNx1[j], pdNx2[j]]
 //
-// test function[0] dim:          1
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     4
-//
-// trial function[0] dim:         1
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    4
+// test function[0] dim: 1 spatial dim: 3 numcoeff:   4
+// trial function[0] dim: 1 spatial dim: 3 numcoeff:   4
 //
 // ---------------------------------------------------
 //
@@ -519,13 +485,8 @@ void nitsche_navier_q2_3d_asmb_qp(
 // trial function[0]:        pN[j]
 // trial function[0] derivs: [pdNx0[j], pdNx1[j], pdNx2[j]]
 //
-// test function[0] dim:          1
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     4
-//
-// trial function[0] dim:         1
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    4
+// test function[0] dim: 1 spatial dim: 3 numcoeff:   4
+// trial function[0] dim: 1 spatial dim: 3 numcoeff:   4
 //
 // ---------------------------------------------------
 //
@@ -551,13 +512,8 @@ void nitsche_navier_q2_3d_asmbdiag_qp(
 // trial function[0]:        pN[j]
 // trial function[0] derivs: [pdNx0[j], pdNx1[j], pdNx2[j]]
 //
-// test function[0] dim:          1
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     4
-//
-// trial function[0] dim:         1
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    4
+// test function[0] dim: 1 spatial dim: 3 numcoeff:   4
+// trial function[0] dim: 1 spatial dim: 3 numcoeff:   4
 //
 // ---------------------------------------------------
 //
@@ -570,6 +526,211 @@ void nitsche_navier_q2_3d_spmv_qp(
   int i,j;
   for (i=0; i<4; i++) { // q_nbasis
     F[1*i + 0] += scale * (0);
+  }
+}
+
+
+// key: w_up
+//
+// ---------------------------------------------------
+//
+// test function[0] coeff:   [w0[i], w1[i], w2[i]]
+// test function[0]:         wNt[i]
+// test function[0] derivs:  [wdNtx0[i], wdNtx1[i], wdNtx2[i]]
+//
+// trial function[0] coeff:  [u0[j], u1[j], u2[j]]
+// trial function[0]:        uN[j]
+// trial function[0] derivs: [udNx0[j], udNx1[j], udNx2[j]]
+//
+// trial function[1] coeff:  [p0[j]]
+// trial function[1]:        pN[j]
+// trial function[1] derivs: [pdNx0[j], pdNx1[j], pdNx2[j]]
+//
+// test function[0] dim: 3 spatial dim: 3 numcoeff:  27
+// trial function[0] dim: 3 spatial dim: 3 numcoeff:  27
+// trial function[1] dim: 1 spatial dim: 3 numcoeff:   4
+//
+// ---------------------------------------------------
+//
+void nitsche_navier_q2_3d_spmv_w_up(
+                                    double wNt[], double wdNtx0[], double wdNtx1[], double wdNtx2[],
+                                    double uN[], double udNx0[], double udNx1[], double udNx2[],
+                                    double pN[], double pdNx0[], double pdNx1[], double pdNx2[],
+                                    double u0[], double u1[], double u2[],
+                                    double p0[],
+                                    double eta,  // parameter
+                                    double gamma,  // parameter
+                                    double n[],  // parameter
+                                    double scale, double F[])
+{
+  int i,j;
+  double p0j_pNj = 0.0;
+  double u0j_uNj = 0.0;
+  double u0j_udNx0j = 0.0;
+  double u0j_udNx1j = 0.0;
+  double u0j_udNx2j = 0.0;
+  double u1j_uNj = 0.0;
+  double u1j_udNx0j = 0.0;
+  double u1j_udNx1j = 0.0;
+  double u1j_udNx2j = 0.0;
+  double u2j_uNj = 0.0;
+  double u2j_udNx0j = 0.0;
+  double u2j_udNx1j = 0.0;
+  double u2j_udNx2j = 0.0;
+  for (j=0; j<27; j++) { // u_nbasis_0
+    u0j_uNj += u0[j]*uN[j];
+    u1j_uNj += u1[j]*uN[j];
+    u2j_uNj += u2[j]*uN[j];
+    u0j_udNx0j += u0[j]*udNx0[j];
+    u0j_udNx1j += u0[j]*udNx1[j];
+    u0j_udNx2j += u0[j]*udNx2[j];
+    u1j_udNx0j += u1[j]*udNx0[j];
+    u1j_udNx1j += u1[j]*udNx1[j];
+    u1j_udNx2j += u1[j]*udNx2[j];
+    u2j_udNx0j += u2[j]*udNx0[j];
+    u2j_udNx1j += u2[j]*udNx1[j];
+    u2j_udNx2j += u2[j]*udNx2[j];
+  }
+  for (j=0; j<4; j++) { // p_nbasis_1
+    p0j_pNj += p0[j]*pN[j];
+  }
+  for (i=0; i<27; i++) { // w_nbasis
+    {
+      double tce0, tce1, tce2, tce3, tce4, tce5, tce6, tce7, tce8, tce9, tce10, tce11, tce12, tce13, tce14, tce15, tce16, tce17, tce18, tce19, tce20, tce21, tce22;
+      tce0 = gamma*wNt[i];
+      tce1 = n[0]*u0j_uNj;
+      tce2 = n[1]*u1j_uNj;
+      tce3 = n[2]*u2j_uNj;
+      tce4 = pow(n[0], 2);
+      tce5 = tce4*wNt[i];
+      tce6 = 1.0*p0j_pNj;
+      tce7 = pow(n[1], 2);
+      tce8 = tce6*wNt[i];
+      tce9 = pow(n[2], 2);
+      tce10 = 2.0*eta;
+      tce11 = n[1]*tce10;
+      tce12 = tce11*wdNtx1[i];
+      tce13 = n[0]*wNt[i];
+      tce14 = tce11*tce13;
+      tce15 = tce10*wdNtx0[i];
+      tce16 = n[0]*tce15;
+      tce17 = n[2]*tce10;
+      tce18 = tce17*wdNtx2[i];
+      tce19 = tce13*tce17;
+      tce20 = n[2]*tce11*wNt[i];
+      tce21 = tce10*tce7;
+      tce22 = tce10*tce9;
+      F[3*i + 0] += scale * (n[0]*(tce0*tce1 + tce0*tce2 + tce0*tce3 - tce1*tce12 - tce1*tce18 - tce10*tce5*u0j_udNx0j - tce12*tce3 - tce14*u0j_udNx1j - tce14*u1j_udNx0j - tce15*tce4*u0j_uNj - tce16*tce2 - tce16*tce3 - tce18*tce2 - tce19*u0j_udNx2j - tce19*u2j_udNx0j - tce20*u1j_udNx2j - tce20*u2j_udNx1j - tce21*u1j_uNj*wdNtx1[i] - tce21*u1j_udNx1j*wNt[i] - tce22*u2j_uNj*wdNtx2[i] - tce22*u2j_udNx2j*wNt[i] + tce5*tce6 + tce7*tce8 + tce8*tce9));
+    }
+    {
+      double tce0, tce1, tce2, tce3, tce4, tce5, tce6, tce7, tce8, tce9, tce10, tce11, tce12, tce13, tce14, tce15, tce16, tce17, tce18, tce19, tce20, tce21, tce22;
+      tce0 = gamma*wNt[i];
+      tce1 = n[0]*u0j_uNj;
+      tce2 = n[1]*u1j_uNj;
+      tce3 = n[2]*u2j_uNj;
+      tce4 = pow(n[0], 2);
+      tce5 = tce4*wNt[i];
+      tce6 = 1.0*p0j_pNj;
+      tce7 = pow(n[1], 2);
+      tce8 = tce6*wNt[i];
+      tce9 = pow(n[2], 2);
+      tce10 = 2.0*eta;
+      tce11 = n[1]*tce10;
+      tce12 = tce11*wdNtx1[i];
+      tce13 = n[0]*wNt[i];
+      tce14 = tce11*tce13;
+      tce15 = tce10*wdNtx0[i];
+      tce16 = n[0]*tce15;
+      tce17 = n[2]*tce10;
+      tce18 = tce17*wdNtx2[i];
+      tce19 = tce13*tce17;
+      tce20 = n[2]*tce11*wNt[i];
+      tce21 = tce10*tce7;
+      tce22 = tce10*tce9;
+      F[3*i + 1] += scale * (n[1]*(tce0*tce1 + tce0*tce2 + tce0*tce3 - tce1*tce12 - tce1*tce18 - tce10*tce5*u0j_udNx0j - tce12*tce3 - tce14*u0j_udNx1j - tce14*u1j_udNx0j - tce15*tce4*u0j_uNj - tce16*tce2 - tce16*tce3 - tce18*tce2 - tce19*u0j_udNx2j - tce19*u2j_udNx0j - tce20*u1j_udNx2j - tce20*u2j_udNx1j - tce21*u1j_uNj*wdNtx1[i] - tce21*u1j_udNx1j*wNt[i] - tce22*u2j_uNj*wdNtx2[i] - tce22*u2j_udNx2j*wNt[i] + tce5*tce6 + tce7*tce8 + tce8*tce9));
+    }
+    {
+      double tce0, tce1, tce2, tce3, tce4, tce5, tce6, tce7, tce8, tce9, tce10, tce11, tce12, tce13, tce14, tce15, tce16, tce17, tce18, tce19, tce20, tce21, tce22;
+      tce0 = gamma*wNt[i];
+      tce1 = n[0]*u0j_uNj;
+      tce2 = n[1]*u1j_uNj;
+      tce3 = n[2]*u2j_uNj;
+      tce4 = pow(n[0], 2);
+      tce5 = tce4*wNt[i];
+      tce6 = 1.0*p0j_pNj;
+      tce7 = pow(n[1], 2);
+      tce8 = tce6*wNt[i];
+      tce9 = pow(n[2], 2);
+      tce10 = 2.0*eta;
+      tce11 = n[1]*tce10;
+      tce12 = tce11*wdNtx1[i];
+      tce13 = n[0]*wNt[i];
+      tce14 = tce11*tce13;
+      tce15 = tce10*wdNtx0[i];
+      tce16 = n[0]*tce15;
+      tce17 = n[2]*tce10;
+      tce18 = tce17*wdNtx2[i];
+      tce19 = tce13*tce17;
+      tce20 = n[2]*tce11*wNt[i];
+      tce21 = tce10*tce7;
+      tce22 = tce10*tce9;
+      F[3*i + 2] += scale * (n[2]*(tce0*tce1 + tce0*tce2 + tce0*tce3 - tce1*tce12 - tce1*tce18 - tce10*tce5*u0j_udNx0j - tce12*tce3 - tce14*u0j_udNx1j - tce14*u1j_udNx0j - tce15*tce4*u0j_uNj - tce16*tce2 - tce16*tce3 - tce18*tce2 - tce19*u0j_udNx2j - tce19*u2j_udNx0j - tce20*u1j_udNx2j - tce20*u2j_udNx1j - tce21*u1j_uNj*wdNtx1[i] - tce21*u1j_udNx1j*wNt[i] - tce22*u2j_uNj*wdNtx2[i] - tce22*u2j_udNx2j*wNt[i] + tce5*tce6 + tce7*tce8 + tce8*tce9));
+    }
+  }
+}
+
+
+// key: q_up
+//
+// ---------------------------------------------------
+//
+// test function[0] coeff:   [q0[i]]
+// test function[0]:         qNt[i]
+// test function[0] derivs:  [qdNtx0[i], qdNtx1[i], qdNtx2[i]]
+//
+// trial function[0] coeff:  [u0[j], u1[j], u2[j]]
+// trial function[0]:        uN[j]
+// trial function[0] derivs: [udNx0[j], udNx1[j], udNx2[j]]
+//
+// trial function[1] coeff:  [p0[j]]
+// trial function[1]:        pN[j]
+// trial function[1] derivs: [pdNx0[j], pdNx1[j], pdNx2[j]]
+//
+// test function[0] dim: 1 spatial dim: 3 numcoeff:   4
+// trial function[0] dim: 3 spatial dim: 3 numcoeff:  27
+// trial function[1] dim: 1 spatial dim: 3 numcoeff:   4
+//
+// ---------------------------------------------------
+//
+void nitsche_navier_q2_3d_spmv_q_up(
+                                    double qNt[], double qdNtx0[], double qdNtx1[], double qdNtx2[],
+                                    double uN[], double udNx0[], double udNx1[], double udNx2[],
+                                    double pN[], double pdNx0[], double pdNx1[], double pdNx2[],
+                                    double u0[], double u1[], double u2[],
+                                    double p0[],
+                                    double n[],  // parameter
+                                    double scale, double F[])
+{
+  int i,j;
+  double u0j_uNj = 0.0;
+  double u1j_uNj = 0.0;
+  double u2j_uNj = 0.0;
+  for (j=0; j<27; j++) { // u_nbasis_0
+    u0j_uNj += u0[j]*uN[j];
+    u1j_uNj += u1[j]*uN[j];
+    u2j_uNj += u2[j]*uN[j];
+  }
+  for (i=0; i<4; i++) { // q_nbasis
+    {
+      double tce0, tce1, tce2, tce3, tce4, tce5;
+      tce0 = pow(n[1], 2);
+      tce1 = n[0]*u0j_uNj;
+      tce2 = pow(n[2], 2);
+      tce3 = pow(n[0], 2);
+      tce4 = n[1]*u1j_uNj;
+      tce5 = n[2]*u2j_uNj;
+      F[1*i + 0] += scale * (1.0*qNt[i]*(pow(n[0], 3)*u0j_uNj + pow(n[1], 3)*u1j_uNj + pow(n[2], 3)*u2j_uNj + tce0*tce1 + tce0*tce5 + tce1*tce2 + tce2*tce4 + tce3*tce4 + tce3*tce5));
+    }
   }
 }
 
@@ -590,17 +751,9 @@ void nitsche_navier_q2_3d_spmv_qp(
 // trial function[1]:        pN[j]
 // trial function[1] derivs: [pdNx0[j], pdNx1[j], pdNx2[j]]
 //
-// test function[0] dim:          3
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     27
-//
-// trial function[0] dim:         3
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    27
-//
-// trial function[1] dim:         1
-// trial function[1] spatial dim: 3
-// trial function[1] numcoeff:    4
+// test function[0] dim: 3 spatial dim: 3 numcoeff:  27
+// trial function[0] dim: 3 spatial dim: 3 numcoeff:  27
+// trial function[1] dim: 1 spatial dim: 3 numcoeff:   4
 //
 // ---------------------------------------------------
 //
@@ -617,19 +770,19 @@ void nitsche_navier_q2_3d_residual_w(
                                      double scale, double F[])
 {
   int i,j;
-  double u2j_udNx0j = 0.0;
   double p0j_pNj = 0.0;
-  double u2j_udNx1j = 0.0;
-  double u1j_udNx2j = 0.0;
   double u0j_uNj = 0.0;
-  double u1j_uNj = 0.0;
+  double u0j_udNx0j = 0.0;
   double u0j_udNx1j = 0.0;
   double u0j_udNx2j = 0.0;
-  double u0j_udNx0j = 0.0;
-  double u1j_udNx1j = 0.0;
+  double u1j_uNj = 0.0;
   double u1j_udNx0j = 0.0;
-  double u2j_udNx2j = 0.0;
+  double u1j_udNx1j = 0.0;
+  double u1j_udNx2j = 0.0;
   double u2j_uNj = 0.0;
+  double u2j_udNx0j = 0.0;
+  double u2j_udNx1j = 0.0;
+  double u2j_udNx2j = 0.0;
   for (j=0; j<27; j++) { // u_nbasis_0
     u0j_uNj += u0[j]*uN[j];
     u1j_uNj += u1[j]*uN[j];
@@ -749,17 +902,9 @@ void nitsche_navier_q2_3d_residual_w(
 // trial function[1]:        pN[j]
 // trial function[1] derivs: [pdNx0[j], pdNx1[j], pdNx2[j]]
 //
-// test function[0] dim:          1
-// test function[0] spatial dim:  3
-// test function[0] numcoeff:     4
-//
-// trial function[0] dim:         3
-// trial function[0] spatial dim: 3
-// trial function[0] numcoeff:    27
-//
-// trial function[1] dim:         1
-// trial function[1] spatial dim: 3
-// trial function[1] numcoeff:    4
+// test function[0] dim: 1 spatial dim: 3 numcoeff:   4
+// trial function[0] dim: 3 spatial dim: 3 numcoeff:  27
+// trial function[1] dim: 1 spatial dim: 3 numcoeff:   4
 //
 // ---------------------------------------------------
 //
@@ -924,7 +1069,7 @@ static PetscErrorCode _form_residual_F1(StokesForm *form,PetscReal ds[],PetscRea
                                      form->X[0]->W, form->X[0]->Wx, form->X[0]->Wy, form->X[0]->Wz,
                                      form->X[1]->W, form->X[1]->Wx, form->X[1]->Wy, form->X[1]->Wz,
                                      form->u_elfield_0,form->u_elfield_1,form->u_elfield_2,
-                                     form->u_elfield_0,
+                                     form->p_elfield_0,
                                      eta, gamma,
                                      normal, uDn,
                                      ds[0], F);
@@ -953,7 +1098,7 @@ static PetscErrorCode _form_residual_F2(StokesForm *form,PetscReal ds[],PetscRea
                                      form->X[0]->W, form->X[0]->Wx, form->X[0]->Wy, form->X[0]->Wz,
                                      form->X[1]->W, form->X[1]->Wx, form->X[1]->Wy, form->X[1]->Wz,
                                      form->u_elfield_0,form->u_elfield_1,form->u_elfield_2,
-                                     form->u_elfield_0,
+                                     form->p_elfield_0,
                                      normal, uDn,
                                      ds[0], F);
   PetscFunctionReturn(0);
@@ -1316,8 +1461,24 @@ static PetscErrorCode sc_asmb_A21(SurfaceConstraint sc, DM dmu, DM dmp, Mat A)
 
 /* assemble diagonal */
 /* point-wise kernels */
-static PetscErrorCode _form_asmbdiag_A11(StokesForm *form,PetscReal ds[],PetscReal A[])
+static PetscErrorCode _form_asmbdiag_A11(StokesForm *form,PetscReal ds[],PetscReal diagA[])
 {
+  SCContextDemo   *scdata;
+  FormContextDemo *formdata;
+  PetscReal       gamma,eta,*normal;
+  
+  scdata   = (void*)form->sc->data;
+  formdata = (void*)form->data;
+  
+  eta    = (PetscReal) formdata->boundary_qp[ form->nqp * form->facet_i + form->point_i ].eta;
+  normal = (PetscReal*)formdata->boundary_qp[ form->nqp * form->facet_i + form->point_i ].normal;
+  gamma = scdata->penalty * eta * 4.0 / form->hF;
+  
+  nitsche_navier_q2_3d_asmbdiag_wu(form->test->W, form->test->Wx, form->test->Wy, form->test->Wz,
+                               form->trial->W, form->trial->Wx, form->trial->Wy, form->trial->Wz,
+                               eta, gamma, normal,  // parameter
+                               ds[0], diagA);
+  
   PetscFunctionReturn(0);
 }
 
@@ -1338,7 +1499,7 @@ static PetscErrorCode StoksFormConfigureAction_AssembleDiagonal(StokesForm *form
 }
 
 /* surface constraint methods */
-static PetscErrorCode sc_asmbdiag_A11(SurfaceConstraint sc, DM dmu, PetscScalar A[])
+static PetscErrorCode sc_asmbdiag_A11(SurfaceConstraint sc, DM dmu, Vec diagA)
 {
   PetscErrorCode  ierr;
   StokesForm      F;
@@ -1349,7 +1510,7 @@ static PetscErrorCode sc_asmbdiag_A11(SurfaceConstraint sc, DM dmu, PetscScalar 
 #endif
   ierr = StokesFormSetup_Demo(&F,sc,&formdata);CHKERRQ(ierr);
   ierr = StoksFormConfigureAction_AssembleDiagonal(&F,M_A11);CHKERRQ(ierr);
-  //ierr = generic_facet_assemble_diagonal(&F, &F.u, dmu, A);CHKERRQ(ierr);
+  ierr = generic_facet_assemble_diagonal(&F, &F.u, dmu, dmu, diagA);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -1358,27 +1519,38 @@ static PetscErrorCode _form_spmv_wA(StokesForm *form,PetscReal ds[],PetscReal F[
 {
   SCContextDemo   *scdata;
   FormContextDemo *formdata;
-  PetscReal       gamma,eta,uDn, *normal;
+  PetscReal       gamma,eta,*normal;
   
   scdata   = (void*)form->sc->data;
   formdata = (void*)form->data;
   
   eta    = (PetscReal) formdata->boundary_qp[ form->nqp * form->facet_i + form->point_i ].eta;
   normal = (PetscReal*)formdata->boundary_qp[ form->nqp * form->facet_i + form->point_i ].normal;
-  
-  //udotn  = &formdata->sc_udotn_qp[qp_offset];
-  uDn = 0.0;
-  
   gamma = scdata->penalty * eta * 4.0 / form->hF;
   
-  nitsche_navier_q2_3d_residual_w(form->test->W, form->test->Wx, form->test->Wy, form->test->Wz,
+  //
+  nitsche_navier_q2_3d_spmv_w_up(form->test->W, form->test->Wx, form->test->Wy, form->test->Wz,
                                      form->X[0]->W, form->X[0]->Wx, form->X[0]->Wy, form->X[0]->Wz,
                                      form->X[1]->W, form->X[1]->Wx, form->X[1]->Wy, form->X[1]->Wz,
                                      form->u_elfield_0,form->u_elfield_1,form->u_elfield_2,
-                                     form->u_elfield_0,
+                                     form->p_elfield_0,
                                      eta, gamma,
-                                     normal, uDn,
+                                     normal,
                                      ds[0], F);
+  //
+  /*
+  nitsche_navier_q2_3d_spmv_wu(form->test->W, form->test->Wx, form->test->Wy, form->test->Wz,
+                               form->X[0]->W, form->X[0]->Wx, form->X[0]->Wy, form->X[0]->Wz,
+                               form->u_elfield_0,form->u_elfield_1,form->u_elfield_2,
+                               eta, gamma, normal,  // parameter
+                               ds[0], F);
+
+  nitsche_navier_q2_3d_spmv_wp(form->test->W, form->test->Wx, form->test->Wy, form->test->Wz,
+                               form->X[1]->W, form->X[1]->Wx, form->X[1]->Wy, form->X[1]->Wz,
+                               form->p_elfield_0,
+                               normal,  // parameter
+                               ds[0], F);
+   */
   
   PetscFunctionReturn(0);
 }
@@ -1388,25 +1560,31 @@ static PetscErrorCode _form_spmv_qA(StokesForm *form,PetscReal ds[],PetscReal F[
 {
   SCContextDemo   *scdata;
   FormContextDemo *formdata;
-  PetscReal       gamma,eta,uDn, *normal;
+  PetscReal       gamma,eta,*normal;
   
   scdata   = (void*)form->sc->data;
   formdata = (void*)form->data;
   
   eta    = (PetscReal) formdata->boundary_qp[ form->nqp * form->facet_i + form->point_i ].eta;
   normal = (PetscReal*)formdata->boundary_qp[ form->nqp * form->facet_i + form->point_i ].normal;
-  
-  uDn = 0.0;
-  
   gamma = scdata->penalty * eta * 4.0 / form->hF;
+
   
-  nitsche_navier_q2_3d_residual_q(form->test->W, form->test->Wx, form->test->Wy, form->test->Wz,
+  nitsche_navier_q2_3d_spmv_q_up(form->test->W, form->test->Wx, form->test->Wy, form->test->Wz,
                                      form->X[0]->W, form->X[0]->Wx, form->X[0]->Wy, form->X[0]->Wz,
                                      form->X[1]->W, form->X[1]->Wx, form->X[1]->Wy, form->X[1]->Wz,
                                      form->u_elfield_0,form->u_elfield_1,form->u_elfield_2,
-                                     form->u_elfield_0,
-                                     normal, uDn,
+                                     form->p_elfield_0,
+                                     normal,
                                      ds[0], F);
+  
+  /*
+  nitsche_navier_q2_3d_spmv_qu(form->test->W, form->test->Wx, form->test->Wy, form->test->Wz,
+                               form->X[1]->W, form->X[1]->Wx, form->X[1]->Wy, form->X[1]->Wz,
+                               form->u_elfield_0,form->u_elfield_1,form->u_elfield_2,
+                               normal,  // parameter
+                               ds[0], F);
+   */
   
   PetscFunctionReturn(0);
 }
@@ -1476,12 +1654,10 @@ PetscErrorCode _SetType_NITSCHE_NAVIER_SLIP(SurfaceConstraint sc)
   sc->ops.action_Aup  = sc_spmv_A12;
   sc->ops.action_Apu  = sc_spmv_A21;
   
-  sc->ops.asmb_A   = NULL; /* always null */
   sc->ops.asmb_Auu = sc_asmb_A11;
   sc->ops.asmb_Aup = sc_asmb_A12;
   sc->ops.asmb_Apu = sc_asmb_A21;
   
-  sc->ops.diag_A   = NULL; /* always null */
   sc->ops.diag_Auu = sc_asmbdiag_A11;
   
   /* allocate implementation data */
@@ -1579,5 +1755,14 @@ PetscErrorCode SurfaceConstraintSetValues_NITSCHE_NAVIER_SLIP(SurfaceConstraint 
   
   DataBucketRestoreEntriesdByName(sc->properties_db,"u.n",(void**)&uD_qp);
   
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode SurfaceConstraintNitscheNavierSlip_SetPenalty(SurfaceConstraint sc,PetscReal penalty)
+{
+  SCContextDemo   *scdata = NULL;
+  if (sc->type != SC_NITSCHE_NAVIER_SLIP) PetscFunctionReturn(0);
+  scdata = (SCContextDemo*)sc->data;
+  scdata->penalty = penalty;
   PetscFunctionReturn(0);
 }

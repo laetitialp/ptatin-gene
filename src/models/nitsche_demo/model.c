@@ -79,6 +79,16 @@ PetscErrorCode bctype_no_slip(DM dav,BCList bclist)
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode bctype_no_slip_base_3(DM dav,BCList bclist)
+{
+  PetscErrorCode ierr;
+  PetscScalar zero = 0.0;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
 
 static PetscErrorCode const_ud(Facet F,const PetscReal qp_coor[],PetscReal uD[],void *data)
 {
@@ -101,6 +111,7 @@ PetscErrorCode bctype_no_slip_nitsche(SurfBCList surflist,PetscBool insert_if_no
     if (insert_if_not_fouund) {
       ierr = SurfBCListAddConstraint(surflist,"boundary",&sc);CHKERRQ(ierr);
       ierr = SurfaceConstraintSetType(sc,SC_NITSCHE_DIRICHLET);CHKERRQ(ierr);
+      ierr = SurfaceConstraintNitscheDirichlet_SetPenalty(sc,1.0e5);CHKERRQ(ierr);
     } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint not found");
   }
   
@@ -141,6 +152,7 @@ PetscErrorCode bctype_slip_nitsche(SurfBCList surflist,PetscBool insert_if_not_f
     if (insert_if_not_fouund) {
       ierr = SurfBCListAddConstraint(surflist,"boundary",&sc);CHKERRQ(ierr);
       ierr = SurfaceConstraintSetType(sc,SC_NITSCHE_NAVIER_SLIP);CHKERRQ(ierr);
+      ierr = SurfaceConstraintNitscheNavierSlip_SetPenalty(sc,1.0e5);CHKERRQ(ierr);
     } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint not found");
   }
   ierr = SurfaceConstraintGetFacets(sc,&facets);CHKERRQ(ierr);
@@ -152,7 +164,39 @@ PetscErrorCode bctype_slip_nitsche(SurfBCList surflist,PetscBool insert_if_not_f
     ierr = MeshFacetMarkDomainFaces(facets,sc->fi,nsides,sides);CHKERRQ(ierr);
   }
   
-  SURFC_CHKSETVALS(SC_NITSCHE_NAVIER_SLIP,const_ud);
+  SURFC_CHKSETVALS(SC_NITSCHE_NAVIER_SLIP,const_udotn);
+  {
+    PetscReal uD_c[] = {0.0};
+    ierr = SurfaceConstraintSetValues(sc,(SurfCSetValuesGeneric)const_udotn,(void*)uD_c);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode bctype_slip_nitsche_3(SurfBCList surflist,PetscBool insert_if_not_fouund)
+{
+  SurfaceConstraint sc;
+  MeshEntity        facets;
+  PetscErrorCode    ierr;
+  
+  
+  ierr = SurfBCListGetConstraint(surflist,"boundary",&sc);CHKERRQ(ierr);
+  if (!sc) {
+    if (insert_if_not_fouund) {
+      ierr = SurfBCListAddConstraint(surflist,"boundary",&sc);CHKERRQ(ierr);
+      ierr = SurfaceConstraintSetType(sc,SC_NITSCHE_NAVIER_SLIP);CHKERRQ(ierr);
+      ierr = SurfaceConstraintNitscheNavierSlip_SetPenalty(sc,1.0e5);CHKERRQ(ierr);
+    } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint not found");
+  }
+  ierr = SurfaceConstraintGetFacets(sc,&facets);CHKERRQ(ierr);
+  
+  {
+    PetscInt       nsides;
+    HexElementFace sides[] = { HEX_FACE_Nxi, HEX_FACE_Pxi, HEX_FACE_Nzeta, HEX_FACE_Pzeta };
+    nsides = sizeof(sides) / sizeof(HexElementFace);
+    ierr = MeshFacetMarkDomainFaces(facets,sc->fi,nsides,sides);CHKERRQ(ierr);
+  }
+  
+  SURFC_CHKSETVALS(SC_NITSCHE_NAVIER_SLIP,const_udotn);
   {
     PetscReal uD_c[] = {0.0};
     ierr = SurfaceConstraintSetValues(sc,(SurfCSetValuesGeneric)const_udotn,(void*)uD_c);CHKERRQ(ierr);
@@ -191,6 +235,16 @@ static PetscErrorCode ModelApplyBoundaryCondition(pTatinCtx user,void *ctx)
     }
       break;
 
+    case 3:
+    {
+      PhysCompStokes stokes;
+      
+      ierr = bctype_no_slip_base_3(user->stokes_ctx->dav,user->stokes_ctx->u_bclist);CHKERRQ(ierr);
+      ierr = pTatinGetStokesContext(user,&stokes);CHKERRQ(ierr);
+      ierr = bctype_slip_nitsche_3(stokes->surf_bclist,PETSC_TRUE);CHKERRQ(ierr);
+    }
+      break;
+
     default:
       break;
   }
@@ -223,6 +277,15 @@ static PetscErrorCode ModelApplyBoundaryConditionMG(PetscInt nl,BCList bclist[],
     case 2:
       for (n=0; n<nl-1; n++) {
         ierr = bctype_slip_nitsche(surf_bclist[n],PETSC_FALSE);CHKERRQ(ierr);
+      }
+      break;
+
+    case 3:
+      for (n=0; n<nl; n++) {
+        ierr = bctype_no_slip_base_3(dav[n],bclist[n]);CHKERRQ(ierr);
+      }
+      for (n=0; n<nl; n++) {
+        ierr = bctype_slip_nitsche_3(surf_bclist[n],PETSC_FALSE);CHKERRQ(ierr);
       }
       break;
 

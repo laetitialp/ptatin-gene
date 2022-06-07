@@ -65,6 +65,8 @@
 #include "stokes_operators.h"
 #include "stokes_operators_mf.h"
 #include "stokes_assembly.h"
+#include "dmda_element_q2p1.h"
+
 
 PetscLogEvent MAT_MultMFA11;
 PetscLogEvent MAT_MultMFA11_stp;
@@ -1090,7 +1092,6 @@ PetscErrorCode MatGetDiagonal_MFStokes_A11(Mat A,Vec X)
 
   /* A11 from momentum */
   ierr = MFStokesWrapper_diagA11(ctx->volQ,dau,LA_XUloc);CHKERRQ(ierr);
-  ierr = SurfBCList_AssembleDiagA11(ctx->surf_bclist,dau,LA_XUloc);CHKERRQ(ierr);
   
   ierr = VecRestoreArray(XUloc,&LA_XUloc);CHKERRQ(ierr);
 
@@ -1099,6 +1100,8 @@ PetscErrorCode MatGetDiagonal_MFStokes_A11(Mat A,Vec X)
   ierr = DMLocalToGlobalEnd  (dau,XUloc,ADD_VALUES,X);CHKERRQ(ierr);
 
   ierr = DMRestoreLocalVector(dau,&XUloc);CHKERRQ(ierr);
+
+  ierr = SurfBCList_AssembleDiagA11(ctx->surf_bclist,dau,X);CHKERRQ(ierr);
 
   /* modify X for the boundary conditions, x_k = scale_k(x_k) */
 
@@ -2178,6 +2181,99 @@ PetscErrorCode StokesA12Preallocation_basic(Mat mat,DM dav,DM dap)
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode MatCreatePreallocator_private(Mat A,Mat *p)
+{
+  Mat                    preallocator;
+  PetscInt               M,N,m,n,bs;
+  PetscErrorCode         ierr;
+  
+  ierr = MatGetSize(A,&M,&N);CHKERRQ(ierr);
+  ierr = MatGetLocalSize(A,&m,&n);CHKERRQ(ierr);
+  ierr = MatGetBlockSize(A,&bs);CHKERRQ(ierr);
+  
+  ierr = MatCreate(PetscObjectComm((PetscObject)A),&preallocator);CHKERRQ(ierr);
+  ierr = MatSetType(preallocator,MATPREALLOCATOR);CHKERRQ(ierr);
+  ierr = MatSetSizes(preallocator,m,n,M,N);CHKERRQ(ierr);
+  ierr = MatSetBlockSize(preallocator,bs);CHKERRQ(ierr);
+  ierr = MatSetUp(preallocator);CHKERRQ(ierr);
+  
+  /* zap existing non-zero structure in A */
+  /*
+   It is a good idea to remove any exisiting non-zero structure in A to
+   (i) reduce memory immediately
+   (ii) to facilitate raising an error if someone trys to insert values into A after
+   MatPreallocatorBegin() has been called - which signals they are doing something wrong/inconsistent
+   */
+  ierr = MatGetBlockSize(A,&bs);CHKERRQ(ierr);
+  ierr = MatXAIJSetPreallocation(A,bs,NULL,NULL,NULL,NULL);CHKERRQ(ierr);
+  ierr = MatSetOption(A,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_TRUE);CHKERRQ(ierr);
+  
+  *p = preallocator;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode StokesAijPreallocation_opt(Mat mat,DM dau,DM dap,const PetscInt ij[])
+{
+  Mat p;
+  PetscReal vals[3*Q2_NODES_PER_EL_3D*P_BASIS_FUNCTIONS];
+  PetscInt e,k,numidx_u,numidx_p;
+  ISLocalToGlobalMapping ltog_u,ltog_p;
+  const PetscInt *lidx_u,*lidx_p;
+  const PetscInt *gidx_u,*gidx_p;
+  PetscInt nel,nen_u,nen_p;
+  PetscInt ge_eqnums_u[3*Q2_NODES_PER_EL_3D],ge_eqnums_p[P_BASIS_FUNCTIONS];
+  PetscErrorCode ierr;
+  
+  ierr = MatCreatePreallocator_private(mat,&p);CHKERRQ(ierr);
+  
+  ierr = DMDAGetElements_pTatinQ2P1(dau,&nel,&nen_u,&lidx_u);CHKERRQ(ierr);
+  ierr = DMDAGetElements_pTatinQ2P1(dap,&nel,&nen_p,&lidx_p);CHKERRQ(ierr);
+
+  ierr = DMGetLocalToGlobalMapping(dau,&ltog_u);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetSize(ltog_u,&numidx_u);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetIndices(ltog_u,&gidx_u);CHKERRQ(ierr);
+
+  ierr = DMGetLocalToGlobalMapping(dap,&ltog_p);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetSize(ltog_p,&numidx_p);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingGetIndices(ltog_p,&gidx_p);CHKERRQ(ierr);
+
+  ierr = PetscMemzero(vals,3*Q2_NODES_PER_EL_3D*P_BASIS_FUNCTIONS);CHKERRQ(ierr);
+  for (e=0; e<nel; e++) {
+    /* get global indices */
+    for (k=0; k<Q2_NODES_PER_EL_3D; k++) {
+      const int _nid = lidx_u[nen_u*e + k];
+      ge_eqnums_u[3*k  ] = gidx_u[3*_nid  ];
+      ge_eqnums_u[3*k+1] = gidx_u[3*_nid+1];
+      ge_eqnums_u[3*k+2] = gidx_u[3*_nid+2];
+    }
+    for (k=0; k<P_BASIS_FUNCTIONS; k++) {
+      const int _nid = lidx_p[nen_p*e + k];
+      ge_eqnums_p[k] = gidx_p[_nid];
+    }
+    if (ij[0] == 0 && ij[1] == 1) {
+      ierr = MatSetValues(p,3*Q2_NODES_PER_EL_3D,ge_eqnums_u,P_BASIS_FUNCTIONS,ge_eqnums_p,vals,INSERT_VALUES);CHKERRQ(ierr);
+    }
+    if (ij[0] == 1 && ij[1] == 0) {
+      ierr = MatSetValues(p,P_BASIS_FUNCTIONS,ge_eqnums_p,3*Q2_NODES_PER_EL_3D,ge_eqnums_u,vals,INSERT_VALUES);CHKERRQ(ierr);
+    }
+  }
+
+  ierr = ISLocalToGlobalMappingRestoreIndices(ltog_u,&gidx_u);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingRestoreIndices(ltog_p,&gidx_p);CHKERRQ(ierr);
+
+  ierr = MatAssemblyBegin(p,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  ierr = MatAssemblyEnd(p,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  
+  /* create new non-zero structure */
+  ierr = MatPreallocatorPreallocate(p,PETSC_TRUE,mat);CHKERRQ(ierr);
+  
+  /* clean up and remove the preallocator object from A */
+  ierr= MatDestroy(&p);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+
 PetscErrorCode StokesA21Preallocation_basic(Mat mat,DM dav,DM dap)
 {
   PetscInt nnz,onnz;
@@ -2249,10 +2345,16 @@ PetscErrorCode StokesQ2P1CreateMatrix_A12(PhysCompStokes user,Mat *mat)
   ierr = MatSetSizes(Aup,mu,mp,Mu,Mp);CHKERRQ(ierr);
 
   /* Do some preallocation */
+  /*
   ierr = StokesA12Preallocation_basic(Aup,dav,dap);CHKERRQ(ierr);
-
   ierr = MatSetOption(Aup,MAT_NEW_NONZERO_LOCATIONS,PETSC_TRUE);CHKERRQ(ierr);
-
+  */
+  {
+    const PetscInt ij[] = { 0, 1 };
+    ierr = StokesAijPreallocation_opt(Aup,dav,dap,ij);CHKERRQ(ierr);
+    ierr = MatSetOption(Aup,MAT_NEW_NONZERO_LOCATIONS,PETSC_FALSE);CHKERRQ(ierr);
+  }
+   
   ierr = MatSetFromOptions(Aup);CHKERRQ(ierr);
 
   *mat = Aup;
@@ -2292,9 +2394,16 @@ PetscErrorCode StokesQ2P1CreateMatrix_A21(PhysCompStokes user,Mat *mat)
   ierr = MatSetSizes(Apu,mp,mu,Mp,Mu);CHKERRQ(ierr);
 
   /* Do some preallocation */
+  /*
   ierr = StokesA21Preallocation_basic(Apu,dav,dap);CHKERRQ(ierr);
-
   ierr = MatSetOption(Apu,MAT_NEW_NONZERO_LOCATIONS,PETSC_TRUE);CHKERRQ(ierr);
+  */
+
+  {
+    const PetscInt ij[] = { 1, 0 };
+    ierr = StokesAijPreallocation_opt(Apu,dav,dap,ij);CHKERRQ(ierr);
+    ierr = MatSetOption(Apu,MAT_NEW_NONZERO_LOCATIONS,PETSC_FALSE);CHKERRQ(ierr);
+  }
 
   ierr = MatSetFromOptions(Apu);CHKERRQ(ierr);
 

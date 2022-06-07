@@ -103,9 +103,9 @@ PetscErrorCode _GenerateTestVectorDAP(DM da,PetscInt dofs,PetscInt index,Vec x)
 
 
   ierr = DMDAGetInfo(da,0,&M,&N,&P,0,0,0, 0,0,0,0,0,0);CHKERRQ(ierr);
-  dx = 2.0/(PetscReal)(M-1);
-  dy = 2.0/(PetscReal)(N-1);
-  dz = 2.0/(PetscReal)(P-1);
+  dx = 2.0/(PetscReal)(M);
+  dy = 2.0/(PetscReal)(N);
+  dz = 2.0/(PetscReal)(P);
 
 
   ierr = DMGetLocalToGlobalMapping(da, &ltog);CHKERRQ(ierr);
@@ -356,6 +356,7 @@ PetscErrorCode compare_mf_A21(PhysCompStokes user)
   ierr = VecDuplicate(y,&y2);CHKERRQ(ierr);
 
   ierr = StokesQ2P1CreateMatrix_A21(user,&B);CHKERRQ(ierr);
+  ierr = PetscObjectSetName((PetscObject)B,"div");CHKERRQ(ierr);
   ierr = MatAssemble_StokesA_A21(B,dav,dap,user->u_bclist,user->p_bclist,user->volQ,user->surf_bclist);CHKERRQ(ierr);
 
   ierr = MatMult(B,x,y2);CHKERRQ(ierr);
@@ -425,6 +426,7 @@ PetscErrorCode compare_mf_A12(PhysCompStokes user)
   ierr = VecDuplicate(y,&y2);CHKERRQ(ierr);
 
   ierr = StokesQ2P1CreateMatrix_A12(user,&B);CHKERRQ(ierr);
+  ierr = PetscObjectSetName((PetscObject)B,"grad");CHKERRQ(ierr);
   ierr = MatAssemble_StokesA_A12(B,dav,dap,user->u_bclist,user->p_bclist,user->volQ,user->surf_bclist);CHKERRQ(ierr);
 
   ierr = MatMult(B,x,y2);CHKERRQ(ierr);
@@ -475,7 +477,8 @@ PetscErrorCode compare_mf_A(PhysCompStokes user)
   ierr = DMCompositeGetAccess(pack,x,&xu,&xp);CHKERRQ(ierr);
   ierr = VecSetRandom(xu,NULL);CHKERRQ(ierr);
   ierr = VecSetRandom(xp,NULL);CHKERRQ(ierr);
-  //    ierr = VecZeroEntries(xp);CHKERRQ(ierr);
+  //ierr = VecZeroEntries(xu);CHKERRQ(ierr);
+  //ierr = VecZeroEntries(xp);CHKERRQ(ierr);
   ierr = DMCompositeRestoreAccess(pack,x,&xu,&xp);CHKERRQ(ierr);
 
   ierr = VecDuplicate(x,&y);CHKERRQ(ierr);

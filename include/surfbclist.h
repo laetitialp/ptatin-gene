@@ -58,7 +58,7 @@ PetscErrorCode SurfBCList_AssembleAij(SurfBCList surfbc,
 
 PetscErrorCode SurfBCList_AssembleDiagA11(SurfBCList surfbc,
                                           DM dau,
-                                          PetscScalar Ae[]);
+                                          Vec diagA);
 
 #endif
 
