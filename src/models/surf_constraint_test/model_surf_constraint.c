@@ -61,6 +61,9 @@ static PetscErrorCode ModelInitialize_SCTest(pTatinCtx c,void *ctx)
   ierr = PetscOptionsGetReal(NULL,M_NAME,"-Oy",&data->Oy,&flg);CHKERRQ(ierr);
   ierr = PetscOptionsGetReal(NULL,M_NAME,"-Oz",&data->Oz,&flg);CHKERRQ(ierr);
 
+  data->PolarMesh = PETSC_FALSE;
+  ierr = PetscOptionsGetBool(NULL,M_NAME,"-PolarMesh",&data->PolarMesh,NULL);CHKERRQ(ierr);
+
   /* reports before scaling */
   PetscPrintf(PETSC_COMM_WORLD,"********** Box Geometry **********\n",NULL);
   PetscPrintf(PETSC_COMM_WORLD,"[Ox,Lx] = [%+1.4e [m], %+1.4e [m]]\n", data->Ox ,data->Lx );
@@ -149,10 +152,15 @@ static PetscErrorCode Model_SetParameters_SCTest(RheologyConstants *rheology, Da
   /* Scale length */
   data->Lx = data->Lx / data->length_bar;
   data->Ly = data->Ly / data->length_bar;
-  data->Lz = data->Lz / data->length_bar;
+  if (data->PolarMesh) {
+    data->Lz = data->Lz * M_PI/180.0;
+    data->Oz = data->Oz * M_PI/180.0;
+  } else {
+    data->Lz = data->Lz / data->length_bar;
+    data->Oz = data->Oz / data->length_bar;
+  }
   data->Ox = data->Ox / data->length_bar;
   data->Oy = data->Oy / data->length_bar;
-  data->Oz = data->Oz / data->length_bar;
   data->layer1 = data->layer1 / data->length_bar;
   data->layer2 = data->layer2 / data->length_bar;
 
@@ -160,6 +168,44 @@ static PetscErrorCode Model_SetParameters_SCTest(RheologyConstants *rheology, Da
   for (region_idx=0; region_idx<rheology->nphases_active;region_idx++) {
     MaterialConstantsScaleAll(materialconstants,region_idx,data->length_bar,data->velocity_bar,data->time_bar,data->viscosity_bar,data->density_bar,data->pressure_bar);
   }
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelCreatePolarMeshGeometry(DM da)
+{
+  DM               cda;
+  Vec              coord;
+  PetscScalar      *LA_coords;
+  PetscInt         i,j,k,M,N,P,si,sj,sk,nx,ny,nz;
+  PetscErrorCode   ierr;
+
+  PetscFunctionBegin;
+
+  /* Get DM info */
+  ierr = DMDAGetInfo(da,0,&M,&N,&P,0,0,0,0,0,0,0,0,0);CHKERRQ(ierr);
+  ierr = DMDAGetCorners(da,&si,&sj,&sk,&nx,&ny,&nz);CHKERRQ(ierr);
+  /* Get DM coords */
+  ierr = DMGetCoordinateDM(da,&cda);CHKERRQ(ierr);
+  ierr = DMGetCoordinates(da,&coord);CHKERRQ(ierr);
+  ierr = VecGetArray(coord,&LA_coords);CHKERRQ(ierr);
+
+  for (k=0;k<nz;k++) {
+    for (j=0;j<ny;j++) {
+      for (i=0;i<nx;i++) {
+        PetscInt    nidx;
+        PetscScalar r,phi;
+
+        nidx = i + j*nx + k*nx*ny;
+        r   = LA_coords[3*nidx + 0];
+        phi = LA_coords[3*nidx + 2];
+
+        LA_coords[3*nidx + 0] = r*cos(phi); 
+        LA_coords[3*nidx + 2] = r*sin(phi);
+      }
+    }
+  }
+  ierr = VecRestoreArray(coord,&LA_coords);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -178,7 +224,10 @@ static PetscErrorCode ModelApplyInitialMeshGeometry_SCTest(pTatinCtx c,void *ctx
   stokes_pack = stokes->stokes_pack;
   ierr = DMCompositeGetEntries(stokes_pack,&dav,&dap);CHKERRQ(ierr);
   ierr = DMDASetUniformCoordinates(dav,data->Ox,data->Lx,data->Oy,data->Ly,data->Oz,data->Lz);CHKERRQ(ierr);
-  
+  if (data->PolarMesh) {
+    ierr = ModelCreatePolarMeshGeometry(dav);CHKERRQ(ierr);
+  }
+
   ierr = DMDABilinearizeQ2Elements(dav);CHKERRQ(ierr);
   
   PetscReal gvec[] = { 0.0, -9.8, 0.0 };
@@ -300,7 +349,7 @@ static PetscErrorCode ModelOutput_SCTest(pTatinCtx c,Vec X,const char prefix[],v
   ierr = pTatinGetMaterialPoints(c,&materialpoint_db,NULL);CHKERRQ(ierr);
   sprintf(mp_file_prefix,"%s_mpoints",prefix);
   ierr = SwarmViewGeneric_ParaView(materialpoint_db,nf,mp_prop_list,c->outputpath,mp_file_prefix);CHKERRQ(ierr);
-
+  /*
   {
     PhysCompStokes    stokes;
     SurfaceConstraint sc;
@@ -310,6 +359,7 @@ static PetscErrorCode ModelOutput_SCTest(pTatinCtx c,Vec X,const char prefix[],v
     ierr = SurfBCListGetConstraint(stokes->surf_bclist,"bc_traction",&sc);CHKERRQ(ierr);
     ierr = SurfaceConstraintViewParaview(sc, pvoutputdir, "bc_traction");CHKERRQ(ierr); 
   }
+  */
   // tests for alternate (output/load)ing of "single file marker" formats
   //ierr = SwarmDataWriteToPetscVec(c->materialpoint_db,prefix);CHKERRQ(ierr);
   //ierr = SwarmDataLoadFromPetscVec(c->materialpoint_db,prefix);CHKERRQ(ierr);
@@ -327,6 +377,15 @@ static PetscErrorCode const_udotn(Facet F,const PetscReal qp_coor[],PetscReal ud
 {
   PetscReal *input = (PetscReal*)data;
   udotn[0] = input[0];
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode angular_udotn(Facet F,const PetscReal qp_coor[],PetscReal udotn[],void *data)
+{
+  PetscReal *input = (PetscReal*)data;
+  /* Use relation v = \omega * r with \omega the angular velocity 
+  and r the distance from the pole, here the x coord */
+  udotn[0] = input[0]*qp_coor[0];
   PetscFunctionReturn(0);
 }
 
@@ -410,9 +469,79 @@ static PetscErrorCode BCTypeSlipNitscheFreeSurface(SurfBCList surflist,PetscBool
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ApplyNitscheFreeslip(SurfBCList surflist,PetscBool insert_if_not_found)
+{
+  SurfaceConstraint sc;
+  MeshEntity        facets;
+  PetscErrorCode    ierr;
+
+  PetscFunctionBegin;
+  ierr = SurfBCListGetConstraint(surflist,"NitscheFreeSlip",&sc);CHKERRQ(ierr);
+  if (!sc) {
+    if (insert_if_not_found) {
+      ierr = SurfBCListAddConstraint(surflist,"NitscheFreeSlip",&sc);CHKERRQ(ierr);
+      ierr = SurfaceConstraintSetType(sc,SC_NITSCHE_NAVIER_SLIP);CHKERRQ(ierr);
+      ierr = SurfaceConstraintNitscheNavierSlip_SetPenalty(sc,1.0e5);CHKERRQ(ierr);
+    } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint not found");
+  }
+  ierr = SurfaceConstraintGetFacets(sc,&facets);CHKERRQ(ierr);
+
+  {
+    PetscInt       nsides;
+    HexElementFace sides[] = { HEX_FACE_Nxi, HEX_FACE_Pxi };
+    nsides = sizeof(sides) / sizeof(HexElementFace);
+    ierr = MeshFacetMarkDomainFaces(facets,sc->fi,nsides,sides);CHKERRQ(ierr);
+  }
+  SURFC_CHKSETVALS(SC_NITSCHE_NAVIER_SLIP,const_udotn);
+  {
+    PetscReal uD_c[] = {0.0};
+    ierr = SurfaceConstraintSetValues(sc,(SurfCSetValuesGeneric)const_udotn,(void*)uD_c);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ApplyNitsche_AngularVelocityNormal(SurfBCList surflist,PetscBool insert_if_not_found,ModelSCTestCtx *data)
+{
+  SurfaceConstraint sc;
+  MeshEntity        facets;
+  PetscErrorCode    ierr;
+
+  PetscFunctionBegin;
+  ierr = SurfBCListGetConstraint(surflist,"NitscheAngularZmax",&sc);CHKERRQ(ierr);
+  if (!sc) {
+    if (insert_if_not_found) {
+      ierr = SurfBCListAddConstraint(surflist,"NitscheAngularZmax",&sc);CHKERRQ(ierr);
+      ierr = SurfaceConstraintSetType(sc,SC_NITSCHE_NAVIER_SLIP);CHKERRQ(ierr);
+      ierr = SurfaceConstraintNitscheNavierSlip_SetPenalty(sc,1.0e5);CHKERRQ(ierr);
+    } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint not found");
+  }
+  ierr = SurfaceConstraintGetFacets(sc,&facets);CHKERRQ(ierr);
+  {
+    PetscInt       nsides;
+    HexElementFace sides[] = { HEX_FACE_Pzeta, HEX_FACE_Nzeta };
+    nsides = sizeof(sides) / sizeof(HexElementFace);
+    ierr = MeshFacetMarkDomainFaces(facets,sc->fi,nsides,sides);CHKERRQ(ierr);
+  }
+  SURFC_CHKSETVALS(SC_NITSCHE_NAVIER_SLIP,angular_udotn);
+  {
+    PetscReal uD_c[] = {0.0};
+    uD_c[0] = 1.0; //* (M_PI/180.0) / (3600.0*24.0*365.0*1.0e6 / data->time_bar);
+    ierr = SurfaceConstraintSetValues(sc,(SurfCSetValuesGeneric)const_udotn,(void*)uD_c);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ApplyStrongDirichlet(DM dav, BCList bclist)
+{
+  PetscErrorCode ierr;
+  PetscScalar zero = 0.0;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode ModelApplyBoundaryCondition_SCTest(pTatinCtx user,void *ctx)
 {
-  //ModelSCTestCtx *data = (ModelSCTestCtx*)ctx;
+  ModelSCTestCtx *data = (ModelSCTestCtx*)ctx;
   PhysCompStokes stokes;
   PetscErrorCode ierr;
 
@@ -420,24 +549,39 @@ static PetscErrorCode ModelApplyBoundaryCondition_SCTest(pTatinCtx user,void *ct
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
 
   ierr = pTatinGetStokesContext(user,&stokes);CHKERRQ(ierr);
-  ierr = BCTypeSlipNitscheFreeSurface(stokes->surf_bclist,PETSC_TRUE);CHKERRQ(ierr);
+  //if (data->PolarMesh) {
+    ierr = ApplyNitscheFreeslip(stokes->surf_bclist,PETSC_TRUE);CHKERRQ(ierr);
+    ierr = ApplyNitsche_AngularVelocityNormal(stokes->surf_bclist,PETSC_TRUE,data);CHKERRQ(ierr);
+    ierr = ApplyStrongDirichlet(stokes->dav,stokes->u_bclist);CHKERRQ(ierr);
+  //} else {
+  //  ierr = BCTypeSlipNitscheFreeSurface(stokes->surf_bclist,PETSC_TRUE);CHKERRQ(ierr);
+  //}
 
   PetscFunctionReturn(0);
 }
 
 static PetscErrorCode ModelApplyBoundaryConditionMG(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[],pTatinCtx user,void *ctx)
 {
-  //ModelSCTestCtx *data = (ModelSCTestCtx*)ctx;
+  ModelSCTestCtx *data = (ModelSCTestCtx*)ctx;
   PetscInt       n;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
 
-  for (n=0; n<nl; n++) {
-    ierr = BCTypeSlipNitscheFreeSurface(surf_bclist[n],PETSC_TRUE);CHKERRQ(ierr);
-  }
-
+  //if (data->PolarMesh) {
+    for (n=0; n<nl; n++) {
+      ierr = ApplyNitscheFreeslip(surf_bclist[n],PETSC_FALSE);CHKERRQ(ierr);
+      ierr = ApplyNitsche_AngularVelocityNormal(surf_bclist[n],PETSC_FALSE,data);CHKERRQ(ierr);
+    }
+    for (n=0; n<nl; n++) {
+      ierr = ApplyStrongDirichlet(dav[n],bclist[n]);CHKERRQ(ierr);
+    }
+  //} else {
+  //  for (n=0; n<nl; n++) {
+  //    ierr = BCTypeSlipNitscheFreeSurface(surf_bclist[n],PETSC_TRUE);CHKERRQ(ierr);
+  //  }
+  //}
   PetscFunctionReturn(0);
 }
 
