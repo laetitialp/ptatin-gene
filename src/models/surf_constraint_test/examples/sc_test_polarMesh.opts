@@ -1,0 +1,83 @@
+-nonlinear_driver_v1
+### Model ###
+-ptatin_model surf_constraint_model # Used model
+-log_summary
+-output_path nitsche_SCTest
+-lattice_layout_Nx 12
+-lattice_layout_Ny 3
+-lattice_layout_Nz 8
+-mp_popctrl_np_lower 32
+-mp_popctrl_np_upper 200
+########## BASIC NUMERICS ##############
+-mx 8 # Number of elements along x
+-my 8 # Number of elements along y
+-mz 8 # Number of elements along z
+-nsteps 0 # Max number of steps
+-dt_min 1.0e-6
+-dt_max 0.5
+-output_frequency 1
+########### Box Geometry ################
+-surf_constraint_model_PolarMesh # Make a polar mesh
+-surf_constraint_model_Lx 20.0e+5  # Max length along x
+-surf_constraint_model_Ly 0.0e+3 # Origin for y axis
+-surf_constraint_model_Lz 15.0 # Angle in positive direction
+-surf_constraint_model_Ox 10.0e+5 # Origin for x axis
+-surf_constraint_model_Oy -2.5e+5 # Max depth along y axis
+-surf_constraint_model_Oz -15.0 # Angle in negative direction
+############### Geometry ###############
+-surf_constraint_model_layer1 -30.0e3
+-surf_constraint_model_layer2 -120.0e3
+############ Phases Parameters #############
+# Viscosity
+-surf_constraint_model_eta0_0 1.0e+22
+-surf_constraint_model_eta0_1 1.0e+23
+-surf_constraint_model_eta0_2 1.0e+20
+# Density
+-surf_constraint_model_rho0_0 2700.0
+-surf_constraint_model_rho0_1 3300.0
+-surf_constraint_model_rho0_2 3300.0
+################ SOLVERS ################
+###### MG
+-A11_operator_type 2,0 #,1
+-dau_nlevels 2 #3
+-stk_velocity_dm_mat_type aij
+#-a11_op avx
+#---- 2 MG lvl ----#
+#| 8 x 8 x 8 |
+#| 4 x 4 x 4 |
+#------------------#
+-stk_velocity_da_refine_hierarchy_x 2 
+-stk_velocity_da_refine_hierarchy_y 2 
+-stk_velocity_da_refine_hierarchy_z 2 
+#---- SNES ----#
+-newton_its 0
+-snes_type ksponly
+-snes_monitor
+-snes_converged_reason
+#-snes_view
+#---- KSP ----#
+-ksp_max_it 200
+-ksp_rtol 1.0e-6
+-ksp_type fgmres
+-pc_type fieldsplit
+-pc_fieldsplit_schur_fact_type upper
+-pc_fieldsplit_type schur
+  #---- Fieldsplit p ----#
+  -fieldsplit_p_ksp_type preonly
+  -fieldsplit_p_pc_type bjacobi
+  #---- Fieldsplit u ----#
+  -fieldsplit_u_ksp_max_it 100
+  #-fieldsplit_u_ksp_monitor_true_residual
+  -fieldsplit_u_ksp_monitor
+  -fieldsplit_u_ksp_converged_reason
+  -fieldsplit_u_ksp_rtol 1.0e-2
+  -fieldsplit_u_ksp_type fgmres
+  -fieldsplit_u_pc_type mg
+  -fieldsplit_u_pc_mg_levels 2
+  -fieldsplit_u_pc_mg_cycle_type v
+  -fieldsplit_u_mg_levels_ksp_type gmres
+  -fieldsplit_u_mg_levels_pc_type jacobi
+  -fieldsplit_u_mg_levels_ksp_max_it 8
+  -fieldsplit_u_mg_levels_ksp_norm_type NONE
+    #---- Coarse Grid ----#
+    -fieldsplit_u_mg_coarse_pc_type lu #bjacobi
