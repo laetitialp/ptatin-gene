@@ -28,26 +28,26 @@
 -surf_constraint_model_layer2 -120.0e3
 ############ Phases Parameters #############
 # Viscosity
--surf_constraint_model_eta0_0 1.0e+22
+-surf_constraint_model_eta0_0 1.0e+23
 -surf_constraint_model_eta0_1 1.0e+23
--surf_constraint_model_eta0_2 1.0e+20
+-surf_constraint_model_eta0_2 1.0e+23
 # Density
 -surf_constraint_model_rho0_0 2700.0
 -surf_constraint_model_rho0_1 3300.0
 -surf_constraint_model_rho0_2 3300.0
 ################ SOLVERS ################
 ###### MG
--A11_operator_type 2,0 #,1
--dau_nlevels 2 #3
+-A11_operator_type 2,2,0
+-dau_nlevels 3
 -stk_velocity_dm_mat_type aij
 #-a11_op avx
 #---- 2 MG lvl ----#
 #| 8 x 8 x 8 |
 #| 4 x 4 x 4 |
 #------------------#
--stk_velocity_da_refine_hierarchy_x 2 
--stk_velocity_da_refine_hierarchy_y 2 
--stk_velocity_da_refine_hierarchy_z 2 
+-stk_velocity_da_refine_hierarchy_x 2,2 
+-stk_velocity_da_refine_hierarchy_y 2,2 
+-stk_velocity_da_refine_hierarchy_z 2,2 
 #---- SNES ----#
 -newton_its 0
 -snes_type ksponly
@@ -56,7 +56,7 @@
 #-snes_view
 #---- KSP ----#
 -ksp_max_it 200
--ksp_rtol 1.0e-6
+-ksp_rtol 1.0e-18
 -ksp_type fgmres
 -pc_type fieldsplit
 -pc_fieldsplit_schur_fact_type upper
@@ -72,11 +72,11 @@
   -fieldsplit_u_ksp_rtol 1.0e-2
   -fieldsplit_u_ksp_type fgmres
   -fieldsplit_u_pc_type mg
-  -fieldsplit_u_pc_mg_levels 2
+  -fieldsplit_u_pc_mg_levels 3
         -fieldsplit_u_pc_mg_cycle_type v
   -fieldsplit_u_mg_levels_ksp_type gmres
   -fieldsplit_u_mg_levels_pc_type jacobi
   -fieldsplit_u_mg_levels_ksp_max_it 8
   -fieldsplit_u_mg_levels_ksp_norm_type NONE
     #---- Coarse Grid ----#
-    -fieldsplit_u_mg_coarse_pc_type bjacobi
+    -fieldsplit_u_mg_coarse_pc_type lu #bjacobi

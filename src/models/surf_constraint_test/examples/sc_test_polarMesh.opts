@@ -38,17 +38,17 @@
 -surf_constraint_model_rho0_2 3300.0
 ################ SOLVERS ################
 ###### MG
--A11_operator_type 2,0 #,1
--dau_nlevels 2 #3
+-A11_operator_type 2,2,0 #,1
+-dau_nlevels 3
 -stk_velocity_dm_mat_type aij
 #-a11_op avx
 #---- 2 MG lvl ----#
 #| 8 x 8 x 8 |
 #| 4 x 4 x 4 |
 #------------------#
--stk_velocity_da_refine_hierarchy_x 2 
--stk_velocity_da_refine_hierarchy_y 2 
--stk_velocity_da_refine_hierarchy_z 2 
+-stk_velocity_da_refine_hierarchy_x 2,2
+-stk_velocity_da_refine_hierarchy_y 2,2
+-stk_velocity_da_refine_hierarchy_z 2,2
 #---- SNES ----#
 -newton_its 0
 -snes_type ksponly
@@ -57,7 +57,7 @@
 #-snes_view
 #---- KSP ----#
 -ksp_max_it 200
--ksp_rtol 1.0e-6
+-ksp_rtol 1.0e-18
 -ksp_type fgmres
 -pc_type fieldsplit
 -pc_fieldsplit_schur_fact_type upper
@@ -73,7 +73,7 @@
   -fieldsplit_u_ksp_rtol 1.0e-2
   -fieldsplit_u_ksp_type fgmres
   -fieldsplit_u_pc_type mg
-  -fieldsplit_u_pc_mg_levels 2
+  -fieldsplit_u_pc_mg_levels 3
   -fieldsplit_u_pc_mg_cycle_type v
   -fieldsplit_u_mg_levels_ksp_type gmres
   -fieldsplit_u_mg_levels_pc_type jacobi
