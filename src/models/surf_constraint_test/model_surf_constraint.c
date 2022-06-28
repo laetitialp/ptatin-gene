@@ -380,6 +380,15 @@ static PetscErrorCode const_udotn(Facet F,const PetscReal qp_coor[],PetscReal ud
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode const_ud(Facet F,const PetscReal qp_coor[],PetscReal uD[],void *data)
+{
+  PetscReal *input = (PetscReal*)data;
+  uD[0] = input[0]*F->centroid_normal[0];
+  uD[1] = input[1]*F->centroid_normal[1];
+  uD[2] = input[2]*F->centroid_normal[2];
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode angular_udotn(Facet F,const PetscReal qp_coor[],PetscReal udotn[],void *data)
 {
   PetscReal *input = (PetscReal*)data;
@@ -531,10 +540,52 @@ static PetscErrorCode ApplyNitsche_AngularVelocityNormal(SurfBCList surflist,Pet
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ApplyWeakDirichket(SurfBCList surflist,PetscBool insert_if_not_found,ModelSCTestCtx *data)
+{
+  SurfaceConstraint sc;
+  MeshEntity        facets;
+  PetscErrorCode    ierr;
+
+  PetscFunctionBegin;
+  ierr = SurfBCListGetConstraint(surflist,"NitscheDirichlet",&sc);CHKERRQ(ierr);
+  if (!sc) {
+    if (insert_if_not_found) {
+      ierr = SurfBCListAddConstraint(surflist,"NitscheDirichlet",&sc);CHKERRQ(ierr);
+      ierr = SurfaceConstraintSetType(sc,SC_NITSCHE_DIRICHLET);CHKERRQ(ierr);
+      ierr = SurfaceConstraintNitscheDirichlet_SetPenalty(sc,1.0e3);CHKERRQ(ierr);
+    } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint not found");
+  }
+  ierr = SurfaceConstraintGetFacets(sc,&facets);CHKERRQ(ierr);
+  {
+    PetscInt       nsides;
+    HexElementFace sides[] = { HEX_FACE_Pzeta, HEX_FACE_Nzeta };
+    nsides = sizeof(sides) / sizeof(HexElementFace);
+    ierr = MeshFacetMarkDomainFaces(facets,sc->fi,nsides,sides);CHKERRQ(ierr);
+  }
+  SURFC_CHKSETVALS(SC_NITSCHE_DIRICHLET,const_ud);
+  {
+    PetscReal uD_c[] = {0.0, 0.0, 1.0};
+    ierr = SurfaceConstraintSetValues(sc,(SurfCSetValuesGeneric)const_ud,(void*)uD_c);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode ApplyStrongDirichlet(DM dav, BCList bclist)
 {
   PetscErrorCode ierr;
-  PetscScalar zero = 0.0;
+  PetscScalar zero = 0.0, one=1.0, mone=-1.0;
+  
+  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  /*
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_constant,(void*)&mone);CHKERRQ(ierr);
+  
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_constant,(void*)&one);CHKERRQ(ierr);
+  */
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -552,6 +603,7 @@ static PetscErrorCode ModelApplyBoundaryCondition_SCTest(pTatinCtx user,void *ct
   //if (data->PolarMesh) {
     ierr = ApplyNitscheFreeslip(stokes->surf_bclist,PETSC_TRUE);CHKERRQ(ierr);
     ierr = ApplyNitsche_AngularVelocityNormal(stokes->surf_bclist,PETSC_TRUE,data);CHKERRQ(ierr);
+    //ierr = ApplyWeakDirichket(stokes->surf_bclist,PETSC_TRUE,data);CHKERRQ(ierr);
     ierr = ApplyStrongDirichlet(stokes->dav,stokes->u_bclist);CHKERRQ(ierr);
   //} else {
   //  ierr = BCTypeSlipNitscheFreeSurface(stokes->surf_bclist,PETSC_TRUE);CHKERRQ(ierr);
@@ -573,6 +625,7 @@ static PetscErrorCode ModelApplyBoundaryConditionMG(PetscInt nl,BCList bclist[],
     for (n=0; n<nl; n++) {
       ierr = ApplyNitscheFreeslip(surf_bclist[n],PETSC_FALSE);CHKERRQ(ierr);
       ierr = ApplyNitsche_AngularVelocityNormal(surf_bclist[n],PETSC_FALSE,data);CHKERRQ(ierr);
+      //ierr = ApplyWeakDirichket(surf_bclist[n],PETSC_FALSE,data);CHKERRQ(ierr);
     }
     for (n=0; n<nl; n++) {
       ierr = ApplyStrongDirichlet(dav[n],bclist[n]);CHKERRQ(ierr);
