@@ -39,6 +39,7 @@
 #include "MPntStd_def.h"
 #include "MPntPStokes_def.h"
 #include "MPntPStokesPl_def.h"
+#include "MPntPChrono_def.h"
 #include "material_point_std_utils.h"
 #include "ptatin_utils.h"
 #include "ptatin3d_stokes.h"
@@ -401,7 +402,7 @@ PetscErrorCode pTatin3dCreateMaterialPoints(pTatinCtx ctx,DM dav)
   DataEx         ex;
   PetscLogDouble t0,t1;
   PetscInt       lmx,lmy,lmz;
-  PetscBool      flg;
+  PetscBool      flg,store_ages=PETSC_FALSE;
   int            npoints;
   PetscErrorCode ierr;
 
@@ -414,6 +415,11 @@ PetscErrorCode pTatin3dCreateMaterialPoints(pTatinCtx ctx,DM dav)
   DataBucketFinalize(db);
     DataBucketRegisterField(db,MPntPStokesPl_classname,sizeof(MPntPStokesPl),NULL);
   DataBucketFinalize(db);
+  ierr = PetscOptionsGetBool(NULL,NULL,"-pTatinMP_store_ages",&store_ages,NULL);CHKERRQ(ierr);
+  if (store_ages) {
+    DataBucketRegisterField(db,MPntPChrono_classname,sizeof(MPntPChrono),NULL);
+    DataBucketFinalize(db);
+  }
 
   /* Choose type of projection (for eta and rho) */
   ctx->coefficient_projection_type = 1;
