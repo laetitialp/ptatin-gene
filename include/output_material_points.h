@@ -37,7 +37,11 @@ typedef enum {
   MPV_plastic_strain,
   MPV_yield_indicator,
   MPV_diffusivity,
-  MPV_heat_source
+  MPV_heat_source,
+  MPV_age120,
+  MPV_age350,
+  MPV_age800,
+  MPV_Tmax
 } MaterialPointVariable;
 
 extern const char *MaterialPointVariableName[];

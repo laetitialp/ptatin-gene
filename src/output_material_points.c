@@ -38,6 +38,7 @@
 #include "MPntPStokes_def.h"
 #include "MPntPStokesPl_def.h"
 #include "MPntPEnergy_def.h"
+#include "MPntPChrono_def.h"
 
 #include "ptatin_utils.h"
 #include "dmda_duplicate.h"
@@ -60,6 +61,10 @@ const char *MaterialPointVariableName[] =  {
   "yield_indicator",
   "diffusivity",
   "energy_source",
+  "age120",
+  "age350",
+  "age800",
+  "Tmax",
   0
 };
 
@@ -71,6 +76,10 @@ const char *MaterialPointVariableParaviewDataType[] =  {
   "Int16",
   "Float64",
   "Float64",
+  "Float32",
+  "Float32",
+  "Float32",
+  "Float32",
   0
 };
 
@@ -363,6 +372,18 @@ PetscErrorCode _compute_cell_value_double(DataBucket db,MaterialPointVariable va
       case MPV_yield_indicator:
         SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"MPV_yield_indicator is not of type \"double\"");
         break;
+      case MPV_age120:
+        SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"MPV_age120 is not of type \"double\"");
+        break;
+      case MPV_age350:
+        SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"MPV_age350 is not of type \"double\"");
+        break;
+      case MPV_age800:
+        SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"MPV_age800 is not of type \"double\"");
+        break;
+      case MPV_Tmax:
+        SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"MPV_Tmax is not of type \"double\"");
+        break;
 
       default:
                 SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Unknown material point variable type (MPV_type)");
@@ -433,6 +454,18 @@ PetscErrorCode _compute_cell_value_float(DataBucket db,MaterialPointVariable var
     switch (variable) {
       case MPV_plastic_strain:
         ierr = MaterialPointGet_plastic_strain(X,p,&var);CHKERRQ(ierr);
+        break;
+      case MPV_age120:
+        ierr = MaterialPointGet_age120(X,p,&var);CHKERRQ(ierr);
+        break;
+      case MPV_age350:
+        ierr = MaterialPointGet_age350(X,p,&var);CHKERRQ(ierr);
+        break;
+      case MPV_age800:
+        ierr = MaterialPointGet_age800(X,p,&var);CHKERRQ(ierr);
+        break;
+      case MPV_Tmax:
+        ierr = MaterialPointGet_Tmax(X,p,&var);CHKERRQ(ierr);
         break;
 
       case MPV_viscosity:
@@ -1143,6 +1176,46 @@ PetscErrorCode pTatinOutputParaViewMarkerFields_VTS(DM dau,DataBucket material_p
           ierr = PetscFree(d_LA_cell);CHKERRQ(ierr);
           break;
 
+        case MPV_age120:
+          ierr = PetscMalloc(sizeof(float)*2*mx*2*my*2*mz,&f_LA_cell);CHKERRQ(ierr);
+          ierr = PetscMemzero(f_LA_cell,sizeof(float)*2*mx*2*my*2*mz);CHKERRQ(ierr);
+
+          ierr = _compute_cell_value_float(material_points,MPV_age120,2*mx,2*my,2*mz,f_LA_cell);CHKERRQ(ierr);
+          ierr = _write_float(vtk_fp,2*mx,2*my,2*mz,f_LA_cell);CHKERRQ(ierr);
+
+          ierr = PetscFree(f_LA_cell);CHKERRQ(ierr);
+          break;
+
+        case MPV_age350:
+          ierr = PetscMalloc(sizeof(float)*2*mx*2*my*2*mz,&f_LA_cell);CHKERRQ(ierr);
+          ierr = PetscMemzero(f_LA_cell,sizeof(float)*2*mx*2*my*2*mz);CHKERRQ(ierr);
+
+          ierr = _compute_cell_value_float(material_points,MPV_age350,2*mx,2*my,2*mz,f_LA_cell);CHKERRQ(ierr);
+          ierr = _write_float(vtk_fp,2*mx,2*my,2*mz,f_LA_cell);CHKERRQ(ierr);
+
+          ierr = PetscFree(f_LA_cell);CHKERRQ(ierr);
+          break;
+
+        case MPV_age800:
+          ierr = PetscMalloc(sizeof(float)*2*mx*2*my*2*mz,&f_LA_cell);CHKERRQ(ierr);
+          ierr = PetscMemzero(f_LA_cell,sizeof(float)*2*mx*2*my*2*mz);CHKERRQ(ierr);
+
+          ierr = _compute_cell_value_float(material_points,MPV_age800,2*mx,2*my,2*mz,f_LA_cell);CHKERRQ(ierr);
+          ierr = _write_float(vtk_fp,2*mx,2*my,2*mz,f_LA_cell);CHKERRQ(ierr);
+
+          ierr = PetscFree(f_LA_cell);CHKERRQ(ierr);
+          break;
+
+        case MPV_Tmax:
+          ierr = PetscMalloc(sizeof(float)*2*mx*2*my*2*mz,&f_LA_cell);CHKERRQ(ierr);
+          ierr = PetscMemzero(f_LA_cell,sizeof(float)*2*mx*2*my*2*mz);CHKERRQ(ierr);
+
+          ierr = _compute_cell_value_float(material_points,MPV_Tmax,2*mx,2*my,2*mz,f_LA_cell);CHKERRQ(ierr);
+          ierr = _write_float(vtk_fp,2*mx,2*my,2*mz,f_LA_cell);CHKERRQ(ierr);
+
+          ierr = PetscFree(f_LA_cell);CHKERRQ(ierr);
+          break;
+
                 default:
                     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Unknown material point variable type (MPV_type)");
                     break;
@@ -1233,6 +1306,46 @@ PetscErrorCode pTatinOutputParaViewMarkerFields_VTS(DM dau,DataBucket material_p
           ierr = _write_double(vtk_fp,2*mx,2*my,2*mz,d_LA_cell);CHKERRQ(ierr);
 
           ierr = PetscFree(d_LA_cell);CHKERRQ(ierr);
+          break;
+
+        case MPV_age120:
+          ierr = PetscMalloc(sizeof(float)*2*mx*2*my*2*mz,&f_LA_cell);CHKERRQ(ierr);
+          ierr = PetscMemzero(f_LA_cell,sizeof(float)*2*mx*2*my*2*mz);CHKERRQ(ierr);
+
+          ierr = _compute_cell_value_float(material_points,MPV_age120,2*mx,2*my,2*mz,f_LA_cell);CHKERRQ(ierr);
+          ierr = _write_float(vtk_fp,2*mx,2*my,2*mz,f_LA_cell);CHKERRQ(ierr);
+
+          ierr = PetscFree(f_LA_cell);CHKERRQ(ierr);
+          break;
+
+        case MPV_age350:
+          ierr = PetscMalloc(sizeof(float)*2*mx*2*my*2*mz,&f_LA_cell);CHKERRQ(ierr);
+          ierr = PetscMemzero(f_LA_cell,sizeof(float)*2*mx*2*my*2*mz);CHKERRQ(ierr);
+
+          ierr = _compute_cell_value_float(material_points,MPV_age350,2*mx,2*my,2*mz,f_LA_cell);CHKERRQ(ierr);
+          ierr = _write_float(vtk_fp,2*mx,2*my,2*mz,f_LA_cell);CHKERRQ(ierr);
+
+          ierr = PetscFree(f_LA_cell);CHKERRQ(ierr);
+          break;
+
+        case MPV_age800:
+          ierr = PetscMalloc(sizeof(float)*2*mx*2*my*2*mz,&f_LA_cell);CHKERRQ(ierr);
+          ierr = PetscMemzero(f_LA_cell,sizeof(float)*2*mx*2*my*2*mz);CHKERRQ(ierr);
+
+          ierr = _compute_cell_value_float(material_points,MPV_age800,2*mx,2*my,2*mz,f_LA_cell);CHKERRQ(ierr);
+          ierr = _write_float(vtk_fp,2*mx,2*my,2*mz,f_LA_cell);CHKERRQ(ierr);
+
+          ierr = PetscFree(f_LA_cell);CHKERRQ(ierr);
+          break;
+
+        case MPV_Tmax:
+          ierr = PetscMalloc(sizeof(float)*2*mx*2*my*2*mz,&f_LA_cell);CHKERRQ(ierr);
+          ierr = PetscMemzero(f_LA_cell,sizeof(float)*2*mx*2*my*2*mz);CHKERRQ(ierr);
+
+          ierr = _compute_cell_value_float(material_points,MPV_Tmax,2*mx,2*my,2*mz,f_LA_cell);CHKERRQ(ierr);
+          ierr = _write_float(vtk_fp,2*mx,2*my,2*mz,f_LA_cell);CHKERRQ(ierr);
+
+          ierr = PetscFree(f_LA_cell);CHKERRQ(ierr);
           break;
 
                 default:

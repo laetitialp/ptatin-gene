@@ -38,6 +38,7 @@
 #include "MPntPStokes_def.h"
 #include "MPntPStokesPl_def.h"
 #include "MPntPEnergy_def.h"
+#include "MPntPChrono_def.h"
 
 #include "ptatin_utils.h"
 #include "dmdae.h"
@@ -177,6 +178,38 @@ PetscErrorCode MarkerCellFieldsP0_ProjectScalarField(DataBucket db,MaterialPoint
       case MPV_plastic_strain: {
         float _var;
         ierr = MaterialPointGet_plastic_strain(X,p,&_var);CHKERRQ(ierr);
+        var = (PetscScalar)_var;
+      }
+        break;
+
+      case MPV_age120: 
+      {
+        float _var;
+        ierr = MaterialPointGet_age120(X,p,&_var);CHKERRQ(ierr);
+        var = (PetscScalar)_var;
+      }
+        break;
+
+      case MPV_age350: 
+      {
+        float _var;
+        ierr = MaterialPointGet_age350(X,p,&_var);CHKERRQ(ierr);
+        var = (PetscScalar)_var;
+      }
+        break;
+
+      case MPV_age800: 
+      {
+        float _var;
+        ierr = MaterialPointGet_age800(X,p,&_var);CHKERRQ(ierr);
+        var = (PetscScalar)_var;
+      }
+        break;
+
+      case MPV_Tmax: 
+      {
+        float _var;
+        ierr = MaterialPointGet_Tmax(X,p,&_var);CHKERRQ(ierr);
         var = (PetscScalar)_var;
       }
         break;
@@ -348,6 +381,26 @@ PetscErrorCode MarkerCellFieldsP0Write_ParaViewVTS(DM dmscalar,DM dmp0,Vec scala
         break;
 
       case MPV_heat_source:
+        if (!low_precision) offset += sizeof(int) + sizeof(double)*1*(mx)*(my)*(mz);
+        else                offset += sizeof(int) + sizeof(float)*1*(mx)*(my)*(mz);
+        break;
+
+      case MPV_age120:
+        if (!low_precision) offset += sizeof(int) + sizeof(double)*1*(mx)*(my)*(mz);
+        else                offset += sizeof(int) + sizeof(float)*1*(mx)*(my)*(mz);
+        break;
+
+      case MPV_age350:
+        if (!low_precision) offset += sizeof(int) + sizeof(double)*1*(mx)*(my)*(mz);
+        else                offset += sizeof(int) + sizeof(float)*1*(mx)*(my)*(mz);
+        break;
+
+      case MPV_age800:
+        if (!low_precision) offset += sizeof(int) + sizeof(double)*1*(mx)*(my)*(mz);
+        else                offset += sizeof(int) + sizeof(float)*1*(mx)*(my)*(mz);
+        break;
+
+      case MPV_Tmax:
         if (!low_precision) offset += sizeof(int) + sizeof(double)*1*(mx)*(my)*(mz);
         else                offset += sizeof(int) + sizeof(float)*1*(mx)*(my)*(mz);
         break;
