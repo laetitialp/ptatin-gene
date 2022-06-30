@@ -24,6 +24,7 @@ libptatin3d-y.c += $(call thisdir, \
   MPntStd_def.c \
   MPntPStokes_def.c \
   MPntPStokesPl_def.c \
+  MPntPChrono_def.c \
   QPntVolCoefStokes_def.c \
   QPntSurfCoefStokes_def.c \
   MPntPEnergy_def.c \
