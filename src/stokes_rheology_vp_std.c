@@ -1468,30 +1468,36 @@ PetscErrorCode ApplyViscosityCutOffMarkers_VPSTD(pTatinCtx user)
   PetscFunctionReturn(0);
 }
 
-
 PetscErrorCode StokesCoefficient_UpdateTimeDependentQuantities_VPSTD(pTatinCtx user,DM dau,PetscScalar ufield[],DM dap,PetscScalar pfield[])
 {
-  PetscErrorCode ierr;
-  DM             cda;
-  Vec            gcoords;
-  PetscScalar    *LA_gcoords;
-  int            pidx,n_mp_points;
-  DataBucket     db;
-  DataField      PField_std,PField;
-  float          strain_mp;
-  PetscInt       nel,nen_u,k;
-  const PetscInt *elnidx_u;
-  PetscReal      elcoords[3*Q2_NODES_PER_EL_3D];
-  PetscReal      elu[3*Q2_NODES_PER_EL_3D];
-  PetscReal      ux[Q2_NODES_PER_EL_3D],uy[Q2_NODES_PER_EL_3D],uz[Q2_NODES_PER_EL_3D];
-  PetscReal      GNI[3][Q2_NODES_PER_EL_3D];
-  PetscReal      dNudx[Q2_NODES_PER_EL_3D],dNudy[Q2_NODES_PER_EL_3D],dNudz[Q2_NODES_PER_EL_3D];
-  int            eidx_mp;
-  double         *xi_mp;
-  double         D_mp[NSD][NSD];
-  double         inv2_D_mp;
-  short          yield_type;
-  PetscReal      dt;
+  PetscErrorCode    ierr;
+  PhysCompEnergyFV  energy;
+  DM                cda,daT;
+  Vec               gcoords,fv_coor_local,temperature,temperature_l;
+  PetscScalar       *LA_gcoords;
+  const PetscScalar *LA_temperature_l;
+  const PetscReal      *_fv_coor;
+  int               pidx,n_mp_points;
+  DataBucket        db;
+  DataField         PField_std,PField,PField_chrono;
+  float             strain_mp;
+  PetscInt          nel,nen_u,k;
+  PetscInt          fv_start[3],fv_start_local[3],fv_ghost_offset[3],fv_ghost_range[3];
+  const PetscInt    *elnidx_u;
+  PetscReal         elcoords[3*Q2_NODES_PER_EL_3D];
+  PetscReal         elu[3*Q2_NODES_PER_EL_3D];
+  PetscReal         ux[Q2_NODES_PER_EL_3D],uy[Q2_NODES_PER_EL_3D],uz[Q2_NODES_PER_EL_3D];
+  PetscReal         GNI[3][Q2_NODES_PER_EL_3D];
+  PetscReal         dNudx[Q2_NODES_PER_EL_3D],dNudy[Q2_NODES_PER_EL_3D],dNudz[Q2_NODES_PER_EL_3D];
+  int               eidx_mp;
+  double            *xi_mp;
+  double            D_mp[NSD][NSD];
+  double            inv2_D_mp;
+  short             yield_type;
+  PetscReal         dt;
+  PetscBool         found_fv;
+  static BTruth     chrono_active;
+  FVReconstructionCell rcell;
   PetscFunctionBegin;
 
   /* access current time step */
@@ -1504,6 +1510,33 @@ PetscErrorCode StokesCoefficient_UpdateTimeDependentQuantities_VPSTD(pTatinCtx u
   DataFieldGetAccess(PField_std);
   DataBucketGetDataFieldByName(db,MPntPStokesPl_classname,&PField);
   DataFieldGetAccess(PField);
+
+  ierr = pTatinContextValid_EnergyFV(user,&found_fv);CHKERRQ(ierr);
+  if (found_fv) {
+    DataBucketQueryDataFieldByName(db,MPntPChrono_classname,&chrono_active);
+    if (chrono_active == BTRUE) {
+      DataBucketGetDataFieldByName(db,MPntPChrono_classname,&PField_chrono);
+      DataFieldGetAccess(PField_chrono);
+    }
+
+    /* Access temperature vector */
+    ierr = pTatinGetContext_EnergyFV(user,&energy);CHKERRQ(ierr);
+    daT  = energy->fv->dm_fv;
+    temperature = energy->T;
+    ierr = DMGetLocalVector(daT,&temperature_l);CHKERRQ(ierr);
+    ierr = DMGlobalToLocalBegin(daT,temperature,INSERT_VALUES,temperature_l);CHKERRQ(ierr);
+    ierr = DMGlobalToLocalEnd  (daT,temperature,INSERT_VALUES,temperature_l);CHKERRQ(ierr);
+    ierr = VecGetArrayRead(temperature_l,&LA_temperature_l);CHKERRQ(ierr);
+
+    ierr = DMDAGetCorners(energy->fv->dm_fv,&fv_start[0],&fv_start[1],&fv_start[2],NULL,NULL,NULL);CHKERRQ(ierr);
+    ierr = DMDAGetGhostCorners(energy->fv->dm_fv,&fv_start_local[0],&fv_start_local[1],&fv_start_local[2],&fv_ghost_range[0],&fv_ghost_range[1],&fv_ghost_range[2]);CHKERRQ(ierr);
+    fv_ghost_offset[0] = fv_start[0] - fv_start_local[0];
+    fv_ghost_offset[1] = fv_start[1] - fv_start_local[1];
+    fv_ghost_offset[2] = fv_start[2] - fv_start_local[2];
+    
+    ierr = DMGetCoordinatesLocal(energy->fv->dm_fv,&fv_coor_local);CHKERRQ(ierr);
+    ierr = VecGetArrayRead(fv_coor_local,&_fv_coor);CHKERRQ(ierr);
+  }
 
   DataBucketGetSizes(db,&n_mp_points,0,0);
 
@@ -1519,14 +1552,21 @@ PetscErrorCode StokesCoefficient_UpdateTimeDependentQuantities_VPSTD(pTatinCtx u
   for (pidx=0; pidx<n_mp_points; pidx++) {
     MPntStd       *mpprop_std;
     MPntPStokesPl *mpprop;
+    MPntPChrono   *mpchrono;
 
-    DataFieldAccessPoint(PField_std, pidx,(void**)&mpprop_std);
-    DataFieldAccessPoint(PField,     pidx,(void**)&mpprop);
+    DataFieldAccessPoint(PField_std,    pidx,(void**)&mpprop_std);
+    DataFieldAccessPoint(PField,        pidx,(void**)&mpprop);
+    if (chrono_active == BTRUE) {
+      DataFieldAccessPoint(PField_chrono, pidx,(void**)&mpchrono);
+    }
 
+    /* Get element index of current marker */
+    eidx_mp = mpprop_std->wil;
+    /* Get local coordinate of marker */
+    xi_mp = mpprop_std->xi;
 
     MPntPStokesPlGetField_yield_indicator(mpprop,&yield_type);
     if (yield_type > 0) {
-      eidx_mp = mpprop_std->wil;
 
       /* Get element coordinates */
       ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx_u[nen_u*eidx_mp],LA_gcoords);CHKERRQ(ierr);
@@ -1538,9 +1578,6 @@ PetscErrorCode StokesCoefficient_UpdateTimeDependentQuantities_VPSTD(pTatinCtx u
         uy[k] = elu[3*k+1];
         uz[k] = elu[3*k+2];
       }
-
-      /* Get local coordinate of marker */
-      xi_mp = mpprop_std->xi;
 
       /* Prepare basis functions */
       /* grad.Ni */
@@ -1557,11 +1594,63 @@ PetscErrorCode StokesCoefficient_UpdateTimeDependentQuantities_VPSTD(pTatinCtx u
       strain_mp = strain_mp + dt * inv2_D_mp;
       MPntPStokesPlSetField_plastic_strain(mpprop,strain_mp);
     }
+
+    if (found_fv) {
+      PetscScalar T_mp;
+      PetscInt  sub_fv_cell,macro_ijk[3],macro_fv_ijk[3],ijk[3];
+      
+      /* Interpolate the temperature */
+      T_mp = 0.0;
+      /* P0 */
+      ptatin_macro_point_location_sub(eidx_mp,energy->mi_parent,energy->nsubdivision,xi_mp,&sub_fv_cell);
+
+      ierr = _cart_convert_index_to_ijk(eidx_mp,energy->mi_parent,macro_ijk);CHKERRQ(ierr);
+      ierr = _cart_convert_index_to_ijk(sub_fv_cell,energy->nsubdivision,macro_fv_ijk);CHKERRQ(ierr);
+      
+      ijk[0] = fv_ghost_offset[0] + macro_ijk[0] * energy->nsubdivision[0] + macro_fv_ijk[0];
+      ijk[1] = fv_ghost_offset[1] + macro_ijk[1] * energy->nsubdivision[1] + macro_fv_ijk[1];
+      ijk[2] = fv_ghost_offset[2] + macro_ijk[2] * energy->nsubdivision[2] + macro_fv_ijk[2];
+      
+      ierr = _cart_convert_ijk_to_index(ijk,fv_ghost_range,&sub_fv_cell);CHKERRQ(ierr);
+
+      T_mp = LA_temperature_l[sub_fv_cell];
+      
+      ierr = FVReconstructionP1Create(&rcell,energy->fv,sub_fv_cell,_fv_coor,LA_temperature_l);CHKERRQ(ierr);
+      ierr = FVReconstructionP1Interpolate(&rcell,mpprop_std->coor,&T_mp);CHKERRQ(ierr);
+
+      /* Update MPntPChrono */
+      if (chrono_active == BTRUE) {
+        float  Tmax_old;
+
+        /* Update ages */
+        if (T_mp >= 120.0) {
+          MPntPChronoSetField_age120(mpchrono,user->time);
+        }
+        if (T_mp >= 350.0) {
+          MPntPChronoSetField_age350(mpchrono,user->time);
+        }
+        if (T_mp >= 800.0) {
+          MPntPChronoSetField_age800(mpchrono,user->time);
+        }
+        /* Get the old Tmax of the point and update it if T_mp > Tmax_old */
+        MPntPChronoGetField_Tmax(mpchrono,&Tmax_old);
+        if (T_mp > Tmax_old) {
+          MPntPChronoSetField_Tmax(mpchrono,T_mp);
+        }
+      }
+    }
   }
 
   DataFieldRestoreAccess(PField_std);
   DataFieldRestoreAccess(PField);
   ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
+  if (found_fv) {
+    if (chrono_active == BTRUE) {
+      DataFieldRestoreAccess(PField_chrono);
+    }
+    ierr = VecRestoreArrayRead(temperature_l,&LA_temperature_l);CHKERRQ(ierr);
+    ierr = DMRestoreLocalVector(daT,&temperature_l);CHKERRQ(ierr);
+  }
 
   PetscFunctionReturn(0);
 }
