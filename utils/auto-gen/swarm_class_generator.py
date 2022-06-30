@@ -827,6 +827,16 @@ def Generate_pTatin_MaterialPointViscoElasticity():
 
 	PARTICLE_CLASS_GENERATOR( ParticleClass, ParticleClassShort, variable_name_list, variable_type_list, variable_extend_list, variable_textural_name_list )
 
+def Generate_pTatin_MaterialPointChrono():
+	ParticleClass      = 'MPntPChrono'
+	ParticleClassShort = 'MPPChrono'
+	variable_name_list = [ 'age120', 'age350' , 'age800', 'Tmax' ]
+	variable_type_list = [ 'float' , 'float'  , 'float' , 'float']
+	variable_extend_list        = [   1,         1,         1,       1   ]
+	variable_textural_name_list = [ 'age120', 'age350' , 'age800', 'Tmax']
+
+	PARTICLE_CLASS_GENERATOR( ParticleClass, ParticleClassShort, variable_name_list, variable_type_list, variable_extend_list, variable_textural_name_list )
+
 
 # ==================================================================================
 # Material constants
@@ -954,6 +964,7 @@ Generate_pTatin_MaterialPointStokesData()
 Generate_pTatin_MaterialPointStokesPlastic()
 Generate_pTatin_MaterialPointEnergy()
 Generate_pTatin_MaterialPointViscoElasticity()
+Generate_pTatin_MaterialPointChrono()
 
 ## material constants ##
 Generate_pTatin_MaterialConst_ViscosityConst()
