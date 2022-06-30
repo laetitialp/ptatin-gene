@@ -1605,10 +1605,10 @@ PetscErrorCode SubductionOblique_VelocityBC_Orthogonal(BCList bclist,DM dav,pTat
   bcdata->v = vxr;
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
   
-  bcdata->y_lab = data->y_continent[2];
-  bcdata->v = 0.0;
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
+  //bcdata->y_lab = data->y_continent[2];
+  //bcdata->v = 0.0;
+  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_Lithosphere,(void*)bcdata);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
 
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&data->vy);CHKERRQ(ierr);
 
