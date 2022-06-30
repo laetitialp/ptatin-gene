@@ -54,6 +54,7 @@
 #include "MPntPStokes_def.h"
 #include "MPntPStokesPl_def.h"
 #include "MPntPEnergy_def.h"
+#include "MPntPChrono_def.h"
 #include "ptatin_std_dirichlet_boundary_conditions.h"
 
 #include "model_utils.h"

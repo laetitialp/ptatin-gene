@@ -804,8 +804,8 @@ static PetscErrorCode ModelOutput_Rift3D_T(pTatinCtx c,Vec X,const char prefix[]
     //  const MaterialPointField mp_prop_list[] = { MPField_Stokes };
     //
     //  Write out just std, stokes and plastic variables
-    const int nf = 4;
-    const MaterialPointField mp_prop_list[] = { MPField_Std, MPField_Stokes, MPField_StokesPl, MPField_Energy };
+    const int nf = 5;
+    const MaterialPointField mp_prop_list[] = { MPField_Std, MPField_Stokes, MPField_StokesPl, MPField_Energy, MPField_Chrono };
     char mp_file_prefix[256];
 
     sprintf(mp_file_prefix,"%s_mpoints",prefix);
@@ -813,8 +813,8 @@ static PetscErrorCode ModelOutput_Rift3D_T(pTatinCtx c,Vec X,const char prefix[]
   }
 
   {
-    const int                   nf = 4;
-    const MaterialPointVariable mp_prop_list[] = { MPV_region, MPV_viscosity, MPV_density, MPV_plastic_strain };
+    const int                   nf = 8;
+    const MaterialPointVariable mp_prop_list[] = { MPV_region, MPV_viscosity, MPV_density, MPV_plastic_strain, MPV_age120, MPV_age350, MPV_age800, MPV_Tmax };
 
     ierr = pTatin3d_ModelOutput_MarkerCellFields(c,nf,mp_prop_list,prefix);CHKERRQ(ierr);
   }
@@ -1193,9 +1193,10 @@ static PetscErrorCode ModelApplyInitialMaterialGeometry_Notchtest(pTatinCtx c,vo
   int              p,n_mp_points;
   PetscScalar      y_lab,y_moho,y_midcrust,notch_l,notch_w2,xc,notchspace;
   DataBucket       db;
-  DataField        PField_std,PField_pls;
+  DataField        PField_std,PField_pls,PField_chrono;
   int              phase;
   PetscBool        norandomiseplastic,double_notch;
+  static BTruth    chrono_active;
   PetscErrorCode   ierr;
 
   PetscFunctionBegin;
@@ -1210,6 +1211,13 @@ static PetscErrorCode ModelApplyInitialMaterialGeometry_Notchtest(pTatinCtx c,vo
   DataBucketGetDataFieldByName(db,MPntPStokesPl_classname,&PField_pls);
   DataFieldGetAccess(PField_pls);
   DataFieldVerifyAccess(PField_pls,sizeof(MPntPStokesPl));
+
+  DataBucketQueryDataFieldByName(db,MPntPChrono_classname,&chrono_active);
+  if (chrono_active) {
+    DataBucketGetDataFieldByName(db,MPntPChrono_classname,&PField_chrono);
+    DataFieldGetAccess(PField_chrono);
+    DataFieldVerifyAccess(PField_chrono,sizeof(MPntPChrono));
+  }
 
   /* m */
   y_lab      = -120.0e3;
@@ -1233,13 +1241,20 @@ static PetscErrorCode ModelApplyInitialMaterialGeometry_Notchtest(pTatinCtx c,vo
   for (p=0; p<n_mp_points; p++) {
     MPntStd       *material_point;
     MPntPStokesPl *mpprop_pls;
+    MPntPChrono   *mp_chrono;
     double        *position,ycoord,xcoord,zcoord;
     float         pls;
     char          yield;
 
-    DataFieldAccessPoint(PField_std,p,(void**)&material_point);
-    DataFieldAccessPoint(PField_pls,p,(void**)&mpprop_pls);
-
+    DataFieldAccessPoint(PField_std,   p,(void**)&material_point);
+    DataFieldAccessPoint(PField_pls,   p,(void**)&mpprop_pls);
+    if (chrono_active) {
+      DataFieldAccessPoint(PField_chrono,p,(void**)&mp_chrono);
+      MPntPChronoSetField_age120(mp_chrono,0.0);
+      MPntPChronoSetField_age350(mp_chrono,0.0);
+      MPntPChronoSetField_age800(mp_chrono,0.0);
+      MPntPChronoSetField_Tmax(mp_chrono,0.0);
+    }
     /* Access using the getter function provided for you (recommeneded for beginner user) */
     MPntStdGetField_global_coord(material_point,&position);
 
@@ -1306,6 +1321,9 @@ static PetscErrorCode ModelApplyInitialMaterialGeometry_Notchtest(pTatinCtx c,vo
 
   DataFieldRestoreAccess(PField_std);
   DataFieldRestoreAccess(PField_pls);
+  if (chrono_active) {
+    DataFieldRestoreAccess(PField_chrono);
+  }
 
   PetscFunctionReturn(0);
 }
