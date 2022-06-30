@@ -46,11 +46,13 @@ PetscErrorCode SwarmDataWriteToPetscVec_MPntStd(DataBucket db,const char suffix[
 PetscErrorCode SwarmDataWriteToPetscVec_MPntPStokes(DataBucket db,const char suffix[],Vec point_field_data,PetscBool write_to_tgz);
 PetscErrorCode SwarmDataWriteToPetscVec_MPntPStokesPl(DataBucket db,const char suffix[],Vec point_field_data,PetscBool write_to_tgz);
 PetscErrorCode SwarmDataWriteToPetscVec_MPntPEnergy(DataBucket db,const char suffix[],Vec point_field_data,PetscBool write_to_tgz);
+PetscErrorCode SwarmDataWriteToPetscVec_MPntPChrono(DataBucket db,const char suffix[],Vec point_field_data,PetscBool write_to_tgz);
 
 PetscErrorCode SwarmDataLoadFromPetscVec_MPntStd(DataBucket db,const char suffix[],Vec point_field_data,PetscBool write_to_tgz);
 PetscErrorCode SwarmDataLoadFromPetscVec_MPntPStokes(DataBucket db,const char suffix[],Vec point_field_data,PetscBool write_to_tgz);
 PetscErrorCode SwarmDataLoadFromPetscVec_MPntPStokesPl(DataBucket db,const char suffix[],Vec point_field_data,PetscBool write_to_tgz);
 PetscErrorCode SwarmDataLoadFromPetscVec_MPntPEnergy(DataBucket db,const char suffix[],Vec point_field_data,PetscBool write_to_tgz);
+PetscErrorCode SwarmDataLoadFromPetscVec_MPntPChrono(DataBucket db,const char suffix[],Vec point_field_data,PetscBool write_to_tgz);
 
 #endif
 

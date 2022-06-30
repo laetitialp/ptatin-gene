@@ -37,6 +37,7 @@
 #include "MPntPStokes_def.h"
 #include "MPntPEnergy_def.h"
 #include "MPntPStokesPl_def.h"
+#include "MPntPChrono_def.h"
 
 #include "QPntVolCoefStokes_def.h"
 #include "QPntVolCoefEnergy_def.h"
@@ -119,6 +120,20 @@ PetscErrorCode MaterialPointGeneric_VTKWriteBinaryAppendedHeaderAllFields(FILE *
       }
         break;
 
+      case MPField_Chrono:
+      {
+        DataField   PField_chrono;
+        MPntPChrono *marker_chrono;
+
+        DataBucketGetDataFieldByName(db, MPntPChrono_classname ,&PField_chrono);
+        DataFieldGetAccess(PField_chrono);
+        marker_chrono = PField_chrono->data;
+
+        MPntPChronoVTKWriteBinaryAppendedHeaderAllFields(vtk_fp,byte_offset,(const int)npoints,(const MPntPChrono*)marker_chrono);
+        DataFieldRestoreAccess(PField_chrono);
+      }
+        break;
+
       default:
         SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Unknown material point field");
         break;
@@ -195,6 +210,20 @@ PetscErrorCode MaterialPointGeneric_VTKWriteBinaryAppendedDataAllFields(FILE *vt
       }
         break;
 
+      case MPField_Chrono:
+      {
+        DataField   PField_chrono;
+        MPntPChrono *marker_chrono;
+
+        DataBucketGetDataFieldByName(db, MPntPChrono_classname ,&PField_chrono);
+        DataFieldGetAccess(PField_chrono);
+        marker_chrono = PField_chrono->data;
+
+        MPntPChronoVTKWriteBinaryAppendedDataAllFields(vtk_fp,(const int)npoints,(const MPntPChrono*)marker_chrono);
+        DataFieldRestoreAccess(PField_chrono);
+      }
+        break;
+
       default:
         SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Unknown material point field");
         break;
@@ -228,6 +257,10 @@ PetscErrorCode MaterialPointGeneric_PVTUWriteAllPPointDataFields(FILE *vtk_fp,co
 
       case MPField_StokesPl:
         MPntPStokesPlPVTUWriteAllPPointDataFields(vtk_fp);
+        break;
+
+      case MPField_Chrono:
+        MPntPChronoPVTUWriteAllPPointDataFields(vtk_fp);
         break;
 
       default:
@@ -1555,6 +1588,38 @@ PetscErrorCode MPntPEnergyComputeMemberOffsets(size_t property_offsets[])
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode MPntPChronoComputeMemberOffsets(size_t property_offsets[])
+{
+  MPntPChrono    mppchrono;
+  size_t         s;
+  int            i,N;
+  static int     been_here = 0;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  N = MPntPChrono_nmembers;
+  PetscMemzero(property_offsets,sizeof(size_t)*N);
+
+  ierr = _compute_memory_offsets(&mppchrono,&mppchrono.age120,&s); CHKERRQ(ierr);
+  property_offsets[0] = s;
+  ierr = _compute_memory_offsets(&mppchrono,&mppchrono.age350,&s); CHKERRQ(ierr);
+  property_offsets[1] = s;
+  ierr = _compute_memory_offsets(&mppchrono,&mppchrono.age800,&s); CHKERRQ(ierr);
+  property_offsets[2] = s;
+  ierr = _compute_memory_offsets(&mppchrono,&mppchrono.Tmax,&s); CHKERRQ(ierr);
+  property_offsets[3] = s;
+
+  if (!been_here) {
+    for (i=0; i<N; i++) {
+      PetscPrintf(PETSC_COMM_WORLD,"MPntPChrono field offset[%d] %zu \n", i,property_offsets[i]);
+    }
+    been_here++;
+  }
+
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode QPntVolCoefStokesComputeMemberOffsets(size_t property_offsets[])
 {
   QPntVolCoefStokes stokes;
@@ -2835,6 +2900,7 @@ PetscErrorCode MaterialPointGetAccess(DataBucket materialpoint_db,MPAccess *help
   X->mp_stokes_field_idx   = -1;
   X->mp_stokespl_field_idx = -1;
   X->mp_energy_field_idx   = -1;
+  X->mp_chrono_field_idx   = -1;
 
   /* MPntStd */
   DataBucketQueryDataFieldByName(materialpoint_db,MPntStd_classname,&found);
@@ -2884,6 +2950,19 @@ PetscErrorCode MaterialPointGetAccess(DataBucket materialpoint_db,MPAccess *help
 
     X->PField[cnt] = PField;
     X->mp_energy_field_idx = cnt;
+
+    cnt++;
+  }
+
+  /* MPntPStokesPl */
+  DataBucketQueryDataFieldByName(materialpoint_db,MPntPChrono_classname,&found);
+  if (found) {
+    DataBucketGetDataFieldByName(materialpoint_db,MPntPChrono_classname,&PField);
+    DataFieldGetAccess(PField);
+    DataFieldVerifyAccess(PField,sizeof(MPntPChrono));
+
+    X->PField[cnt] = PField;
+    X->mp_chrono_field_idx = cnt;
 
     cnt++;
   }
@@ -2967,6 +3046,20 @@ PetscErrorCode _get_field_MPntPEnergy(MPAccess X,const int p,MPntPEnergy **point
   if (X == NULL) { SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Must call MaterialPointGetAccess() first"); }
   if (p < 0 || p >= X->db->L) SETERRQ2(PETSC_COMM_WORLD,PETSC_ERR_USER,"MPntPEnergy.AccessPoint() index %d is invalid. Must be in range [0,%d)",p,X->db->L);
   PField = X->PField[ X->mp_energy_field_idx ];
+  DataFieldAccessPoint(PField,p,(void**)point);
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode _get_field_MPntPChrono(MPAccess X,const int p,MPntPChrono **point)
+{
+  DataField  PField;
+  if (X->mp_chrono_field_idx == -1) {
+    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Material point field MPntPChrono must be registered");
+  }
+  if (X == NULL) { SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Must call MaterialPointGetAccess() first"); }
+  if (p < 0 || p >= X->db->L) SETERRQ2(PETSC_COMM_WORLD,PETSC_ERR_USER,"MPntPChrono.AccessPoint() index %d is invalid. Must be in range [0,%d)",p,X->db->L);
+  PField = X->PField[ X->mp_chrono_field_idx ];
   DataFieldAccessPoint(PField,p,(void**)point);
 
   PetscFunctionReturn(0);
@@ -3192,6 +3285,103 @@ PetscErrorCode MaterialPointSet_heat_source(MPAccess X,const int p,double var)
   PetscFunctionReturn(0);
 }
 
+/* Chrono */
+PetscErrorCode MaterialPointGet_age120(MPAccess X,const int p,float *var)
+{
+  MPntPChrono    *point;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = _get_field_MPntPChrono(X,p,&point);CHKERRQ(ierr);
+  MPntPChronoGetField_age120(point,var);
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode MaterialPointSet_age120(MPAccess X,const int p,float var)
+{
+  MPntPChrono    *point;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = _get_field_MPntPChrono(X,p,&point);CHKERRQ(ierr);
+  MPntPChronoSetField_age120(point,var);
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode MaterialPointGet_age350(MPAccess X,const int p,float *var)
+{
+  MPntPChrono    *point;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = _get_field_MPntPChrono(X,p,&point);CHKERRQ(ierr);
+  MPntPChronoGetField_age350(point,var);
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode MaterialPointSet_age350(MPAccess X,const int p,float var)
+{
+  MPntPChrono    *point;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = _get_field_MPntPChrono(X,p,&point);CHKERRQ(ierr);
+  MPntPChronoSetField_age350(point,var);
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode MaterialPointGet_age800(MPAccess X,const int p,float *var)
+{
+  MPntPChrono    *point;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = _get_field_MPntPChrono(X,p,&point);CHKERRQ(ierr);
+  MPntPChronoGetField_age800(point,var);
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode MaterialPointSet_age800(MPAccess X,const int p,float var)
+{
+  MPntPChrono    *point;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = _get_field_MPntPChrono(X,p,&point);CHKERRQ(ierr);
+  MPntPChronoSetField_age800(point,var);
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode MaterialPointGet_Tmax(MPAccess X,const int p,float *var)
+{
+  MPntPChrono    *point;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = _get_field_MPntPChrono(X,p,&point);CHKERRQ(ierr);
+  MPntPChronoGetField_Tmax(point,var);
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode MaterialPointSet_Tmax(MPAccess X,const int p,float var)
+{
+  MPntPChrono    *point;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = _get_field_MPntPChrono(X,p,&point);CHKERRQ(ierr);
+  MPntPChronoSetField_Tmax(point,var);
+
+  PetscFunctionReturn(0);
+}
+
 /* std */
 PetscErrorCode MaterialPointSet_point_index(MPAccess X,const int p,long int var)
 {
@@ -3347,6 +3537,78 @@ PetscErrorCode MaterialPointScale_heat_source(MPAccess X,double var)
     field = field * var;
 
     ierr = MaterialPointSet_heat_source(X,p,field);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode MaterialPointScale_age120(MPAccess X,float var)
+{
+  int np,p;
+  PetscErrorCode ierr;
+
+  DataBucketGetSizes(X->db,&np,NULL,NULL);
+  for (p=0; p<np; p++) {
+    float field;
+
+    ierr = MaterialPointGet_age120(X,p,&field);CHKERRQ(ierr);
+    
+    field = field * var;
+
+    ierr = MaterialPointSet_age120(X,p,field);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode MaterialPointScale_age350(MPAccess X,float var)
+{
+  int np,p;
+  PetscErrorCode ierr;
+
+  DataBucketGetSizes(X->db,&np,NULL,NULL);
+  for (p=0; p<np; p++) {
+    float field;
+
+    ierr = MaterialPointGet_age350(X,p,&field);CHKERRQ(ierr);
+    
+    field = field * var;
+
+    ierr = MaterialPointSet_age350(X,p,field);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode MaterialPointScale_age800(MPAccess X,float var)
+{
+  int np,p;
+  PetscErrorCode ierr;
+
+  DataBucketGetSizes(X->db,&np,NULL,NULL);
+  for (p=0; p<np; p++) {
+    float field;
+
+    ierr = MaterialPointGet_age800(X,p,&field);CHKERRQ(ierr);
+    
+    field = field * var;
+
+    ierr = MaterialPointSet_age800(X,p,field);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode MaterialPointScale_Tmax(MPAccess X,float var)
+{
+  int np,p;
+  PetscErrorCode ierr;
+
+  DataBucketGetSizes(X->db,&np,NULL,NULL);
+  for (p=0; p<np; p++) {
+    float field;
+
+    ierr = MaterialPointGet_Tmax(X,p,&field);CHKERRQ(ierr);
+    
+    field = field * var;
+
+    ierr = MaterialPointSet_Tmax(X,p,field);CHKERRQ(ierr);
   }
   PetscFunctionReturn(0);
 }

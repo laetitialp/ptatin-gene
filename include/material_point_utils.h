@@ -36,10 +36,11 @@
 #include "MPntPStokes_def.h"
 #include "MPntPStokesPl_def.h"
 #include "MPntPEnergy_def.h"
+#include "MPntPChrono_def.h"
 #include "quadrature.h"
 
 /* add material points into the list */
-typedef enum { MPField_Std=0, MPField_Stokes, MPField_Energy, MPField_StokesPl } MaterialPointField;
+typedef enum { MPField_Std=0, MPField_Stokes, MPField_Energy, MPField_StokesPl, MPField_Chrono } MaterialPointField;
 
 typedef enum { CoefAvgNULL=0, CoefAvgARITHMETIC, CoefAvgHARMONIC, CoefAvgGEOMETRIC } CoefficientAveragingType;
 
@@ -54,6 +55,7 @@ struct _p_MPAccess {
   int mp_stokes_field_idx;
   int mp_stokespl_field_idx;
   int mp_energy_field_idx;
+  int mp_chrono_field_idx;
 };
 
 
@@ -102,6 +104,7 @@ PetscErrorCode DMDAEQ1_MaterialPointProjection_MapOntoQ2Mesh_InterpolateToQuadra
 
 PetscErrorCode MPntPStokesPlComputeMemberOffsets(size_t property_offsets[]);
 PetscErrorCode MPntPEnergyComputeMemberOffsets(size_t property_offsets[]);
+PetscErrorCode MPntPChronoComputeMemberOffsets(size_t property_offsets[]);
 PetscErrorCode QPntVolCoefStokesComputeMemberOffsets(size_t property_offsets[]);
 PetscErrorCode QPntVolCoefEnergyComputeMemberOffsets(size_t property_offsets[]);
 
@@ -120,6 +123,10 @@ PetscErrorCode MaterialPointGet_plastic_strain(MPAccess X,const int p,float *var
 PetscErrorCode MaterialPointGet_yield_indicator(MPAccess X,const int p,short *var);
 PetscErrorCode MaterialPointGet_diffusivity(MPAccess X,const int p,double *var);
 PetscErrorCode MaterialPointGet_heat_source(MPAccess X,const int p,double *var);
+PetscErrorCode MaterialPointGet_age120(MPAccess X,const int p,float *var);
+PetscErrorCode MaterialPointGet_age350(MPAccess X,const int p,float *var);
+PetscErrorCode MaterialPointGet_age800(MPAccess X,const int p,float *var);
+PetscErrorCode MaterialPointGet_Tmax(MPAccess X,const int p,float *var);
 
 PetscErrorCode MaterialPointSet_point_index(MPAccess X,const int p,long int var);
 PetscErrorCode MaterialPointSet_global_coord(MPAccess X,const int p,double var[]);
@@ -132,6 +139,10 @@ PetscErrorCode MaterialPointSet_plastic_strain(MPAccess X,const int p,float var)
 PetscErrorCode MaterialPointSet_yield_indicator(MPAccess X,const int p,short var);
 PetscErrorCode MaterialPointSet_diffusivity(MPAccess X,const int p,double var);
 PetscErrorCode MaterialPointSet_heat_source(MPAccess X,const int p,double var);
+PetscErrorCode MaterialPointSet_age120(MPAccess X,const int p,float var);
+PetscErrorCode MaterialPointSet_age350(MPAccess X,const int p,float var);
+PetscErrorCode MaterialPointSet_age800(MPAccess X,const int p,float var);
+PetscErrorCode MaterialPointSet_Tmax(MPAccess X,const int p,float var);
 
 PetscErrorCode MaterialPointScale_global_coord(MPAccess X,double var);
 PetscErrorCode MaterialPointScale_viscosity(MPAccess X,double var);
@@ -139,6 +150,10 @@ PetscErrorCode MaterialPointScale_density(MPAccess X,double var);
 PetscErrorCode MaterialPointScale_plastic_strain(MPAccess X,double var);
 PetscErrorCode MaterialPointScale_diffusivity(MPAccess X,double var);
 PetscErrorCode MaterialPointScale_heat_source(MPAccess X,double var);
+PetscErrorCode MaterialPointScale_age120(MPAccess X,float var);
+PetscErrorCode MaterialPointScale_age350(MPAccess X,float var);
+PetscErrorCode MaterialPointScale_age800(MPAccess X,float var);
+PetscErrorCode MaterialPointScale_Tmax(MPAccess X,float var);
 
 #endif
 
