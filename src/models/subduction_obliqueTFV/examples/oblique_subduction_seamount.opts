@@ -1,0 +1,403 @@
+##  Using driver: 
+## ===============================================================
+-nonlinear_driver_v1
+### Model ###
+-ptatin_model subduction_oblique # Used model
+-log_summary
+-checkpoint_every_nsteps 5
+-checkpoint_every_ncpumins 720 
+-model_subduction_oblique_output_markers
+-output_path TEST_Seamount
+-model_subduction_oblique_temperature_ic_from_file
+########## MARKERS #############
+-lattice_layout_Nx 24
+-lattice_layout_Ny 3
+-lattice_layout_Nz 16
+-mp_popctrl_np_lower 0
+-mp_popctrl_np_upper 128
+########## BASIC NUMERICS ##############
+-mx 8 #128 # Number of elements along x
+-my 8 #32 # Number of elements along y
+-mz 8 #64 # Number of elements along z
+-nsteps 5000000 # Max number of steps
+#-dt_max 1e-3 # Max timestep allowed
+#-dt_min 1e-8
+-output_frequency 1
+-dt_max_surface_displacement 5.0e-3
+#-use_quasi_newton_coordinate_update
+-dt_factor 1.0
+########### Box Geometry ################
+#-model_subduction_oblique_is_2D
+-model_subduction_oblique_Lx 10.0e+5  # Max length along x
+-model_subduction_oblique_Ly 0.0e+3 # Origin for y axis
+-model_subduction_oblique_Lz 6.0e+5 # Max length along z
+-model_subduction_oblique_Ox 0.0e+5 # Origin for x axis
+-model_subduction_oblique_Oy -6.8e+5 # Max depth along y axis
+-model_subduction_oblique_Oz 0.0e+5 # Origin for z axis
+-model_subduction_oblique_xtrench_offset 0.0 #-100.0e3
+################ BCs ##################
+-model_subduction_oblique_IC
+#-model_subduction_oblique_open_base
+-model_subduction_oblique_use_v_dot_n
+#-model_subduction_oblique_BC
+#-model_subduction_oblique_Arctangent_KMIN
+-model_subduction_oblique_normV 3.0
+-model_subduction_oblique_angle_v 45.0
+-model_subduction_oblique_Ttop 0.0
+-model_subduction_oblique_Tbottom 1600.0
+############### Geometry ###############
+-model_subduction_oblique_alpha_trench 60.0
+#-model_subduction_oblique_theta_subd 30.0
+#-model_subduction_oblique_wz_width
+############### Seamount gaussian parameters ###############
+-model_subduction_oblique_seamount # Activate seamount
+-seamount_theta 0.0 # Angle of the seamount w.r.t the normal z
+-seamount_sigma_ratio 4.0 # Ratio between sigma x and sigma y
+-seamount_sigma_x 1.0e5
+#-seamount_sigma_y # If set, ratio is useless
+-seamount_max_alt 2000.0 # Max altitude (from 0) of the seamount
+-model_subduction_oblique_seamount_centre 0.0,300.0e3 # Centre of the seamount
+############ Phases Parameters #############
+-model_subduction_oblique_no_air
+#### Oceanic upper crust phase number 0 ####
+#### Plagioclase An75 Ranalli 1997 ####
+-model_subduction_oblique_preexpA_0 3.3e-4
+-model_subduction_oblique_Ascale_0 1.0e+6
+-model_subduction_oblique_entalpy_0 238.0e+3
+-model_subduction_oblique_Vmol_0 0.0
+-model_subduction_oblique_nexp_0 3.2
+-model_subduction_oblique_Tref_0 273.15
+-model_subduction_oblique_phi_0 0.0
+-model_subduction_oblique_phi_inf_0 0.0
+-model_subduction_oblique_Co_0 3.0e+8
+-model_subduction_oblique_Co_inf_0 2.0e+7
+-model_subduction_oblique_Tens_cutoff_0 1.0e+7
+-model_subduction_oblique_Hst_cutoff_0 4.0e+8
+-model_subduction_oblique_eps_min_0 0.0
+-model_subduction_oblique_eps_max_0 1.0
+-model_subduction_oblique_alpha_0 3.0e-5
+-model_subduction_oblique_beta_0 1.0e-11
+-model_subduction_oblique_rho_0 3000.0
+-model_subduction_oblique_heat_source_0 0.0
+-model_subduction_oblique_conductivity_0 3.0
+#### Oceanic lower crust phase number 1 ####
+#### Diabase Ranalli 1997 ####
+-model_subduction_oblique_preexpA_1 2.0e-4
+-model_subduction_oblique_Ascale_1 1.0e+6
+-model_subduction_oblique_entalpy_1 260.0e3
+-model_subduction_oblique_Vmol_1 0.0
+-model_subduction_oblique_nexp_1 3.4
+-model_subduction_oblique_Tref_1 273.15
+-model_subduction_oblique_phi_1 0.0
+-model_subduction_oblique_phi_inf_1 0.0
+-model_subduction_oblique_Co_1 3.0e+8
+-model_subduction_oblique_Co_inf_1 2.0e+7
+-model_subduction_oblique_Tens_cutoff_1 1.0e+7
+-model_subduction_oblique_Hst_cutoff_1 4.0e+8
+-model_subduction_oblique_eps_min_1 0.0
+-model_subduction_oblique_eps_max_1 1.0
+-model_subduction_oblique_alpha_1 3.0e-5
+-model_subduction_oblique_beta_1 1.0e-11
+-model_subduction_oblique_rho_1 3000.0
+-model_subduction_oblique_heat_source_1 0.0
+-model_subduction_oblique_conductivity_1 3.0
+#### Continental upper crust phase number 2 ####
+#### Quartzite Ranalli 1997 ####
+-model_subduction_oblique_preexpA_2 6.7e-6
+-model_subduction_oblique_Ascale_2 1.0e+6
+-model_subduction_oblique_entalpy_2 156.0e3
+-model_subduction_oblique_Vmol_2 0.0
+-model_subduction_oblique_nexp_2 2.4
+-model_subduction_oblique_Tref_2 273.15
+-model_subduction_oblique_phi_2 0.0
+-model_subduction_oblique_phi_inf_2 0.0
+-model_subduction_oblique_Co_2 3.0e+8
+-model_subduction_oblique_Co_inf_2 2.0e+7
+-model_subduction_oblique_Tens_cutoff_2 1.0e+7
+-model_subduction_oblique_Hst_cutoff_2 4.0e+8
+-model_subduction_oblique_eps_min_2 0.0
+-model_subduction_oblique_eps_max_2 1.0
+-model_subduction_oblique_alpha_2 3.0e-5
+-model_subduction_oblique_beta_2 0.0
+-model_subduction_oblique_rho_2 2700.0
+-model_subduction_oblique_heat_source_2 0.0 #1.5e-6
+-model_subduction_oblique_conductivity_2 2.7
+#### Continental lower crust phase number 3 ####
+#### Anorthite Rybacki & Dresen 2000 ####
+-model_subduction_oblique_preexpA_3 13.4637
+-model_subduction_oblique_Ascale_3 1.0e+6
+-model_subduction_oblique_entalpy_3 345.e+3
+-model_subduction_oblique_Vmol_3 38.0e-6
+-model_subduction_oblique_nexp_3 3.0
+-model_subduction_oblique_Tref_3 273.15
+-model_subduction_oblique_phi_3 0.0
+-model_subduction_oblique_phi_inf_3 0.0
+-model_subduction_oblique_Co_3 3.0e+8
+-model_subduction_oblique_Co_inf_3 2.0e+7
+-model_subduction_oblique_Tens_cutoff_3 1.0e+7
+-model_subduction_oblique_Hst_cutoff_3 4.0e+8
+-model_subduction_oblique_eps_min_3 0.0
+-model_subduction_oblique_eps_max_3 1.0
+-model_subduction_oblique_alpha_3 3.0e-5
+-model_subduction_oblique_beta_3 1.0e-11
+-model_subduction_oblique_rho_3 2850.0
+-model_subduction_oblique_heat_source_3 0.0 #0.3e-6
+-model_subduction_oblique_conductivity_3 2.85
+#### Oceanic lithosphere mantle phase number 4 ####
+#### Dry peridotite Ranalli 1997 ####
+-model_subduction_oblique_preexpA_4 2.5e4
+-model_subduction_oblique_Ascale_4 1.0e+6
+-model_subduction_oblique_entalpy_4 532.0e3
+-model_subduction_oblique_Vmol_4 8.0e-6
+-model_subduction_oblique_nexp_4 3.5
+-model_subduction_oblique_Tref_4 273.15
+-model_subduction_oblique_phi_4 0.0
+-model_subduction_oblique_phi_inf_4 0.0
+-model_subduction_oblique_Co_4 3.0e+8
+-model_subduction_oblique_Co_inf_4 2.0e+7
+-model_subduction_oblique_Tens_cutoff_4 1.0e+7
+-model_subduction_oblique_Hst_cutoff_4 4.0e+8
+-model_subduction_oblique_eps_min_4 0.0
+-model_subduction_oblique_eps_max_4 1.0
+-model_subduction_oblique_alpha_4 3.0e-5
+-model_subduction_oblique_beta_4 1.0e-11
+-model_subduction_oblique_rho_4 3300.0
+-model_subduction_oblique_heat_source_4 0.0
+-model_subduction_oblique_conductivity_4 3.3
+#### Continental lithosphere mante phase number 5 ####
+#### Dry peridotite Ranalli 1997 ####
+-model_subduction_oblique_preexpA_5 2.5e4
+-model_subduction_oblique_Ascale_5 1.0e+6
+-model_subduction_oblique_entalpy_5 532.0e3
+-model_subduction_oblique_Vmol_5 8.0e-6
+-model_subduction_oblique_nexp_5 3.5
+-model_subduction_oblique_Tref_5 273.15
+-model_subduction_oblique_phi_5 0.0
+-model_subduction_oblique_phi_inf_5 0.0
+-model_subduction_oblique_Co_5 3.0e+8
+-model_subduction_oblique_Co_inf_5 2.0e+7
+-model_subduction_oblique_Tens_cutoff_5 1.0e+7
+-model_subduction_oblique_Hst_cutoff_5 4.0e+8
+-model_subduction_oblique_eps_min_5 0.0
+-model_subduction_oblique_eps_max_5 1.0
+-model_subduction_oblique_alpha_5 3.0e-5
+-model_subduction_oblique_beta_5 1.0e-11
+-model_subduction_oblique_rho_5 3300.0
+-model_subduction_oblique_heat_source_5 0.0
+-model_subduction_oblique_conductivity_5 3.3
+#### Asthenosphere phase number 6 ####
+#### Dry peridotite scale 0.5 Ranalli 1997 ####
+-model_subduction_oblique_preexpA_6 1e-21 #2.5e4
+-model_subduction_oblique_Ascale_6 1.0 #0.5e+6
+-model_subduction_oblique_entalpy_6 0.0 #532.0e3
+-model_subduction_oblique_Vmol_6 0.0
+-model_subduction_oblique_nexp_6 1.0 #3.5
+-model_subduction_oblique_Tref_6 273.15
+-model_subduction_oblique_phi_6 0.0
+-model_subduction_oblique_phi_inf_6 0.0
+-model_subduction_oblique_Co_6 3.0e+8
+-model_subduction_oblique_Co_inf_6 2.0e+7
+-model_subduction_oblique_Tens_cutoff_6 1.0e+7
+-model_subduction_oblique_Hst_cutoff_6 4.0e+8
+-model_subduction_oblique_eps_min_6 0.0
+-model_subduction_oblique_eps_max_6 1.0
+-model_subduction_oblique_alpha_6 3.0e-5
+-model_subduction_oblique_beta_6 1.0e-11
+-model_subduction_oblique_rho_6 3300.0
+-model_subduction_oblique_heat_source_6 0.0
+-model_subduction_oblique_conductivity_6 3.3
+#### Weak zone phase number 7 ####
+#### Clinopyroxene Ranalli 1997 ###
+-model_subduction_oblique_preexpA_7 2.5e4
+-model_subduction_oblique_Ascale_7 1.0e+6
+-model_subduction_oblique_entalpy_7 532.0e3
+-model_subduction_oblique_Vmol_7 8.0e-6
+-model_subduction_oblique_nexp_7 3.5
+-model_subduction_oblique_Tref_7 273.15
+-model_subduction_oblique_phi_7 0.0
+-model_subduction_oblique_phi_inf_7 0.0
+-model_subduction_oblique_Co_7 0.8e+7
+-model_subduction_oblique_Co_inf_7 1.0e+6
+-model_subduction_oblique_Tens_cutoff_7 5.0e+6
+-model_subduction_oblique_Hst_cutoff_7 4.0e+8
+-model_subduction_oblique_eps_min_7 0.0
+-model_subduction_oblique_eps_max_7 1.0
+-model_subduction_oblique_alpha_7 3.0e-5
+-model_subduction_oblique_beta_7 1.0e-11
+-model_subduction_oblique_rho_7 3300.0
+-model_subduction_oblique_heat_source_7 0.0
+-model_subduction_oblique_conductivity_7 3.3
+#### Oceanic sediments phase number 8 ####
+#### Quartzite Ranalli 1997 ####
+-model_subduction_oblique_preexpA_8 6.7e-6
+-model_subduction_oblique_Ascale_8 1.0e+6
+-model_subduction_oblique_entalpy_8 156.0e3
+-model_subduction_oblique_Vmol_8 0.0
+-model_subduction_oblique_nexp_8 2.4
+-model_subduction_oblique_Tref_8 273.15
+-model_subduction_oblique_phi_8 0.0
+-model_subduction_oblique_phi_inf_8 0.0
+-model_subduction_oblique_Co_8 0.5e+8
+-model_subduction_oblique_Co_inf_8 1.0e+7
+-model_subduction_oblique_Tens_cutoff_8 1.0e+7
+-model_subduction_oblique_Hst_cutoff_8 4.0e+8
+-model_subduction_oblique_eps_min_8 0.0
+-model_subduction_oblique_eps_max_8 1.0
+-model_subduction_oblique_alpha_8 3.0e-5
+-model_subduction_oblique_beta_8 1.0e-11
+-model_subduction_oblique_rho_8 2500.0
+-model_subduction_oblique_heat_source_8 0.0
+-model_subduction_oblique_conductivity_8 2.5
+#### Seamount phase number 9 ####
+#### Quartzite Ranalli 1997 ####
+-model_subduction_oblique_preexpA_9 6.7e-6
+-model_subduction_oblique_Ascale_9 1.0e+6
+-model_subduction_oblique_entalpy_9 156.0e3
+-model_subduction_oblique_Vmol_9 0.0
+-model_subduction_oblique_nexp_9 2.4
+-model_subduction_oblique_Tref_9 273.15
+-model_subduction_oblique_phi_9 0.0
+-model_subduction_oblique_phi_inf_9 0.0
+-model_subduction_oblique_Co_9 0.5e+8
+-model_subduction_oblique_Co_inf_9 1.0e+7
+-model_subduction_oblique_Tens_cutoff_9 1.0e+7
+-model_subduction_oblique_Hst_cutoff_9 4.0e+8
+-model_subduction_oblique_eps_min_9 0.0
+-model_subduction_oblique_eps_max_9 1.0
+-model_subduction_oblique_alpha_9 3.0e-5
+-model_subduction_oblique_beta_9 1.0e-11
+-model_subduction_oblique_rho_9 2500.0
+-model_subduction_oblique_heat_source_9 0.0
+-model_subduction_oblique_conductivity_9 2.5
+################ SOLVERS ################
+###### MG
+-A11_operator_type 2,3,1 #2,2,2,3,1
+-dau_nlevels 3 #5
+-stk_velocity_dm_mat_type aij
+-a11_op avx
+#---- 5 MG lvl ----#
+#| 512 x 128 x 256 |
+#| 256 x 64 x 128 |
+#| 128 x 32 x 64 |
+#| 64 x 16 x 32 |
+#| 32 x 8 x 16 |
+#------------------#
+-stk_velocity_da_refine_hierarchy_x 2,2 #2,2,2,2
+-stk_velocity_da_refine_hierarchy_y 2,2 #2,2,2,2
+-stk_velocity_da_refine_hierarchy_z 2,2 #2,2,2,2
+#---- SNES ----#
+-newton_its 0
+-snes_atol 1e-3
+-snes_max_it 1 #5
+-snes_rtol 1e-3
+-snes_monitor
+-snes_converged_reason
+-snes_linesearch_type basic
+#-snes_view
+#---- KSP ----#
+-ksp_max_it 200
+-ksp_rtol 1.0e-4
+-ksp_type fgmres
+-pc_type fieldsplit
+-pc_fieldsplit_schur_fact_type upper
+-pc_fieldsplit_type schur
+	#---- Fieldsplit p ----#
+	-fieldsplit_p_ksp_type preonly
+	-fieldsplit_p_pc_type bjacobi
+	#---- Fieldsplit u ----#
+	-fieldsplit_u_ksp_max_it 100
+	#-fieldsplit_u_ksp_monitor_true_residual
+	-fieldsplit_u_ksp_monitor
+	-fieldsplit_u_ksp_converged_reason
+	-fieldsplit_u_ksp_rtol 1.0e-2
+	-fieldsplit_u_ksp_type fgmres
+	-fieldsplit_u_pc_type mg
+	-fieldsplit_u_pc_mg_levels 5
+  -fieldsplit_u_pc_mg_cycle_type v
+	-fieldsplit_u_mg_levels_ksp_type gmres
+	-fieldsplit_u_mg_levels_pc_type jacobi
+	-fieldsplit_u_mg_levels_ksp_max_it 8
+	-fieldsplit_u_mg_levels_ksp_norm_type NONE
+		#---- Coarse Grid ----#
+		-fieldsplit_u_mg_coarse_pc_type cholesky
+#		# 32 x 8 x 16 #
+#		-fieldsplit_u_mg_coarse_pc_type dmdarepart
+#		-fieldsplit_u_mg_coarse_ksp_type preonly
+			#---- Coarse Grid KSP ----#
+			# 16 x 4 x 8 #
+#			-fieldsplit_u_mg_coarse_pc_dmdarepart_factor 16
+			# From 1024 MPI ranks, now there are 1024/16 = 64 MPI ranks
+#			-fieldsplit_u_mg_coarse_dmdarepart_pc_type mg
+#			-fieldsplit_u_mg_coarse_dmdarepart_pc_mg_cycle_type v
+#			-fieldsplit_u_mg_coarse_dmdarepart_ksp_type preonly
+#			-fieldsplit_u_mg_coarse_dmdarepart_pc_mg_levels 2
+#			-fieldsplit_u_mg_coarse_dmdarepart_pc_mg_galerkin
+#			-fieldsplit_u_mg_coarse_dmdarepart_mg_levels_ksp_type gmres
+#			-fieldsplit_u_mg_coarse_dmdarepart_mg_levels_pc_type jacobi
+#			-fieldsplit_u_mg_coarse_dmdarepart_mg_levels_ksp_max_it 6
+#				#---- Coarse Coarse Grid ----#
+#				# 16 x 4 x 8 #
+#				-fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_pc_type telescope
+#				-fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_telescope_pc_type cholesky
+#				-fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_pc_telescope_reduction_factor 1
+#### THERMAL SOLVER
+-ptatin_energyfv_nsub 2,2,2
+-energyfv_snes_converged_reason
+-energyfv_ksp_type fgmres
+-energyfv_ksp_monitor
+-energyfv_snes_monitor
+-energyfv_snes_rtol 1.0e-6
+-energyfv_snes_ksp_ew
+-energyfv_snes_ksp_ew_rtol0 1.0e-2
+-energyfv_snes_ksp_ew_version 1
+-energyfv_snes_lag_preconditioner -2
+
+#-energyfv_pc_type jacobi
+
+-energyfv_pc_type gamg
+-energyfv_pc_mg_levels 3
+-energyfv_mg_levels_pc_type jacobi
+-energyfv_mg_levels_ksp_type fgmres #chebyshev
+-energyfv_mg_levels_ksp_max_it 8
+-energyfv_mg_coarse_pc_type telescope
+-energyfv_mg_coarse_pc_telescope_reduction_factor 1 #8
+-energyfv_mg_coarse_telescope_pc_type cholesky
+
+
+#-energyfv_mg_levels_esteig_ksp_norm_type none
+#-energyfv_mg_levels_esteig_ksp_type cg
+#-energyfv_mg_levels_ksp_chebyshev_esteig 0,0.01,0,1.1
+#-energyfv_mg_levels_ksp_norm_type none
+
+-fvpp_ksp_monitor
+-fvpp_ksp_rtol 1.0e-10
+-fvpp_ksp_type cg
+-fvpp_mg_coarse_pc_type redundant
+-fvpp_mg_coarse_redundant_pc_factor_mat_solver_type gamg #mkl_pardiso 
+-fvpp_mg_coarse_redundant_pc_type gamg
+-fvpp_mg_levels_esteig_ksp_norm_type none
+-fvpp_mg_levels_esteig_ksp_type cg
+-fvpp_mg_levels_ksp_chebyshev_esteig 0,0.01,0,1.1
+-fvpp_mg_levels_ksp_max_it 4
+-fvpp_mg_levels_ksp_norm_type none
+-fvpp_mg_levels_ksp_type chebyshev
+-fvpp_mg_levels_pc_type jacobi
+-fvpp_operator_fvspace false
+-fvpp_pc_type gamg
+### Solver for lithostatic pressure
+-LP_snes_atol 1.0e-6
+-LP_snes_rtol 1.0e-6
+#-LP_snes_max_it 10
+-LP_snes_monitor
+#-LP_ksp_monitor
+-LP_ksp_atol 1.0e-6
+-LP_ksp_rtol 1.0e-6
+-LP_ksp_type fgmres
+#-LP_snes_mf_operator
+-LP_pc_type bjacobi #gamg #lu not parallel
+#-LP_snes_type ksponly
+-LP_snes_ksp_ew
+-LP_snes_ksp_ew_rtol0 1.0e-2
+-LP_snes_ksp_ew_version 1
+-LP_snes_lag_preconditioner -2
+

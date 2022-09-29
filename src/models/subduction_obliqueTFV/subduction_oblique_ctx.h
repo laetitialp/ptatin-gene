@@ -37,6 +37,7 @@ typedef struct {
   PetscReal y_continent[3], y_ocean[4];
   PetscReal y0, alpha_subd, theta_subd, wz;
   PetscReal normV, angle_v, vy;
+  PetscReal x_offset;
   PetscReal Ttop,Tbottom;
   PetscBool oblique_IC, oblique_BC, output_markers;
   PetscInt  n_phases;
@@ -44,6 +45,11 @@ typedef struct {
   PetscBool SplitDirichlet_KMIN,Arctangent_KMIN,use_v_dot_n;
   PetscReal qm,k,h_prod,y_prod,Tlitho; /* Initial continental geotherm params */
   PetscReal age,air_rho; /* Initial oceanic geotherm params */
+  /* Seamount parameters */
+  PetscBool seamount;
+  PetscReal seamount_theta,seamount_sigma_ratio,seamount_sigma_x,seamount_sigma_y;
+  PetscReal seamount_max_alt,seamount_centre[2];
+  PetscReal *density_region;
   
 } ModelSubductionObliqueCtx;
 

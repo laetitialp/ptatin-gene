@@ -72,54 +72,30 @@ static const char MODEL_NAME_SO[] = "model_subduction_oblique_";
 
 PetscErrorCode SwarmMPntStd_CoordAssignment_FaceLatticeLayout3d_epsilon(DM da,PetscInt Nxp[],PetscReal perturb, PetscReal epsilon, PetscInt face_idx,DataBucket db);
 static PetscErrorCode RemeshSurfaceIsostaticTopography(pTatinCtx user,ModelSubductionObliqueCtx *data, DM da);
+static PetscErrorCode RemeshSurfaceIsostaticTopography_Seamount(pTatinCtx user,ModelSubductionObliqueCtx *data, DM da);
+
 PetscLogEvent   PTATIN_MaterialPointPopulationControlRemove;
 
-PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
+static PetscReal Gaussian2D(PetscReal A,PetscReal *pos,PetscReal coeff[3], PetscReal centre[2])
 {
-  ModelSubductionObliqueCtx *data;
-  RheologyConstants         *rheology;
-  DataField                 PField,PField_k,PField_Q;
-  EnergyConductivityConst   *data_k;
-  EnergySourceConst         *data_Q;
-  DataBucket                materialconstants;
-  EnergyMaterialConstants   *matconstants_e;
-  PetscInt                  nn,region_idx;
-  int                       source_type[7] = {0, 0, 0, 0, 0, 0, 0};
-  PetscReal                 cm_per_yer2m_per_sec = 1.0e-2 / ( 365.0 * 24.0 * 60.0 * 60.0 );
-  PetscReal                 *preexpA,*Ascale,*entalpy,*Vmol,*nexp,*Tref;
-  PetscReal                 *phi,*phi_inf,*Co,*Co_inf,*Tens_cutoff,*Hst_cutoff,*eps_min,*eps_max;
-  PetscReal                 *beta,*alpha,*rho,*heat_source,*conductivity;
-  PetscReal                 phi_rad,phi_inf_rad,Cp;
-  PetscBool                 flg,found;
-  char                      *option_name;
-  PetscErrorCode            ierr;
+  PetscReal g;
+  PetscFunctionBegin;
+  g = A * PetscExpReal( -( coeff[0]*pow(pos[0]-centre[0],2) + 
+                           2.0*coeff[1]*(pos[0]-centre[0])*(pos[1]-centre[1]) + 
+                           coeff[2]*pow(pos[1]-centre[1],2) 
+                         )
+                      );
+  PetscFunctionReturn(g);
+}
 
+static PetscErrorCode ModelUserOptions(ModelSubductionObliqueCtx *data)
+{
+  PetscInt       nn,region_idx;
+  PetscBool      found;
+  char           *option_name;
+  PetscErrorCode ierr;
   PetscFunctionBegin;
 
-  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
-  data = (ModelSubductionObliqueCtx*)ctx;
-  
-  ierr = pTatinGetRheology(c,&rheology);CHKERRQ(ierr);
-  rheology->rheology_type = RHEOLOGY_VP_STD;
-  /* force energy equation to be introduced */
-  ierr = PetscOptionsInsertString(NULL,"-activate_energyfv true");CHKERRQ(ierr);
-  
-  data->n_phases = 10;
-  rheology->nphases_active = data->n_phases;
-  rheology->apply_viscosity_cutoff_global = PETSC_TRUE;
-  rheology->eta_upper_cutoff_global = 1.e+25;
-  rheology->eta_lower_cutoff_global = 1.e+19;
-  
-  /* set the deffault values of the material constant for this particular model */
-  /* scaling */
-  data->length_bar    = 100.0 * 1.0e3;
-  data->viscosity_bar = 1e22;
-  data->velocity_bar  = 1.0e-10;
-  /* cutoff */
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-apply_viscosity_cutoff_global",&rheology->apply_viscosity_cutoff_global,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-eta_lower_cutoff_global",&rheology->eta_lower_cutoff_global,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-eta_upper_cutoff_global",&rheology->eta_upper_cutoff_global,NULL);CHKERRQ(ierr);
-  
   /* box geometry, [m] */
   data->Lx = 1000.0e3; 
   data->Ly = 0.0e3;
@@ -127,12 +103,12 @@ PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
   data->Ox = 0.0e3;
   data->Oy = -680.0e3;
   data->Oz = 0.0e3;
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-Lx",&data->Lx,&flg);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-Ly",&data->Ly,&flg);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-Lz",&data->Lz,&flg);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-Ox",&data->Ox,&flg);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-Oy",&data->Oy,&flg);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-Oz",&data->Oz,&flg);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-Lx",&data->Lx,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-Ly",&data->Ly,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-Lz",&data->Lz,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-Ox",&data->Ox,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-Oy",&data->Oy,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-Oz",&data->Oz,NULL);CHKERRQ(ierr);
   /* reports before scaling */
   PetscPrintf(PETSC_COMM_WORLD,"********** Box Geometry **********\n",NULL);
   PetscPrintf(PETSC_COMM_WORLD,"[Ox,Lx] = [%+1.4e [m], %+1.4e [m]]\n", data->Ox ,data->Lx );
@@ -151,6 +127,8 @@ PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
   data->alpha_subd = 90.0; // angle of the trench
   data->theta_subd = 30.0; // angle of the subduction 
   data->wz = 20.0e3; // weak zone width
+
+  data->air_rho = 1.0; // Density of the above rock universe (used for isostatic equilibrium)
   
   /* Velocity */
   data->normV = 1.0;
@@ -190,32 +168,79 @@ PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
   PetscPrintf(PETSC_COMM_WORLD,"OCEAN:     Upper Crust Depth %+1.4e [m] \n", data->y_ocean[0] );
   PetscPrintf(PETSC_COMM_WORLD,"           Lower Crust Depth %+1.4e [m] \n", data->y_ocean[1] );
   PetscPrintf(PETSC_COMM_WORLD,"           LAB         Depth %+1.4e [m] \n", data->y_ocean[2] );
-  
-  data->oblique_IC = PETSC_FALSE;
-  data->oblique_BC = PETSC_FALSE;
-  data->output_markers = PETSC_FALSE;
+
+  /* Trench offset */
+  data->x_offset = 0.0;
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-xtrench_offset",&data->x_offset,NULL);CHKERRQ(ierr);
+
+  data->oblique_IC                               = PETSC_FALSE;
+  data->oblique_BC                               = PETSC_FALSE;
+  data->output_markers                           = PETSC_FALSE;
   data->subduction_temp_ic_steadystate_analytics = PETSC_FALSE;
-  data->is_2D = PETSC_FALSE;
-  data->open_base = PETSC_FALSE;
-  data->no_air = PETSC_FALSE;
-  data->SplitDirichlet_KMIN = PETSC_FALSE;
-  data->Arctangent_KMIN = PETSC_FALSE;
-  data->use_v_dot_n = PETSC_FALSE;
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-IC",&data->oblique_IC,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-BC",&data->oblique_BC,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-output_markers",&data->output_markers,NULL);CHKERRQ(ierr);
+  data->is_2D                                    = PETSC_FALSE;
+  data->open_base                                = PETSC_FALSE;
+  data->no_air                                   = PETSC_FALSE;
+  data->SplitDirichlet_KMIN                      = PETSC_FALSE;
+  data->Arctangent_KMIN                          = PETSC_FALSE;
+  data->use_v_dot_n                              = PETSC_FALSE;
+  data->seamount                                 = PETSC_FALSE;
+
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-IC",                       &data->oblique_IC,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-BC",                       &data->oblique_BC,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-output_markers",           &data->output_markers,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-ic_steady_state_analytics",&data->subduction_temp_ic_steadystate_analytics,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-is_2D",&data->is_2D,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-open_base",&data->open_base,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-no_air",&data->no_air,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-SplitDirichlet_KMIN",&data->SplitDirichlet_KMIN,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-Arctangent_KMIN",&data->Arctangent_KMIN,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-use_v_dot_n",&data->use_v_dot_n,NULL);CHKERRQ(ierr);
-  
-  /* Material constants */
-  ierr = pTatinGetMaterialConstants(c,&materialconstants);CHKERRQ(ierr);
-  ierr = MaterialConstantsSetDefaults(materialconstants);CHKERRQ(ierr);
-  
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-is_2D",                    &data->is_2D,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-open_base",                &data->open_base,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-no_air",                   &data->no_air,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-SplitDirichlet_KMIN",      &data->SplitDirichlet_KMIN,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-Arctangent_KMIN",          &data->Arctangent_KMIN,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-use_v_dot_n",              &data->use_v_dot_n,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-seamount",                 &data->seamount,NULL);CHKERRQ(ierr);
+
+  /* Register densities in an array for isostasy computations */
+  for (region_idx=0;region_idx<data->n_phases;region_idx++) {
+    if (asprintf (&option_name, "-rho_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&data->density_region[region_idx],NULL);CHKERRQ(ierr);
+    free (option_name);
+  }
+
+  /* Seamount Gaussian parameters */
+  data->seamount_theta       = 0.0;
+  data->seamount_sigma_ratio = 4.0;
+  data->seamount_sigma_x     = 1.0e5;
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-seamount_sigma_x",    &data->seamount_sigma_x,NULL);CHKERRQ(ierr);
+  data->seamount_sigma_y     = data->seamount_sigma_x/data->seamount_sigma_ratio;
+  data->seamount_max_alt     = 2000.0;
+  data->seamount_centre[0]   = 0.0;
+  data->seamount_centre[1]   = 0.0;
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-seamount_theta",      &data->seamount_theta,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-seamount_sigma_ratio",&data->seamount_sigma_ratio,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-seamount_sigma_y",    &data->seamount_sigma_y,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-seamount_max_alt",    &data->seamount_max_alt,NULL);CHKERRQ(ierr);
+  nn = 2;
+  ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME_SO,"-seamount_centre",data->seamount_centre,&nn,&found);CHKERRQ(ierr);
+  if (found) {
+    if (nn != 2) {
+      SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 2 values for -seamount_centre. Found %d",nn);
+    }
+  }
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelSetMaterialConstants(RheologyConstants *rheology, DataBucket materialconstants)
+{
+  PetscInt                  region_idx;
+  EnergyMaterialConstants   *matconstants_e;
+  DataField                 PField,PField_k,PField_Q;
+  EnergyConductivityConst   *data_k;
+  EnergySourceConst         *data_Q;
+  int                       source_type[7] = {0, 0, 0, 0, 0, 0, 0};
+  PetscReal                 Cp;
+  PetscErrorCode            ierr;
+
+  PetscFunctionBegin;
+
   /* Energy material constants */
   DataBucketGetDataFieldByName(materialconstants,EnergyMaterialConstants_classname,&PField);
   DataFieldGetEntries(PField,(void**)&matconstants_e);
@@ -227,149 +252,134 @@ PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
   /* Heat source */
   DataBucketGetDataFieldByName(materialconstants,EnergySourceConst_classname,&PField_Q);
   DataFieldGetEntries(PField_Q,(void**)&data_Q);
-  
-  /* Allocate memory for arrays of material parameters */
-  ierr = PetscMalloc1(rheology->nphases_active,&preexpA);CHKERRQ(ierr);
-  ierr = PetscMalloc1(rheology->nphases_active,&Ascale);CHKERRQ(ierr);
-  ierr = PetscMalloc1(rheology->nphases_active,&entalpy);CHKERRQ(ierr);
-  ierr = PetscMalloc1(rheology->nphases_active,&Vmol);CHKERRQ(ierr);
-  ierr = PetscMalloc1(rheology->nphases_active,&nexp);CHKERRQ(ierr);
-  ierr = PetscMalloc1(rheology->nphases_active,&Tref);CHKERRQ(ierr);
-  ierr = PetscMalloc1(rheology->nphases_active,&phi);CHKERRQ(ierr);
-  ierr = PetscMalloc1(rheology->nphases_active,&phi_inf);CHKERRQ(ierr);
-  ierr = PetscMalloc1(rheology->nphases_active,&Co);CHKERRQ(ierr);
-  ierr = PetscMalloc1(rheology->nphases_active,&Co_inf);CHKERRQ(ierr);
-  ierr = PetscMalloc1(rheology->nphases_active,&Tens_cutoff);CHKERRQ(ierr);
-  ierr = PetscMalloc1(rheology->nphases_active,&Hst_cutoff);CHKERRQ(ierr);
-  ierr = PetscMalloc1(rheology->nphases_active,&eps_min);CHKERRQ(ierr);
-  ierr = PetscMalloc1(rheology->nphases_active,&eps_max);CHKERRQ(ierr);
-  ierr = PetscMalloc1(rheology->nphases_active,&beta);CHKERRQ(ierr);
-  ierr = PetscMalloc1(rheology->nphases_active,&alpha);CHKERRQ(ierr);
-  ierr = PetscMalloc1(rheology->nphases_active,&rho);CHKERRQ(ierr);
-  ierr = PetscMalloc1(rheology->nphases_active,&heat_source);CHKERRQ(ierr);
-  ierr = PetscMalloc1(rheology->nphases_active,&conductivity);CHKERRQ(ierr);
+
   /* Set default values for parameters */
   source_type[0] = ENERGYSOURCE_CONSTANT;
   Cp             = 800.0;
-  for (region_idx=0;region_idx<rheology->nphases_active-1;region_idx++) {
-    preexpA[region_idx]     = 6.3e-6;
-    Ascale[region_idx]      = 1.0e6;
-    entalpy[region_idx]     = 156.0e3;
-    Vmol[region_idx]        = 0.0;
-    nexp[region_idx]        = 2.4;
-    Tref[region_idx]        = 273.0;
-    phi[region_idx]         = 30.0;
-    phi_inf[region_idx]     = 5.0;
-    Co[region_idx]          = 2.0e7;
-    Co_inf[region_idx]      = 2.0e7;
-    Tens_cutoff[region_idx] = 1.0e7;
-    Hst_cutoff[region_idx]  = 2.0e8;
-    eps_min[region_idx]     = 0.0;
-    eps_max[region_idx]     = 0.5;
-    beta[region_idx]        = 0.0;
-    alpha[region_idx]       = 2.0e-5;
-    rho[region_idx]         = 2700.0;
-    heat_source[region_idx] = 0.0;
-    conductivity[region_idx] = 1.0;
-  }
-  for (region_idx=0;region_idx<rheology->nphases_active-1;region_idx++) {
+
+  for (region_idx=0;region_idx<rheology->nphases_active;region_idx++) {
+    PetscReal preexpA,Ascale,entalpy,Vmol,nexp,Tref;
+    PetscReal phi,phi_inf,Co,Co_inf,Tens_cutoff,Hst_cutoff,eps_min,eps_max;
+    PetscReal beta,alpha,rho,heat_source,conductivity;
+    PetscReal phi_rad,phi_inf_rad;
+    char      *option_name;
+
+    preexpA      = 6.3e-6;
+    Ascale       = 1.0e6;
+    entalpy      = 156.0e3;
+    Vmol         = 0.0;
+    nexp         = 2.4;
+    Tref         = 273.0;
+    phi          = 30.0;
+    phi_inf      = 5.0;
+    Co           = 2.0e7;
+    Co_inf       = 2.0e7;
+    Tens_cutoff  = 1.0e7;
+    Hst_cutoff   = 2.0e8;
+    eps_min      = 0.0;
+    eps_max      = 0.5;
+    beta         = 0.0;
+    alpha        = 2.0e-5;
+    rho          = 2700.0;
+    heat_source  = 0.0;
+    conductivity = 1.0;
+
     /* Set material constitutive laws */
     MaterialConstantsSetValues_MaterialType(materialconstants,region_idx,VISCOUS_ARRHENIUS_2,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_BOUSSINESQ);
 
     /* VISCOUS PARAMETERS */
     if (asprintf (&option_name, "-preexpA_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&preexpA[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&preexpA,NULL);CHKERRQ(ierr);
     free (option_name);
     if (asprintf (&option_name, "-Ascale_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&Ascale[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&Ascale,NULL);CHKERRQ(ierr);
     free (option_name);
     if (asprintf (&option_name, "-entalpy_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&entalpy[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&entalpy,NULL);CHKERRQ(ierr);
     free (option_name); 
     if (asprintf (&option_name, "-Vmol_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&Vmol[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&Vmol,NULL);CHKERRQ(ierr);
     free (option_name);
     if (asprintf (&option_name, "-nexp_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&nexp[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&nexp,NULL);CHKERRQ(ierr);
     free (option_name); 
     if (asprintf (&option_name, "-Tref_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&Tref[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&Tref,NULL);CHKERRQ(ierr);
     free (option_name);
     /* Set viscous params for region_idx */
-    MaterialConstantsSetValues_ViscosityArrh(materialconstants,region_idx,preexpA[region_idx],Ascale[region_idx],entalpy[region_idx],Vmol[region_idx],nexp[region_idx],Tref[region_idx]);  
+    MaterialConstantsSetValues_ViscosityArrh(materialconstants,region_idx,preexpA,Ascale,entalpy,Vmol,nexp,Tref);  
 
     /* PLASTIC PARAMETERS */
     if (asprintf (&option_name, "-phi_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&phi[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&phi,NULL);CHKERRQ(ierr);
     free (option_name);
     if (asprintf (&option_name, "-phi_inf_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&phi_inf[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&phi_inf,NULL);CHKERRQ(ierr);
     free (option_name);
     if (asprintf (&option_name, "-Co_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&Co[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&Co,NULL);CHKERRQ(ierr);
     free (option_name);
     if (asprintf (&option_name, "-Co_inf_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&Co_inf[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&Co_inf,NULL);CHKERRQ(ierr);
     free (option_name);
     if (asprintf (&option_name, "-Tens_cutoff_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&Tens_cutoff[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&Tens_cutoff,NULL);CHKERRQ(ierr);
     free (option_name);
     if (asprintf (&option_name, "-Hst_cutoff_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&Hst_cutoff[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&Hst_cutoff,NULL);CHKERRQ(ierr);
     free (option_name);
     if (asprintf (&option_name, "-eps_min_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&eps_min[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&eps_min,NULL);CHKERRQ(ierr);
     free (option_name);
     if (asprintf (&option_name, "-eps_max_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&eps_max[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&eps_max,NULL);CHKERRQ(ierr);
     free (option_name);
 
-    phi_rad     = M_PI * phi[region_idx]/180.0;
-    phi_inf_rad = M_PI * phi_inf[region_idx]/180.0;
+    phi_rad     = M_PI * phi/180.0;
+    phi_inf_rad = M_PI * phi_inf/180.0;
     /* Set plastic params for region_idx */
-    MaterialConstantsSetValues_PlasticDP(materialconstants,region_idx,phi_rad,phi_inf_rad,Co[region_idx],Co_inf[region_idx],Tens_cutoff[region_idx],Hst_cutoff[region_idx]);
-    MaterialConstantsSetValues_SoftLin(materialconstants,region_idx,eps_min[region_idx],eps_max[region_idx]);
+    MaterialConstantsSetValues_PlasticDP(materialconstants,region_idx,phi_rad,phi_inf_rad,Co,Co_inf,Tens_cutoff,Hst_cutoff);
+    MaterialConstantsSetValues_SoftLin(materialconstants,region_idx,eps_min,eps_max);
 
     /* ENERGY PARAMETERS */
     if (asprintf (&option_name, "-alpha_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&alpha[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&alpha,NULL);CHKERRQ(ierr);
     free (option_name);
     if (asprintf (&option_name, "-beta_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&beta[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&beta,NULL);CHKERRQ(ierr);
     free (option_name);
     if (asprintf (&option_name, "-rho_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&rho[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&rho,NULL);CHKERRQ(ierr);
     free (option_name);
     if (asprintf (&option_name, "-heat_source_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&heat_source[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&heat_source,NULL);CHKERRQ(ierr);
     free (option_name);
     if (asprintf (&option_name, "-conductivity_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&conductivity[region_idx],NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, option_name,&conductivity,NULL);CHKERRQ(ierr);
     free (option_name);
     
     /* Set energy params for region_idx */
-    MaterialConstantsSetValues_EnergyMaterialConstants(region_idx,matconstants_e,alpha[region_idx],beta[region_idx],rho[region_idx],Cp,ENERGYDENSITY_CONSTANT,ENERGYCONDUCTIVITY_CONSTANT,source_type);
-    MaterialConstantsSetValues_DensityBoussinesq(materialconstants,region_idx,rho[region_idx],alpha[region_idx],beta[region_idx]);
-    EnergySourceConstSetField_HeatSource(&data_Q[region_idx],heat_source[region_idx]);
-    EnergyConductivityConstSetField_k0(&data_k[region_idx],conductivity[region_idx]);
+    MaterialConstantsSetValues_EnergyMaterialConstants(region_idx,matconstants_e,alpha,beta,rho,Cp,ENERGYDENSITY_CONSTANT,ENERGYCONDUCTIVITY_CONSTANT,source_type);
+    MaterialConstantsSetValues_DensityBoussinesq(materialconstants,region_idx,rho,alpha,beta);
+    EnergySourceConstSetField_HeatSource(&data_Q[region_idx],heat_source);
+    EnergyConductivityConstSetField_k0(&data_k[region_idx],conductivity);
   }
-
-  /* region_idx 9 --> Sticky Air */
-  region_idx = 9;
-  data->air_rho = 1.0;
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-air_rho",&data->air_rho,NULL);CHKERRQ(ierr);  
-  MaterialConstantsSetValues_MaterialType(materialconstants,region_idx,VISCOUS_CONSTANT,PLASTIC_NONE,SOFTENING_NONE,DENSITY_CONSTANT);
-  MaterialConstantsSetValues_ViscosityConst(materialconstants,region_idx,1.0e+19);
-  MaterialConstantsSetValues_DensityConst(materialconstants,region_idx,data->air_rho);
-  MaterialConstantsSetValues_EnergyMaterialConstants(region_idx,matconstants_e,0.0,0.0,1.0,Cp,ENERGYDENSITY_CONSTANT,ENERGYCONDUCTIVITY_CONSTANT,source_type);
-  EnergyConductivityConstSetField_k0(&data_k[region_idx],1.0);
-  EnergySourceConstSetField_HeatSource(&data_Q[region_idx],0.0);
 
   /* Report all material parameters values */
   for (region_idx=0; region_idx<rheology->nphases_active;region_idx++) {
     MaterialConstantsPrintAll(materialconstants,region_idx);
     MaterialConstantsEnergyPrintAll(materialconstants,region_idx);
   }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelScaleQuantities(ModelSubductionObliqueCtx *data, RheologyConstants *rheology, DataBucket materialconstants)
+{
+  PetscInt  region_idx;
+  PetscReal cm_per_yer2m_per_sec = 1.0e-2 / ( 365.0 * 24.0 * 60.0 * 60.0 );
+
+  PetscFunctionBegin;
+
   /* Compute additional scaling parameters */
   data->time_bar         = data->length_bar / data->velocity_bar;
   data->pressure_bar     = data->viscosity_bar/data->time_bar;
@@ -405,40 +415,82 @@ PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
   data->y_ocean[3]     = data->y_ocean[3]     / data->length_bar;
   data->y0             = data->y0             / data->length_bar;
   data->wz             = data->wz             / data->length_bar;
+  data->x_offset       = data->x_offset       / data->length_bar;
   data->alpha_subd     = data->alpha_subd * M_PI/180.0;
   data->theta_subd     = data->theta_subd * M_PI/180.0;
-  
+
   /* Scale velocity */
   data->normV = data->normV*cm_per_yer2m_per_sec/data->velocity_bar;
-  data->angle_v = data->angle_v*M_PI/180;
+  data->angle_v = data->angle_v*M_PI/180.0;
   data->vy = data->vy*cm_per_yer2m_per_sec/data->velocity_bar;
+
+  data->air_rho = data->air_rho / data->density_bar;
+
+  /* Scale seamount Gaussian parameters */
+  data->seamount_theta       = data->seamount_theta*M_PI/180.0;
+  data->seamount_sigma_x     = data->seamount_sigma_x   / data->length_bar;
+  data->seamount_sigma_y     = data->seamount_sigma_y   / data->length_bar;
+  data->seamount_max_alt     = data->seamount_max_alt   / data->length_bar;
+  data->seamount_centre[0]   = data->seamount_centre[0] / data->length_bar;
+  data->seamount_centre[1]   = data->seamount_centre[1] / data->length_bar;
   
   /* scale material properties */
   for (region_idx=0; region_idx<rheology->nphases_active;region_idx++) {
     MaterialConstantsScaleAll(materialconstants,region_idx,data->length_bar,data->velocity_bar,data->time_bar,data->viscosity_bar,data->density_bar,data->pressure_bar);
     MaterialConstantsEnergyScaleAll(materialconstants,region_idx,data->length_bar,data->time_bar,data->pressure_bar);
+    data->density_region[region_idx] = data->density_region[region_idx] / data->density_bar;
   }
-    
-  ierr = PetscFree(preexpA    );CHKERRQ(ierr);
-  ierr = PetscFree(Ascale     );CHKERRQ(ierr);
-  ierr = PetscFree(entalpy    );CHKERRQ(ierr);
-  ierr = PetscFree(Vmol       );CHKERRQ(ierr);
-  ierr = PetscFree(nexp       );CHKERRQ(ierr);
-  ierr = PetscFree(Tref       );CHKERRQ(ierr);
-  ierr = PetscFree(phi        );CHKERRQ(ierr);
-  ierr = PetscFree(phi_inf    );CHKERRQ(ierr);
-  ierr = PetscFree(Co         );CHKERRQ(ierr);
-  ierr = PetscFree(Co_inf     );CHKERRQ(ierr);
-  ierr = PetscFree(Tens_cutoff);CHKERRQ(ierr);
-  ierr = PetscFree(Hst_cutoff );CHKERRQ(ierr);
-  ierr = PetscFree(eps_min    );CHKERRQ(ierr);
-  ierr = PetscFree(eps_max    );CHKERRQ(ierr);
-  ierr = PetscFree(beta       );CHKERRQ(ierr);
-  ierr = PetscFree(alpha      );CHKERRQ(ierr);
-  ierr = PetscFree(rho        );CHKERRQ(ierr);
-  ierr = PetscFree(heat_source);CHKERRQ(ierr);
-  ierr = PetscFree(conductivity);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
 
+PetscErrorCode ModelInitialize_SubductionOblique(pTatinCtx c,void *ctx)
+{
+  ModelSubductionObliqueCtx *data;
+  RheologyConstants         *rheology;
+  DataBucket                materialconstants;
+  PetscInt                  nn;
+  PetscBool                 flg,found;
+  PetscErrorCode            ierr;
+
+  PetscFunctionBegin;
+
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+  data = (ModelSubductionObliqueCtx*)ctx;
+  
+  ierr = pTatinGetRheology(c,&rheology);CHKERRQ(ierr);
+  rheology->rheology_type = RHEOLOGY_VP_STD;
+  /* force energy equation to be introduced */
+  ierr = PetscOptionsInsertString(NULL,"-activate_energyfv true");CHKERRQ(ierr);
+  
+  data->n_phases = 10;
+  rheology->nphases_active = data->n_phases;
+  rheology->apply_viscosity_cutoff_global = PETSC_TRUE;
+  rheology->eta_upper_cutoff_global = 1.e+25;
+  rheology->eta_lower_cutoff_global = 1.e+19;
+  /* Allocate the densities array */
+  ierr = PetscCalloc1(data->n_phases,&data->density_region);CHKERRQ(ierr);
+
+  /* set the default values of the material constant for this particular model */
+  /* scaling */
+  data->length_bar    = 100.0 * 1.0e3;
+  data->viscosity_bar = 1e22;
+  data->velocity_bar  = 1.0e-10;
+  /* cutoff */
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_SO,"-apply_viscosity_cutoff_global",&rheology->apply_viscosity_cutoff_global,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-eta_lower_cutoff_global",&rheology->eta_lower_cutoff_global,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO,"-eta_upper_cutoff_global",&rheology->eta_upper_cutoff_global,NULL);CHKERRQ(ierr);
+  
+  /* Read and set user specific options for this model */
+  ierr = ModelUserOptions(data);CHKERRQ(ierr);
+
+  /* Material constants */
+  ierr = pTatinGetMaterialConstants(c,&materialconstants);CHKERRQ(ierr);
+  ierr = MaterialConstantsSetDefaults(materialconstants);CHKERRQ(ierr);
+  
+  /* Assign material constants parameters */
+  ierr = ModelSetMaterialConstants(rheology,materialconstants);CHKERRQ(ierr);
+  /* Scale model parameters */
+  ierr = ModelScaleQuantities(data,rheology,materialconstants);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -461,8 +513,10 @@ PetscErrorCode ModelApplyInitialMeshGeometry_SubductionOblique(pTatinCtx c,void 
   if (data->is_2D) {
     ierr = pTatin3d_DefineVelocityMeshGeometryQuasi2D(c);CHKERRQ(ierr);
   }
-  if (data->no_air) {
-    /* Remesh surface with isostatic topography */
+  /* Remesh surface with isostatic topography */
+  if (data->seamount) {
+    ierr = RemeshSurfaceIsostaticTopography_Seamount(c,data,dav);CHKERRQ(ierr);
+  } else {
     ierr = RemeshSurfaceIsostaticTopography(c,data,dav);CHKERRQ(ierr);
   }
   
@@ -495,92 +549,6 @@ PetscErrorCode ModelApplyInitialMeshGeometry_SubductionOblique(pTatinCtx c,void 
   PetscFunctionReturn(0);
 }
 
-/* GEOMETRY: Obliquity through initial conditions */
-PetscErrorCode ModelApplyInitialMaterialGeometry_ObliqueIC(pTatinCtx c,void *ctx)
-{
-  ModelSubductionObliqueCtx *data = (ModelSubductionObliqueCtx*)ctx;
-  DataBucket                db;
-  DataField                 PField_std,PField_pls;
-  PetscInt                  p;
-  int                       n_mp_points;
-  PetscReal                 xc,zc;
-  
-  PetscFunctionBegin;
-  
-  /* define properties on material points */
-  db = c->materialpoint_db;
-  DataBucketGetDataFieldByName(db,MPntStd_classname,&PField_std);
-  DataFieldGetAccess(PField_std);
-  DataFieldVerifyAccess(PField_std,sizeof(MPntStd));
-
-  DataBucketGetDataFieldByName(db,MPntPStokesPl_classname,&PField_pls);
-  DataFieldGetAccess(PField_pls);
-  DataFieldVerifyAccess(PField_pls,sizeof(MPntPStokesPl));
-  
-  xc = (data->Lx + data->Ox)/2.0;
-  zc = (data->Lz + data->Oz)/2.0;
-  
-  DataBucketGetSizes(db,&n_mp_points,0,0);
-  for (p=0; p<n_mp_points; p++) {
-    PetscReal     x_trench,x_subd;
-    MPntStd       *material_point;
-    MPntPStokesPl *mpprop_pls;
-    int           region_idx;
-    double        *position;
-    float         pls;
-    short         yield;
-
-    DataFieldAccessPoint(PField_std,p,(void**)&material_point);
-    DataFieldAccessPoint(PField_pls,p,(void**)&mpprop_pls);
-
-    /* Access using the getter function */
-    MPntStdGetField_global_coord(material_point,&position);
-    /* Set an initial small random noise on plastic strain */
-    pls = ptatin_RandomNumberGetDouble(0.0,0.03);
-    /* Set yield to none */
-    yield = 0;
-    /* Trench angle */
-    x_trench =  (position[2] - zc      ) / tan(data->alpha_subd) + xc;
-    /* Initial weak zone angle */
-    x_subd   = -(position[1] - data->y0) / tan(data->theta_subd) + x_trench;
-    
-    if (position[0] <= x_subd && position[1] >= data->y_ocean[0]) {
-      region_idx = 8; // Oceanic sediments
-    } else if (position[0] <= x_subd && position[1] >= data->y_ocean[1]) {
-      region_idx = 0; // Oceanic upper crust
-    } else if (position[0] <= x_subd && position[1] >= data->y_ocean[2]) {
-      region_idx = 1; // Oceanic lower crust
-    } else if (position[0] <= (x_subd-data->wz) && position[1] >= data->y_ocean[3]) {
-      region_idx = 4; // Oceanic lithosphere mantle
-    } else if (position[0] >= (x_subd-data->wz) && 
-               position[0] <= (x_subd+data->wz) &&
-               position[1] < data->y_ocean[2]   && 
-               position[1] >= data->y_continent[2]) {
-      region_idx = 7; // Weak zone
-    } else if (position[0] > x_subd && position[1] >= data->y_continent[0]) {
-      region_idx = 2; // Continental upper crust
-    } else if (position[0] > x_subd && position[1] >= data->y_continent[1]) {
-      region_idx = 3; // Continental lower crust
-    } else if (position[0] > x_subd && position[1] >= data->y_continent[2]) {
-      region_idx = 5; // Continental lithosphere mante
-    } else {
-      region_idx = 6; // Asthenosphere
-    }
-    
-    if (position[1] > data->y0) {
-      region_idx = 9; // Sticky Air
-    }
-    
-    MPntStdSetField_phase_index(material_point,region_idx);
-    MPntPStokesPlSetField_yield_indicator(mpprop_pls,yield);
-    MPntPStokesPlSetField_plastic_strain(mpprop_pls,pls);
-  }
-  DataFieldRestoreAccess(PField_std);
-  DataFieldRestoreAccess(PField_pls);
-  
-  PetscFunctionReturn(0);
-}
-
 static PetscErrorCode ComputeIsostaticTopography(ModelSubductionObliqueCtx *data,PetscReal *dh)
 {
   PetscReal      h_s,h_ouc,h_olc,h_uc,h_lc;
@@ -595,21 +563,14 @@ static PetscErrorCode ComputeIsostaticTopography(ModelSubductionObliqueCtx *data
   h_uc  = data->y0 - data->y_continent[0];
   h_lc  = data->y_continent[0] - data->y_continent[1];
   
-  /* Get their densities from options */
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-rho_0",&d_ouc,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-rho_1",&d_olc,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-rho_2",&d_uc,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-rho_3",&d_lc,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-rho_4",&d_m,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-rho_8",&d_s,NULL);CHKERRQ(ierr);
-  /* Scale the densities */
-  d_s = d_s/data->density_bar;
-  d_ouc = d_ouc/data->density_bar;
-  d_olc = d_olc/data->density_bar;
-  d_uc = d_uc/data->density_bar;
-  d_lc = d_lc/data->density_bar;
-  d_m = d_m/data->density_bar;
-  d_a = data->air_rho/data->density_bar;
+  /* Get densities */
+  d_s   = data->density_region[8];
+  d_ouc = data->density_region[0];
+  d_olc = data->density_region[1];
+  d_uc  = data->density_region[2];
+  d_lc  = data->density_region[3];
+  d_m   = data->density_region[4];
+  d_a   = data->air_rho;
   
   *dh = (h_ouc*(d_m-d_ouc) + h_olc*(d_m-d_olc) + h_s*(d_m-d_s) + h_uc*(d_uc-d_m) + h_lc*(d_lc-d_m))/(d_a - d_m);
   
@@ -620,9 +581,9 @@ static PetscErrorCode RemeshSurfaceIsostaticTopography(pTatinCtx user,ModelSubdu
 {
   DM              cda;
   Vec             coord;
-  PetscInt        nc,M,N,P,si,sj,sk,nx,ny,nz,i,j,k;
+  PetscInt        M,N,P,si,sj,sk,nx,ny,nz,i,j,k;
   PetscScalar     *LA_coords;
-  PetscReal       xc,zc,dy,x_trench,x_offset=0.0;
+  PetscReal       xc,zc,dy,x_trench;
   PetscReal       d_ouc,d_olc,d_uc,d_lc,d_air,d_m;
   PetscReal       h_s,h_ouc,h_olc,h_o;
   PetscReal       h_uc,h_lc,h_c;
@@ -640,26 +601,16 @@ static PetscErrorCode RemeshSurfaceIsostaticTopography(pTatinCtx user,ModelSubdu
   
   xc = (data->Lx + data->Ox)/2.0;
   zc = (data->Lz + data->Oz)/2.0;
-  /* Trench located at centre of the model in x direction */
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-xtrench_offset",&x_offset,NULL);CHKERRQ(ierr);
-  x_offset = x_offset / data->length_bar;
-  //x_trench = xc + x_offset;
   
   /* Compute the isostatic subsidence of the ocean */
   ierr = ComputeIsostaticTopography(data,&dy);CHKERRQ(ierr);
-  /* Get the densities from options */
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-rho_0",&d_ouc,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-rho_1",&d_olc,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-rho_2",&d_uc,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-rho_3",&d_lc,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-rho_4",&d_m,NULL);CHKERRQ(ierr);
-  /* Scale the densities */
-  d_ouc = d_ouc/data->density_bar;
-  d_olc = d_olc/data->density_bar;
-  d_uc = d_uc/data->density_bar;
-  d_lc = d_lc/data->density_bar;
-  d_m = d_m/data->density_bar;
-  d_air = data->air_rho/data->density_bar;
+  /* Get the densities */
+  d_ouc = data->density_region[0];
+  d_olc = data->density_region[1];
+  d_uc  = data->density_region[2];
+  d_lc  = data->density_region[3];
+  d_m   = data->density_region[4];
+  d_air = data->air_rho;
   /* Compute thickness of the different layers */
   /* Ocean */
   h_s   = data->y0 - data->y_ocean[0] ;
@@ -687,7 +638,7 @@ static PetscErrorCode RemeshSurfaceIsostaticTopography(pTatinCtx user,ModelSubdu
         y = LA_coords[3*nidx + 1];
         z = LA_coords[3*nidx + 2];
         
-        x_trench =  (z - zc      ) / tan(data->alpha_subd) + xc + x_offset;
+        x_trench =  (z - zc      ) / tan(data->alpha_subd) + xc + data->x_offset;
         x_subd   = -(y - data->y0) / tan(data->theta_subd) + x_trench;
         
         /* Prepare intersection points between layers for isostatic equilibrium of the continental margin */
@@ -742,55 +693,46 @@ static PetscErrorCode RemeshSurfaceIsostaticTopography(pTatinCtx user,ModelSubdu
   PetscFunctionReturn(0);
 }
 
-/* GEOMETRY: Obliquity through boundary conditions */
-PetscErrorCode ModelApplyInitialMaterialGeometry_ObliqueBC(pTatinCtx c,void *ctx)
+static PetscErrorCode RemeshSurfaceIsostaticTopography_Seamount(pTatinCtx user,ModelSubductionObliqueCtx *data, DM da)
 {
-  ModelSubductionObliqueCtx *data = (ModelSubductionObliqueCtx*)ctx;
-  DataBucket                db;
-  DataField                 PField_std,PField_pls;
-  PetscInt                  p;
-  int                       n_mp_points;
-  PetscReal                 xc,dy,x_trench,x_offset=0.0;
-  PetscReal                 d_ouc,d_olc,d_uc,d_lc,d_air,d_m;
-  PetscReal                 h_s,h_ouc,h_olc,h_o;
-  PetscReal                 h_uc,h_lc,h_c;
-  PetscReal                 xa,ya,xb,yb,xd,yd,xf,yf,xg,yg,xi,yi;
-  PetscErrorCode            ierr;
+  DM              cda;
+  Vec             coord;
+  PetscInt        M,N,P,si,sj,sk,nx,ny,nz,i,j,k;
+  PetscScalar     *LA_coords;
+  PetscReal       xc,zc,dy,x_trench;
+  PetscReal       d_ouc,d_olc,d_uc,d_lc,d_air,d_m;
+  PetscReal       h_s,h_ouc,h_olc,h_o;
+  PetscReal       h_uc,h_lc,h_c;
+  PetscReal       xa,ya,xb,yb,xd,yd,xf,yf,xg,yg,xi,yi;
+  PetscReal       gaussian_coeff[3]={0.0,0.0,0.0};
+  PetscErrorCode  ierr;
   
   PetscFunctionBegin;
-  
-  /* define properties on material points */
-  db = c->materialpoint_db;
-  DataBucketGetDataFieldByName(db,MPntStd_classname,&PField_std);
-  DataFieldGetAccess(PField_std);
-  DataFieldVerifyAccess(PField_std,sizeof(MPntStd));
-
-  DataBucketGetDataFieldByName(db,MPntPStokesPl_classname,&PField_pls);
-  DataFieldGetAccess(PField_pls);
-  DataFieldVerifyAccess(PField_pls,sizeof(MPntPStokesPl));
-  
-  /* Get the densities from options */
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-rho_0",&d_ouc,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-rho_1",&d_olc,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-rho_2",&d_uc,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-rho_3",&d_lc,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-rho_4",&d_m,NULL);CHKERRQ(ierr);
-  /* Scale the densities */
-  d_ouc = d_ouc/data->density_bar;
-  d_olc = d_olc/data->density_bar;
-  d_uc = d_uc/data->density_bar;
-  d_lc = d_lc/data->density_bar;
-  d_m = d_m/data->density_bar;
-  d_air = data->air_rho/data->density_bar;
+  /* Get DM info */
+  ierr = DMDAGetInfo(da,0,&M,&N,&P,0,0,0,0,0,0,0,0,0);CHKERRQ(ierr);
+  ierr = DMDAGetCorners(da,&si,&sj,&sk,&nx,&ny,&nz);CHKERRQ(ierr);
+  /* Get DM coords */
+  ierr = DMGetCoordinateDM(da,&cda);CHKERRQ(ierr);
+  ierr = DMGetCoordinates(da,&coord);CHKERRQ(ierr);
+  ierr = VecGetArray(coord,&LA_coords);CHKERRQ(ierr);
   
   xc = (data->Lx + data->Ox)/2.0;
-  /* Trench located at centre of the model in x direction */
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-xtrench_offset",&x_offset,NULL);CHKERRQ(ierr);
-  x_offset = x_offset / data->length_bar;
-  x_trench = xc + x_offset;
+  zc = (data->Lz + data->Oz)/2.0;
+  
+  /* Seamount Gaussian coefficients */
+  gaussian_coeff[0] = pow(cos(data->seamount_theta),2)/(2.0*pow(data->seamount_sigma_x,2)) + pow(sin(data->seamount_theta),2)/(2.0*pow(data->seamount_sigma_y,2));
+  gaussian_coeff[1] = -sin(2.0*data->seamount_theta)/(4.0*pow(data->seamount_sigma_x,2)) + sin(2.0*data->seamount_theta)/(4.0*pow(data->seamount_sigma_y,2));
+  gaussian_coeff[2] = pow(sin(data->seamount_theta),2)/(2.0*pow(data->seamount_sigma_x,2)) + pow(cos(data->seamount_theta),2)/(2.0*pow(data->seamount_sigma_y,2));
+
   /* Compute the isostatic subsidence of the ocean */
   ierr = ComputeIsostaticTopography(data,&dy);CHKERRQ(ierr);
-  
+  /* Get densities */
+  d_ouc = data->density_region[0];
+  d_olc = data->density_region[1];
+  d_uc  = data->density_region[2];
+  d_lc  = data->density_region[3];
+  d_m   = data->density_region[4];
+  d_air = data->air_rho;
   /* Compute thickness of the different layers */
   /* Ocean */
   h_s   = data->y0 - data->y_ocean[0] ;
@@ -801,193 +743,83 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_ObliqueBC(pTatinCtx c,void *ctx
   h_uc  = data->y0 - data->y_continent[0];
   h_lc  = data->y_continent[0] - data->y_continent[1];
   h_c   = h_uc + h_lc;
-  /* Prepare intersection points between layers for isostatic equilibrium of the continental margin */
-  /* Intersection point between the continental and oceanic plates d(xd,yd) */
-  xd = -(-dy - data->y0) / tan(data->theta_subd) + x_trench;
-  yd = data->y0 - dy;
-  /* Intersection point between the centre of the weak zone and the bottom of the continental crust a(xa,ya) */
-  xa = (h_c + data->y0)/tan(data->theta_subd) + x_trench;
-  ya = data->y0 - h_c;
-  /* Intersection point between the weak zone and the bottom of the continental crust b(xb,yb)*/
-  xb = xa + data->wz;
-  yb = ya;
-  /* Intersection point between the weak zone and the top of the lower continental crust */
-  xf = xb - h_lc/tan(data->theta_subd);
-  yf = ya + h_lc;
-  /* Upper right corner of the weak zone */
-  xi = xf - (h_uc - data->y0 - h_o - dy)/tan(data->theta_subd);
-  yi = data->y0 - h_o - dy;
-  /* Intersection point between the centre of the weak zone, the bottom of the ocean and the continent */
-  yg = yi;
-  xg = xi - data->wz;
-  
-  DataBucketGetSizes(db,&n_mp_points,0,0);
-  for (p=0; p<n_mp_points; p++) {
-    PetscReal     x_subd,y_contact,h_contact_bot_cont,h_contact_uc;
-    PetscReal     dy_bot_cont,dy_subd_uc,dy_margin;
-    MPntStd       *material_point;
-    MPntPStokesPl *mpprop_pls;
-    int           region_idx;
-    double        *position;
-    float         pls;
-    short         yield;
 
-    DataFieldAccessPoint(PField_std,p,(void**)&material_point);
-    DataFieldAccessPoint(PField_pls,p,(void**)&mpprop_pls);
+  /* Surface of the mesh */
+  if (sj+ny == N) {
+    j = ny-1;//N-1;
+    /* Modify coordinates */
+    for (k=0;k<nz;k++){
+      for (i=0;i<nx;i++){
+        PetscInt      nidx;
+        PetscReal     x_subd,y_contact,h_contact_bot_cont,h_contact_uc;
+        PetscReal     dy_bot_cont,dy_subd_uc,dy_margin;
+        PetscReal     x,y,z,pos[2]={0.0,0.0};
+        PetscReal     seamount_gaussian;
+    
+        nidx = i + j*nx + k*nx*ny;
+        x = LA_coords[3*nidx + 0];
+        y = LA_coords[3*nidx + 1];
+        z = LA_coords[3*nidx + 2];
+        
+        x_trench =  (z - zc      ) / tan(data->alpha_subd) + xc + data->x_offset;
+        x_subd   = -(y - data->y0) / tan(data->theta_subd) + x_trench;
 
-    /* Access using the getter function */
-    MPntStdGetField_global_coord(material_point,&position);
-    /* Set an initial small random noise on plastic strain */
-    pls = ptatin_RandomNumberGetDouble(0.0,0.03);
-    /* Set yield to none */
-    yield = 0;
-    
-    /* Initial weak zone angle */
-    x_subd   = -(position[1] - data->y0) / tan(data->theta_subd) + x_trench;
-    
-    if (position[0] <= x_subd && position[1] >= data->y_ocean[0]-dy) {
-      region_idx = 8; // Oceanic sediments
-    } else if (position[0] <= x_subd && position[1] >= data->y_ocean[1]-dy) {
-      region_idx = 0; // Oceanic upper crust
-    } else if (position[0] <= x_subd && position[1] >= data->y_ocean[2]-dy) {
-      region_idx = 1; // Oceanic lower crust
-    } else if (position[0] <= (x_subd-data->wz) && position[1] >= data->y_ocean[3]-dy) {
-      region_idx = 4; // Oceanic lithosphere mantle
-    } else if (position[0] >= (x_subd-data->wz)  && 
-               position[0] <= (x_subd+data->wz)  &&
-               position[1] < data->y_ocean[2]-dy && 
-               position[1] >= data->y_continent[2]) {
-      region_idx = 7; // Weak zone
-    } else if (position[0] > x_subd && position[1] >= data->y_continent[0]) {
-      region_idx = 2; // Continental upper crust
-    } else if (position[0] > x_subd && position[1] >= data->y_continent[1]) {
-      region_idx = 3; // Continental lower crust
-    } else if (position[0] > x_subd && position[1] >= data->y_continent[2]) {
-      region_idx = 5; // Continental lithosphere mante
-    } else {
-      region_idx = 6; // Asthenosphere
+        pos[0] = x;
+        pos[1] = z;
+        seamount_gaussian = Gaussian2D(data->seamount_max_alt,pos,gaussian_coeff,data->seamount_centre);
+        
+        /* Prepare intersection points between layers for isostatic equilibrium of the continental margin */
+        /* Intersection point between the continental and oceanic plates d(xd,yd) */
+        xd = -(-dy - data->y0) / tan(data->theta_subd) + x_trench;
+        yd = data->y0 - dy;
+        /* Intersection point between the centre of the weak zone and the bottom of the continental crust a(xa,ya) */
+        xa = (h_c + data->y0)/tan(data->theta_subd) + x_trench;
+        ya = data->y0 - h_c;
+        /* Intersection point between the weak zone and the bottom of the continental crust b(xb,yb)*/
+        xb = xa + data->wz;
+        yb = ya;
+        /* Intersection point between the weak zone and the top of the lower continental crust */
+        xf = xb - h_lc/tan(data->theta_subd);
+        yf = ya + h_lc;
+        /* Upper right corner of the weak zone */
+        xi = xf - (h_uc - data->y0 - h_o - dy)/tan(data->theta_subd);
+        yi = data->y0 - h_o - dy;
+        /* Intersection point between the centre of the weak zone, the bottom of the ocean and the continent */
+        yg = yi;
+        xg = xi - data->wz;
+
+        y_contact = data->y0 - (x - x_trench - data->wz)*tan(data->theta_subd);
+        h_contact_bot_cont = data->y_continent[0] - y_contact;
+        h_contact_uc       = data->y0 - y_contact;
+        dy_bot_cont = (h_contact_bot_cont*(d_m - d_lc) + h_lc*(d_lc - d_m))/(d_air - d_m);
+        dy_subd_uc  = (h_contact_uc*(d_m - d_uc) + h_uc*(d_uc - d_m) + h_lc*(d_lc - d_m))/(d_air - d_m);
+        dy_margin   = (h_o*(d_m - d_uc) + h_uc*(d_uc - d_m) + h_lc*(d_lc - d_m))/(d_air - d_m);
+        
+        if (x <= x_subd) {
+          LA_coords[3*nidx + 1] = data->y0-dy+seamount_gaussian;
+        }
+        if (x >= xf && x <= xb) {
+          LA_coords[3*nidx + 1] = data->y0-dy_bot_cont;
+        }
+        if (x < xf && x >= xi) {
+          LA_coords[3*nidx + 1] = data->y0-dy_subd_uc;
+        }
+        if (x < xi && x > x_subd) {
+          LA_coords[3*nidx + 1] = data->y0-dy_margin;
+        }
+        if (x >= xb) {
+          LA_coords[3*nidx + 1] = data->y0;
+        }
+      }
     }
-    
-    y_contact = data->y0 - (position[0] - x_trench - data->wz)*tan(data->theta_subd);
-    h_contact_bot_cont = data->y_continent[0] - y_contact;
-    h_contact_uc       = data->y0 - y_contact;
-    dy_bot_cont = (h_contact_bot_cont*(d_m - d_lc) + h_lc*(d_lc - d_m))/(d_air - d_m);
-    dy_subd_uc  = (h_contact_uc*(d_m - d_uc) + h_uc*(d_uc - d_m) + h_lc*(d_lc - d_m))/(d_air - d_m);
-    dy_margin   = (h_o*(d_m - d_uc) + h_uc*(d_uc - d_m) + h_lc*(d_lc - d_m))/(d_air - d_m);
-    
-    if (position[0] <= x_subd && position[1] >= data->y0-dy) {
-      region_idx = 9; // Sticky Air
-    } 
-    if (position[0] >= xf && position[0] <= xb && position[1] >= data->y0-dy_bot_cont) {
-      region_idx = 9;
-    }
-    if (position[0] < xf && position[0] >= xi && position[1] >= data->y0-dy_subd_uc){
-      region_idx = 9;
-    }
-    if (position[0] < xi && position[0] > x_subd && position[1] >= data->y0-dy_margin){
-      region_idx = 9;
-    }
-    if (position[0] >= xb && position[1] > data->y0){
-      region_idx = 9;
-    }
-    
-    MPntStdSetField_phase_index(material_point,region_idx);
-    MPntPStokesPlSetField_yield_indicator(mpprop_pls,yield);
-    MPntPStokesPlSetField_plastic_strain(mpprop_pls,pls);
   }
-  DataFieldRestoreAccess(PField_std);
-  DataFieldRestoreAccess(PField_pls);
   
+  ierr = VecRestoreArray(coord,&LA_coords);CHKERRQ(ierr);
+
+  ierr = DMDAUpdateGhostedCoordinates(da);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ModelApplyInitialMaterialGeometryNoAir_ObliqueBC(pTatinCtx c,void *ctx)
-{
-  ModelSubductionObliqueCtx *data = (ModelSubductionObliqueCtx*)ctx;
-  DataBucket                db;
-  DataField                 PField_std,PField_pls;
-  PetscInt                  p;
-  int                       n_mp_points;
-  PetscReal                 xc,dy,x_trench,x_offset=0.0;
-  PetscErrorCode            ierr;
-  
-  PetscFunctionBegin;
-  
-  /* define properties on material points */
-  db = c->materialpoint_db;
-  DataBucketGetDataFieldByName(db,MPntStd_classname,&PField_std);
-  DataFieldGetAccess(PField_std);
-  DataFieldVerifyAccess(PField_std,sizeof(MPntStd));
-
-  DataBucketGetDataFieldByName(db,MPntPStokesPl_classname,&PField_pls);
-  DataFieldGetAccess(PField_pls);
-  DataFieldVerifyAccess(PField_pls,sizeof(MPntPStokesPl));
-  
-  xc = (data->Lx + data->Ox)/2.0;
-  /* Trench located at centre of the model in x direction */
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-xtrench_offset",&x_offset,NULL);CHKERRQ(ierr);
-  x_offset = x_offset / data->length_bar;
-  x_trench = xc + x_offset;
-  /* Compute the isostatic subsidence of the ocean */
-  ierr = ComputeIsostaticTopography(data,&dy);CHKERRQ(ierr);
-  
-  DataBucketGetSizes(db,&n_mp_points,0,0);
-  for (p=0; p<n_mp_points; p++) {
-    PetscReal     x_subd;
-    MPntStd       *material_point;
-    MPntPStokesPl *mpprop_pls;
-    int           region_idx;
-    double        *position;
-    float         pls;
-    short         yield;
-
-    DataFieldAccessPoint(PField_std,p,(void**)&material_point);
-    DataFieldAccessPoint(PField_pls,p,(void**)&mpprop_pls);
-
-    /* Access using the getter function */
-    MPntStdGetField_global_coord(material_point,&position);
-    /* Set an initial small random noise on plastic strain */
-    pls = ptatin_RandomNumberGetDouble(0.0,0.03);
-    /* Set yield to none */
-    yield = 0;
-    
-    /* Initial weak zone angle */
-    x_subd   = -(position[1] - data->y0) / tan(data->theta_subd) + x_trench;
-    
-    if (position[0] <= x_subd && position[1] >= data->y_ocean[0]-dy) {
-      region_idx = 8; // Oceanic sediments
-    } else if (position[0] <= x_subd && position[1] >= data->y_ocean[1]-dy) {
-      region_idx = 0; // Oceanic upper crust
-    } else if (position[0] <= x_subd && position[1] >= data->y_ocean[2]-dy) {
-      region_idx = 1; // Oceanic lower crust
-    } else if (position[0] <= (x_subd-data->wz) && position[1] >= data->y_ocean[3]-dy) {
-      region_idx = 4; // Oceanic lithosphere mantle
-    } else if (position[0] >= (x_subd-data->wz)  && 
-               position[0] <= (x_subd+data->wz)  &&
-               //position[1] < data->y_ocean[2]-dy && 
-               position[1] >= data->y_continent[2]) {
-      region_idx = 7; // Weak zone
-    } else if (position[0] > x_subd && position[1] >= data->y_continent[0]) {
-      region_idx = 2; // Continental upper crust
-    } else if (position[0] > x_subd && position[1] >= data->y_continent[1]) {
-      region_idx = 3; // Continental lower crust
-    } else if (position[0] > x_subd && position[1] >= data->y_continent[2]) {
-      region_idx = 5; // Continental lithosphere mante
-    } else {
-      region_idx = 6; // Asthenosphere
-    }
-    
-    MPntStdSetField_phase_index(material_point,region_idx);
-    MPntPStokesPlSetField_yield_indicator(mpprop_pls,yield);
-    MPntPStokesPlSetField_plastic_strain(mpprop_pls,pls);
-  }
-  DataFieldRestoreAccess(PField_std);
-  DataFieldRestoreAccess(PField_pls);
-  
-  PetscFunctionReturn(0);
-}
-
-/* GEOMETRY: Obliquity through initial conditions */
 PetscErrorCode ModelApplyInitialMaterialGeometryNoAir_ObliqueIC(pTatinCtx c,void *ctx)
 {
   ModelSubductionObliqueCtx *data = (ModelSubductionObliqueCtx*)ctx;
@@ -995,7 +827,7 @@ PetscErrorCode ModelApplyInitialMaterialGeometryNoAir_ObliqueIC(pTatinCtx c,void
   DataField                 PField_std,PField_pls;
   PetscInt                  p;
   int                       n_mp_points;
-  PetscReal                 xc,zc,dy,x_offset=0.0;
+  PetscReal                 xc,zc,dy;
   PetscErrorCode            ierr;
   
   PetscFunctionBegin;
@@ -1010,8 +842,6 @@ PetscErrorCode ModelApplyInitialMaterialGeometryNoAir_ObliqueIC(pTatinCtx c,void
   DataFieldGetAccess(PField_pls);
   DataFieldVerifyAccess(PField_pls,sizeof(MPntPStokesPl));
   
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-xtrench_offset",&x_offset,NULL);CHKERRQ(ierr);
-
   xc = (data->Lx + data->Ox)/2.0;
   zc = (data->Lz + data->Oz)/2.0;
   
@@ -1038,7 +868,7 @@ PetscErrorCode ModelApplyInitialMaterialGeometryNoAir_ObliqueIC(pTatinCtx c,void
     /* Set yield to none */
     yield = 0;
     /* Trench angle */
-    x_trench =  (position[2] - zc      ) / tan(data->alpha_subd) + xc + x_offset;
+    x_trench =  (position[2] - zc      ) / tan(data->alpha_subd) + xc + data->x_offset;
     /* Initial weak zone angle */
     x_subd   = -(position[1] - data->y0) / tan(data->theta_subd) + x_trench;
 
@@ -1049,6 +879,105 @@ PetscErrorCode ModelApplyInitialMaterialGeometryNoAir_ObliqueIC(pTatinCtx c,void
     } else if (position[0] <= x_subd && position[1] >= data->y_ocean[2]-dy) {
       region_idx = 1; // Oceanic lower crust
     } else if (position[0] <= (x_subd-data->wz) && position[1] >= data->y_ocean[3]-dy) {
+      region_idx = 4; // Oceanic lithosphere mantle
+    } else if (position[0] >= (x_subd-data->wz)  && 
+               position[0] <= (x_subd+data->wz)  &&
+               //position[1] < data->y_ocean[2]-dy && 
+               position[1] >= data->y_continent[2]) {
+      region_idx = 7; // Weak zone
+    } else if (position[0] > x_subd && position[1] >= data->y_continent[0]) {
+      region_idx = 2; // Continental upper crust
+    } else if (position[0] > x_subd && position[1] >= data->y_continent[1]) {
+      region_idx = 3; // Continental lower crust
+    } else if (position[0] > x_subd && position[1] >= data->y_continent[2]) {
+      region_idx = 5; // Continental lithosphere mante
+    } else {
+      region_idx = 6; // Asthenosphere
+    }
+
+    MPntStdSetField_phase_index(material_point,region_idx);
+    MPntPStokesPlSetField_yield_indicator(mpprop_pls,yield);
+    MPntPStokesPlSetField_plastic_strain(mpprop_pls,pls);
+  }
+  DataFieldRestoreAccess(PField_std);
+  DataFieldRestoreAccess(PField_pls);
+  
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ModelApplyInitialMaterialGeometryNoAir_Seamount(pTatinCtx c,void *ctx)
+{
+  ModelSubductionObliqueCtx *data = (ModelSubductionObliqueCtx*)ctx;
+  DataBucket                db;
+  DataField                 PField_std,PField_pls;
+  PetscInt                  p;
+  int                       n_mp_points;
+  PetscReal                 xc,zc,dy;
+  PetscReal                 gaussian_coeff[3];
+  PetscErrorCode            ierr;
+  
+  PetscFunctionBegin;
+  
+  /* define properties on material points */
+  db = c->materialpoint_db;
+  DataBucketGetDataFieldByName(db,MPntStd_classname,&PField_std);
+  DataFieldGetAccess(PField_std);
+  DataFieldVerifyAccess(PField_std,sizeof(MPntStd));
+
+  DataBucketGetDataFieldByName(db,MPntPStokesPl_classname,&PField_pls);
+  DataFieldGetAccess(PField_pls);
+  DataFieldVerifyAccess(PField_pls,sizeof(MPntPStokesPl));
+  
+  xc = (data->Lx + data->Ox)/2.0;
+  zc = (data->Lz + data->Oz)/2.0;
+  
+  gaussian_coeff[0] = pow(cos(data->seamount_theta),2)/(2.0*pow(data->seamount_sigma_x,2)) + pow(sin(data->seamount_theta),2)/(2.0*pow(data->seamount_sigma_y,2));
+  gaussian_coeff[1] = -sin(2.0*data->seamount_theta)/(4.0*pow(data->seamount_sigma_x,2)) + sin(2.0*data->seamount_theta)/(4.0*pow(data->seamount_sigma_y,2));
+  gaussian_coeff[2] = pow(sin(data->seamount_theta),2)/(2.0*pow(data->seamount_sigma_x,2)) + pow(cos(data->seamount_theta),2)/(2.0*pow(data->seamount_sigma_y,2));
+
+  /* Compute the isostatic subsidence of the ocean */
+  ierr = ComputeIsostaticTopography(data,&dy);CHKERRQ(ierr);
+
+  DataBucketGetSizes(db,&n_mp_points,0,0);
+  for (p=0; p<n_mp_points; p++) {
+    PetscReal     x_trench,x_subd,seamount_gaussian,seamount_thickness;
+    PetscReal     pos[2]={0.0,0.0};
+    MPntStd       *material_point;
+    MPntPStokesPl *mpprop_pls;
+    int           region_idx;
+    double        *position;
+    float         pls;
+    short         yield;
+
+    DataFieldAccessPoint(PField_std,p,(void**)&material_point);
+    DataFieldAccessPoint(PField_pls,p,(void**)&mpprop_pls);
+
+    /* Access using the getter function */
+    MPntStdGetField_global_coord(material_point,&position);
+    /* Set an initial small random noise on plastic strain */
+    pls = ptatin_RandomNumberGetDouble(0.0,0.03);
+    /* Set yield to none */
+    yield = 0;
+    /* Trench angle */
+    x_trench =  (position[2] - zc      ) / tan(data->alpha_subd) + xc + data->x_offset;
+    /* Initial weak zone angle */
+    x_subd   = -(position[1] - data->y0) / tan(data->theta_subd) + x_trench;
+    /* Seamount topography */
+    pos[0] = position[0];
+    pos[1] = position[2];
+    seamount_gaussian = Gaussian2D(data->seamount_max_alt,pos,gaussian_coeff,data->seamount_centre);
+    /* Compute the the thickness of the seamount for an isostatic equilibrium */
+    seamount_thickness = (seamount_gaussian * data->density_region[9]) / (data->density_region[4] - data->density_region[9]);
+
+    if (position[0] <= x_subd && position[1] >= -dy-seamount_thickness) {
+      region_idx = 9; // Seamount
+    } else if (position[0] <= x_subd && position[1] >= data->y_ocean[0]-dy-seamount_thickness) {
+      region_idx = 8; // Oceanic sediments
+    } else if (position[0] <= x_subd && position[1] >= data->y_ocean[1]-dy-seamount_thickness) {
+      region_idx = 0; // Oceanic upper crust
+    } else if (position[0] <= x_subd && position[1] >= data->y_ocean[2]-dy-seamount_thickness) {
+      region_idx = 1; // Oceanic lower crust
+    } else if (position[0] <= (x_subd-data->wz) && position[1] >= data->y_ocean[3]-dy-seamount_thickness) {
       region_idx = 4; // Oceanic lithosphere mantle
     } else if (position[0] >= (x_subd-data->wz)  && 
                position[0] <= (x_subd+data->wz)  &&
@@ -1083,18 +1012,10 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_SubductionOblique(pTatinCtx c,v
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
   
-  if (data->oblique_IC) {
-    if (data->no_air) {
-      ierr = ModelApplyInitialMaterialGeometryNoAir_ObliqueIC(c,ctx);CHKERRQ(ierr);
-    } else {
-      ierr = ModelApplyInitialMaterialGeometry_ObliqueIC(c,ctx);CHKERRQ(ierr);
-    }
-  } else if (data->oblique_BC) {
-    if (data->no_air) {
-      ierr = ModelApplyInitialMaterialGeometryNoAir_ObliqueBC(c,ctx);CHKERRQ(ierr);
-    } else {
-      ierr = ModelApplyInitialMaterialGeometry_ObliqueBC(c,ctx);CHKERRQ(ierr);
-    }
+  if (data->seamount) {
+    ierr = ModelApplyInitialMaterialGeometryNoAir_Seamount(c,ctx);CHKERRQ(ierr);
+  } else {
+    ierr = ModelApplyInitialMaterialGeometryNoAir_ObliqueIC(c,ctx);CHKERRQ(ierr);
   }
 
   PetscFunctionReturn(0);
@@ -1194,7 +1115,6 @@ static PetscErrorCode ModelApplyInitialStokesVariableMarkers_SubductionOblique(p
   Vec                        Uloc,Ploc;
   PetscScalar                *LA_Uloc,*LA_Ploc;
   DataField                  PField;
-  PetscInt                   regionidx;
   PetscErrorCode             ierr;
 
   PetscFunctionBegin;
@@ -1461,14 +1381,12 @@ PetscErrorCode SubductionOblique_VelocityBC_Oblique_KMIN_DirichletSplitNeumann(B
   /* Test with a dirichlet constraint on the z face with inflow */
   {
     BC_LithosphereSplit bcdata_split;
-    PetscReal           xc,x_offset=0.0,x_trench;
+    PetscReal           xc,x_trench;
 
     ierr = PetscMalloc(sizeof(struct _p_BC_LithosphereSplit),&bcdata_split);CHKERRQ(ierr);
     xc = (data->Lx + data->Ox)/2.0;
     /* Trench located at centre of the model in x direction */
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-xtrench_offset",&x_offset,NULL);CHKERRQ(ierr);
-    x_offset = x_offset / data->length_bar;
-    x_trench = xc + x_offset;
+    x_trench = xc + data->x_offset;
 
     bcdata_split->x_split = x_trench;
     bcdata_split->y_lab   = data->y_ocean[3];
@@ -1540,14 +1458,12 @@ PetscErrorCode SubductionOblique_VelocityBC_Oblique_KMIN_DirichletArctangent(BCL
   /* Test with a dirichlet constraint on the z face with inflow */
   {
     BC_Arctan bcdata_atan;
-    PetscReal xc,x_offset=0.0,x_trench;
+    PetscReal xc,x_trench;
 
     ierr = PetscMalloc(sizeof(struct _p_BC_Arctan),&bcdata_atan);CHKERRQ(ierr);
     xc = (data->Lx + data->Ox)/2.0;
     /* Trench located at centre of the model in x direction */
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_SO, "-xtrench_offset",&x_offset,NULL);CHKERRQ(ierr);
-    x_offset = x_offset / data->length_bar;
-    x_trench = xc + x_offset;
+    x_trench = xc + data->x_offset;
 
     bcdata_atan->x0        = x_trench;
     bcdata_atan->y_lab     = data->y_ocean[3];
@@ -2388,6 +2304,7 @@ PetscErrorCode ModelDestroy_SubductionOblique(pTatinCtx c,void *ctx)
   data = (ModelSubductionObliqueCtx*)ctx;
 
   /* Free contents of structure */
+  ierr = PetscFree(data->density_region);CHKERRQ(ierr);
 
   /* Free structure */
   ierr = PetscFree(data);CHKERRQ(ierr);
