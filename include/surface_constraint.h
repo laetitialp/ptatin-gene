@@ -15,7 +15,7 @@ typedef enum {
   SC_FSSA,
   SC_NITSCHE_DIRICHLET,
   SC_NITSCHE_NAVIER_SLIP,
-  SC_NITSCHE_CUSTOM_SLIP
+  SC_NITSCHE_GENERAL_SLIP
 } SurfaceConstraintType;
 
 
@@ -101,7 +101,7 @@ typedef PetscErrorCode (*SurfCSetValuesGeneric)(void*);
 typedef PetscErrorCode (*SurfCSetValuesTraction)(Facet,const PetscReal*,PetscReal*,void*); /* <in> coor[3] : <out> traction[3] */
 typedef PetscErrorCode (*SurfCSetValuesNitscheDirichlet)(Facet,const PetscReal*,PetscReal*,void*); /* <in> coor[3] : <out> velocity[3] */
 typedef PetscErrorCode (*SurfCSetValuesNitscheNavierSlip)(Facet,const PetscReal*,PetscReal*,void*); /* <in> coor[3] : <out> velocity[1] */
-typedef PetscErrorCode (*SurfCSetValuesNitscheCustomSlip)(Facet,const PetscReal*,PetscReal*,PetscReal*,void*); /* <in> coor[3] : <out> velocity[1], normal_hat[3] */
+typedef PetscErrorCode (*SurfCSetValuesNitscheGeneralSlip)(Facet,const PetscReal*,PetscReal*,PetscReal*,PetscReal*,PetscReal*,void*); /* <in> coor[3] : <out> normal_hat[3], tangent1_hat[3], tauS[6], mathcalH[6] */
 
 
 /* Test type by assignment and compile time errors */
@@ -110,7 +110,7 @@ typedef PetscErrorCode (*SurfCSetValuesNitscheCustomSlip)(Facet,const PetscReal*
 #define SURFC_CHKSETVALS_SC_FSSA(setter)
 #define SURFC_CHKSETVALS_SC_NITSCHE_DIRICHLET(setter)   { SurfCSetValuesNitscheDirichlet _v1_ = (setter); _v1_ = NULL; }
 #define SURFC_CHKSETVALS_SC_NITSCHE_NAVIER_SLIP(setter) { SurfCSetValuesNitscheNavierSlip _v1_ = (setter); _v1_ = NULL; }
-#define SURFC_CHKSETVALS_SC_NITSCHE_CUSTOM_SLIP(setter) { SurfCSetValuesNitscheCustomSlip _v1_ = (setter); _v1_ = NULL; }
+#define SURFC_CHKSETVALS_SC_NITSCHE_GENERAL_SLIP(setter) { SurfCSetValuesNitscheGeneralSlip _v1_ = (setter); _v1_ = NULL; }
 
 #define SURFC_CHKSETVALS(type, setter) SURFC_CHKSETVALS_##type((setter))
 
@@ -118,7 +118,7 @@ typedef PetscErrorCode (*SurfCSetValuesNitscheCustomSlip)(Facet,const PetscReal*
 PetscErrorCode SurfaceConstraintSetValues_TRACTION           (SurfaceConstraint sc,SurfCSetValuesTraction set,         void *data);
 PetscErrorCode SurfaceConstraintSetValues_NITSCHE_DIRICHLET  (SurfaceConstraint sc,SurfCSetValuesNitscheDirichlet set, void *data);
 PetscErrorCode SurfaceConstraintSetValues_NITSCHE_NAVIER_SLIP(SurfaceConstraint sc,SurfCSetValuesNitscheNavierSlip set,void *data);
-PetscErrorCode SurfaceConstraintSetValues_NITSCHE_CUSTOM_SLIP(SurfaceConstraint sc,SurfCSetValuesNitscheCustomSlip set,void *data);
+PetscErrorCode SurfaceConstraintSetValues_NITSCHE_GENERAL_SLIP(SurfaceConstraint sc,SurfCSetValuesNitscheGeneralSlip set,void *data);
 
 
 PetscErrorCode SurfaceConstraintSetValues(SurfaceConstraint sc,
@@ -183,5 +183,6 @@ PetscErrorCode compute_global_penalty_nitsche(SurfaceConstraint sc,PetscInt type
 
 PetscErrorCode SurfaceConstraintNitscheDirichlet_SetPenalty(SurfaceConstraint sc,PetscReal penalty);
 PetscErrorCode SurfaceConstraintNitscheNavierSlip_SetPenalty(SurfaceConstraint sc,PetscReal penalty);
+PetscErrorCode SurfaceConstraintNitscheGeneralSlip_SetPenalty(SurfaceConstraint sc,PetscReal penalty);
 
 #endif

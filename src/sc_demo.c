@@ -14,6 +14,19 @@
 #include <sc_generic.h>
 
 
+/* >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> */
+
+//
+// fe_form_compiler.py version: 8d4b0b5b8d2e57803682a919e42ac439d4c64103
+// sympy version: 1.6.1
+// using common substring elimination: True
+// form file: nitsche-custom-h.py version: b4d9d8046efa028c7a07fd3efdc8f1813e781bb0
+//
+
+// --- auto-generated code goes here ---
+
+/* >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> */
+
 typedef enum { V_X1=0, V_X2 } StokesSubVec;
 
 
@@ -27,6 +40,7 @@ typedef struct {
 
 typedef struct {
   QPntSurfCoefStokes *boundary_qp;
+  /*PetscRea *user_data_A_qp; */
 } FormContextDemo;
 
 
@@ -62,7 +76,7 @@ static PetscErrorCode _form_access_demo(StokesForm *form)
   boundary_q = sc->quadrature;
   ierr = SurfaceQuadratureGetAllCellData_Stokes(boundary_q,&formdata->boundary_qp);CHKERRQ(ierr);
   
-  //DataBucketGetEntriesdByName(sc->properties_db,"traction",(void**)&traction_qp);
+  //DataBucketGetEntriesdByName(sc->properties_db,"user_data_A",(void**)&formdata->&user_data_A_qp);
   
   PetscFunctionReturn(0);
 }
@@ -78,7 +92,7 @@ static PetscErrorCode _form_restore_demo(StokesForm *form)
   
   sc = form->sc;
   
-  //DataBucketRestoreEntriesdByName(sc->properties_db,"traction",(void**)&traction_qp);
+  //DataBucketRestoreEntriesdByName(sc->properties_db,"user_data_A",(void**)&formdata->&user_data_A_qp);
   formdata->boundary_qp = NULL;
   
   PetscFunctionReturn(0);
@@ -236,7 +250,7 @@ static PetscErrorCode _form_spmv_A21(StokesForm *form,PetscReal ds[],PetscReal F
 }
 
 /* point-wise kernel configuration */
-PetscErrorCode StoksFormConfigureAction_SpMV(StokesForm *form,StokesSubMat op)
+static PetscErrorCode StoksFormConfigureAction_SpMV(StokesForm *form,StokesSubMat op)
 {
   PetscErrorCode ierr;
   ierr = StokesFormSetType(form,FORM_SPMV);CHKERRQ(ierr);
@@ -296,7 +310,7 @@ static PetscErrorCode sc_spmv_A21(
   printf("_SpMV_A21\n");
   ierr = StokesFormSetup_Demo(&F,sc,&formdata);CHKERRQ(ierr);
   ierr = StoksFormConfigureAction_SpMV(&F,M_A21);CHKERRQ(ierr);
-  ierr = generic_facet_action(&F, &F.u, dmu, dmu,ufield, dmp,NULL, Y);CHKERRQ(ierr);
+  ierr = generic_facet_action(&F, &F.p, dmu, dmu,ufield, dmp,NULL, Y);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -385,7 +399,7 @@ static PetscErrorCode sc_asmb_A21(SurfaceConstraint sc, DM dmu, DM dmp, Mat A)
 
 /* assemble diagonal */
 /* point-wise kernels */
-static PetscErrorCode _form_asmbdiag_A11(StokesForm *form,PetscReal ds[],PetscReal A[])
+static PetscErrorCode _form_asmbdiag_A11(StokesForm *form,PetscReal ds[],PetscReal diagA[])
 {
   PetscFunctionReturn(0);
 }
@@ -423,31 +437,11 @@ static PetscErrorCode sc_asmbdiag_A11(SurfaceConstraint sc, DM dmu, Vec diagA)
 
 static PetscErrorCode _form_spmv_wA(StokesForm *form,PetscReal ds[],PetscReal F[])
 {
-  SCContextDemo   *scdata;
-  FormContextDemo *formdata;
-  PetscReal       uD[3];
-  
-  scdata   = (void*)form->sc->data;
-  formdata = (void*)form->data;
-  
-  uD[0] = uD[1] = uD[2] = 0.0;
-  
-  
   PetscFunctionReturn(0);
 }
 
 static PetscErrorCode _form_spmv_qA(StokesForm *form,PetscReal ds[],PetscReal F[])
 {
-  SCContextDemo   *scdata;
-  FormContextDemo *formdata;
-  PetscReal       uD[3];
-  
-  scdata   = (void*)form->sc->data;
-  formdata = (void*)form->data;
-  
-  uD[0] = uD[1] = uD[2] = 0.0;
-  
-  
   PetscFunctionReturn(0);
 }
 
@@ -523,6 +517,7 @@ PetscErrorCode _SetType_DEMO(SurfaceConstraint sc)
   ctx->setup = PETSC_TRUE;
   sc->data = (void*)ctx;
   /* insert properties into quadrature bucket */
+  //DataBucketRegister_double(sc->properties_db,"user_data_A",3);
   DataBucketFinalize(sc->properties_db);
   PetscFunctionReturn(0);
 }
