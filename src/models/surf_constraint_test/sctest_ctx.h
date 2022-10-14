@@ -7,6 +7,9 @@ typedef struct {
   PetscReal Lx, Ly, Lz, Ox, Oy, Oz;
   PetscReal layer1,layer2;
   PetscBool PolarMesh;
+  PetscReal norm_u,uz0,ux0,alpha,theta;
+  PetscReal n_hat[3],t1_hat[3],epsilon_s[6],H[6];
+  PetscInt  direction_BC;
 } ModelSCTestCtx;
 
 #endif
