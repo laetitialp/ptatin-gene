@@ -3,11 +3,11 @@
 // fe_form_compiler.py version: 8d4b0b5b8d2e57803682a919e42ac439d4c64103
 // sympy version: 1.6.1
 // using common substring elimination: True
-// form file: nitsche-custom-h_IJ.py version: 53800e8dcfeb59279abb73274a0ef2bf16e58dc5
+// form file: nitsche-custom-h_IJ.py version: 4543cb74a6c7824e8f0779441abf7da668e0d359
 //
 
-//#include <stdio.h>
-//#include <math.h>
+#include <stdio.h>
+#include <math.h>
 
 //
 // key: wu
@@ -192,15 +192,16 @@ double scale, double F[])
 void nitsche_custom_h_a_q2_3d_asmb_qu(
 double qNt[], double qdNtx0[], double qdNtx1[], double qdNtx2[],
 double uN[], double udNx0[], double udNx1[], double udNx2[],
+double n[],  // parameter
 double nhat[],  // parameter
 double scale, double A[])
 {
   int i,j;
   for (i=0; i<4; i++) { // q_nbasis
     for (j=0; j<27; j++) { // u_nbasis
-      A[(1*i + 0)*81 + (3*j + 0)] += scale * (nhat[0]*qNt[i]*uN[j]);
-      A[(1*i + 0)*81 + (3*j + 1)] += scale * (nhat[1]*qNt[i]*uN[j]);
-      A[(1*i + 0)*81 + (3*j + 2)] += scale * (nhat[2]*qNt[i]*uN[j]);
+      A[(1*i + 0)*81 + (3*j + 0)] += scale * (nhat[0]*qNt[i]*uN[j]*(n[0]*nhat[0] + n[1]*nhat[1] + n[2]*nhat[2]));
+      A[(1*i + 0)*81 + (3*j + 1)] += scale * (nhat[1]*qNt[i]*uN[j]*(n[0]*nhat[0] + n[1]*nhat[1] + n[2]*nhat[2]));
+      A[(1*i + 0)*81 + (3*j + 2)] += scale * (nhat[2]*qNt[i]*uN[j]*(n[0]*nhat[0] + n[1]*nhat[1] + n[2]*nhat[2]));
   }}
 }
 
@@ -220,6 +221,7 @@ void nitsche_custom_h_a_q2_3d_spmv_qu(
 double qNt[], double qdNtx0[], double qdNtx1[], double qdNtx2[],
 double uN[], double udNx0[], double udNx1[], double udNx2[],
 double u0[], double u1[], double u2[],
+double n[],  // parameter
 double nhat[],  // parameter
 double scale, double F[])
 {
@@ -233,7 +235,16 @@ double scale, double F[])
     u2j_uNj += u2[j]*uN[j];
   }
   for (i=0; i<4; i++) { // q_nbasis
-    F[1*i + 0] += scale * (qNt[i]*(nhat[0]*u0j_uNj + nhat[1]*u1j_uNj + nhat[2]*u2j_uNj));
+    {
+    double tce0, tce1, tce2, tce3, tce4, tce5;
+    tce0 = n[0]*nhat[0];
+    tce1 = nhat[1]*u1j_uNj;
+    tce2 = nhat[2]*u2j_uNj;
+    tce3 = n[1]*nhat[1];
+    tce4 = nhat[0]*u0j_uNj;
+    tce5 = n[2]*nhat[2];
+    F[1*i + 0] += scale * (qNt[i]*(n[0]*pow(nhat[0], 2)*u0j_uNj + n[1]*pow(nhat[1], 2)*u1j_uNj + n[2]*pow(nhat[2], 2)*u2j_uNj + tce0*tce1 + tce0*tce2 + tce1*tce5 + tce2*tce3 + tce3*tce4 + tce4*tce5));
+    }
   }
 }
 
@@ -404,6 +415,7 @@ double uN[], double udNx0[], double udNx1[], double udNx2[],
 double pN[], double pdNx0[], double pdNx1[], double pdNx2[],
 double u0[], double u1[], double u2[],
 double p0[],
+double n[],  // parameter
 double nhat[],  // parameter
 double scale, double F[])
 {
@@ -417,7 +429,16 @@ double scale, double F[])
     u2j_uNj += u2[j]*uN[j];
   }
   for (i=0; i<4; i++) { // q_nbasis
-    F[1*i + 0] += scale * (qNt[i]*(nhat[0]*u0j_uNj + nhat[1]*u1j_uNj + nhat[2]*u2j_uNj));
+    {
+    double tce0, tce1, tce2, tce3, tce4, tce5;
+    tce0 = n[0]*nhat[0];
+    tce1 = nhat[1]*u1j_uNj;
+    tce2 = nhat[2]*u2j_uNj;
+    tce3 = n[1]*nhat[1];
+    tce4 = nhat[0]*u0j_uNj;
+    tce5 = n[2]*nhat[2];
+    F[1*i + 0] += scale * (qNt[i]*(n[0]*pow(nhat[0], 2)*u0j_uNj + n[1]*pow(nhat[1], 2)*u1j_uNj + n[2]*pow(nhat[2], 2)*u2j_uNj + tce0*tce1 + tce0*tce2 + tce1*tce5 + tce2*tce3 + tce3*tce4 + tce4*tce5));
+    }
   }
 }
 
@@ -514,6 +535,7 @@ double pN[], double pdNx0[], double pdNx1[], double pdNx2[],
 double u0[], double u1[], double u2[],
 double p0[],
 double gN,  // parameter
+double n[],  // parameter
 double nhat[],  // parameter
 double scale, double F[])
 {
@@ -527,6 +549,15 @@ double scale, double F[])
     u2j_uNj += u2[j]*uN[j];
   }
   for (i=0; i<4; i++) { // q_nbasis
-    F[1*i + 0] += scale * (qNt[i]*(gN + nhat[0]*u0j_uNj + nhat[1]*u1j_uNj + nhat[2]*u2j_uNj));
+    {
+    double tce0, tce1, tce2, tce3, tce4, tce5;
+    tce0 = n[0]*nhat[0];
+    tce1 = nhat[1]*u1j_uNj;
+    tce2 = nhat[2]*u2j_uNj;
+    tce3 = n[1]*nhat[1];
+    tce4 = nhat[0]*u0j_uNj;
+    tce5 = n[2]*nhat[2];
+    F[1*i + 0] += scale * (qNt[i]*(gN + n[0]*pow(nhat[0], 2)*u0j_uNj + n[1]*pow(nhat[1], 2)*u1j_uNj + n[2]*pow(nhat[2], 2)*u2j_uNj + tce0*tce1 + tce0*tce2 + tce1*tce5 + tce2*tce3 + tce3*tce4 + tce4*tce5));
+    }
   }
 }
