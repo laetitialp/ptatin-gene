@@ -90,6 +90,7 @@ libptatin3d-y.c += $(call thisdir, \
   surface_constraint.c \
   surfbclist.c \
   sc_generic.c sc_demo.c sc_nitsche_dirichlet.c sc_nitsche_navierslip.c \
+  sc_nitsche_generalslip.c \
 )
 
 libptatin3d-$(CONFIG_CUDA).cu += $(call thisdir, \

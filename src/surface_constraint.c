@@ -26,7 +26,7 @@ typedef enum {
   SC_NITSCHE_A_NAVIER_SLIP
 } SurfaceConstraintType;
 */
-const char *SurfaceConstraintTypeNames[] = { "none", "traction", "fssa", "nitsche_dirichlet", "nitsche_navier_slip", "nitsche_custom_navier_slip", 0 };
+const char *SurfaceConstraintTypeNames[] = { "none", "traction", "demo", "fssa", "nitsche_dirichlet", "nitsche_navier_slip", "nitsche_generalized_navier_slip", 0 };
 
 static PetscErrorCode _ops_residual_only(SurfaceConstraint sc);
 static PetscErrorCode _ops_operator_only(SurfaceConstraint sc);
@@ -44,6 +44,11 @@ PetscErrorCode SurfaceConstraintSetValues_NITSCHE_DIRICHLET(SurfaceConstraint sc
 PetscErrorCode _SetType_NITSCHE_NAVIER_SLIP(SurfaceConstraint sc);
 PetscErrorCode SurfaceConstraintSetValues_NITSCHE_NAVIER_SLIP(SurfaceConstraint sc,
                                                               SurfCSetValuesNitscheNavierSlip set,
+                                                              void *data);
+
+PetscErrorCode _SetType_NITSCHE_GENERAL_SLIP(SurfaceConstraint sc);
+PetscErrorCode SurfaceConstraintSetValues_NITSCHE_GENERAL_SLIP(SurfaceConstraint sc,
+                                                              SurfCSetValuesNitscheGeneralSlip set,
                                                               void *data);
 
 PetscErrorCode SurfaceConstraintCreate(SurfaceConstraint *_sc)
@@ -242,6 +247,10 @@ PetscErrorCode SurfaceConstraintSetType(SurfaceConstraint sc, SurfaceConstraintT
 
     case SC_NITSCHE_NAVIER_SLIP:
       ierr = _SetType_NITSCHE_NAVIER_SLIP(sc);CHKERRQ(ierr);
+      break;
+
+    case SC_NITSCHE_GENERAL_SLIP:
+      ierr = _SetType_NITSCHE_GENERAL_SLIP(sc);CHKERRQ(ierr);
       break;
 
     default:
@@ -911,9 +920,8 @@ PetscErrorCode SurfaceConstraintSetValues(SurfaceConstraint sc,SurfCSetValuesGen
       ierr = SurfaceConstraintSetValues_NITSCHE_NAVIER_SLIP(sc, (SurfCSetValuesNitscheNavierSlip)set, data);CHKERRQ(ierr);
       break;
 
-    case SC_NITSCHE_CUSTOM_SLIP:
-      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"NITSCHE_CUSTOM_SLIP not yet available");
-      //ierr = SurfaceConstraintSetValues_NITSCHE_CUSTOM_SLIP(sc, (SurfCSetValuesTraction)set, data);CHKERRQ(ierr);
+    case SC_NITSCHE_GENERAL_SLIP:
+      ierr = SurfaceConstraintSetValues_NITSCHE_GENERAL_SLIP(sc, (SurfCSetValuesNitscheGeneralSlip)set, data);CHKERRQ(ierr);
       break;
 
     default:

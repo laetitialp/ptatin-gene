@@ -89,6 +89,40 @@ PetscErrorCode bctype_no_slip_base_3(DM dav,BCList bclist)
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode bctype_free_slip_base(DM dav,BCList bclist)
+{
+  PetscErrorCode ierr;
+  PetscScalar zero = 0.0;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode bctype_extension_sides(DM dav,BCList bclist)
+{
+  PetscErrorCode ierr;
+  PetscScalar one;
+  one = -1.0;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_constant,(void*)&one);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,2,BCListEvaluator_constant,(void*)&one);CHKERRQ(ierr);
+  one = 1.0;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_constant,(void*)&one);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,2,BCListEvaluator_constant,(void*)&one);CHKERRQ(ierr);
+  
+  /*
+  {
+    PetscScalar zero = 0.0;
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+    ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  }
+  */
+  
+  PetscFunctionReturn(0);
+}
+
 
 static PetscErrorCode const_ud(Facet F,const PetscReal qp_coor[],PetscReal uD[],void *data)
 {
@@ -204,6 +238,65 @@ PetscErrorCode bctype_slip_nitsche_3(SurfBCList surflist,PetscBool insert_if_not
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode generalized_slip_bc(Facet F,const PetscReal qp_coor[],
+                                          PetscReal n_hat[],
+                                          PetscReal t1_hat[],
+                                          PetscReal tauS[],
+                                          PetscReal H[],
+                                          void *data)
+{
+  PetscInt *index = (PetscInt*)data;
+
+  n_hat[0] = 1.0;
+  n_hat[1] = 0.0;
+  n_hat[2] = -1.0;
+  
+  t1_hat[0] = 1.0;
+  t1_hat[1] = 0.0;
+  t1_hat[2] = 1.0;
+  
+  tauS[0] = tauS[1] = tauS[2] = tauS[3] = tauS[4] = tauS[5] = 0.0;
+  
+  H[0] = H[1] = H[2] = H[3] = H[4] = H[5] = 0.0;
+  H[3] = 1.0;
+  H[4] = 1.0;
+  H[5] = 1.0;
+  
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode bctype_slip_nitsche_4(SurfBCList surflist,PetscBool insert_if_not_fouund)
+{
+  SurfaceConstraint sc;
+  MeshEntity        facets;
+  PetscErrorCode    ierr;
+  
+  
+  ierr = SurfBCListGetConstraint(surflist,"boundary",&sc);CHKERRQ(ierr);
+  if (!sc) {
+    if (insert_if_not_fouund) {
+      ierr = SurfBCListAddConstraint(surflist,"boundary",&sc);CHKERRQ(ierr);
+      ierr = SurfaceConstraintSetType(sc,SC_NITSCHE_GENERAL_SLIP);CHKERRQ(ierr);
+      ierr = SurfaceConstraintNitscheGeneralSlip_SetPenalty(sc,1.0e3);CHKERRQ(ierr);
+    } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint not found");
+  }
+  ierr = SurfaceConstraintGetFacets(sc,&facets);CHKERRQ(ierr);
+  
+  {
+    PetscInt       nsides;
+    HexElementFace sides[] = { HEX_FACE_Nzeta, HEX_FACE_Pzeta };
+    nsides = sizeof(sides) / sizeof(HexElementFace);
+    ierr = MeshFacetMarkDomainFaces(facets,sc->fi,nsides,sides);CHKERRQ(ierr);
+  }
+  
+  SURFC_CHKSETVALS(SC_NITSCHE_GENERAL_SLIP,generalized_slip_bc);
+  {
+    PetscInt index = 3;
+    ierr = SurfaceConstraintSetValues(sc,(SurfCSetValuesGeneric)generalized_slip_bc,(void*)&index);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode ModelApplyBoundaryCondition(pTatinCtx user,void *ctx)
 {
   PetscErrorCode ierr;
@@ -245,7 +338,19 @@ static PetscErrorCode ModelApplyBoundaryCondition(pTatinCtx user,void *ctx)
     }
       break;
 
+    case 4:
+    {
+      PhysCompStokes stokes;
+
+      ierr = bctype_free_slip_base(user->stokes_ctx->dav,user->stokes_ctx->u_bclist);CHKERRQ(ierr);
+      ierr = bctype_extension_sides(user->stokes_ctx->dav,user->stokes_ctx->u_bclist);CHKERRQ(ierr);
+      ierr = pTatinGetStokesContext(user,&stokes);CHKERRQ(ierr);
+      ierr = bctype_slip_nitsche_4(stokes->surf_bclist,PETSC_TRUE);CHKERRQ(ierr);
+    }
+      break;
+      
     default:
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"No default BC supported");
       break;
   }
 
@@ -288,8 +393,22 @@ static PetscErrorCode ModelApplyBoundaryConditionMG(PetscInt nl,BCList bclist[],
         ierr = bctype_slip_nitsche_3(surf_bclist[n],PETSC_FALSE);CHKERRQ(ierr);
       }
       break;
+      
+    case 4:
+    {
+      for (n=0; n<nl; n++) {
+        ierr = bctype_free_slip_base(dav[n],bclist[n]);CHKERRQ(ierr);
+        ierr = bctype_extension_sides(dav[n],bclist[n]);CHKERRQ(ierr);
+      }
+      for (n=0; n<nl; n++) {
+        ierr = bctype_slip_nitsche_4(surf_bclist[n],PETSC_FALSE);CHKERRQ(ierr);
+      }
+    }
+      break;
+      
 
     default:
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"No default BC supported");
       break;
   }
 
