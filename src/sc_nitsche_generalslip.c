@@ -240,6 +240,7 @@ static PetscErrorCode _form_residual_F2(StokesForm *form,PetscReal ds[],PetscRea
                                       form->u_elfield_0,form->u_elfield_1,form->u_elfield_2,
                                       form->p_elfield_0,
                                       gN,  // parameter
+                                      normal,  //parameter
                                       nhat,  // parameter
                                       ds[0], F);
   
@@ -448,6 +449,7 @@ static PetscErrorCode _form_spmv_A21(StokesForm *form,PetscReal ds[],PetscReal F
   nitsche_custom_h_a_q2_3d_spmv_qu(form->test->W, form->test->Wx, form->test->Wy, form->test->Wz,
                                   form->trial->W, form->trial->Wx, form->trial->Wy, form->trial->Wz,
                                   form->u_elfield_0,form->u_elfield_1,form->u_elfield_2,
+                                  normal,  // parameter
                                   nhat,  // parameter
                                   ds[0], F);
 
@@ -661,6 +663,7 @@ static PetscErrorCode _form_asmb_A21(StokesForm *form,PetscReal ds[],PetscReal A
 
   nitsche_custom_h_a_q2_3d_asmb_qu(form->test->W, form->test->Wx, form->test->Wy, form->test->Wz,
                                   form->trial->W, form->trial->Wx, form->trial->Wy, form->trial->Wz,
+                                  normal,  // parameter
                                   nhat,  // parameter
                                   ds[0], A);
   
@@ -920,6 +923,7 @@ static PetscErrorCode _form_spmv_qA(StokesForm *form,PetscReal ds[],PetscReal F[
                                     form->X[1]->W, form->X[1]->Wx, form->X[1]->Wy, form->X[1]->Wz,
                                     form->u_elfield_0,form->u_elfield_1,form->u_elfield_2,
                                     form->p_elfield_0,
+                                    normal,  // parameter
                                     nhat,  // parameter
                                     ds[0], F);
   

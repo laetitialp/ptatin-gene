@@ -3,11 +3,11 @@
 // fe_form_compiler.py version: 8d4b0b5b8d2e57803682a919e42ac439d4c64103
 // sympy version: 1.6.1
 // using common substring elimination: True
-// form file: nitsche-custom-h_IJ.py version: 53800e8dcfeb59279abb73274a0ef2bf16e58dc5
+// form file: nitsche-custom-h_IJ.py version: 4543cb74a6c7824e8f0779441abf7da668e0d359
 //
 
-//#include <stdio.h>
-//#include <math.h>
+#include <stdio.h>
+#include <math.h>
 
 //
 // key: wu
