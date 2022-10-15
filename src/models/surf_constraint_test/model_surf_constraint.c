@@ -32,16 +32,15 @@ static PetscErrorCode Model_SetParameters_SCTest(RheologyConstants *rheology, Da
 
 static PetscErrorCode InitialVelocityBoundaryValues(ModelSCTestCtx *data)
 {
-  PetscReal      alpha;
   PetscErrorCode ierr;
   PetscFunctionBegin;
 
   data->norm_u = 1.0;
-  alpha        = 45.0;
+  data->alpha  = 45.0;
   ierr = PetscOptionsGetReal(NULL,M_NAME,"-norm_u",&data->norm_u,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,M_NAME,"-alpha_u",&alpha,NULL);CHKERRQ(ierr);
-  data->alpha  = alpha * M_PI/180.0;
-  data->uz0    = data->norm_u * cos(alpha);
+  ierr = PetscOptionsGetReal(NULL,M_NAME,"-alpha_u",&data->alpha,NULL);CHKERRQ(ierr);
+  data->alpha  = data->alpha * M_PI/180.0;
+  data->uz0    = data->norm_u * cos(data->alpha);
   data->ux0    = sqrt( pow(data->norm_u,2) - pow(data->uz0,2) );
 
   PetscFunctionReturn(0);
