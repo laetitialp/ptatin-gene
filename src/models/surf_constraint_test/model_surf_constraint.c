@@ -183,12 +183,12 @@ static PetscErrorCode ModelSetValues_ObliqueExtensionGeneralNavierSlip(ModelSCTe
 
   ierr = InitialVelocityBoundaryValues(data);
 
-  data->epsilon_s[0] = 0.0;                        // E_xx
-  data->epsilon_s[1] = 0.0;                        // E_yy
-  data->epsilon_s[2] = 2.0 / data->Lz * data->uz0; // E_zz
-  data->epsilon_s[3] = 0.0;                        // E_xy
-  data->epsilon_s[4] = 1.0 / data->Lz * data->ux0; // E_xz
-  data->epsilon_s[5] = 0.0;                        // E_yz
+  data->epsilon_s[0] = 0.0;                                     // E_xx
+  data->epsilon_s[1] = 0.0;                                     // E_yy
+  data->epsilon_s[2] = 0.0;//2.0 / (data->Lz - data->Oz) * data->uz0; // E_zz
+  data->epsilon_s[3] = 0.0;                                     // E_xy
+  data->epsilon_s[4] = 0.0;//1.0 / (data->Lz - data->Oz) * data->ux0; // E_xz
+  data->epsilon_s[5] = 0.0;                                     // E_yz
 
   data->t1_hat[0] = data->ux0;
   data->t1_hat[1] = 0.0;
@@ -199,7 +199,7 @@ static PetscErrorCode ModelSetValues_ObliqueExtensionGeneralNavierSlip(ModelSCTe
   data->n_hat[2] = data->ux0;
 
   data->H[0] = 0; // H_00
-  data->H[1] = 0; // H_11
+  data->H[1] = 1; // H_11
   data->H[2] = 0; // H_22
   data->H[3] = 1; // H_01 = H_10
   data->H[4] = 1; // H_02 = H_20
@@ -597,16 +597,16 @@ static PetscErrorCode general_navier_slip(Facet F,const PetscReal qp_coor[],
                                           void *data)
 {
   ModelSCTestCtx *model_data = (ModelSCTestCtx*)data;
-  PetscInt i;
+  PetscInt i,j;
 
   for (i=0;i<5;i++) {
     tauS[i] = 2.0 * 10.0 * model_data->epsilon_s[i]; // eta hard coded as 10.0 here ==> 1e+23 Pa.s
     H[i] = model_data->H[i];
   }
   
-  for (i=0;i<3;i++) {
-    t1_hat[i] = model_data->t1_hat[i];
-    n_hat[i] = model_data->n_hat[i];
+  for (j=0;j<3;j++) {
+    t1_hat[j] = model_data->t1_hat[j];
+    n_hat[j] = model_data->n_hat[j];
   }
 
   PetscFunctionReturn(0);
@@ -815,7 +815,7 @@ static PetscErrorCode ApplyGeneralNavierSlip(SurfBCList surflist,PetscBool inser
   
   {
     PetscInt       nsides;
-    HexElementFace sides[] = { HEX_FACE_Nzeta, HEX_FACE_Pzeta };
+    HexElementFace sides[] = {HEX_FACE_Nxi, HEX_FACE_Pxi}; //{ HEX_FACE_Nzeta, HEX_FACE_Pzeta };
     nsides = sizeof(sides) / sizeof(HexElementFace);
     ierr = MeshFacetMarkDomainFaces(facets,sc->fi,nsides,sides);CHKERRQ(ierr);
   }
@@ -830,7 +830,7 @@ static PetscErrorCode ApplyGeneralNavierSlip(SurfBCList surflist,PetscBool inser
 
 static PetscErrorCode ModelApplyObliqueExtensionPullApart_Nitsche(DM dav, BCList bclist,SurfBCList surflist,PetscBool insert_if_not_found,ModelSCTestCtx *data)
 {
-  PetscReal      ux,uz,u_bot,Sxy,Sxz;
+  PetscReal      ux,uz,u_bot,Szy,Sxz;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -838,21 +838,21 @@ static PetscErrorCode ModelApplyObliqueExtensionPullApart_Nitsche(DM dav, BCList
   /* Apply Oblique extension on IMAX and IMIN faces */
   ux = -data->ux0;
   uz = -data->uz0;
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_constant,(void*)&ux);CHKERRQ(ierr);
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,2,BCListEvaluator_constant,(void*)&uz);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,0,BCListEvaluator_constant,(void*)&ux);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_constant,(void*)&uz);CHKERRQ(ierr);
 
   ux = data->ux0;
   uz = data->uz0;
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_constant,(void*)&ux);CHKERRQ(ierr);
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,2,BCListEvaluator_constant,(void*)&uz);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,0,BCListEvaluator_constant,(void*)&ux);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_constant,(void*)&uz);CHKERRQ(ierr);
 
-  /* Apply General Navier Slip BC on KMAX and KMIN faces */
+  /* Apply General Navier Slip BC on IMAX and IMIN faces */
   ierr = ApplyGeneralNavierSlip(surflist,insert_if_not_found,data);CHKERRQ(ierr);
 
   /* Apply inflow base */
-  Sxy = (data->Lx - data->Ox)*(data->Ly - data->Oy);
+  Szy = (data->Lz - data->Oz)*(data->Ly - data->Oy);
   Sxz = (data->Lx - data->Ox)*(data->Lz - data->Oz);
-  u_bot = (-4.0/M_PI * data->alpha + 2.0) *  data->norm_u * Sxy/Sxz;
+  u_bot = (-4.0/M_PI * data->alpha + 2.0) *  data->norm_u * Szy/Sxz;
   PetscPrintf(PETSC_COMM_WORLD,"u_bot = %1.4e \n",u_bot);
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&u_bot);CHKERRQ(ierr);
 
