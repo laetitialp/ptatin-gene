@@ -37,15 +37,18 @@ static PetscErrorCode InitialVelocityBoundaryValues(ModelSCTestCtx *data)
 
   data->norm_u = 1.0;
   data->alpha  = 45.0;
+  data->theta  = 0.0;
   ierr = PetscOptionsGetReal(NULL,M_NAME,"-norm_u",&data->norm_u,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetReal(NULL,M_NAME,"-alpha_u",&data->alpha,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,M_NAME,"-theta_u",&data->theta,NULL);CHKERRQ(ierr);
   data->alpha  = data->alpha * M_PI/180.0;
+  data->theta  = data->theta * M_PI/180.0;
   data->uz0    = data->norm_u * cos(data->alpha);
   data->ux0    = sqrt( pow(data->norm_u,2) - pow(data->uz0,2) );
 
   PetscFunctionReturn(0);
 }
-#if 0
+#if 1
 static inline void RotationMatrix(double theta,double r[3],double R[3][3])
 {
   
@@ -74,7 +77,7 @@ static PetscErrorCode Rotate_u(PetscReal theta, PetscReal r[], PetscReal u[], Pe
   w[0] = w[1] = w[2] = 0.0;
   for (i=0;i<3;i++) {
     for (j=0;j<3;j++) {
-      w[i] += R[i][j] * u[j]
+      w[i] += R[i][j] * u[j];
     }
   }
   PetscFunctionReturn(0);
@@ -85,6 +88,7 @@ static PetscErrorCode RotateReferential(PetscReal position[], PetscReal coords_r
   PetscReal coords[] = {0.0,0.0,0.0};
   PetscReal r[] = {0.0,1.0,0.0};
   PetscReal coords_r[3];
+  PetscErrorCode ierr;
 
   PetscFunctionBegin;
 
@@ -94,7 +98,7 @@ static PetscErrorCode RotateReferential(PetscReal position[], PetscReal coords_r
   coords[2] = position[2] - 0.5*(data->Lz + data->Oz);
 
   /* Rotate */
-  ierr = Rotate_u(data->theta,r,coords,coords_r);CHKERRQ(ierr);
+  ierr = Rotate_u(-data->theta,r,coords,coords_r);CHKERRQ(ierr);
 
   /* Translate back */
   coords_rt[0] = coords_r[0] + 0.5*(data->Lx + data->Ox);
@@ -103,12 +107,12 @@ static PetscErrorCode RotateReferential(PetscReal position[], PetscReal coords_r
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode VelocityAnalyticalFunction(PetscReal position, PetscReal u[])
+static PetscErrorCode VelocityAnalyticalFunction(PetscReal position[], PetscReal u[], ModelSCTestCtx *data)
 {
   PetscFunctionBegin;
-  u[0] = 2.0/data->Lz * data->ux0*position[2] - data->ux0;
+  u[0] = 2.0/(data->Lz - data->Oz) * data->ux0*position[2] - data->ux0;
   u[1] = 0;
-  u[2] = 2.0/data->Lz * data->uz0*position[2] - data->uz0;
+  u[2] = 2.0/(data->Lz - data->Oz) * data->uz0*position[2] - data->uz0;
   PetscFunctionReturn(0);
 }
 
@@ -127,50 +131,120 @@ static PetscErrorCode ComputeNewBasisVectors(ModelSCTestCtx *data)
   ierr = Rotate_u(data->theta,r,u0,data->t1_hat);CHKERRQ(ierr);
   ierr = Rotate_u(-0.5*M_PI,r,data->t1_hat,data->n_hat);CHKERRQ(ierr);
 
+  for (int i=0; i<3; i++) {
+    //PetscPrintf(PETSC_COMM_WORLD,"n_hat[%d] = %1.4f, t1_hat[%d] = %1.4f \n",i,data->n_hat[i],i,data->t1_hat[i]);
+  }
+
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ComputeStressBoundaryValue(ModelSCTestCtx *data)
+static PetscErrorCode MatMult3x3(PetscReal A[][3], PetscReal B[][3], PetscReal C[][3])
 {
-  PetscReal r[] = {0.0,1.0,0.0};
-  PetscReal R[3][3],R_transpose[3][3];
-  const PetscInt indices_voigt[][3] = { {0, 3, 4}, {3, 1, 5}, {4, 5, 2} };
+  PetscInt i,j,k;
 
-  epsilon_s[0] = 0.0;                        // E_xx
-  epsilon_s[1] = 0.0;                        // E_yy
-  epsilon_s[2] = 2.0 / data->Lz * data->uz0; // E_zz
-  epsilon_s[3] = 0.0;                        // E_xy
-  epsilon_s[4] = 1.0 / data->Lz * data->ux0; // E_xz
-  epsilon_s[5] = 0.0;                        // E_yz
+  for (i=0;i<3;i++) {
+    for (j=0;j<3;j++) {
+      C[i][j] = 0.0;
+    }
+  }
+
+  for (i=0;i<3;i++) {
+    for (j=0;j<3;j++) {
+      for (k=0;k<3;k++) {
+        C[i][j] += A[i][k] * B[k][j];
+      }
+    }
+  }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ComputeStrainRateBoundaryValue(ModelSCTestCtx *data)
+{
+  PetscInt       i,j;
+  PetscReal      r[] = {0.0,1.0,0.0};
+  PetscReal      R[3][3],R_transpose[3][3],E[3][3],ERT[3][3],E_R[3][3];
+  const PetscInt indices_voigt[][3] = { {0, 3, 4}, {3, 1, 5}, {4, 5, 2} };
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  E[0][0] = 0.0; 
+  E[1][1] = 0.0;
+  E[2][2] = 2.0 / (data->Lz - data->Oz) * data->uz0;
+
+  E[0][1] = 0.0;
+  E[0][2] = 1.0 / (data->Lz - data->Oz) * data->ux0;;
+  E[1][2] = 0.0;
+
+  E[1][0] = E[0][1];
+  E[2][0] = E[0][2];
+  E[2][1] = E[1][2];
 
   RotationMatrix(data->theta,r,R);
 
+  /* Transpose R */
   for (i=0;i<3;i++) {
     for (j=0;j<3;j++) {
       R_transpose[i][j] = R[j][i];
     }
   }
-  
 
+  /* Compute E*R^T */
+  ierr = MatMult3x3(E,R_transpose,ERT);CHKERRQ(ierr);
+  /* Compute R*E*R^T */
+  ierr = MatMult3x3(R,ERT,E_R);CHKERRQ(ierr);
+  for (i=0;i<3;i++) {
+    for (j=0;j<3;j++) {
+      data->epsilon_s[ indices_voigt[i][j] ] = E_R[i][j];
+      //PetscPrintf(PETSC_COMM_WORLD,"E_R[%d][%d] = %+1.2e, E_s[%d] = %+1.2e\n",i,j,E_R[i][j],indices_voigt[i][j],data->epsilon_s[ indices_voigt[i][j] ]);
+    }
+  }
+  
+  PetscFunctionReturn(0);
 }
 
 PetscBool BCListEvaluator_RotatedVelocityField(PetscScalar position[], PetscScalar *value, void *ctx)
 {
-  ModelSCTestCtx data = (*ModelSCTestCtx)ctx;
+  ModelSCTestCtx *data = (ModelSCTestCtx*)ctx;
   PetscReal      coords_rt[] = {0.0,0.0,0.0};
   PetscReal      u_xr[] = {0.0,0.0,0.0};
   PetscReal      r[] = {0.0,1.0,0.0};
-  PetscReal      u_R = {0.0,0.0,0.0};
+  PetscReal      u_R[] = {0.0,0.0,0.0};
+  PetscBool      impose=PETSC_TRUE;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
 
   ierr = RotateReferential(position,coords_rt,data);CHKERRQ(ierr);
-  ierr = VelocityAnalyticalFunction(coords_rt,u_xr);CHKERRQ(ierr);
+  ierr = VelocityAnalyticalFunction(coords_rt,u_xr,data);CHKERRQ(ierr);
   Rotate_u(data->theta,r,u_xr,u_R);
   *value = u_R[ data->direction_BC ];
 
   PetscFunctionReturn(impose);
+}
+
+static PetscErrorCode ModelSetValues_RotatedExtensionGeneralNavierSlip(ModelSCTestCtx *data)
+{
+  PetscInt       nn;
+  PetscBool      found;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = InitialVelocityBoundaryValues(data);CHKERRQ(ierr);
+  ierr = ComputeNewBasisVectors(data);CHKERRQ(ierr); 
+  ierr = ComputeStrainRateBoundaryValue(data);CHKERRQ(ierr);
+
+  data->H[0] = 0; // H_00
+  data->H[1] = 1; // H_11
+  data->H[2] = 0; // H_22
+  data->H[3] = 1; // H_01 = H_10
+  data->H[4] = 1; // H_02 = H_20
+  data->H[5] = 0; // H_12 = H_21
+  nn = 6;
+  ierr = PetscOptionsGetRealArray(NULL,M_NAME,"-mathcalH",data->H,&nn,&found);CHKERRQ(ierr);
+  if (found) {if (nn != 6) { SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Wrong number of entries for -mathcalH, expected 6, passed %d",nn); } }
+
+  PetscFunctionReturn(0);
 }
 #endif
 static PetscErrorCode ModelSetValues_ObliqueExtensionGeneralNavierSlip(ModelSCTestCtx *data)
@@ -185,10 +259,12 @@ static PetscErrorCode ModelSetValues_ObliqueExtensionGeneralNavierSlip(ModelSCTe
 
   data->epsilon_s[0] = 0.0;                                     // E_xx
   data->epsilon_s[1] = 0.0;                                     // E_yy
-  data->epsilon_s[2] = 0.0;//2.0 / (data->Lz - data->Oz) * data->uz0; // E_zz
+  data->epsilon_s[2] = 2.0 / (data->Lz - data->Oz) * data->uz0; // E_zz
   data->epsilon_s[3] = 0.0;                                     // E_xy
-  data->epsilon_s[4] = 0.0;//1.0 / (data->Lz - data->Oz) * data->ux0; // E_xz
+  data->epsilon_s[4] = 1.0 / (data->Lz - data->Oz) * data->ux0; // E_xz
   data->epsilon_s[5] = 0.0;                                     // E_yz
+
+  //PetscPrintf(PETSC_COMM_WORLD,"E_xx = %+1.4e, E_yy = %+1.4e, E_zz = %+1.4e, E_xy = %+1.4e, E_xz = %+1.4e, Eyz = %+1.4e\n",data->epsilon_s[0],data->epsilon_s[1],data->epsilon_s[2],data->epsilon_s[3],data->epsilon_s[4],data->epsilon_s[5]);
 
   data->t1_hat[0] = data->ux0;
   data->t1_hat[1] = 0.0;
@@ -262,7 +338,8 @@ static PetscErrorCode ModelInitialize_SCTest(pTatinCtx c,void *ctx)
   ierr = MaterialConstantsSetDefaults(materialconstants);CHKERRQ(ierr);
 
   ierr = Model_SetParameters_SCTest(rheology,materialconstants,data);CHKERRQ(ierr);
-  ierr = ModelSetValues_ObliqueExtensionGeneralNavierSlip(data);CHKERRQ(ierr);
+  //ierr = ModelSetValues_ObliqueExtensionGeneralNavierSlip(data);CHKERRQ(ierr);
+  ierr = ModelSetValues_RotatedExtensionGeneralNavierSlip(data);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -600,7 +677,8 @@ static PetscErrorCode general_navier_slip(Facet F,const PetscReal qp_coor[],
   PetscInt i,j;
 
   for (i=0;i<5;i++) {
-    tauS[i] = 2.0 * 10.0 * model_data->epsilon_s[i]; // eta hard coded as 10.0 here ==> 1e+23 Pa.s
+    /* WARNING MINUS SIGN HERE TO CHECK THE POTENTIAL MISTAKE IN FORMS */
+    tauS[i] = - 2.0 * 10.0 * model_data->epsilon_s[i]; // eta hard coded as 10.0 here ==> 1e+23 Pa.s
     H[i] = model_data->H[i];
   }
   
@@ -859,6 +937,37 @@ static PetscErrorCode ModelApplyObliqueExtensionPullApart_Nitsche(DM dav, BCList
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ModelApplyRotatedExtension_Nitsche(DM dav, BCList bclist,SurfBCList surflist,PetscBool insert_if_not_found,ModelSCTestCtx *data)
+{
+  PetscReal      ux,uz,u_bot,Szy,Sxz;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  /* Apply Oblique extension on IMAX and IMIN faces */
+  data->direction_BC = 0;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,0,BCListEvaluator_RotatedVelocityField,(void*)data);CHKERRQ(ierr);
+  data->direction_BC = 2;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_RotatedVelocityField,(void*)data);CHKERRQ(ierr);
+
+  data->direction_BC = 0;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,0,BCListEvaluator_RotatedVelocityField,(void*)data);CHKERRQ(ierr);
+  data->direction_BC = 2;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_RotatedVelocityField,(void*)data);CHKERRQ(ierr);
+
+  /* Apply General Navier Slip BC on IMAX and IMIN faces */
+  ierr = ApplyGeneralNavierSlip(surflist,insert_if_not_found,data);CHKERRQ(ierr);
+
+  /* Apply inflow base */
+  Szy = (data->Lz - data->Oz)*(data->Ly - data->Oy);
+  Sxz = (data->Lx - data->Ox)*(data->Lz - data->Oz);
+  u_bot = (-4.0/M_PI * data->alpha + 2.0) *  data->norm_u * Szy/Sxz;
+  PetscPrintf(PETSC_COMM_WORLD,"u_bot = %1.4e \n",u_bot);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&u_bot);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode ModelApplyBoundaryCondition_SCTest(pTatinCtx user,void *ctx)
 {
   ModelSCTestCtx *data = (ModelSCTestCtx*)ctx;
@@ -869,7 +978,8 @@ static PetscErrorCode ModelApplyBoundaryCondition_SCTest(pTatinCtx user,void *ct
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
 
   ierr = pTatinGetStokesContext(user,&stokes);CHKERRQ(ierr);
-  ierr = ModelApplyObliqueExtensionPullApart_Nitsche(stokes->dav,stokes->u_bclist,stokes->surf_bclist,PETSC_TRUE,data);CHKERRQ(ierr);
+  //ierr = ModelApplyObliqueExtensionPullApart_Nitsche(stokes->dav,stokes->u_bclist,stokes->surf_bclist,PETSC_TRUE,data);CHKERRQ(ierr);
+  ierr = ModelApplyRotatedExtension_Nitsche(stokes->dav,stokes->u_bclist,stokes->surf_bclist,PETSC_TRUE,data);CHKERRQ(ierr);
   //if (data->PolarMesh) {
     //ierr = ApplyNitscheFreeslip(stokes->surf_bclist,PETSC_TRUE);CHKERRQ(ierr);
     //ierr = ApplyNitsche_AngularVelocityNormal(stokes->surf_bclist,PETSC_TRUE,data);CHKERRQ(ierr);
@@ -892,7 +1002,8 @@ static PetscErrorCode ModelApplyBoundaryConditionMG(PetscInt nl,BCList bclist[],
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
 
   for (n=0; n<nl; n++) {
-    ierr = ModelApplyObliqueExtensionPullApart_Nitsche(dav[n],bclist[n],surf_bclist[n],PETSC_FALSE,data);CHKERRQ(ierr);
+    //ierr = ModelApplyObliqueExtensionPullApart_Nitsche(dav[n],bclist[n],surf_bclist[n],PETSC_FALSE,data);CHKERRQ(ierr);
+    ierr = ModelApplyRotatedExtension_Nitsche(dav[n],bclist[n],surf_bclist[n],PETSC_FALSE,data);CHKERRQ(ierr);
   }
 #if 0
   //if (data->PolarMesh) {
