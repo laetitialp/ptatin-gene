@@ -1152,6 +1152,112 @@ PetscErrorCode SurfaceConstraintSetValues_NITSCHE_GENERAL_SLIP(SurfaceConstraint
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode SurfaceConstraintSetValuesStrainRate_NITSCHE_GENERAL_SLIP(SurfaceConstraint sc,
+                                                              SurfCSetValuesNitscheGeneralSlip set,
+                                                              void *data)
+{
+  PetscInt           e,facet_index,cell_side,cell_index,q,qp_offset;
+  Facet              cell_facet;
+  PetscReal          qp_coor[3],nhat[3],that1[3],that2[3],tauS[6],H[6];
+  PetscReal          *nhat_qp,*that1_qp,*that2_qp,*tauS_qp,*H_qp;
+  double             Ni[27];
+  const PetscInt     *elnidx;
+  PetscInt           nel,nen;
+  double             elcoords[3*Q2_NODES_PER_EL_3D];
+  QPntSurfCoefStokes *all_surf_gausspoints,*cell_surf_gausspoints;
+  PetscErrorCode ierr;
+  
+  if (sc->type != SC_NITSCHE_GENERAL_SLIP) {
+    PetscPrintf(PetscObjectComm((PetscObject)sc->dm),"[ignoring] SurfaceConstraintSetValues_NITSCHE_GENERAL_SLIP() called with different type on object with name \"%s\"\n",sc->name);
+    PetscFunctionReturn(0);
+  }
+  
+  if (!sc->dm) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->dm. Must call SurfaceConstraintSetDM() first");
+  if (!sc->quadrature) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->surfQ. Must call SurfaceConstraintSetQuadrature() first");
+  if (!sc->facets->set_values_called) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Facets have not been selected");
+  
+  /* resize qp data */
+  ierr = _resize_facet_quadrature_data(sc);CHKERRQ(ierr);
+  
+  DataBucketGetEntriesdByName(sc->properties_db,"hat_n", (void**)&nhat_qp);
+  DataBucketGetEntriesdByName(sc->properties_db,"hat_t1",(void**)&that1_qp);
+  DataBucketGetEntriesdByName(sc->properties_db,"hat_t2",(void**)&that2_qp);
+  DataBucketGetEntriesdByName(sc->properties_db,"tau_S", (void**)&tauS_qp);
+  DataBucketGetEntriesdByName(sc->properties_db,"H",     (void**)&H_qp);
+  
+  ierr = MeshFacetInfoGetCoords(sc->fi);CHKERRQ(ierr);
+  ierr = FacetCreate(&cell_facet);CHKERRQ(ierr);
+  ierr = DMDAGetElements_pTatinQ2P1(sc->fi->dm,&nel,&nen,&elnidx);CHKERRQ(ierr);
+  
+  ierr = SurfaceQuadratureGetAllCellData_Stokes(sc->quadrature,&all_surf_gausspoints);CHKERRQ(ierr);
+
+  for (e=0; e<sc->facets->n_entities; e++) {
+    facet_index = sc->facets->local_index[e]; /* facet local index */
+    cell_side  = sc->fi->facet_label[facet_index]; /* side label */
+    cell_index = sc->fi->facet_cell_index[facet_index];
+    
+    ierr = FacetPack(cell_facet, facet_index, sc->fi);CHKERRQ(ierr);
+    
+    ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx[nen*cell_index],(PetscReal*)sc->fi->_mesh_coor);CHKERRQ(ierr);
+    ierr = SurfaceQuadratureGetCellData_Stokes(sc->quadrature,all_surf_gausspoints,facet_index,&cell_surf_gausspoints);CHKERRQ(ierr);
+
+    //qp_offset = sc->nqp_facet * facet_index; /* offset into entire domain qp list */
+    qp_offset = sc->nqp_facet * e; /* offset into facet qp list */
+    
+    for (q=0; q<sc->nqp_facet; q++) {
+      
+      {
+        PetscInt d,k;
+        
+        for (d=0; d<3; d++) { qp_coor[d] = 0.0; }
+        sc->fi->element->basis_NI_3D(&sc->quadrature->gp3[cell_side][q],Ni);
+        for (k=0; k<sc->fi->element->n_nodes_3D; k++) {
+          for (d=0; d<3; d++) {
+            qp_coor[d] += Ni[k] * elcoords[3*k+d];
+          }
+        }
+      }
+      
+      ierr = PetscMemzero(nhat, sizeof(double)*3);CHKERRQ(ierr);
+      ierr = PetscMemzero(that1,sizeof(double)*3);CHKERRQ(ierr);
+      ierr = PetscMemzero(that2,sizeof(double)*3);CHKERRQ(ierr);
+      ierr = PetscMemzero(tauS, sizeof(double)*6);CHKERRQ(ierr);
+      ierr = PetscMemzero(H,    sizeof(double)*6);CHKERRQ(ierr);
+      
+      ierr = set(cell_facet, qp_coor, nhat, that1, tauS, H, data);CHKERRQ(ierr);
+      {
+        int d,k;
+        double nrm_n=0.0,nrm_t=0.0;
+        for (d=0; d<3; d++) { nrm_n += nhat[d]*nhat[d]; nrm_t += that1[d]*that1[d]; }
+        for (d=0; d<3; d++) { nhat[d] = nhat[d]/sqrt(nrm_n);  that1[d] = that1[d]/sqrt(nrm_t); }
+        /* Use surface qp viscosity to compute stress */
+        for (k=0; k<6; k++) { tauS[k] = tauS[k] * 2.0 * cell_surf_gausspoints[q].eta; }
+      }
+      
+      ierr = PetscMemcpy(&nhat_qp[3*(qp_offset+q)], nhat, sizeof(PetscReal)*3);CHKERRQ(ierr);
+
+      ierr = PetscMemcpy(&that1_qp[3*(qp_offset+q)],that1,sizeof(PetscReal)*3);CHKERRQ(ierr);
+      
+      ierr = _vec_cross(nhat, that1, that2);
+      ierr = PetscMemcpy(&that2_qp[3*(qp_offset+q)],that2,sizeof(PetscReal)*3);CHKERRQ(ierr);
+
+      ierr = PetscMemcpy(&tauS_qp[6*(qp_offset+q)], tauS, sizeof(PetscReal)*6);CHKERRQ(ierr);
+
+      ierr = PetscMemcpy(&H_qp[6*(qp_offset+q)],    H,    sizeof(PetscReal)*6);CHKERRQ(ierr);
+    }
+  }
+  
+  ierr = FacetDestroy(&cell_facet);CHKERRQ(ierr);
+  ierr = MeshFacetInfoRestoreCoords(sc->fi);CHKERRQ(ierr);
+  
+  DataBucketRestoreEntriesdByName(sc->properties_db,"hat_n", (void**)&nhat_qp);
+  DataBucketRestoreEntriesdByName(sc->properties_db,"hat_t1",(void**)&that1_qp);
+  DataBucketRestoreEntriesdByName(sc->properties_db,"hat_t2",(void**)&that2_qp);
+  DataBucketRestoreEntriesdByName(sc->properties_db,"tau_S", (void**)&tauS_qp);
+  DataBucketRestoreEntriesdByName(sc->properties_db,"H",     (void**)&H_qp);
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode SurfaceConstraintNitscheGeneralSlip_SetPenalty(SurfaceConstraint sc,PetscReal penalty)
 {
   SCContextDemo   *scdata = NULL;

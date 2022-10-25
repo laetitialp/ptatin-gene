@@ -119,7 +119,7 @@ PetscErrorCode SurfaceConstraintSetValues_TRACTION           (SurfaceConstraint 
 PetscErrorCode SurfaceConstraintSetValues_NITSCHE_DIRICHLET  (SurfaceConstraint sc,SurfCSetValuesNitscheDirichlet set, void *data);
 PetscErrorCode SurfaceConstraintSetValues_NITSCHE_NAVIER_SLIP(SurfaceConstraint sc,SurfCSetValuesNitscheNavierSlip set,void *data);
 PetscErrorCode SurfaceConstraintSetValues_NITSCHE_GENERAL_SLIP(SurfaceConstraint sc,SurfCSetValuesNitscheGeneralSlip set,void *data);
-
+PetscErrorCode SurfaceConstraintSetValuesStrainRate_NITSCHE_GENERAL_SLIP(SurfaceConstraint sc,SurfCSetValuesNitscheGeneralSlip set,void *data);
 
 PetscErrorCode SurfaceConstraintSetValues(SurfaceConstraint sc,
                                           SurfCSetValuesGeneric set,
