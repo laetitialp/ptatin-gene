@@ -785,6 +785,9 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
   PetscInt       k,nlevels,step;
   Quadrature     volQ[MAX_MG_LEVELS];
   BCList         u_bclist[MAX_MG_LEVELS];
+  SurfBCList     surf_bclist[MAX_MG_LEVELS];
+  SurfaceQuadrature surfQ[MAX_MG_LEVELS];
+  MeshFacetInfo     mfi[MAX_MG_LEVELS];
   AuuMultiLevelCtx mlctx;
   PetscInt         newton_its,picard_its;
   PetscBool        active_energy;
@@ -959,6 +962,56 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
   }
   u_bclist[nlevels-1] = stokes->u_bclist;
 
+  /* define surface info and quadrature on coarse grids */
+  for (k=0; k<nlevels-1; k++) {
+    ierr = MeshFacetInfoCreate2(dav_hierarchy[k],&mfi[k]);CHKERRQ(ierr);
+    ierr = SurfaceQuadratureCreate_GaussLegendreStokes(dav_hierarchy[k],&surfQ[k]);CHKERRQ(ierr);
+  }
+  mfi[nlevels-1] = user->stokes_ctx->mfi;
+  surfQ[nlevels-1] = user->stokes_ctx->surfQ;
+
+  for (k=0; k<nlevels-1; k++) {
+    ierr = SurfaceQuadratureGeometryUpdate_Stokes(surfQ[k],mfi[k]);CHKERRQ(ierr);
+  }
+
+  /* define surface boundary list on coarse grids */
+  for (k=0; k<nlevels-1; k++) {
+    ierr = SurfBCListCreate(mfi[k]->dm,surfQ[k],mfi[k],&surf_bclist[k]);CHKERRQ(ierr);
+  }
+  surf_bclist[nlevels-1] = user->stokes_ctx->surf_bclist;
+
+  // populate
+  {
+    PetscInt nc;
+    SurfBCList surf_fine = surf_bclist[nlevels-1];
+    PetscPrintf(PETSC_COMM_WORLD,"[SurfBCList hierarchy]\n");
+    for (k=0; k<nlevels-1; k++) {
+      PetscPrintf(PETSC_COMM_WORLD,"  level %d\n",k);
+      // for all methods in fine level
+      for (nc=0; nc<surf_fine->sc_nreg; nc++) {
+        SurfaceConstraint sc_coarse = NULL;
+        SurfaceConstraint sc_coarse_A11 = NULL;
+        PetscPrintf(PETSC_COMM_WORLD,"    checking for \"%s\"\n",surf_fine->sc_list[nc]->name);
+        // query coarse
+        ierr = SurfBCListGetConstraint(surf_bclist[k],surf_fine->sc_list[nc]->name,&sc_coarse);CHKERRQ(ierr);
+        if (!sc_coarse) {
+          PetscPrintf(PETSC_COMM_WORLD,"    not found... duplicating\n");
+          ierr = SurfaceConstraintDuplicateOperatorA11(surf_fine->sc_list[nc],mfi[k],surfQ[k],&sc_coarse_A11);CHKERRQ(ierr);
+          if (sc_coarse_A11) { // constraint supports A11
+            PetscBool inserted = PETSC_FALSE;
+            PetscPrintf(PETSC_COMM_WORLD,"      fine level duplicate supports A11... inserting into level\n");
+            ierr = SurfBCListInsertConstraint(surf_bclist[k],sc_coarse_A11,&inserted);CHKERRQ(ierr);
+            if (inserted) {
+              PetscPrintf(PETSC_COMM_WORLD,"        insertion successful\n");
+            }
+          } else {
+            PetscPrintf(PETSC_COMM_WORLD,"      fine level duplicate does not supports A11... ignoring\n");
+          }
+        }
+      }
+    }
+  }
+  
   /* Coarse grid setup: Configure boundary conditions */
   ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,NULL,dav_hierarchy,model,user);CHKERRQ(ierr);
 
