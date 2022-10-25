@@ -44,6 +44,7 @@ typedef struct {
   Mat          *interpolation_eta;
   Quadrature   *volQ;
   BCList       *u_bclist;
+  SurfBCList   *surf_bclist;
   IS           *is_stokes_field;
 } AuuMultiLevelCtx;
 
@@ -257,7 +258,7 @@ PetscErrorCode pTatin3dStokesReportMeshHierarchy(PetscInt nlevels,DM dav_hierarc
 
 PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_stokes_field[],
                                              PetscInt nlevels,DM dav_hierarchy[],Mat interpolation_v[],
-                                             BCList u_bclist[],Quadrature volQ[],
+                                             BCList u_bclist[],Quadrature volQ[],SurfBCList surf_bclist[],
                                              OperatorType level_type[],
                                              Mat *_A,Mat operatorA11[],Mat *_B,Mat operatorB11[])
 {
@@ -362,7 +363,7 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
         }
         /* should move assembly into jacobian */
         ierr = MatZeroEntries(Auu);CHKERRQ(ierr);
-        ierr = MatAssemble_StokesA_AUU(Auu,dav_hierarchy[k],u_bclist[k],volQ[k],NULL);CHKERRQ(ierr);
+        ierr = MatAssemble_StokesA_AUU(Auu,dav_hierarchy[k],u_bclist[k],volQ[k],surf_bclist[k]);CHKERRQ(ierr);
 
         operatorA11[k] = Auu;
         operatorB11[k] = Auu;
@@ -382,7 +383,7 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
 
         if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: Re-discretisation :: matrix free operator \n", k);
         ierr = MatA11MFCreate(&A11Ctx);CHKERRQ(ierr);
-        ierr = MatA11MFSetup(A11Ctx,dav_hierarchy[k],volQ[k],u_bclist[k],NULL);CHKERRQ(ierr);
+        ierr = MatA11MFSetup(A11Ctx,dav_hierarchy[k],volQ[k],u_bclist[k],surf_bclist[k]);CHKERRQ(ierr);
 
         ierr = StokesQ2P1CreateMatrix_MFOperator_A11(A11Ctx,&Auu);CHKERRQ(ierr);
         /* memory saving - only need daU IF you want to split A11 into A11uu,A11vv,A11ww */
@@ -601,7 +602,7 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
         case OP_TYPE_REDISC_ASM:
         {
           ierr = MatZeroEntries(mlctx->operatorB11[k]);CHKERRQ(ierr);
-          ierr = MatAssemble_StokesA_AUU(mlctx->operatorB11[k],mlctx->dav_hierarchy[k],mlctx->u_bclist[k],mlctx->volQ[k],NULL);CHKERRQ(ierr);
+          ierr = MatAssemble_StokesA_AUU(mlctx->operatorB11[k],mlctx->dav_hierarchy[k],mlctx->u_bclist[k],mlctx->volQ[k],mlctx->surf_bclist[k]);CHKERRQ(ierr);
 
           ierr = KSPSetOperators(ksp_smoother,mlctx->operatorB11[k],mlctx->operatorB11[k]);CHKERRQ(ierr);
           /* hack for nested coarse solver */
@@ -1013,7 +1014,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
   }
   
   /* Coarse grid setup: Configure boundary conditions */
-  ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,NULL,dav_hierarchy,model,user);CHKERRQ(ierr);
+  ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,surf_bclist,dav_hierarchy,model,user);CHKERRQ(ierr);
 
   /* set all pointers into mg context */
   mlctx.is_stokes_field     = is_stokes_field;
@@ -1023,11 +1024,12 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
   mlctx.interpolation_eta   = interpolation_eta;
   mlctx.volQ                = volQ;
   mlctx.u_bclist            = u_bclist;
+  mlctx.surf_bclist         = surf_bclist;
 
   /* ============================================== */
   /* configure stokes opertors */
   ierr = pTatin3dCreateStokesOperators(stokes,is_stokes_field,
-                                       nlevels,dav_hierarchy,interpolation_v,u_bclist,volQ,level_type,
+                                       nlevels,dav_hierarchy,interpolation_v,u_bclist,volQ,surf_bclist,level_type,
                                        &A,operatorA11,&B,operatorB11);CHKERRQ(ierr);
   mlctx.level_type  = level_type;
   mlctx.operatorA11 = operatorA11;
@@ -1155,7 +1157,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
     /* --------------------------------------------------------- */
     /* Define operators */
     ierr = pTatin3dCreateStokesOperators(stokes,is_stokes_field,
-                                         nlevels,dav_hierarchy,interpolation_v,u_bclist,volQ,level_type,
+                                         nlevels,dav_hierarchy,interpolation_v,u_bclist,volQ,surf_bclist,level_type,
                                          &A,operatorA11,&B,operatorB11);CHKERRQ(ierr);
     /* --------------------------------------------------------- */
     /* Define non-linear solver */
@@ -1226,7 +1228,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
 
     /* Define operators */
     ierr = pTatin3dCreateStokesOperators(stokes,is_stokes_field,
-                                         nlevels,dav_hierarchy,interpolation_v,u_bclist,volQ,level_type,
+                                         nlevels,dav_hierarchy,interpolation_v,u_bclist,volQ,surf_bclist,level_type,
                                          &A,operatorA11,&B,operatorB11);CHKERRQ(ierr);
 
     ierr = SNESCreate(PETSC_COMM_WORLD,&snes_newton);CHKERRQ(ierr);
@@ -1601,7 +1603,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
     /* solve stokes */
     /* a) configure stokes opertors */
     ierr = pTatin3dCreateStokesOperators(stokes,is_stokes_field,
-                                         nlevels,dav_hierarchy,interpolation_v,u_bclist,volQ,level_type,
+                                         nlevels,dav_hierarchy,interpolation_v,u_bclist,volQ,surf_bclist,level_type,
                                          &A,operatorA11,&B,operatorB11);CHKERRQ(ierr);
 
     /* b) create solver */
