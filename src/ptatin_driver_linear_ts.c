@@ -1107,6 +1107,12 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
     ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,nlevels,interpolation_eta,dav_hierarchy,volQ,surfQ,mfi);CHKERRQ(ierr);
   }
 
+  /* Call BCs functions here again after viscosity update on surface qp */
+  /* boundary conditions */
+  ierr = pTatinModel_ApplyBoundaryCondition(user->model,user);CHKERRQ(ierr);
+  /* define bc's for hiearchy */
+  ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,surf_bclist,dav_hierarchy,user->model,user);CHKERRQ(ierr);
+
   /* configure stokes opertors */
   ierr = pTatin3dCreateStokesOperators(user->stokes_ctx,is_stokes_field,
       nlevels,dav_hierarchy,interpolation_v,u_bclist,volQ,surf_bclist,
