@@ -1048,6 +1048,28 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
   /* initial viscosity  */
   ierr = pTatinModel_ApplyInitialStokesVariableMarkers(model,user,X);CHKERRQ(ierr);
 
+  /* update markers = >> gauss points */
+  {
+    int               npoints;
+    DataField         PField_std;
+    DataField         PField_stokes;
+    MPntStd           *mp_std;
+    MPntPStokes       *mp_stokes;
+
+    DataBucketGetDataFieldByName(user->materialpoint_db, MPntStd_classname     , &PField_std);
+    DataBucketGetDataFieldByName(user->materialpoint_db, MPntPStokes_classname , &PField_stokes);
+
+    DataBucketGetSizes(user->materialpoint_db,&npoints,NULL,NULL);
+    mp_std    = PField_std->data; /* should write a function to do this */
+    mp_stokes = PField_stokes->data; /* should write a function to do this */
+
+    ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,nlevels,interpolation_eta,dav_hierarchy,volQ,surfQ,mfi);CHKERRQ(ierr);
+  }
+
+  /* Set boundary conditions again after viscosity update on surface quadrature points */
+  ierr = pTatinModel_ApplyBoundaryCondition(model,user);CHKERRQ(ierr);
+  ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,surf_bclist,dav_hierarchy,model,user);CHKERRQ(ierr);
+
   /* insert boundary conditions into solution vector */
   {
     Vec velocity,pressure;
@@ -1586,7 +1608,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
       mp_std    = PField_std->data; /* should write a function to do this */
       mp_stokes = PField_stokes->data; /* should write a function to do this */
 
-      ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,nlevels,interpolation_eta,dav_hierarchy,volQ,NULL,NULL);CHKERRQ(ierr);
+      ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,nlevels,interpolation_eta,dav_hierarchy,volQ,surfQ,mfi);CHKERRQ(ierr);
     }
     
     
@@ -1597,7 +1619,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
     /* Fine level setup */
     ierr = pTatinModel_ApplyBoundaryCondition(model,user);CHKERRQ(ierr);
     /* Coarse grid setup: Configure boundary conditions */
-    ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,NULL,dav_hierarchy,model,user);CHKERRQ(ierr);
+    ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,surf_bclist,dav_hierarchy,model,user);CHKERRQ(ierr);
 
 
     /* solve stokes */
