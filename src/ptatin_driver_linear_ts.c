@@ -947,6 +947,11 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
   }
   ierr = DMCompositeGetGlobalISs(multipys_pack,&is_stokes_field);CHKERRQ(ierr);
 
+  /* work vector for solution and residual */
+  ierr = DMCreateGlobalVector(multipys_pack,&X);CHKERRQ(ierr);
+  ierr = VecDuplicate(X,&F);CHKERRQ(ierr);
+  ierr = pTatinPhysCompAttachData_Stokes(user,X);CHKERRQ(ierr);
+
   ierr = pTatin3dCreateMaterialPoints(user,dav);CHKERRQ(ierr);
 
   /* mesh geometry */
@@ -1069,10 +1074,6 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
   
   /* define bc's for hiearchy */
   ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,surf_bclist,dav_hierarchy,user->model,user);CHKERRQ(ierr);
-
-  /* work vector for solution and residual */
-  ierr = DMCreateGlobalVector(multipys_pack,&X);CHKERRQ(ierr);
-  ierr = VecDuplicate(X,&F);CHKERRQ(ierr);
 
   /* initial condition */
   ierr = pTatinModel_ApplyInitialSolution(user->model,user,X);CHKERRQ(ierr);

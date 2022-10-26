@@ -843,6 +843,11 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
   }
   ierr = DMCompositeGetGlobalISs(multipys_pack,&is_stokes_field);CHKERRQ(ierr);
 
+  /* work vector for solution and residual */
+  ierr = DMCreateGlobalVector(multipys_pack,&X);CHKERRQ(ierr);
+  ierr = VecDuplicate(X,&F);CHKERRQ(ierr);
+  ierr = pTatinPhysCompAttachData_Stokes(user,X);CHKERRQ(ierr);
+
   ierr = pTatin3dCreateMaterialPoints(user,dav);CHKERRQ(ierr);
   ierr = pTatinGetMaterialPoints(user,&materialpoint_db,NULL);CHKERRQ(ierr);
   PetscPrintf(PETSC_COMM_WORLD,"Generated material points --> ");
@@ -1037,10 +1042,6 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
   /* ============================================== */
   PetscPrintf(PETSC_COMM_WORLD,"Generated stokes operators --> ");
   pTatinGetRangeCurrentMemoryUsage(NULL);
-
-  /* work vector for solution and residual */
-  ierr = DMCreateGlobalVector(multipys_pack,&X);CHKERRQ(ierr);
-  ierr = VecDuplicate(X,&F);CHKERRQ(ierr);
 
   /* initial condition */
   ierr = pTatinModel_ApplyInitialSolution(model,user,X);CHKERRQ(ierr);
