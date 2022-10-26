@@ -615,6 +615,8 @@ static PetscErrorCode ModelSetInitialWeakZone_Gaussians(MPntPStokesPl *mpprop_pl
   short     yield;
 
   PetscFunctionBegin;
+
+  yield = 0;
   /* Gaussian shape parameters */
   a = 0.5*data->wz_sigma[0]*data->wz_sigma[0];
   b = 0.0;
@@ -930,6 +932,7 @@ static PetscErrorCode ModelApplyGeneralNavierSlip_RiftNitsche(SurfBCList surflis
   PetscFunctionReturn(0);
 }
 
+#if 0
 static PetscErrorCode ModelComputeBottomFlow_udotn(pTatinCtx c,Vec X, ModelRiftNitscheCtx *data)
 {
   PhysCompStokes stokes;
@@ -963,7 +966,7 @@ static PetscErrorCode ModelComputeBottomFlow_udotn(pTatinCtx c,Vec X, ModelRiftN
   }
   PetscFunctionReturn(0);
 }
-
+#endif
 static PetscErrorCode ModelApplyObliqueExtensionPullApart_RiftNitsche(DM dav, BCList bclist,SurfBCList surflist,PetscBool insert_if_not_found,ModelRiftNitscheCtx *data)
 {
   PetscReal      ux,uz,u_bot;
@@ -986,7 +989,7 @@ static PetscErrorCode ModelApplyObliqueExtensionPullApart_RiftNitsche(DM dav, BC
   ierr = ModelApplyGeneralNavierSlip_RiftNitsche(surflist,insert_if_not_found,data);CHKERRQ(ierr);
 
   /* Apply base velocity from u.n */
-  u_bot = data->u_bc[1];
+  u_bot = 0.0;//data->u_bc[1];
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&u_bot);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
@@ -1045,7 +1048,7 @@ PetscErrorCode ModelApplyBoundaryConditions_RiftNitsche(pTatinCtx c,void *ctx)
 
   ierr = pTatinPhysCompGetData_Stokes(c,&X);CHKERRQ(ierr); 
   /* Compute uy as int_S v.n dS */
-  ierr = ModelComputeBottomFlow_udotn(c,X,data);CHKERRQ(ierr);
+  //ierr = ModelComputeBottomFlow_udotn(c,X,data);CHKERRQ(ierr);
 
   ierr = ModelApplyBoundaryConditionsVelocity_RiftNitsche(stokes->dav,stokes->u_bclist,stokes->surf_bclist,PETSC_TRUE,data);CHKERRQ(ierr);
 
