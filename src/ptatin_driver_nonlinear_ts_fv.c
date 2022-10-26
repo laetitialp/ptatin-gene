@@ -1585,14 +1585,8 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
     /* 3 Update local coordinates and communicate */
     ierr = MaterialPointStd_UpdateCoordinates(user->materialpoint_db,dav_hierarchy[nlevels-1],user->materialpoint_ex);CHKERRQ(ierr);
 
-    /* 3a - Add material */
-    ierr = pTatinModel_ApplyMaterialBoundaryCondition(model,user);CHKERRQ(ierr);
-    //if ( (step%5 == 0) || (step == 1) ) {
-    //ierr = pTatinModel_ApplyMaterialBoundaryCondition(model,user);CHKERRQ(ierr);
-    //}
-
-    /* add / remove points if cells are over populated or depleted of points */
-    ierr = MaterialPointPopulationControl_v1(user);CHKERRQ(ierr);
+    /* 3a - Add material and add / remove points if cells are over populated or depleted of points */
+    ierr = pTatinModel_AdaptMaterialPointResolution(model,user);CHKERRQ(ierr);
 
     /* update markers = >> gauss points */
     {

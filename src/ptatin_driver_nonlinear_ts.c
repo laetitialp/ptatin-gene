@@ -1234,10 +1234,6 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver(int argc,char **a
     /* initial viscosity  */
   ierr = pTatinModel_ApplyInitialStokesVariableMarkers(model,user,X);CHKERRQ(ierr);
 
-
-  /* [TMP] 3a - Add material */
-  //ierr = pTatinModel_ApplyMaterialBoundaryCondition(model,user);CHKERRQ(ierr);
-
   /* insert boundary conditions into solution vector */
   {
     Vec velocity,pressure;
@@ -1496,14 +1492,11 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver(int argc,char **a
     ierr = MaterialPointStd_UpdateCoordinates(user->materialpoint_db,dav_hierarchy[nlevels-1],user->materialpoint_ex);CHKERRQ(ierr);
 
     /* 3a - Add material */
-    ierr = pTatinModel_ApplyMaterialBoundaryCondition(model,user);CHKERRQ(ierr);
     //if ( (step%5 == 0) || (step == 1) ) {
-    //ierr = pTatinModel_ApplyMaterialBoundaryCondition(model,user);CHKERRQ(ierr);
-    //}
-
     /* add / remove points if cells are over populated or depleted of points */
-    ierr = MaterialPointPopulationControl_v1(user);CHKERRQ(ierr);
-
+     ierr = pTatinModel_AdaptMaterialPointResolution(model,user);
+    //}
+	
     /* update markers = >> gauss points */
     {
       int               npoints;
@@ -2285,14 +2278,11 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
     ierr = MaterialPointStd_UpdateCoordinates(user->materialpoint_db,dav_hierarchy[nlevels-1],user->materialpoint_ex);CHKERRQ(ierr);
 
     /* 3a - Add material */
-    ierr = pTatinModel_ApplyMaterialBoundaryCondition(model,user);CHKERRQ(ierr);
     //if ( (step%5 == 0) || (step == 1) ) {
-    //ierr = pTatinModel_ApplyMaterialBoundaryCondition(model,user);CHKERRQ(ierr);
-    //}
-
     /* add / remove points if cells are over populated or depleted of points */
-    ierr = MaterialPointPopulationControl_v1(user);CHKERRQ(ierr);
-
+    ierr = pTatinModel_AdaptMaterialPointResolution(model,user);CHKERRQ(ierr);
+    //}
+	
     /* update markers = >> gauss points */
     {
       int               npoints;
@@ -2705,9 +2695,6 @@ PetscErrorCode experimental_pTatin3d_nonlinear_viscous_forward_model_driver(int 
   /* initial viscosity  */
   ierr = pTatinModel_ApplyInitialStokesVariableMarkers(model,user,X);CHKERRQ(ierr);
 
-  /* [TMP] 3a - Add material */
-  //ierr = pTatinModel_ApplyMaterialBoundaryCondition(model,user);CHKERRQ(ierr);
-
   /* insert boundary conditions into solution vector */
   {
     Vec velocity,pressure;
@@ -2937,14 +2924,11 @@ PetscErrorCode experimental_pTatin3d_nonlinear_viscous_forward_model_driver(int 
     ierr = MaterialPointStd_UpdateCoordinates(user->materialpoint_db,dav_hierarchy[nlevels-1],user->materialpoint_ex);CHKERRQ(ierr);
 
     /* 3a - Add material */
-    ierr = pTatinModel_ApplyMaterialBoundaryCondition(model,user);CHKERRQ(ierr);
     //if ( (step%5 == 0) || (step == 1) ) {
-    //ierr = pTatinModel_ApplyMaterialBoundaryCondition(model,user);CHKERRQ(ierr);
-    //}
-
     /* add / remove points if cells are over populated or depleted of points */
-    ierr = MaterialPointPopulationControl_v1(user);CHKERRQ(ierr);
-
+    ierr = pTatinModel_AdaptMaterialPointResolution(model,user);CHKERRQ(ierr);
+    //}
+	
     /* update markers = >> gauss points */
     {
       int               npoints;
