@@ -54,6 +54,7 @@ extern PetscErrorCode pTatinModelCreate_StaticBox(pTatinModel);
 extern PetscErrorCode pTatinModelCreate_StaticBoxTM(pTatinModel);
 extern PetscErrorCode pTatinModelCreate_AnlVV(pTatinModel m);
 extern PetscErrorCode pTatinModelRegister_NitscheDemo(void);
+extern PetscErrorCode pTatinModelRegister_RiftNitsche(void);
 
 PetscErrorCode pTatinModelRegisterAll(void)
 {
@@ -88,6 +89,7 @@ PetscErrorCode pTatinModelRegisterAll(void)
   ierr = pTatinModelDynamicRegister("analytics_vv",pTatinModelCreate_AnlVV);CHKERRQ(ierr);
 
   ierr = pTatinModelRegister_NitscheDemo();CHKERRQ(ierr);
+  ierr = pTatinModelRegister_RiftNitsche();CHKERRQ(ierr);
   
   PetscFunctionReturn(0);
 }
