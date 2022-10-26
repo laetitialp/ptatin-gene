@@ -1580,6 +1580,21 @@ PetscErrorCode MPntStdCoordinateMaxIdentifyPointIndex(DataBucket materialpoint_d
    hence if you want the NORTH value of \int_S u.n dS you access it via
      PetscReal flux = int_u_dot_n[ NORTH_FACE - 1 ].
 */
+#if 0
+TO DO: Fix for the refactored surface quadrature
+PetscErrorCode StokesComputeVdotN_Face()
+{
+  PetscInt e,nfaces;
+  //start = mfi->facet_label_offset[edge]
+  //end   = mfi->facet_label_offset[edge+1]
+  nfaces = start - end;
+
+  for (fe=start; fe<end; fe++) {
+    /* get element index of the face element we want to integrate */
+    e = mfi->facet_cell_index[fe];
+  }
+}
+
 PetscErrorCode StokesComputeVdotN(PhysCompStokes stokes,Vec u,PetscReal int_u_dot_n[])
 {
   PetscErrorCode     ierr;
@@ -1596,6 +1611,7 @@ PetscErrorCode StokesComputeVdotN(PhysCompStokes stokes,Vec u,PetscReal int_u_do
   SurfaceQuadrature  surfQ;
   const PetscScalar  *_ufield,*_coords;
   PetscReal          _int_u_dot_n[HEX_EDGES];
+  MeshFacetInfo      mfi;
 
   PetscFunctionBegin;
   ierr = PhysCompStokesGetDMs(stokes,&dau,NULL);CHKERRQ(ierr);
@@ -1609,6 +1625,9 @@ PetscErrorCode StokesComputeVdotN(PhysCompStokes stokes,Vec u,PetscReal int_u_do
 
   ierr = DMDAGetElements_pTatinQ2P1(dau,&nel,&nen_u,&elnidx_u);CHKERRQ(ierr);
 
+  surfQ = stokes->surfQ;
+  mfi   = stokes->mfi;
+
   ierr = PetscMemzero(_int_u_dot_n,sizeof(PetscReal)*HEX_EDGES);CHKERRQ(ierr);
   for (edge=0; edge<HEX_EDGES; edge++) {
     ConformingElementFamily element;
@@ -1616,11 +1635,10 @@ PetscErrorCode StokesComputeVdotN(PhysCompStokes stokes,Vec u,PetscReal int_u_do
     PetscInt                nfaces,nqp;
     QPoint2d                *qp2;
 
-    surfQ   = stokes->surfQ[edge];
-    element = surfQ->e;
-    nfaces  = surfQ->nfaces;
-    qp2     = surfQ->gp2;
-    nqp     = surfQ->ngp;
+    element = mfi->element;
+    nfaces  = surfQ->n_facets;
+    qp2     = surfQ->gp2[edge];
+    nqp     = surfQ->npoints;
     ierr = SurfaceQuadratureGetAllCellData_Stokes(surfQ,&quadpoints);CHKERRQ(ierr);
 
     /* evaluate the quadrature points using the 1D basis for this edge */
@@ -1694,3 +1712,4 @@ PetscErrorCode StokesComputeVdotN(PhysCompStokes stokes,Vec u,PetscReal int_u_do
 
   PetscFunctionReturn(0);
 }
+#endif
