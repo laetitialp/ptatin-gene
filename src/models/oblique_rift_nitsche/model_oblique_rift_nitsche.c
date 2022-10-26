@@ -976,12 +976,12 @@ static PetscErrorCode ModelApplyObliqueExtensionPullApart_RiftNitsche(DM dav, BC
 
   /* Apply Oblique extension on IMAX and IMIN faces */
   ux = -data->u_bc[0];
-  uz = -data->u_bc[1];
+  uz = -data->u_bc[2];
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,0,BCListEvaluator_constant,(void*)&ux);CHKERRQ(ierr);
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_constant,(void*)&uz);CHKERRQ(ierr);
 
   ux = data->u_bc[0];
-  uz = data->u_bc[1];
+  uz = data->u_bc[2];
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,0,BCListEvaluator_constant,(void*)&ux);CHKERRQ(ierr);
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_constant,(void*)&uz);CHKERRQ(ierr);
 
