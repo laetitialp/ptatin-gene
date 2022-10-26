@@ -26,4 +26,5 @@ ptatin-tests-y.c += $(call thisdir, \
   test_mpiiob.c \
   test_databucket_checkpoint.c \
   test_ptatin_quantity.c \
+  test_steady_state_diffusion_solve_TFV.c \
 )

@@ -129,4 +129,7 @@ PetscErrorCode _cart_convert_ijk_to_index(const PetscInt rijk[],const PetscInt m
 PetscErrorCode FVDACreateMatrix(FVDA fv,DMDAStencilType type,Mat *A);
 PetscErrorCode SNESFVDAConfigureGalerkinMG(SNES snes,FVDA fv);
 
+PetscErrorCode eval_F_diffusion_7point_hr_local_store_MPI(FVDA fv,const PetscReal domain_geom_coor[],const PetscReal fv_coor[],const PetscReal X[],PetscReal F[]);
+PetscErrorCode eval_J_diffusion_7point_local(FVDA fv,const PetscReal domain_geom_coor[],const PetscReal fv_coor[],const PetscReal X[],Mat J);
+
 #endif
