@@ -464,6 +464,7 @@ PetscErrorCode pTatin3d_SteadyStateDiffusion_TFV_driver(int argc,char **argv)
   }
   
   ierr = VecDestroy(&energyfv->G);CHKERRQ(ierr);
+  ierr = VecDestroy(&X);CHKERRQ(ierr);
   ierr = pTatin3dDestroyContext(&user);
 
   PetscFunctionReturn(0);
