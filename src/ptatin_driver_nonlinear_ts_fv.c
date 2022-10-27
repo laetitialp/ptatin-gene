@@ -1750,7 +1750,12 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
 
   /* Clean up */
   for (k=0; k<nlevels-1; k++) {
+    ierr = MeshFacetInfoDestroy(&mfi[k]);CHKERRQ(ierr);
+    ierr = SurfaceQuadratureDestroy(&surfQ[k]);CHKERRQ(ierr);
+  }
+  for (k=0; k<nlevels-1; k++) {
     ierr = BCListDestroy(&u_bclist[k]);CHKERRQ(ierr);
+    ierr = SurfBCListDestroy(&surf_bclist[k]);CHKERRQ(ierr);
     ierr = QuadratureDestroy(&volQ[k]);CHKERRQ(ierr);
   }
   for (k=0; k<nlevels; k++) {
