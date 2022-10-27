@@ -32,6 +32,8 @@
 -model_rift_nitsche_wz_n_notches 3
 -model_rift_nitsche_wz_width 100.0e3
 ########### Boundary conditions ##########
+-model_rift_nitsche_bc_nitsche
+#-model_rift_nitsche_bc_dirichlet
 -model_rift_nitsche_norm_u 1.0 # cm/yr
 -model_rift_nitsche_alpha_u 45.0 # Degree
 -model_rift_nitsche_mathcalH 0,1,0,1,1,0 # default
@@ -39,7 +41,6 @@
 -model_rift_nitsche_Tbottom 1450.0
 ########### SPM ##########
 -model_rift_nitsche_diffusivity_spm 1.0e-6
-
 ############ Phases Parameters #############
 #### Continental upper crust phase number 0 ####
 #### Quartzite Ranalli 1997 ####
@@ -106,11 +107,11 @@
 -model_rift_nitsche_conductivity_2 3.3
 #### Asthenosphere phase number 3 ####
 #### Dry peridotite Ranalli 1997 ####
--model_rift_nitsche_preexpA_3 1e-20 #2.5e4
--model_rift_nitsche_Ascale_3 1.0 #0.5e+6
--model_rift_nitsche_entalpy_3 3.0e4 #532.0e3
+-model_rift_nitsche_preexpA_3 2.5e4
+-model_rift_nitsche_Ascale_3 0.5e+6
+-model_rift_nitsche_entalpy_3 532.0e3
 -model_rift_nitsche_Vmol_3 0.0
--model_rift_nitsche_nexp_3 1.0 #3.5
+-model_rift_nitsche_nexp_3 3.5
 -model_rift_nitsche_Tref_3 273.15
 -model_rift_nitsche_phi_3 0.0
 -model_rift_nitsche_phi_inf_3 0.0

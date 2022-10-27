@@ -427,6 +427,29 @@ static PetscErrorCode ModelScaleParameters_RiftNitsche(DataBucket materialconsta
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
+{
+  PetscBool      bc_nitsche,bc_dirichlet,found;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  /* Get BC type from options */
+  bc_nitsche = PETSC_FALSE;
+  bc_dirichlet = PETSC_FALSE;
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_nitsche",&bc_nitsche,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_dirichlet",&bc_dirichlet,&found);CHKERRQ(ierr);
+
+  /* Replace boolean by int for switch */
+  data->bc_type = -1;
+  if (bc_nitsche) {
+    data->bc_type = 0;
+  } else if (bc_dirichlet) {
+    data->bc_type = 1;
+  }
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode ModelInitialize_RiftNitsche(pTatinCtx c,void *ctx)
 {
   ModelRiftNitscheCtx  *data;
@@ -457,6 +480,7 @@ PetscErrorCode ModelInitialize_RiftNitsche(pTatinCtx c,void *ctx)
   /* BCs data */
   ierr = ModelInitialBoundaryVelocity_RiftNitsche(data);CHKERRQ(ierr);
   ierr = ModelSetTemperatureBCs_RiftNitsche(data);CHKERRQ(ierr);
+  ierr = ModelSetBCType_RiftNitsche(data);CHKERRQ(ierr);
   /* Materials parameters */
   ierr = ModelSetMaterialParameters_RiftNitsche(c,materialconstants,data);CHKERRQ(ierr);
   ierr = ModelSetSPMParameters_RiftNitsche(data);CHKERRQ(ierr);
@@ -770,45 +794,39 @@ static PetscErrorCode ModelLoadTemperatureInitialSolution_FromFile(pTatinCtx c)
   PetscFunctionReturn(0);
 }
 
+static PetscBool InitialAnalyticalVelocityFunction(PetscScalar position[],PetscScalar *val,void *ctx)
+{
+  ModelRiftNitscheCtx *data = (ModelRiftNitscheCtx*)ctx;
+  PetscReal           u[3];
+  PetscBool           impose=PETSC_TRUE;
+
+  PetscFunctionBegin;
+
+  u[0] = 2.0/(data->Lz - data->Oz) * position[2] * data->u_bc[0] - data->u_bc[0];
+  u[1] = 0.0;
+  u[2] = 2.0/(data->Lz - data->Oz) * position[2] * data->u_bc[2] - data->u_bc[2];
+
+  *val = u[ data->component ];
+  PetscFunctionReturn(impose);
+}
+
 static PetscErrorCode ModelApplyInitialVelocityField_RiftNitsche(DM dau, Vec velocity,ModelRiftNitscheCtx *data)
 {
-  PetscReal                   uxl,uxr,uzl,uzr,a,b,c;
-  DMDAVecTraverse3d_InterpCtx IntpCtx;
-  PetscErrorCode              ierr;
+  PetscErrorCode ierr;
   PetscFunctionBegin;
 
   /* Initialize to zero the velocity vector */
   ierr = VecZeroEntries(velocity);CHKERRQ(ierr);
-  
-  /* ux on boundary */
-  uxr =  data->u_bc[0];
-  uxl = -data->u_bc[0];
-  /* uz on boundary */
-  uzr =  data->u_bc[2];
-  uzl = -data->u_bc[2];
-
-  /* Linear interpolation a*(X-c) + b */
 
   /* x component */
-  a = (uxr - uxl)/(data->Lx - data->Ox);
-  b = uxl;
-  c = data->Ox;
-  ierr = DMDAVecTraverse3d_InterpCtxSetUp_X(&IntpCtx,a,b,c);CHKERRQ(ierr);
-  ierr = DMDAVecTraverse3d(dau,velocity,0,DMDAVecTraverse3d_Interp,(void*)&IntpCtx);CHKERRQ(ierr);
-
+  data->component = 0;
+  ierr = DMDAVecTraverse3d(dau,velocity,data->component,InitialAnalyticalVelocityFunction,(void*)data);CHKERRQ(ierr);
   /* y component */
-  a = 0.0;
-  b = 0.0;
-  c = 0.0;
-  ierr = DMDAVecTraverse3d_InterpCtxSetUp_Y(&IntpCtx,a,b,c);CHKERRQ(ierr);
-  ierr = DMDAVecTraverse3d(dau,velocity,1,DMDAVecTraverse3d_Interp,(void*)&IntpCtx);CHKERRQ(ierr);
-
+  data->component = 1;
+  ierr = DMDAVecTraverse3d(dau,velocity,data->component,InitialAnalyticalVelocityFunction,(void*)data);CHKERRQ(ierr);
   /* z component */
-  a = (uzr - uzl)/(data->Lz - data->Oz);
-  b = uzl;
-  c = data->Oz;
-  ierr = DMDAVecTraverse3d_InterpCtxSetUp_Z(&IntpCtx,a,b,c);CHKERRQ(ierr);
-  ierr = DMDAVecTraverse3d(dau,velocity,2,DMDAVecTraverse3d_Interp,(void*)&IntpCtx);CHKERRQ(ierr);
+  data->component = 2;
+  ierr = DMDAVecTraverse3d(dau,velocity,data->component,InitialAnalyticalVelocityFunction,(void*)data);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -932,7 +950,7 @@ static PetscErrorCode ModelApplyGeneralNavierSlip_RiftNitsche(SurfBCList surflis
   PetscFunctionReturn(0);
 }
 
-#if 0
+#if 1
 static PetscErrorCode ModelComputeBottomFlow_udotn(pTatinCtx c,Vec X, ModelRiftNitscheCtx *data)
 {
   PhysCompStokes stokes;
@@ -995,13 +1013,60 @@ static PetscErrorCode ModelApplyObliqueExtensionPullApart_RiftNitsche(DM dav, BC
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ModelApplyObliqueExtensionPullApartDirichlet_RiftNitsche(DM dav, BCList bclist,ModelRiftNitscheCtx *data)
+{
+  PetscReal      ux,uz,u_bot;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  /* Apply Oblique extension on IMAX and IMIN faces */
+  ux = -data->u_bc[0];
+  uz = -data->u_bc[2];
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,0,BCListEvaluator_constant,(void*)&ux);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_constant,(void*)&uz);CHKERRQ(ierr);
+
+  ux = data->u_bc[0];
+  uz = data->u_bc[2];
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,0,BCListEvaluator_constant,(void*)&ux);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_constant,(void*)&uz);CHKERRQ(ierr);
+
+  /* Apply the linear analytical function on IMAX and IMIN faces */
+  data->component = 0;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,data->component,InitialAnalyticalVelocityFunction,(void*)data);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,data->component,InitialAnalyticalVelocityFunction,(void*)data);CHKERRQ(ierr);
+  data->component = 2;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,data->component,InitialAnalyticalVelocityFunction,(void*)data);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,data->component,InitialAnalyticalVelocityFunction,(void*)data);CHKERRQ(ierr);
+
+  /* Apply base velocity from u.n */
+  u_bot = data->u_bc[1];
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&u_bot);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode ModelApplyBoundaryConditionsVelocity_RiftNitsche(DM dav, BCList bclist,SurfBCList surflist,PetscBool insert_if_not_found,ModelRiftNitscheCtx *data)
 {
   PetscErrorCode ierr;
   PetscFunctionBegin;
 
-  ierr = ModelApplyObliqueExtensionPullApart_RiftNitsche(dav,bclist,surflist,insert_if_not_found,data);CHKERRQ(ierr);
+  /* See ModelSetBCType_RiftNitsche() for the bc case number */
+  switch(data->bc_type) {
+    case 0:
+      /* Dirichlet on z normal faces and general navier slip on x normal faces */
+      ierr = ModelApplyObliqueExtensionPullApart_RiftNitsche(dav,bclist,surflist,insert_if_not_found,data);CHKERRQ(ierr);
+      break;
 
+    case 1:
+      /* Dirichlet on x and z normal faces */
+      ierr = ModelApplyObliqueExtensionPullApartDirichlet_RiftNitsche(dav,bclist,data);CHKERRQ(ierr);
+      break;
+
+    default:
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"No velocity boundary conditions type was given. Use -bc_nitsche or -bc_dirichlet\n");
+      break;
+  }
   PetscFunctionReturn(0);
 }
 
@@ -1048,7 +1113,7 @@ PetscErrorCode ModelApplyBoundaryConditions_RiftNitsche(pTatinCtx c,void *ctx)
 
   ierr = pTatinPhysCompGetData_Stokes(c,&X);CHKERRQ(ierr); 
   /* Compute uy as int_S v.n dS */
-  //ierr = ModelComputeBottomFlow_udotn(c,X,data);CHKERRQ(ierr);
+  ierr = ModelComputeBottomFlow_udotn(c,X,data);CHKERRQ(ierr);
 
   ierr = ModelApplyBoundaryConditionsVelocity_RiftNitsche(stokes->dav,stokes->u_bclist,stokes->surf_bclist,PETSC_TRUE,data);CHKERRQ(ierr);
 

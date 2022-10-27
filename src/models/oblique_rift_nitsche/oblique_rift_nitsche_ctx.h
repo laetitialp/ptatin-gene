@@ -8,6 +8,7 @@ typedef struct {
   PetscReal y_continent[3];
   /* Velocity BCs */
   PetscReal norm_u,alpha_u,u_bc[3];
+  PetscInt  component,bc_type;
   /* General Navier Slip BCs */
   PetscReal epsilon_s[6],H[6],t1_hat[3],n_hat[3];
   /* Number of materials */
