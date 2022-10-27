@@ -403,7 +403,7 @@ PetscErrorCode generic_facet_action(StokesForm *form,
   {
     double time = (double)(t1 - t0);
     ierr = MPI_Allreduce(MPI_IN_PLACE,&time,1,MPI_REAL,MPI_MAX,comm);CHKERRQ(ierr);
-    PetscPrintf(comm,"generic_facet_action(): Assembled form in %1.4e (sec) [max-collective]\n",time);
+    //PetscPrintf(comm,"generic_facet_action(): Assembled form in %1.4e (sec) [max-collective]\n",time);
   }
 
   /* Restore access to any data required by the form */
