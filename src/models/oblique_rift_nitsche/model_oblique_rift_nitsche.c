@@ -429,16 +429,18 @@ static PetscErrorCode ModelScaleParameters_RiftNitsche(DataBucket materialconsta
 
 static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
 {
-  PetscBool      bc_nitsche,bc_dirichlet,found;
+  PetscBool      bc_nitsche,bc_dirichlet,bc_freeslip_nitsche,found;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
 
   /* Get BC type from options */
-  bc_nitsche = PETSC_FALSE;
-  bc_dirichlet = PETSC_FALSE;
+  bc_nitsche          = PETSC_FALSE;
+  bc_dirichlet        = PETSC_FALSE;
+  bc_freeslip_nitsche = PETSC_FALSE;
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_nitsche",&bc_nitsche,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_dirichlet",&bc_dirichlet,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_freeslip_nitsche",&bc_freeslip_nitsche,&found);CHKERRQ(ierr);
 
   /* Replace boolean by int for switch */
   data->bc_type = -1;
@@ -446,6 +448,8 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
     data->bc_type = 0;
   } else if (bc_dirichlet) {
     data->bc_type = 1;
+  } else if (bc_freeslip_nitsche) {
+    data->bc_type = 2;
   }
   PetscFunctionReturn(0);
 }
@@ -914,6 +918,13 @@ static PetscErrorCode GeneralNavierSlipBC(Facet F,const PetscReal qp_coor[],
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ConstantUdotN_NormalNavierSlip(Facet F,const PetscReal qp_coor[],PetscReal udotn[],void *data)
+{
+  PetscReal *input = (PetscReal*)data;
+  udotn[0] = input[0];
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode ModelApplyGeneralNavierSlip_RiftNitsche(SurfBCList surflist,PetscBool insert_if_not_found,ModelRiftNitscheCtx *data)
 {
   SurfaceConstraint sc;
@@ -946,6 +957,37 @@ static PetscErrorCode ModelApplyGeneralNavierSlip_RiftNitsche(SurfBCList surflis
     if (!sc->quadrature) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->surfQ. Must call SurfaceConstraintSetQuadrature() first");
     if (!sc->facets->set_values_called) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Facets have not been selected");
     ierr = SurfaceConstraintSetValuesStrainRate_NITSCHE_GENERAL_SLIP(sc,(SurfCSetValuesNitscheGeneralSlip)GeneralNavierSlipBC,(void*)data);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelApplyNormalNavierSlip_RiftNitsche(SurfBCList surflist,PetscBool insert_if_not_found,ModelRiftNitscheCtx *data)
+{
+  SurfaceConstraint sc;
+  MeshEntity        facets;
+  PetscErrorCode    ierr;
+  
+  ierr = SurfBCListGetConstraint(surflist,"boundary_x",&sc);CHKERRQ(ierr);
+  if (!sc) {
+    if (insert_if_not_found) {
+      ierr = SurfBCListAddConstraint(surflist,"boundary_x",&sc);CHKERRQ(ierr);
+      ierr = SurfaceConstraintSetType(sc,SC_NITSCHE_NAVIER_SLIP);CHKERRQ(ierr);
+      ierr = SurfaceConstraintNitscheNavierSlip_SetPenalty(sc,1.0e3);CHKERRQ(ierr);
+    } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint not found");
+  }
+  ierr = SurfaceConstraintGetFacets(sc,&facets);CHKERRQ(ierr);
+  
+  {
+    PetscInt       nsides;
+    HexElementFace sides[] = { HEX_FACE_Nxi, HEX_FACE_Pxi };//, HEX_FACE_Neta, HEX_FACE_Nzeta, HEX_FACE_Pzeta };
+    nsides = sizeof(sides) / sizeof(HexElementFace);
+    ierr = MeshFacetMarkDomainFaces(facets,sc->fi,nsides,sides);CHKERRQ(ierr);
+  }
+  
+  SURFC_CHKSETVALS(SC_NITSCHE_NAVIER_SLIP,ConstantUdotN_NormalNavierSlip);
+  {
+    PetscReal uD_c[] = {0.0};
+    ierr = SurfaceConstraintSetValues(sc,(SurfCSetValuesGeneric)ConstantUdotN_NormalNavierSlip,(void*)uD_c);CHKERRQ(ierr);
   }
   PetscFunctionReturn(0);
 }
@@ -1039,7 +1081,30 @@ static PetscErrorCode ModelApplyObliqueExtensionPullApartDirichlet_RiftNitsche(D
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,data->component,InitialAnalyticalVelocityFunction,(void*)data);CHKERRQ(ierr);
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,data->component,InitialAnalyticalVelocityFunction,(void*)data);CHKERRQ(ierr);
 
-  /* Apply base velocity from u.n */
+  /* Apply base velocity from \int_{\partial \Omega} u.n */
+  u_bot = data->u_bc[1];
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&u_bot);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelApplyOrthogonalExtensionFreeSlipNitsche_RiftNitsche(DM dav, BCList bclist,SurfBCList surflist,PetscBool insert_if_not_found,ModelRiftNitscheCtx *data)
+{
+  PetscReal      uz,u_bot;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  /* Extension on faces of normal z */
+  uz = -data->norm_u;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_constant,(void*)&uz);CHKERRQ(ierr);
+  uz = data->norm_u;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_constant,(void*)&uz);CHKERRQ(ierr);
+
+  /* Navier slip u.n = 0 on faces of normal x */
+  ierr = ModelApplyNormalNavierSlip_RiftNitsche(surflist,PETSC_TRUE,data);CHKERRQ(ierr);
+
+  /* Apply base velocity from \int_{\partial \Omega} u.n */
   u_bot = data->u_bc[1];
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&u_bot);CHKERRQ(ierr);
 
@@ -1061,6 +1126,11 @@ static PetscErrorCode ModelApplyBoundaryConditionsVelocity_RiftNitsche(DM dav, B
     case 1:
       /* Dirichlet on x and z normal faces */
       ierr = ModelApplyObliqueExtensionPullApartDirichlet_RiftNitsche(dav,bclist,data);CHKERRQ(ierr);
+      break;
+
+    case 2:
+      /* Orthogonal extension with free- normal slip nitsche (u.n) = 0 on faces of normal x */
+      ierr = ModelApplyOrthogonalExtensionFreeSlipNitsche_RiftNitsche(dav,bclist,surflist,insert_if_not_found,data);CHKERRQ(ierr);
       break;
 
     default:

@@ -32,7 +32,8 @@
 -model_rift_nitsche_wz_n_notches 3
 -model_rift_nitsche_wz_width 100.0e3
 ########### Boundary conditions ##########
--model_rift_nitsche_bc_nitsche
+#-model_rift_nitsche_bc_nitsche
+-model_rift_nitsche_bc_freeslip_nitsche
 #-model_rift_nitsche_bc_dirichlet
 -model_rift_nitsche_norm_u 1.0 # cm/yr
 -model_rift_nitsche_alpha_u 45.0 # Degree
