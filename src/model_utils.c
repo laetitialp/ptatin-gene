@@ -1580,26 +1580,11 @@ PetscErrorCode MPntStdCoordinateMaxIdentifyPointIndex(DataBucket materialpoint_d
    hence if you want the NORTH value of \int_S u.n dS you access it via
      PetscReal flux = int_u_dot_n[ NORTH_FACE - 1 ].
 */
-#if 0
-TO DO: Fix for the refactored surface quadrature
-PetscErrorCode StokesComputeVdotN_Face()
-{
-  PetscInt e,nfaces;
-  //start = mfi->facet_label_offset[edge]
-  //end   = mfi->facet_label_offset[edge+1]
-  nfaces = start - end;
-
-  for (fe=start; fe<end; fe++) {
-    /* get element index of the face element we want to integrate */
-    e = mfi->facet_cell_index[fe];
-  }
-}
-
 PetscErrorCode StokesComputeVdotN(PhysCompStokes stokes,Vec u,PetscReal int_u_dot_n[])
 {
   PetscErrorCode     ierr;
   DM                 dau;
-  PetscInt           q,d,k,e,edge,fe;
+  PetscInt           q,d,k,e,edge,fe,face_id;
   Vec                ul,gcoords;
   PetscInt           nel,nen_u;
   const PetscInt     *elnidx_u;
@@ -1632,13 +1617,16 @@ PetscErrorCode StokesComputeVdotN(PhysCompStokes stokes,Vec u,PetscReal int_u_do
   for (edge=0; edge<HEX_EDGES; edge++) {
     ConformingElementFamily element;
     int                     *face_local_indices;
-    PetscInt                nfaces,nqp;
+    PetscInt                nqp,start,end;
     QPoint2d                *qp2;
 
     element = mfi->element;
-    nfaces  = surfQ->n_facets;
     qp2     = surfQ->gp2[edge];
     nqp     = surfQ->npoints;
+
+    start = mfi->facet_label_offset[edge];
+    end   = mfi->facet_label_offset[edge+1];
+
     ierr = SurfaceQuadratureGetAllCellData_Stokes(surfQ,&quadpoints);CHKERRQ(ierr);
 
     /* evaluate the quadrature points using the 1D basis for this edge */
@@ -1648,9 +1636,10 @@ PetscErrorCode StokesComputeVdotN(PhysCompStokes stokes,Vec u,PetscReal int_u_do
 
     face_local_indices = element->face_node_list[edge];
 
-    for (fe=0; fe<nfaces; fe++) { /* for all elements on this domain face */
+    for (fe=start; fe<end; fe++) { /* for all elements on this domain face */
       /* get element index of the face element we want to integrate */
-      e = surfQ->element_list[fe];
+      e = mfi->facet_cell_index[fe];
+      face_id = mfi->facet_label[fe];
 
       ierr = StokesVelocity_GetElementLocalIndices(vel_el_lidx,(PetscInt*)&elnidx_u[nen_u*e]);CHKERRQ(ierr);
       ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx_u[nen_u*e],(PetscScalar*)_coords);CHKERRQ(ierr);
@@ -1674,7 +1663,7 @@ PetscErrorCode StokesComputeVdotN(PhysCompStokes stokes,Vec u,PetscReal int_u_do
         element->compute_surface_geometry_3D(
                                              element,
                                              elcoords,    // should contain 27 points with dimension 3 (x,y,z) //
-                                             surfQ->face_id,   // edge index 0,...,7 //
+                                             face_id,   // edge index 0,...,7 //
                                              &qp2[q], // should contain 1 point with dimension 2 (xi,eta)   //
                                              NULL,NULL, &surfJ_q ); // n0[],t0 contains 1 point with dimension 3 (x,y,z) //
         fac = qp2[q].w * surfJ_q;
@@ -1712,4 +1701,3 @@ PetscErrorCode StokesComputeVdotN(PhysCompStokes stokes,Vec u,PetscReal int_u_do
 
   PetscFunctionReturn(0);
 }
-#endif
