@@ -459,6 +459,7 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
   PetscBool         is_nest = PETSC_FALSE;
   PetscBool         is_shell = PETSC_FALSE;
   PetscContainer    container;
+  pTatinModel       model = NULL;
   PetscInt          k;
   PetscErrorCode    ierr;
 
@@ -483,7 +484,6 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
 
   /* nonlinearitiers: markers => quad points */
   ierr = pTatin_EvaluateRheologyNonlinearities(user,dau,LA_Uloc,dap,LA_Ploc);CHKERRQ(ierr);
-  //ierr = ModelApplyTractionFromLithoPressure(user,X);CHKERRQ(ierr);
   
   /* interpolate coefficients */
   {
@@ -500,8 +500,12 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
     mp_std    = PField_std->data; /* should write a function to do this */
     mp_stokes = PField_stokes->data; /* should write a function to do this */
 
-    ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,mlctx->nlevels,mlctx->interpolation_eta,mlctx->dav_hierarchy,mlctx->volQ,NULL,NULL);CHKERRQ(ierr);
+    ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,mlctx->nlevels,mlctx->interpolation_eta,mlctx->dav_hierarchy,mlctx->volQ,mlctx->surfQ,mlctx->mfi);CHKERRQ(ierr);
   }
+
+  /* Update boundary conditions on the hierarchy */
+  ierr = pTatinGetModel(user,&model);CHKERRQ(ierr);
+  ierr = pTatinModel_ApplyBoundaryConditionMG(mlctx->nlevels,mlctx->u_bclist,mlctx->surf_bclist,mlctx->dav_hierarchy,model,user);CHKERRQ(ierr);
 
   /* clean up */
   ierr = VecRestoreArray(Uloc,&LA_Uloc);CHKERRQ(ierr);

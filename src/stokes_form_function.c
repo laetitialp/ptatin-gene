@@ -523,6 +523,9 @@ PetscErrorCode FormFunction_Stokes(SNES snes,Vec X,Vec F,void *ctx)
   /* ======================================== */
   ierr = pTatin_EvaluateRheologyNonlinearities(ptatin,dau,LA_Uloc,dap,LA_Ploc);CHKERRQ(ierr);
 
+  /* Set BCs on fine grid after qp update */
+  ierr = pTatinModel_ApplyBoundaryCondition(ptatin->model,ptatin);CHKERRQ(ierr);
+
   /* Form scaling for momentum */
   //ierr = FormScaling_U_etaMassMatrixDiagonal(user,dau,user->u_bclist);CHKERRQ(ierr);
 
