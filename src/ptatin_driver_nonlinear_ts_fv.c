@@ -35,17 +35,19 @@ static const char help[] = "Prototype pTatin3D driver using finite volume transp
 typedef enum { OP_TYPE_REDISC_ASM=0, OP_TYPE_REDISC_MF, OP_TYPE_GALERKIN } OperatorType;
 
 typedef struct {
-  PetscInt     nlevels;
-  OperatorType *level_type;
-  Mat          *operatorA11;
-  Mat          *operatorB11;
-  DM           *dav_hierarchy;
-  Mat          *interpolation_v;
-  Mat          *interpolation_eta;
-  Quadrature   *volQ;
-  BCList       *u_bclist;
-  SurfBCList   *surf_bclist;
-  IS           *is_stokes_field;
+  PetscInt          nlevels;
+  OperatorType      *level_type;
+  Mat               *operatorA11;
+  Mat               *operatorB11;
+  DM                *dav_hierarchy;
+  Mat               *interpolation_v;
+  Mat               *interpolation_eta;
+  Quadrature        *volQ;
+  BCList            *u_bclist;
+  SurfaceQuadrature *surfQ;
+  SurfBCList        *surf_bclist;
+  MeshFacetInfo     *mfi;
+  IS                *is_stokes_field;
 } AuuMultiLevelCtx;
 
 
@@ -518,7 +520,7 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
     mp_std    = PField_std->data; /* should write a function to do this */
     mp_stokes = PField_stokes->data; /* should write a function to do this */
 
-    ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,mlctx->nlevels,mlctx->interpolation_eta,mlctx->dav_hierarchy,mlctx->volQ,NULL,NULL);CHKERRQ(ierr);
+    ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,mlctx->nlevels,mlctx->interpolation_eta,mlctx->dav_hierarchy,mlctx->volQ,mlctx->surfQ,mlctx->mfi);CHKERRQ(ierr);
   }
 
   /* operator */
@@ -1030,6 +1032,8 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
   mlctx.volQ                = volQ;
   mlctx.u_bclist            = u_bclist;
   mlctx.surf_bclist         = surf_bclist;
+  mlctx.surfQ               = surfQ;
+  mlctx.mfi                 = mfi;
 
   /* ============================================== */
   /* configure stokes opertors */
