@@ -41,7 +41,6 @@
 -model_rift_nitsche_Tbottom 1450.0
 ########### SPM ##########
 -model_rift_nitsche_diffusivity_spm 1.0e-6
-
 ############ Phases Parameters #############
 #### Continental upper crust phase number 0 ####
 #### Quartzite Ranalli 1997 ####
@@ -126,7 +125,7 @@
 -model_rift_nitsche_beta_3 1.0e-11
 -model_rift_nitsche_rho_3 3300.0
 -model_rift_nitsche_heat_source_3 0.0
--model_rift_nitsche_conductivity_3 3.3
+-model_rift_nitsche_conductivity_3 70.0 #3.3
 ################ SOLVERS ################
 ###### MG
 -A11_operator_type 0,1,1,1
