@@ -938,7 +938,7 @@ static PetscErrorCode ModelApplyGeneralNavierSlip_RiftNitsche(SurfBCList surflis
     if (insert_if_not_found) {
       ierr = SurfBCListAddConstraint(surflist,"boundary",&sc);CHKERRQ(ierr);
       ierr = SurfaceConstraintSetType(sc,SC_NITSCHE_GENERAL_SLIP);CHKERRQ(ierr);
-      ierr = SurfaceConstraintNitscheGeneralSlip_SetPenalty(sc,1.0e3);CHKERRQ(ierr);
+      ierr = SurfaceConstraintNitscheGeneralSlip_SetPenalty(sc,1.0e1);CHKERRQ(ierr);
     } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint not found");
   }
   ierr = SurfaceConstraintGetFacets(sc,&facets);CHKERRQ(ierr);
@@ -992,7 +992,6 @@ static PetscErrorCode ModelApplyNormalNavierSlip_RiftNitsche(SurfBCList surflist
   PetscFunctionReturn(0);
 }
 
-#if 1
 static PetscErrorCode ModelComputeBottomFlow_udotn(pTatinCtx c,Vec X, ModelRiftNitscheCtx *data)
 {
   PhysCompStokes stokes;
@@ -1018,7 +1017,7 @@ static PetscErrorCode ModelComputeBottomFlow_udotn(pTatinCtx c,Vec X, ModelRiftN
   ierr = DMCompositeRestoreAccess(dms,X,&velocity,&pressure);CHKERRQ(ierr);
 
   if (c->step == 0) {
-    data->u_bc[1] = 0.0;
+    data->u_bc[1] = 2.0*data->u_bc[2]*(data->Lx - data->Ox)*(data->Ly - data->Oy)/((data->Lx - data->Ox)*(data->Lz - data->Oz));
   } else {
     /* Compute the vy velocity based on faces inflow/outflow except the top free surface */
     data->u_bc[1] = (int_u_dot_n[WEST_FACE-1]+int_u_dot_n[EAST_FACE-1]+int_u_dot_n[BACK_FACE-1]+int_u_dot_n[FRONT_FACE-1])/((data->Lx - data->Ox)*(data->Lz - data->Oz));
@@ -1026,7 +1025,7 @@ static PetscErrorCode ModelComputeBottomFlow_udotn(pTatinCtx c,Vec X, ModelRiftN
   }
   PetscFunctionReturn(0);
 }
-#endif
+
 static PetscErrorCode ModelApplyObliqueExtensionPullApart_RiftNitsche(DM dav, BCList bclist,SurfBCList surflist,PetscBool insert_if_not_found,ModelRiftNitscheCtx *data)
 {
   PetscReal      ux,uz,u_bot;
@@ -1049,7 +1048,7 @@ static PetscErrorCode ModelApplyObliqueExtensionPullApart_RiftNitsche(DM dav, BC
   ierr = ModelApplyGeneralNavierSlip_RiftNitsche(surflist,insert_if_not_found,data);CHKERRQ(ierr);
 
   /* Apply base velocity from u.n */
-  u_bot = 0.0;//data->u_bc[1];
+  u_bot = data->u_bc[1];
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&u_bot);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
