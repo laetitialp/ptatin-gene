@@ -807,7 +807,7 @@ static PetscBool InitialAnalyticalVelocityFunction(PetscScalar position[],PetscS
   PetscFunctionBegin;
 
   u[0] = 2.0/(data->Lz - data->Oz) * position[2] * data->u_bc[0] - data->u_bc[0];
-  u[1] = 0.0;
+  u[1] = 2.0*(position[1] - data->Ly)*data->u_bc[2]*(data->Ly - data->Oy)/((data->Lz - data->Oz)*(data->Oy - data->Ly));
   u[2] = 2.0/(data->Lz - data->Oz) * position[2] * data->u_bc[2] - data->u_bc[2];
 
   *val = u[ data->component ];
