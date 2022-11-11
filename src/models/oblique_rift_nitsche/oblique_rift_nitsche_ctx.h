@@ -24,9 +24,9 @@ typedef struct {
   /* Temperature BCs */
   PetscReal Ttop,Tbottom;
   /* Weak zone type */
-  PetscBool wz_notch,wz_gauss,wz_oblique;
-  PetscInt  n_notches;
+  PetscInt  n_notches,wz_type;
   PetscReal wz_angle,wz_width,wz_sigma[2];
+  PetscReal wz_origin,wz_offset;
   /* Output */
   PetscBool output_markers;
 } ModelRiftNitscheCtx;

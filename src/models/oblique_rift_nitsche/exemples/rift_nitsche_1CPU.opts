@@ -29,15 +29,19 @@
 -model_rift_nitsche_y_continent -25.0e3,-35.0e3,-120.0e3
 ########### Weak zones ##########
 -model_rift_nitsche_wz_notch
+#-model_rift_nitsche_wz_gauss
+-model_rift_nitsche_wz_sigma 3e+5,3e+5
 -model_rift_nitsche_wz_n_notches 3
+-model_rift_nitsche_wz_origin 300.0e3 # Centre z
+-model_rift_nitsche_wz_offset -150.0e3
 -model_rift_nitsche_wz_width 100.0e3
 ########### Boundary conditions ##########
-#-model_rift_nitsche_bc_nitsche
--model_rift_nitsche_bc_freeslip_nitsche
+-model_rift_nitsche_bc_nitsche
+#-model_rift_nitsche_bc_freeslip_nitsche
 #-model_rift_nitsche_bc_dirichlet
 -model_rift_nitsche_norm_u 1.0 # cm/yr
--model_rift_nitsche_alpha_u 45.0 # Degree
--model_rift_nitsche_mathcalH 0,1,0,1,1,0 # default
+-model_rift_nitsche_alpha_u 90.0 # Degree
+-model_rift_nitsche_mathcalH 0,1,0,1,0,0 # default
 -model_rift_nitsche_Ttop 0.0
 -model_rift_nitsche_Tbottom 1450.0
 ########### SPM ##########
