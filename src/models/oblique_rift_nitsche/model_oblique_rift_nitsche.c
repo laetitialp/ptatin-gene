@@ -115,9 +115,124 @@ static PetscErrorCode ModelInitialBoundaryVelocity_RiftNitsche(ModelRiftNitscheC
   /* x component */
   data->u_bc[0] = sqrt( pow(data->norm_u,2.0) - pow(data->u_bc[2],2.0) );
 
+  /* Rotation angle for the vector field rotation */
+  data->alpha_r = 0.0;
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-alpha_r",&data->alpha_r,NULL);CHKERRQ(ierr);
+  data->alpha_r = data->alpha_r * M_PI/180.0;
+
   /* reports before scaling */
   PetscPrintf(PETSC_COMM_WORLD,"************ Velocity Dirichlet BCs ************\n",NULL);
   PetscPrintf(PETSC_COMM_WORLD,"||u||= %1.4e, ux = %+1.4e, uy = %+1.4e, uz = %+1.4e [cm/yr]\n",data->norm_u,data->u_bc[0],data->u_bc[1],data->u_bc[2]);
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelAnalyticalVelocityFunction(PetscReal position[], PetscReal u[], ModelRiftNitscheCtx *data)
+{
+  PetscFunctionBegin;
+  u[0] = 2.0/(data->Lz - data->Oz) * position[2] * data->u_bc[0] - data->u_bc[0];
+  u[1] = 2.0*(position[1] - data->Ly)*data->u_bc[2]*(data->Ly - data->Oy)/((data->Lz - data->Oz)*(data->Oy - data->Ly));
+  u[2] = 2.0/(data->Lz - data->Oz) * position[2] * data->u_bc[2] - data->u_bc[2];
+  PetscFunctionReturn(0);
+}
+
+static inline void RotationMatrix(double theta,double r[3],double R[3][3])
+{
+  
+  R[0][0] = cos(theta) + (1.0-cos(theta))*pow(r[0],2);
+  R[0][1] = r[0]*r[1]*(1.0-cos(theta)) - r[2]*sin(theta);
+  R[0][2] = r[0]*r[2]*(1.0-cos(theta)) + r[1]*sin(theta);
+
+  R[1][0] = r[0]*r[1]*(1.0-cos(theta)) + r[2]*sin(theta);
+  R[1][1] = cos(theta)+(1.0-cos(theta))*pow(r[1],2);
+  R[1][2] = r[1]*r[2]*(1.0-cos(theta)) - r[0]*sin(theta);
+
+  R[2][0] = r[0]*r[2]*(1.0-cos(theta))-r[1]*sin(theta);
+  R[2][1] = r[1]*r[2]*(1.0-cos(theta))+r[0]*sin(theta);
+  R[2][2] = cos(theta)+(1.0-cos(theta))*pow(r[2],2);
+
+}
+
+static PetscErrorCode MatMult3x3(PetscReal A[][3], PetscReal B[][3], PetscReal C[][3])
+{
+  PetscInt i,j,k;
+
+  for (i=0; i<3; i++) {
+    for (j=0; j<3; j++) {
+      C[i][j] = 0.0;
+    }
+  }
+
+  for (i=0; i<3; i++) {
+    for (j=0; j<3; j++) {
+      for (k=0; k<3; k++) {
+        C[i][j] += A[i][k] * B[k][j];
+      }
+    }
+  }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode Rotate_u(PetscReal theta, PetscReal r[], PetscReal u[], PetscReal w[])
+{
+  PetscInt  i,j;
+  PetscReal R[3][3];
+  PetscFunctionBegin;
+
+  RotationMatrix(theta,r,R);
+
+  w[0] = w[1] = w[2] = 0.0;
+  for (i=0;i<3;i++) {
+    for (j=0;j<3;j++) {
+      w[i] += R[i][j] * u[j];
+    }
+  }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode RotateReferential(PetscReal position[], PetscReal coords_rt[] ,ModelRiftNitscheCtx *data)
+{
+  PetscReal      coords[] = {0.0,0.0,0.0};
+  PetscReal      r[] = {0.0,1.0,0.0};
+  PetscReal      coords_r[3];
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  /* Translate to (0,0,0) */
+  coords[0] = position[0] - 0.5*(data->Lx + data->Ox);
+  coords[1] = position[1] - 0.5*(data->Ly + data->Oy);
+  coords[2] = position[2] - 0.5*(data->Lz + data->Oz);
+
+  /* Rotate */
+  ierr = Rotate_u(-data->alpha_r,r,coords,coords_r);CHKERRQ(ierr);
+
+  /* Translate back */
+  coords_rt[0] = coords_r[0] + 0.5*(data->Lx + data->Ox);
+  coords_rt[1] = coords_r[1] + 0.5*(data->Ly + data->Oy);
+  coords_rt[2] = coords_r[2] + 0.5*(data->Lz + data->Oz);
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ComputeNewBasisVectors(ModelRiftNitscheCtx *data)
+{
+  PetscReal      u0[] = {0.0,0.0,0.0};
+  PetscReal      r[] = {0.0,1.0,0.0};
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  u0[0] = data->u_bc[0]/data->norm_u;
+  u0[1] = 0.0;
+  u0[2] = data->u_bc[2]/data->norm_u;
+
+  ierr = Rotate_u(data->alpha_r,r,u0,data->t1_hat);CHKERRQ(ierr);
+  ierr = Rotate_u(-0.5*M_PI,r,data->t1_hat,data->n_hat);CHKERRQ(ierr);
+
+  PetscPrintf(PETSC_COMM_WORLD,"************ Rotated basis vectors ************\n",NULL);
+  for (int i=0; i<3; i++) {
+    PetscPrintf(PETSC_COMM_WORLD,"n_hat[%d] = %1.4f, t1_hat[%d] = %1.4f \n",i,data->n_hat[i],i,data->t1_hat[i]);
+  }
 
   PetscFunctionReturn(0);
 }
@@ -161,6 +276,106 @@ static PetscErrorCode ModelSetGeneralSlipBoundaryValues_ObliqueExtensionZ(ModelR
   nn = 6;
   ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME_R,"-mathcalH",data->H,&nn,&found);CHKERRQ(ierr);
   if (found) {if (nn != 6) { SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Wrong number of entries for -mathcalH, expected 6, passed %d",nn); } }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelRotateStrainRateBoundaryValue(ModelRiftNitscheCtx *data)
+{
+  PetscInt       i,j;
+  PetscReal      r[] = {0.0,1.0,0.0};
+  PetscReal      R[3][3],R_transpose[3][3],E[3][3],ERT[3][3],E_R[3][3];
+  const PetscInt indices_voigt[][3] = { {0, 3, 4}, {3, 1, 5}, {4, 5, 2} };
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  E[0][0] = 0.0; 
+  E[1][1] = 0.0;
+  E[2][2] = 2.0 / (data->Lz - data->Oz) * data->u_bc[2];
+
+  E[0][1] = 0.0;
+  E[0][2] = 1.0 / (data->Lz - data->Oz) * data->u_bc[0];
+  E[1][2] = 0.0;
+
+  E[1][0] = E[0][1];
+  E[2][0] = E[0][2];
+  E[2][1] = E[1][2];
+
+  RotationMatrix(data->alpha_r,r,R);
+
+  /* Transpose R */
+  for (i=0;i<3;i++) {
+    for (j=0;j<3;j++) {
+      R_transpose[i][j] = R[j][i];
+    }
+  }
+
+  /* Compute E*R^T */
+  ierr = MatMult3x3(E,R_transpose,ERT);CHKERRQ(ierr);
+  /* Compute R*E*R^T */
+  ierr = MatMult3x3(R,ERT,E_R);CHKERRQ(ierr);
+  for (i=0;i<3;i++) {
+    for (j=0;j<3;j++) {
+      data->epsilon_s[ indices_voigt[i][j] ] = E_R[i][j];
+      //PetscPrintf(PETSC_COMM_WORLD,"E_R[%d][%d] = %+1.2e, E_s[%d] = %+1.2e\n",i,j,E_R[i][j],indices_voigt[i][j],data->epsilon_s[ indices_voigt[i][j] ]);
+    }
+  }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelSetGeneralSlipBoundaryValues_RotatedVelocityField(ModelRiftNitscheCtx *data)
+{
+  PetscInt       nn;
+  PetscBool      found;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  ierr = ComputeNewBasisVectors(data);CHKERRQ(ierr);
+  ierr = ModelRotateStrainRateBoundaryValue(data);CHKERRQ(ierr);
+  /* 
+  Set which component of the rotated stress tensor:
+    will be constrained (1) 
+    will be treated as unknown (0) 
+  */
+  data->H[0] = 0; // H_00
+  data->H[1] = 1; // H_11
+  data->H[2] = 0; // H_22
+  data->H[3] = 1; // H_01 = H_10
+  data->H[4] = 1; // H_02 = H_20
+  data->H[5] = 0; // H_12 = H_21
+  nn = 6;
+  ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME_R,"-mathcalH",data->H,&nn,&found);CHKERRQ(ierr);
+  if (found) {if (nn != 6) { SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Wrong number of entries for -mathcalH, expected 6, passed %d",nn); } }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelSetGeneralSlipBoundaryValues_RiftNitsche(ModelRiftNitscheCtx *data)
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  switch (data->bc_type)
+  {
+    case 0:
+      ierr = ModelSetGeneralSlipBoundaryValues_ObliqueExtensionZ(data);CHKERRQ(ierr);
+      break;
+
+    case 1:
+      ierr = ModelSetGeneralSlipBoundaryValues_ObliqueExtensionZ(data);CHKERRQ(ierr);
+      break;
+
+    case 2:
+      ierr = ModelSetGeneralSlipBoundaryValues_ObliqueExtensionZ(data);CHKERRQ(ierr);
+      break;
+
+    case 3:
+      ierr = ModelSetGeneralSlipBoundaryValues_RotatedVelocityField(data);CHKERRQ(ierr);
+      break;
+
+    default:
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"bc_type must be set with one of the bc options\n");
+      break;
+  }
+
   PetscFunctionReturn(0);
 }
 
@@ -445,7 +660,7 @@ static PetscErrorCode ModelScaleParameters_RiftNitsche(DataBucket materialconsta
 
 static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
 {
-  PetscBool      bc_nitsche,bc_dirichlet,bc_freeslip_nitsche,found;
+  PetscBool      bc_nitsche,bc_dirichlet,bc_freeslip_nitsche,bc_strikeslip,found;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -454,9 +669,11 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
   bc_nitsche             = PETSC_FALSE;
   bc_dirichlet           = PETSC_FALSE;
   bc_freeslip_nitsche    = PETSC_FALSE;
+  bc_strikeslip          = PETSC_FALSE;
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_nitsche",&bc_nitsche,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_dirichlet",&bc_dirichlet,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_freeslip_nitsche",&bc_freeslip_nitsche,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_strike_slip",&bc_strikeslip,&found);CHKERRQ(ierr);
 
   /* Replace boolean by int for switch */
   data->bc_type = -1;
@@ -469,7 +686,11 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
   } else if (bc_freeslip_nitsche) {
     data->bc_type = 2;
     PetscPrintf(PETSC_COMM_WORLD,"[[ BC TYPE %d: Orthogonal Normal Navier-slip ACTIVATED ]]\n",data->bc_type);
+  } else if (bc_strikeslip) {
+    data->bc_type = 3;
+    PetscPrintf(PETSC_COMM_WORLD,"[[ BC TYPE %d: Rotated Strike-Slip Navier-slip ACTIVATED ]]\n",data->bc_type);
   }
+
   PetscFunctionReturn(0);
 }
 
@@ -510,7 +731,7 @@ PetscErrorCode ModelInitialize_RiftNitsche(pTatinCtx c,void *ctx)
   /* Scale parameters */
   ierr = ModelScaleParameters_RiftNitsche(materialconstants,data);CHKERRQ(ierr);
   /* Use scaled values to compute background strain rate for Navier slip BCs */
-  ierr = ModelSetGeneralSlipBoundaryValues_ObliqueExtensionZ(data);CHKERRQ(ierr);
+  ierr = ModelSetGeneralSlipBoundaryValues_RiftNitsche(data);CHKERRQ(ierr);
 
   /* Fetch scaled values for the viscosity cutoff */
   rheology->apply_viscosity_cutoff_global = data->eta_cutoff;
@@ -870,18 +1091,37 @@ static PetscBool InitialAnalyticalVelocityFunction(PetscScalar position[],PetscS
   ModelRiftNitscheCtx *data = (ModelRiftNitscheCtx*)ctx;
   PetscReal           u[3];
   PetscBool           impose=PETSC_TRUE;
+  PetscErrorCode      ierr;
 
   PetscFunctionBegin;
 
-  u[0] = 2.0/(data->Lz - data->Oz) * position[2] * data->u_bc[0] - data->u_bc[0];
-  u[1] = 2.0*(position[1] - data->Ly)*data->u_bc[2]*(data->Ly - data->Oy)/((data->Lz - data->Oz)*(data->Oy - data->Ly));
-  u[2] = 2.0/(data->Lz - data->Oz) * position[2] * data->u_bc[2] - data->u_bc[2];
+  ierr = ModelAnalyticalVelocityFunction(position,u,data);CHKERRQ(ierr);
 
   *val = u[ data->component ];
   PetscFunctionReturn(impose);
 }
 
-static PetscErrorCode ModelApplyInitialVelocityField_RiftNitsche(DM dau, Vec velocity,ModelRiftNitscheCtx *data)
+static PetscBool BCListEvaluator_RotatedVelocityField(PetscScalar position[], PetscScalar *value, void *ctx)
+{
+  ModelRiftNitscheCtx *data = (ModelRiftNitscheCtx*)ctx;
+  PetscReal           coords_rt[] = {0.0,0.0,0.0};
+  PetscReal           u_xr[] = {0.0,0.0,0.0};
+  PetscReal           r[] = {0.0,1.0,0.0};
+  PetscReal           u_R[] = {0.0,0.0,0.0};
+  PetscBool           impose=PETSC_TRUE;
+  PetscErrorCode      ierr;
+
+  PetscFunctionBegin;
+
+  ierr = RotateReferential(position,coords_rt,data);CHKERRQ(ierr);
+  ierr = ModelAnalyticalVelocityFunction(coords_rt,u_xr,data);CHKERRQ(ierr);
+  Rotate_u(data->alpha_r,r,u_xr,u_R);
+  *value = u_R[ data->component ];
+
+  PetscFunctionReturn(impose);
+}
+
+static PetscErrorCode ModelApplyInitialVelocityField_ObliqueExtension(DM dau, Vec velocity,ModelRiftNitscheCtx *data)
 {
   PetscErrorCode ierr;
   PetscFunctionBegin;
@@ -898,6 +1138,58 @@ static PetscErrorCode ModelApplyInitialVelocityField_RiftNitsche(DM dau, Vec vel
   /* z component */
   data->component = 2;
   ierr = DMDAVecTraverse3d(dau,velocity,data->component,InitialAnalyticalVelocityFunction,(void*)data);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelApplyInitialVelocityField_RotatedVelocityField(DM dau, Vec velocity,ModelRiftNitscheCtx *data)
+{
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  /* Initialize to zero the velocity vector */
+  ierr = VecZeroEntries(velocity);CHKERRQ(ierr);
+
+  /* x component */
+  data->component = 0;
+  ierr = DMDAVecTraverse3d(dau,velocity,data->component,BCListEvaluator_RotatedVelocityField,(void*)data);CHKERRQ(ierr);
+  /* y component */
+  data->component = 1;
+  ierr = DMDAVecTraverse3d(dau,velocity,data->component,BCListEvaluator_RotatedVelocityField,(void*)data);CHKERRQ(ierr);
+  /* z component */
+  data->component = 2;
+  ierr = DMDAVecTraverse3d(dau,velocity,data->component,BCListEvaluator_RotatedVelocityField,(void*)data);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelApplyInitialVelocityField_RiftNitsche(DM dau, Vec velocity,ModelRiftNitscheCtx *data)
+{
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  switch (data->bc_type)
+  {
+    case 0:
+      ierr = ModelApplyInitialVelocityField_ObliqueExtension(dau,velocity,data);CHKERRQ(ierr);
+      break;
+
+    case 1:
+      ierr = ModelApplyInitialVelocityField_ObliqueExtension(dau,velocity,data);CHKERRQ(ierr);
+      break;
+
+    case 2:
+      ierr = ModelApplyInitialVelocityField_ObliqueExtension(dau,velocity,data);CHKERRQ(ierr);
+      break;
+
+    case 3:
+      ierr = ModelApplyInitialVelocityField_RotatedVelocityField(dau,velocity,data);CHKERRQ(ierr);
+      break;
+
+    default:
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"No velocity boundary conditions type was given. Use one of the bc options\n");
+      break;
+  }
 
   PetscFunctionReturn(0);
 }
@@ -1177,6 +1469,29 @@ static PetscErrorCode ModelApplyOrthogonalExtensionFreeSlipNitsche_RiftNitsche(D
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ModelApplyRotatedStrikeSlipNavierSlip_RiftNitsche(DM dav, BCList bclist,SurfBCList surflist,PetscBool insert_if_not_found,ModelRiftNitscheCtx *data)
+{
+  PetscReal      u_bot;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  data->component = 0;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,data->component,BCListEvaluator_RotatedVelocityField,(void*)data);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,data->component,BCListEvaluator_RotatedVelocityField,(void*)data);CHKERRQ(ierr);
+  data->component = 2;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,data->component,BCListEvaluator_RotatedVelocityField,(void*)data);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,data->component,BCListEvaluator_RotatedVelocityField,(void*)data);CHKERRQ(ierr);
+
+  /* Apply General Navier Slip BC on IMAX and IMIN faces */
+  ierr = ModelApplyGeneralNavierSlip_RiftNitsche(surflist,insert_if_not_found,data);CHKERRQ(ierr);
+
+  /* Apply base velocity from u.n */
+  u_bot = data->u_bc[1];
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&u_bot);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode ModelApplyBoundaryConditionsVelocity_RiftNitsche(DM dav, BCList bclist,SurfBCList surflist,PetscBool insert_if_not_found,ModelRiftNitscheCtx *data)
 {
   PetscErrorCode ierr;
@@ -1197,6 +1512,10 @@ static PetscErrorCode ModelApplyBoundaryConditionsVelocity_RiftNitsche(DM dav, B
     case 2:
       /* Orthogonal extension with free- normal slip nitsche (u.n) = 0 on faces of normal x */
       ierr = ModelApplyOrthogonalExtensionFreeSlipNitsche_RiftNitsche(dav,bclist,surflist,insert_if_not_found,data);CHKERRQ(ierr);
+      break;
+
+    case 3:
+      ierr = ModelApplyRotatedStrikeSlipNavierSlip_RiftNitsche(dav,bclist,surflist,insert_if_not_found,data);CHKERRQ(ierr);
       break;
 
     default:

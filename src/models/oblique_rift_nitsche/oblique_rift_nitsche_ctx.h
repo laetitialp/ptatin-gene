@@ -7,7 +7,7 @@ typedef struct {
   /* Layering */
   PetscReal y_continent[3];
   /* Velocity BCs */
-  PetscReal norm_u,alpha_u,u_bc[3];
+  PetscReal norm_u,alpha_u,u_bc[3],alpha_r;
   PetscInt  component,bc_type;
   /* General Navier Slip BCs */
   PetscReal epsilon_s[6],H[6],t1_hat[3],n_hat[3];
