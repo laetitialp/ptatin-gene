@@ -51,11 +51,11 @@
 ############ Phases Parameters #############
 #### Continental upper crust phase number 0 ####
 #### Quartzite Ranalli 1997 ####
--model_rift_nitsche_preexpA_0 6.7e-6
--model_rift_nitsche_Ascale_0 1.0e+6
--model_rift_nitsche_entalpy_0 156.0e3
+-model_rift_nitsche_preexpA_0 1.0e-23 #6.7e-6
+-model_rift_nitsche_Ascale_0 1.0 #1.0e+6
+-model_rift_nitsche_entalpy_0 0.0 #156.0e3
 -model_rift_nitsche_Vmol_0 0.0
--model_rift_nitsche_nexp_0 2.4
+-model_rift_nitsche_nexp_0 1.0 #2.4
 -model_rift_nitsche_Tref_0 273.15
 -model_rift_nitsche_phi_0 0.0
 -model_rift_nitsche_phi_inf_0 0.0
@@ -72,11 +72,11 @@
 -model_rift_nitsche_conductivity_0 2.7
 #### Continental lower crust phase number 1 ####
 #### Anorthite Rybacki & Dresen 2000 ####
--model_rift_nitsche_preexpA_1 13.4637
--model_rift_nitsche_Ascale_1 1.0e+6
--model_rift_nitsche_entalpy_1 345.e+3
--model_rift_nitsche_Vmol_1 38.0e-6
--model_rift_nitsche_nexp_1 3.0
+-model_rift_nitsche_preexpA_1 1.0e-23 #13.4637
+-model_rift_nitsche_Ascale_1 1.0 #1.0e+6
+-model_rift_nitsche_entalpy_1 0.0 #345.e+3
+-model_rift_nitsche_Vmol_1 0.0 #38.0e-6
+-model_rift_nitsche_nexp_1 1.0 #3.0
 -model_rift_nitsche_Tref_1 273.15
 -model_rift_nitsche_phi_1 0.0
 -model_rift_nitsche_phi_inf_1 0.0
@@ -93,11 +93,11 @@
 -model_rift_nitsche_conductivity_1 2.85
 #### Continental lithosphere mante phase number 2 ####
 #### Dry peridotite Ranalli 1997 ####
--model_rift_nitsche_preexpA_2 2.5e4
--model_rift_nitsche_Ascale_2 1.0e+6
--model_rift_nitsche_entalpy_2 532.0e3
--model_rift_nitsche_Vmol_2 8.0e-6
--model_rift_nitsche_nexp_2 3.5
+-model_rift_nitsche_preexpA_2 1.0e-23 #2.5e4
+-model_rift_nitsche_Ascale_2 1.0 #1.0e+6
+-model_rift_nitsche_entalpy_2 0.0 #532.0e3
+-model_rift_nitsche_Vmol_2 0.0 #8.0e-6
+-model_rift_nitsche_nexp_2 1.0 #3.5
 -model_rift_nitsche_Tref_2 273.15
 -model_rift_nitsche_phi_2 0.0
 -model_rift_nitsche_phi_inf_2 0.0
@@ -114,11 +114,11 @@
 -model_rift_nitsche_conductivity_2 3.3
 #### Asthenosphere phase number 3 ####
 #### Dry peridotite Ranalli 1997 ####
--model_rift_nitsche_preexpA_3 2.5e4
--model_rift_nitsche_Ascale_3 0.5e+6
--model_rift_nitsche_entalpy_3 532.0e3
+-model_rift_nitsche_preexpA_3 1.0e-23 #2.5e4
+-model_rift_nitsche_Ascale_3 1.0 #0.5e+6
+-model_rift_nitsche_entalpy_3 0.0 #532.0e3
 -model_rift_nitsche_Vmol_3 0.0
--model_rift_nitsche_nexp_3 3.5
+-model_rift_nitsche_nexp_3 1.0 #3.5
 -model_rift_nitsche_Tref_3 273.15
 -model_rift_nitsche_phi_3 0.0
 -model_rift_nitsche_phi_inf_3 0.0

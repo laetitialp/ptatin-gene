@@ -1264,8 +1264,7 @@ static PetscErrorCode GeneralNavierSlipBC(Facet F,const PetscReal qp_coor[],
 
   /* Fill the H tensor and the epsilon_s tensor */
   for (i=0;i<6;i++) {
-    /* WARNING MINUS SIGN HERE TO CHECK THE POTENTIAL MISTAKE IN FORMS */
-    epsS[i] = - model_data->epsilon_s[i];
+    epsS[i] = model_data->epsilon_s[i];
     H[i] = model_data->H[i];
   }
   /* Fill the arbitrary normal and one tangent vectors */
