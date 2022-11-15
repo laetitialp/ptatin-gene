@@ -3,7 +3,7 @@
 // fe_form_compiler.py version: ba26980b8db4ac4412a8ded988cf48aa986fbc80
 // sympy version: 1.6.1
 // using common substring elimination: True
-// form file: nitsche-custom-h_IJ.py version: cd6c585d0922009ee6b85bfb39c0efd122a5046c
+// form file: nitsche-custom-h_IJ.py version: d97f34421ab8fe5cd0938c28a7b7c6ee0f7b6bba
 //
 
 #include <stdio.h>
@@ -534,9 +534,9 @@ double scale, double F[])
   double aux0 = nhat[0]*nhat[1];
   for (i=0; i<27; i++) { // w_nbasis
     
-    __Fi[0] = aux0*gamma*u1j_uNj*wNt[i] - gN*gamma*nhat[0]*wNt[i] + gamma*pow(nhat[0], 2)*u0j_uNj*wNt[i] + gamma*nhat[0]*nhat[2]*u2j_uNj*wNt[i] + n[0]*p0j_pNj*wNt[i];
-    __Fi[1] = aux0*gamma*u0j_uNj*wNt[i] - gN*gamma*nhat[1]*wNt[i] + gamma*pow(nhat[1], 2)*u1j_uNj*wNt[i] + gamma*nhat[1]*nhat[2]*u2j_uNj*wNt[i] + n[1]*p0j_pNj*wNt[i];
-    __Fi[2] = -gN*gamma*nhat[2]*wNt[i] + gamma*nhat[0]*nhat[2]*u0j_uNj*wNt[i] + gamma*nhat[1]*nhat[2]*u1j_uNj*wNt[i] + gamma*pow(nhat[2], 2)*u2j_uNj*wNt[i] + n[2]*p0j_pNj*wNt[i];
+    __Fi[0] = aux0*gamma*u1j_uNj*wNt[i] + gN*gamma*nhat[0]*wNt[i] + gamma*pow(nhat[0], 2)*u0j_uNj*wNt[i] + gamma*nhat[0]*nhat[2]*u2j_uNj*wNt[i] + n[0]*p0j_pNj*wNt[i];
+    __Fi[1] = aux0*gamma*u0j_uNj*wNt[i] + gN*gamma*nhat[1]*wNt[i] + gamma*pow(nhat[1], 2)*u1j_uNj*wNt[i] + gamma*nhat[1]*nhat[2]*u2j_uNj*wNt[i] + n[1]*p0j_pNj*wNt[i];
+    __Fi[2] = gN*gamma*nhat[2]*wNt[i] + gamma*nhat[0]*nhat[2]*u0j_uNj*wNt[i] + gamma*nhat[1]*nhat[2]*u1j_uNj*wNt[i] + gamma*pow(nhat[2], 2)*u2j_uNj*wNt[i] + n[2]*p0j_pNj*wNt[i];
     F[3*i + 0] += scale * ( __Fi[0] );
     F[3*i + 1] += scale * ( __Fi[1] );
     F[3*i + 2] += scale * ( __Fi[2] );
@@ -590,7 +590,7 @@ double scale, double F[])
   double aux2 = nhat[0]*u0j_uNj;
   for (i=0; i<4; i++) { // q_nbasis
     
-    __Fi[0] = aux0*n[0]*nhat[0]*qNt[i] + aux0*n[2]*nhat[2]*qNt[i] + aux1*n[0]*nhat[0]*qNt[i] + aux1*n[1]*nhat[1]*qNt[i] + aux2*n[1]*nhat[1]*qNt[i] + aux2*n[2]*nhat[2]*qNt[i] - gN*qNt[i] + n[0]*pow(nhat[0], 2)*qNt[i]*u0j_uNj + n[1]*pow(nhat[1], 2)*qNt[i]*u1j_uNj + n[2]*pow(nhat[2], 2)*qNt[i]*u2j_uNj;
+    __Fi[0] = aux0*n[0]*nhat[0]*qNt[i] + aux0*n[2]*nhat[2]*qNt[i] + aux1*n[0]*nhat[0]*qNt[i] + aux1*n[1]*nhat[1]*qNt[i] + aux2*n[1]*nhat[1]*qNt[i] + aux2*n[2]*nhat[2]*qNt[i] + gN*qNt[i] + n[0]*pow(nhat[0], 2)*qNt[i]*u0j_uNj + n[1]*pow(nhat[1], 2)*qNt[i]*u1j_uNj + n[2]*pow(nhat[2], 2)*qNt[i]*u2j_uNj;
     F[1*i + 0] += scale * ( __Fi[0] );
   }
 }
