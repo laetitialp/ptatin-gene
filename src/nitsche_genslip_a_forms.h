@@ -1,9 +1,9 @@
 
 //
-// fe_form_compiler.py version: 8d4b0b5b8d2e57803682a919e42ac439d4c64103
+// fe_form_compiler.py version: ba26980b8db4ac4412a8ded988cf48aa986fbc80
 // sympy version: 1.6.1
 // using common substring elimination: True
-// form file: nitsche-custom-h_IJ.py version: 4543cb74a6c7824e8f0779441abf7da668e0d359
+// form file: nitsche-custom-h_IJ.py version: cd6c585d0922009ee6b85bfb39c0efd122a5046c
 //
 
 #include <stdio.h>
@@ -33,17 +33,29 @@ double nhat[],  // parameter
 double scale, double A[])
 {
   int i,j;
+  double __Aij[9];
+  
   for (i=0; i<27; i++) { // w_nbasis
     for (j=0; j<27; j++) { // u_nbasis
-      A[(3*i + 0)*81 + (3*j + 0)] += scale * (gamma*pow(nhat[0], 2)*uN[j]*wNt[i]);
-      A[(3*i + 0)*81 + (3*j + 1)] += scale * (gamma*nhat[0]*nhat[1]*uN[j]*wNt[i]);
-      A[(3*i + 0)*81 + (3*j + 2)] += scale * (gamma*nhat[0]*nhat[2]*uN[j]*wNt[i]);
-      A[(3*i + 1)*81 + (3*j + 0)] += scale * (gamma*nhat[0]*nhat[1]*uN[j]*wNt[i]);
-      A[(3*i + 1)*81 + (3*j + 1)] += scale * (gamma*pow(nhat[1], 2)*uN[j]*wNt[i]);
-      A[(3*i + 1)*81 + (3*j + 2)] += scale * (gamma*nhat[1]*nhat[2]*uN[j]*wNt[i]);
-      A[(3*i + 2)*81 + (3*j + 0)] += scale * (gamma*nhat[0]*nhat[2]*uN[j]*wNt[i]);
-      A[(3*i + 2)*81 + (3*j + 1)] += scale * (gamma*nhat[1]*nhat[2]*uN[j]*wNt[i]);
-      A[(3*i + 2)*81 + (3*j + 2)] += scale * (gamma*pow(nhat[2], 2)*uN[j]*wNt[i]);
+      
+      __Aij[0] = gamma*pow(nhat[0], 2)*uN[j]*wNt[i];
+      __Aij[1] = gamma*nhat[0]*nhat[1]*uN[j]*wNt[i];
+      __Aij[2] = gamma*nhat[0]*nhat[2]*uN[j]*wNt[i];
+      __Aij[3] = gamma*nhat[0]*nhat[1]*uN[j]*wNt[i];
+      __Aij[4] = gamma*pow(nhat[1], 2)*uN[j]*wNt[i];
+      __Aij[5] = gamma*nhat[1]*nhat[2]*uN[j]*wNt[i];
+      __Aij[6] = gamma*nhat[0]*nhat[2]*uN[j]*wNt[i];
+      __Aij[7] = gamma*nhat[1]*nhat[2]*uN[j]*wNt[i];
+      __Aij[8] = gamma*pow(nhat[2], 2)*uN[j]*wNt[i];
+      A[(3*i + 0)*81 + (3*j + 0)] += scale * ( __Aij[0] );
+      A[(3*i + 0)*81 + (3*j + 1)] += scale * ( __Aij[1] );
+      A[(3*i + 0)*81 + (3*j + 2)] += scale * ( __Aij[2] );
+      A[(3*i + 1)*81 + (3*j + 0)] += scale * ( __Aij[3] );
+      A[(3*i + 1)*81 + (3*j + 1)] += scale * ( __Aij[4] );
+      A[(3*i + 1)*81 + (3*j + 2)] += scale * ( __Aij[5] );
+      A[(3*i + 2)*81 + (3*j + 0)] += scale * ( __Aij[6] );
+      A[(3*i + 2)*81 + (3*j + 1)] += scale * ( __Aij[7] );
+      A[(3*i + 2)*81 + (3*j + 2)] += scale * ( __Aij[8] );
   }}
 }
 
@@ -67,11 +79,17 @@ double nhat[],  // parameter
 double scale, double F[])
 {
   int i,j;
+  double __Aij[3];
+  
   for (i=0; i<27; i++) { // w_nbasis
     j = i;
-    F[3*i + 0] += scale * (gamma*pow(nhat[0], 2)*uN[j]*wNt[i]);
-    F[3*i + 1] += scale * (gamma*pow(nhat[1], 2)*uN[j]*wNt[i]);
-    F[3*i + 2] += scale * (gamma*pow(nhat[2], 2)*uN[j]*wNt[i]);
+    
+    __Aij[0] = gamma*pow(nhat[0], 2)*uN[j]*wNt[i];
+    __Aij[1] = gamma*pow(nhat[1], 2)*uN[j]*wNt[i];
+    __Aij[2] = gamma*pow(nhat[2], 2)*uN[j]*wNt[i];
+    F[3*i + 0] += scale * ( __Aij[0] );
+    F[3*i + 1] += scale * ( __Aij[1] );
+    F[3*i + 2] += scale * ( __Aij[2] );
   }
 }
 
@@ -96,6 +114,7 @@ double nhat[],  // parameter
 double scale, double F[])
 {
   int i,j;
+  double __Fi[3];
   double u0j_uNj = 0.0;
   double u1j_uNj = 0.0;
   double u2j_uNj = 0.0;
@@ -104,10 +123,15 @@ double scale, double F[])
     u1j_uNj += u1[j]*uN[j];
     u2j_uNj += u2[j]*uN[j];
   }
+  double aux0 = nhat[0]*nhat[1];
   for (i=0; i<27; i++) { // w_nbasis
-    F[3*i + 0] += scale * (gamma*nhat[0]*wNt[i]*(nhat[0]*u0j_uNj + nhat[1]*u1j_uNj + nhat[2]*u2j_uNj));
-    F[3*i + 1] += scale * (gamma*nhat[1]*wNt[i]*(nhat[0]*u0j_uNj + nhat[1]*u1j_uNj + nhat[2]*u2j_uNj));
-    F[3*i + 2] += scale * (gamma*nhat[2]*wNt[i]*(nhat[0]*u0j_uNj + nhat[1]*u1j_uNj + nhat[2]*u2j_uNj));
+    
+    __Fi[0] = aux0*gamma*u1j_uNj*wNt[i] + gamma*pow(nhat[0], 2)*u0j_uNj*wNt[i] + gamma*nhat[0]*nhat[2]*u2j_uNj*wNt[i];
+    __Fi[1] = aux0*gamma*u0j_uNj*wNt[i] + gamma*pow(nhat[1], 2)*u1j_uNj*wNt[i] + gamma*nhat[1]*nhat[2]*u2j_uNj*wNt[i];
+    __Fi[2] = gamma*nhat[0]*nhat[2]*u0j_uNj*wNt[i] + gamma*nhat[1]*nhat[2]*u1j_uNj*wNt[i] + gamma*pow(nhat[2], 2)*u2j_uNj*wNt[i];
+    F[3*i + 0] += scale * ( __Fi[0] );
+    F[3*i + 1] += scale * ( __Fi[1] );
+    F[3*i + 2] += scale * ( __Fi[2] );
   }
 }
 
@@ -134,11 +158,17 @@ double n[],  // parameter
 double scale, double A[])
 {
   int i,j;
+  double __Aij[3];
+  
   for (i=0; i<27; i++) { // w_nbasis
     for (j=0; j<4; j++) { // p_nbasis
-      A[(3*i + 0)*4 + (1*j + 0)] += scale * (n[0]*pN[j]*wNt[i]);
-      A[(3*i + 1)*4 + (1*j + 0)] += scale * (n[1]*pN[j]*wNt[i]);
-      A[(3*i + 2)*4 + (1*j + 0)] += scale * (n[2]*pN[j]*wNt[i]);
+      
+      __Aij[0] = n[0]*pN[j]*wNt[i];
+      __Aij[1] = n[1]*pN[j]*wNt[i];
+      __Aij[2] = n[2]*pN[j]*wNt[i];
+      A[(3*i + 0)*4 + (1*j + 0)] += scale * ( __Aij[0] );
+      A[(3*i + 1)*4 + (1*j + 0)] += scale * ( __Aij[1] );
+      A[(3*i + 2)*4 + (1*j + 0)] += scale * ( __Aij[2] );
   }}
 }
 
@@ -162,14 +192,20 @@ double n[],  // parameter
 double scale, double F[])
 {
   int i,j;
+  double __Fi[3];
   double p0j_pNj = 0.0;
   for (j=0; j<4; j++) { // p_nbasis_0
     p0j_pNj += p0[j]*pN[j];
   }
+  
   for (i=0; i<27; i++) { // w_nbasis
-    F[3*i + 0] += scale * (n[0]*p0j_pNj*wNt[i]);
-    F[3*i + 1] += scale * (n[1]*p0j_pNj*wNt[i]);
-    F[3*i + 2] += scale * (n[2]*p0j_pNj*wNt[i]);
+    
+    __Fi[0] = n[0]*p0j_pNj*wNt[i];
+    __Fi[1] = n[1]*p0j_pNj*wNt[i];
+    __Fi[2] = n[2]*p0j_pNj*wNt[i];
+    F[3*i + 0] += scale * ( __Fi[0] );
+    F[3*i + 1] += scale * ( __Fi[1] );
+    F[3*i + 2] += scale * ( __Fi[2] );
   }
 }
 
@@ -197,11 +233,17 @@ double nhat[],  // parameter
 double scale, double A[])
 {
   int i,j;
+  double __Aij[3];
+  double aux0 = nhat[0]*nhat[1];
   for (i=0; i<4; i++) { // q_nbasis
     for (j=0; j<27; j++) { // u_nbasis
-      A[(1*i + 0)*81 + (3*j + 0)] += scale * (nhat[0]*qNt[i]*uN[j]*(n[0]*nhat[0] + n[1]*nhat[1] + n[2]*nhat[2]));
-      A[(1*i + 0)*81 + (3*j + 1)] += scale * (nhat[1]*qNt[i]*uN[j]*(n[0]*nhat[0] + n[1]*nhat[1] + n[2]*nhat[2]));
-      A[(1*i + 0)*81 + (3*j + 2)] += scale * (nhat[2]*qNt[i]*uN[j]*(n[0]*nhat[0] + n[1]*nhat[1] + n[2]*nhat[2]));
+      
+      __Aij[0] = aux0*n[1]*qNt[i]*uN[j] + n[0]*pow(nhat[0], 2)*qNt[i]*uN[j] + n[2]*nhat[0]*nhat[2]*qNt[i]*uN[j];
+      __Aij[1] = aux0*n[0]*qNt[i]*uN[j] + n[1]*pow(nhat[1], 2)*qNt[i]*uN[j] + n[2]*nhat[1]*nhat[2]*qNt[i]*uN[j];
+      __Aij[2] = n[0]*nhat[0]*nhat[2]*qNt[i]*uN[j] + n[1]*nhat[1]*nhat[2]*qNt[i]*uN[j] + n[2]*pow(nhat[2], 2)*qNt[i]*uN[j];
+      A[(1*i + 0)*81 + (3*j + 0)] += scale * ( __Aij[0] );
+      A[(1*i + 0)*81 + (3*j + 1)] += scale * ( __Aij[1] );
+      A[(1*i + 0)*81 + (3*j + 2)] += scale * ( __Aij[2] );
   }}
 }
 
@@ -226,6 +268,7 @@ double nhat[],  // parameter
 double scale, double F[])
 {
   int i,j;
+  double __Fi[1];
   double u0j_uNj = 0.0;
   double u1j_uNj = 0.0;
   double u2j_uNj = 0.0;
@@ -234,17 +277,13 @@ double scale, double F[])
     u1j_uNj += u1[j]*uN[j];
     u2j_uNj += u2[j]*uN[j];
   }
+  double aux0 = nhat[1]*u1j_uNj;
+  double aux1 = nhat[2]*u2j_uNj;
+  double aux2 = nhat[0]*u0j_uNj;
   for (i=0; i<4; i++) { // q_nbasis
-    {
-    double tce0, tce1, tce2, tce3, tce4, tce5;
-    tce0 = n[0]*nhat[0];
-    tce1 = nhat[1]*u1j_uNj;
-    tce2 = nhat[2]*u2j_uNj;
-    tce3 = n[1]*nhat[1];
-    tce4 = nhat[0]*u0j_uNj;
-    tce5 = n[2]*nhat[2];
-    F[1*i + 0] += scale * (qNt[i]*(n[0]*pow(nhat[0], 2)*u0j_uNj + n[1]*pow(nhat[1], 2)*u1j_uNj + n[2]*pow(nhat[2], 2)*u2j_uNj + tce0*tce1 + tce0*tce2 + tce1*tce5 + tce2*tce3 + tce3*tce4 + tce4*tce5));
-    }
+    
+    __Fi[0] = aux0*n[0]*nhat[0]*qNt[i] + aux0*n[2]*nhat[2]*qNt[i] + aux1*n[0]*nhat[0]*qNt[i] + aux1*n[1]*nhat[1]*qNt[i] + aux2*n[1]*nhat[1]*qNt[i] + aux2*n[2]*nhat[2]*qNt[i] + n[0]*pow(nhat[0], 2)*qNt[i]*u0j_uNj + n[1]*pow(nhat[1], 2)*qNt[i]*u1j_uNj + n[2]*pow(nhat[2], 2)*qNt[i]*u2j_uNj;
+    F[1*i + 0] += scale * ( __Fi[0] );
   }
 }
 
@@ -270,9 +309,13 @@ double pN[], double pdNx0[], double pdNx1[], double pdNx2[],
 double scale, double A[])
 {
   int i,j;
+  double __Aij[1];
+  
   for (i=0; i<4; i++) { // q_nbasis
     for (j=0; j<4; j++) { // p_nbasis
-      A[(1*i + 0)*4 + (1*j + 0)] += scale * (0);
+      
+      __Aij[0] = 0;
+      A[(1*i + 0)*4 + (1*j + 0)] += scale * ( __Aij[0] );
   }}
 }
 
@@ -294,9 +337,13 @@ double pN[], double pdNx0[], double pdNx1[], double pdNx2[],
 double scale, double F[])
 {
   int i,j;
+  double __Aij[1];
+  
   for (i=0; i<4; i++) { // q_nbasis
     j = i;
-    F[1*i + 0] += scale * (0);
+    
+    __Aij[0] = 0;
+    F[1*i + 0] += scale * ( __Aij[0] );
   }
 }
 
@@ -319,8 +366,12 @@ double p0[],
 double scale, double F[])
 {
   int i,j;
+  double __Fi[1];
+  
   for (i=0; i<4; i++) { // q_nbasis
-    F[1*i + 0] += scale * (0);
+    
+    __Fi[0] = 0;
+    F[1*i + 0] += scale * ( __Fi[0] );
   }
 }
 
@@ -357,6 +408,7 @@ double nhat[],  // parameter
 double scale, double F[])
 {
   int i,j;
+  double __Fi[3];
   double p0j_pNj = 0.0;
   double u0j_uNj = 0.0;
   double u1j_uNj = 0.0;
@@ -369,22 +421,15 @@ double scale, double F[])
   for (j=0; j<4; j++) { // p_nbasis_1
     p0j_pNj += p0[j]*pN[j];
   }
+  double aux0 = nhat[0]*nhat[1];
   for (i=0; i<27; i++) { // w_nbasis
-    {
-    double tce0;
-    tce0 = gamma*nhat[0];
-    F[3*i + 0] += scale * (wNt[i]*(gamma*pow(nhat[0], 2)*u0j_uNj + n[0]*p0j_pNj + nhat[1]*tce0*u1j_uNj + nhat[2]*tce0*u2j_uNj));
-    }
-    {
-    double tce0;
-    tce0 = gamma*nhat[1];
-    F[3*i + 1] += scale * (wNt[i]*(gamma*pow(nhat[1], 2)*u1j_uNj + n[1]*p0j_pNj + nhat[0]*tce0*u0j_uNj + nhat[2]*tce0*u2j_uNj));
-    }
-    {
-    double tce0;
-    tce0 = gamma*nhat[2];
-    F[3*i + 2] += scale * (wNt[i]*(gamma*pow(nhat[2], 2)*u2j_uNj + n[2]*p0j_pNj + nhat[0]*tce0*u0j_uNj + nhat[1]*tce0*u1j_uNj));
-    }
+    
+    __Fi[0] = aux0*gamma*u1j_uNj*wNt[i] + gamma*pow(nhat[0], 2)*u0j_uNj*wNt[i] + gamma*nhat[0]*nhat[2]*u2j_uNj*wNt[i] + n[0]*p0j_pNj*wNt[i];
+    __Fi[1] = aux0*gamma*u0j_uNj*wNt[i] + gamma*pow(nhat[1], 2)*u1j_uNj*wNt[i] + gamma*nhat[1]*nhat[2]*u2j_uNj*wNt[i] + n[1]*p0j_pNj*wNt[i];
+    __Fi[2] = gamma*nhat[0]*nhat[2]*u0j_uNj*wNt[i] + gamma*nhat[1]*nhat[2]*u1j_uNj*wNt[i] + gamma*pow(nhat[2], 2)*u2j_uNj*wNt[i] + n[2]*p0j_pNj*wNt[i];
+    F[3*i + 0] += scale * ( __Fi[0] );
+    F[3*i + 1] += scale * ( __Fi[1] );
+    F[3*i + 2] += scale * ( __Fi[2] );
   }
 }
 
@@ -420,6 +465,7 @@ double nhat[],  // parameter
 double scale, double F[])
 {
   int i,j;
+  double __Fi[1];
   double u0j_uNj = 0.0;
   double u1j_uNj = 0.0;
   double u2j_uNj = 0.0;
@@ -428,17 +474,13 @@ double scale, double F[])
     u1j_uNj += u1[j]*uN[j];
     u2j_uNj += u2[j]*uN[j];
   }
+  double aux0 = nhat[1]*u1j_uNj;
+  double aux1 = nhat[2]*u2j_uNj;
+  double aux2 = nhat[0]*u0j_uNj;
   for (i=0; i<4; i++) { // q_nbasis
-    {
-    double tce0, tce1, tce2, tce3, tce4, tce5;
-    tce0 = n[0]*nhat[0];
-    tce1 = nhat[1]*u1j_uNj;
-    tce2 = nhat[2]*u2j_uNj;
-    tce3 = n[1]*nhat[1];
-    tce4 = nhat[0]*u0j_uNj;
-    tce5 = n[2]*nhat[2];
-    F[1*i + 0] += scale * (qNt[i]*(n[0]*pow(nhat[0], 2)*u0j_uNj + n[1]*pow(nhat[1], 2)*u1j_uNj + n[2]*pow(nhat[2], 2)*u2j_uNj + tce0*tce1 + tce0*tce2 + tce1*tce5 + tce2*tce3 + tce3*tce4 + tce4*tce5));
-    }
+    
+    __Fi[0] = aux0*n[0]*nhat[0]*qNt[i] + aux0*n[2]*nhat[2]*qNt[i] + aux1*n[0]*nhat[0]*qNt[i] + aux1*n[1]*nhat[1]*qNt[i] + aux2*n[1]*nhat[1]*qNt[i] + aux2*n[2]*nhat[2]*qNt[i] + n[0]*pow(nhat[0], 2)*qNt[i]*u0j_uNj + n[1]*pow(nhat[1], 2)*qNt[i]*u1j_uNj + n[2]*pow(nhat[2], 2)*qNt[i]*u2j_uNj;
+    F[1*i + 0] += scale * ( __Fi[0] );
   }
 }
 
@@ -476,6 +518,7 @@ double nhat[],  // parameter
 double scale, double F[])
 {
   int i,j;
+  double __Fi[3];
   double p0j_pNj = 0.0;
   double u0j_uNj = 0.0;
   double u1j_uNj = 0.0;
@@ -488,22 +531,15 @@ double scale, double F[])
   for (j=0; j<4; j++) { // p_nbasis_1
     p0j_pNj += p0[j]*pN[j];
   }
+  double aux0 = nhat[0]*nhat[1];
   for (i=0; i<27; i++) { // w_nbasis
-    {
-    double tce0;
-    tce0 = gamma*nhat[0];
-    F[3*i + 0] += scale * (wNt[i]*(gN*tce0 + gamma*pow(nhat[0], 2)*u0j_uNj + n[0]*p0j_pNj + nhat[1]*tce0*u1j_uNj + nhat[2]*tce0*u2j_uNj));
-    }
-    {
-    double tce0;
-    tce0 = gamma*nhat[1];
-    F[3*i + 1] += scale * (wNt[i]*(gN*tce0 + gamma*pow(nhat[1], 2)*u1j_uNj + n[1]*p0j_pNj + nhat[0]*tce0*u0j_uNj + nhat[2]*tce0*u2j_uNj));
-    }
-    {
-    double tce0;
-    tce0 = gamma*nhat[2];
-    F[3*i + 2] += scale * (wNt[i]*(gN*tce0 + gamma*pow(nhat[2], 2)*u2j_uNj + n[2]*p0j_pNj + nhat[0]*tce0*u0j_uNj + nhat[1]*tce0*u1j_uNj));
-    }
+    
+    __Fi[0] = aux0*gamma*u1j_uNj*wNt[i] - gN*gamma*nhat[0]*wNt[i] + gamma*pow(nhat[0], 2)*u0j_uNj*wNt[i] + gamma*nhat[0]*nhat[2]*u2j_uNj*wNt[i] + n[0]*p0j_pNj*wNt[i];
+    __Fi[1] = aux0*gamma*u0j_uNj*wNt[i] - gN*gamma*nhat[1]*wNt[i] + gamma*pow(nhat[1], 2)*u1j_uNj*wNt[i] + gamma*nhat[1]*nhat[2]*u2j_uNj*wNt[i] + n[1]*p0j_pNj*wNt[i];
+    __Fi[2] = -gN*gamma*nhat[2]*wNt[i] + gamma*nhat[0]*nhat[2]*u0j_uNj*wNt[i] + gamma*nhat[1]*nhat[2]*u1j_uNj*wNt[i] + gamma*pow(nhat[2], 2)*u2j_uNj*wNt[i] + n[2]*p0j_pNj*wNt[i];
+    F[3*i + 0] += scale * ( __Fi[0] );
+    F[3*i + 1] += scale * ( __Fi[1] );
+    F[3*i + 2] += scale * ( __Fi[2] );
   }
 }
 
@@ -540,6 +576,7 @@ double nhat[],  // parameter
 double scale, double F[])
 {
   int i,j;
+  double __Fi[1];
   double u0j_uNj = 0.0;
   double u1j_uNj = 0.0;
   double u2j_uNj = 0.0;
@@ -548,16 +585,12 @@ double scale, double F[])
     u1j_uNj += u1[j]*uN[j];
     u2j_uNj += u2[j]*uN[j];
   }
+  double aux0 = nhat[1]*u1j_uNj;
+  double aux1 = nhat[2]*u2j_uNj;
+  double aux2 = nhat[0]*u0j_uNj;
   for (i=0; i<4; i++) { // q_nbasis
-    {
-    double tce0, tce1, tce2, tce3, tce4, tce5;
-    tce0 = n[0]*nhat[0];
-    tce1 = nhat[1]*u1j_uNj;
-    tce2 = nhat[2]*u2j_uNj;
-    tce3 = n[1]*nhat[1];
-    tce4 = nhat[0]*u0j_uNj;
-    tce5 = n[2]*nhat[2];
-    F[1*i + 0] += scale * (qNt[i]*(gN + n[0]*pow(nhat[0], 2)*u0j_uNj + n[1]*pow(nhat[1], 2)*u1j_uNj + n[2]*pow(nhat[2], 2)*u2j_uNj + tce0*tce1 + tce0*tce2 + tce1*tce5 + tce2*tce3 + tce3*tce4 + tce4*tce5));
-    }
+    
+    __Fi[0] = aux0*n[0]*nhat[0]*qNt[i] + aux0*n[2]*nhat[2]*qNt[i] + aux1*n[0]*nhat[0]*qNt[i] + aux1*n[1]*nhat[1]*qNt[i] + aux2*n[1]*nhat[1]*qNt[i] + aux2*n[2]*nhat[2]*qNt[i] - gN*qNt[i] + n[0]*pow(nhat[0], 2)*qNt[i]*u0j_uNj + n[1]*pow(nhat[1], 2)*qNt[i]*u1j_uNj + n[2]*pow(nhat[2], 2)*qNt[i]*u2j_uNj;
+    F[1*i + 0] += scale * ( __Fi[0] );
   }
 }
