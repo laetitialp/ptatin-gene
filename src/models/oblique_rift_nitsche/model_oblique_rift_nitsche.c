@@ -379,7 +379,41 @@ static PetscErrorCode ModelSetGeneralSlipBoundaryValues_RiftNitsche(ModelRiftNit
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ModelSetMaterialParameters_RiftNitsche(pTatinCtx c,DataBucket materialconstants, ModelRiftNitscheCtx *data)
+static PetscErrorCode ModelSetMaterialParametersVISCOUS_RiftNitsche(pTatinCtx c,DataBucket materialconstants, ModelRiftNitscheCtx *data)
+{
+  PetscInt       region_idx;
+  PetscReal      density,viscosity;
+  char           *option_name;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  for (region_idx=0; region_idx<data->n_phases; region_idx++) {
+    MaterialConstantsSetValues_MaterialType(materialconstants,region_idx,VISCOUS_CONSTANT,PLASTIC_NONE,SOFTENING_NONE,DENSITY_CONSTANT);
+    /* Set region viscosity */
+    viscosity = 1.0e+23;
+    if (asprintf (&option_name, "-eta0_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&viscosity,NULL);CHKERRQ(ierr); 
+    free (option_name);
+    ierr = MaterialConstantsSetValues_ViscosityConst(materialconstants,region_idx,viscosity);CHKERRQ(ierr);
+    
+    /* Set region density */
+    density = 2700.0;
+    if (asprintf (&option_name, "-rho0_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&density,NULL);CHKERRQ(ierr);
+    free (option_name);
+    ierr = MaterialConstantsSetValues_DensityConst(materialconstants,region_idx,density);CHKERRQ(ierr);
+  }
+
+  for (region_idx=0; region_idx<data->n_phases; region_idx++) {
+    MaterialConstantsPrintAll(materialconstants,region_idx);
+  }
+
+  PetscFunctionReturn(0);
+
+}
+
+static PetscErrorCode ModelSetMaterialParametersVPT_RiftNitsche(pTatinCtx c,DataBucket materialconstants, ModelRiftNitscheCtx *data)
 {
   DataField                 PField,PField_k,PField_Q;
   EnergyConductivityConst   *data_k;
@@ -502,6 +536,21 @@ static PetscErrorCode ModelSetMaterialParameters_RiftNitsche(pTatinCtx c,DataBuc
     MaterialConstantsEnergyPrintAll(materialconstants,region_idx);
   }
 
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelSetMaterialParameters_RiftNitsche(pTatinCtx c,DataBucket materialconstants, ModelRiftNitscheCtx *data)
+{
+  PetscBool      viscous_const=PETSC_FALSE;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-viscous_constant",&viscous_const,NULL);CHKERRQ(ierr);
+  if (viscous_const) {
+    ierr = ModelSetMaterialParametersVISCOUS_RiftNitsche(c,materialconstants,data);CHKERRQ(ierr);
+  } else {
+    ierr = ModelSetMaterialParametersVPT_RiftNitsche(c,materialconstants,data);CHKERRQ(ierr);
+  }
   PetscFunctionReturn(0);
 }
 
@@ -768,7 +817,6 @@ static PetscErrorCode ModelSetMeshRefinement_RiftNitsche(DM dav)
   xnat[3] = 1.0;
 
   ierr = DMDACoordinateRefinementTransferFunction(dav,dir,PETSC_TRUE,npoints,xref,xnat);CHKERRQ(ierr);
-  ierr = DMDABilinearizeQ2Elements(dav);CHKERRQ(ierr);
 
   ierr = PetscFree(xref);CHKERRQ(ierr);
   ierr = PetscFree(xnat);CHKERRQ(ierr);
@@ -791,6 +839,7 @@ PetscErrorCode ModelApplyInitialMeshGeometry_RiftNitsche(pTatinCtx c,void *ctx)
   ierr = DMDASetUniformCoordinates(dav,data->Ox,data->Lx,data->Oy,data->Ly,data->Oz,data->Lz);CHKERRQ(ierr);
   /* Mesh Refinement */
   ierr = ModelSetMeshRefinement_RiftNitsche(dav);CHKERRQ(ierr);
+  ierr = DMDABilinearizeQ2Elements(dav);CHKERRQ(ierr);
   /* Gravity */
   PetscReal gvec[] = { 0.0, -9.8, 0.0 };
   ierr = PhysCompStokesSetGravityVector(c->stokes_ctx,gvec);CHKERRQ(ierr);
@@ -1296,7 +1345,7 @@ static PetscErrorCode ModelApplyGeneralNavierSlip_RiftNitsche(SurfBCList surflis
     if (insert_if_not_found) {
       ierr = SurfBCListAddConstraint(surflist,"boundary",&sc);CHKERRQ(ierr);
       ierr = SurfaceConstraintSetType(sc,SC_NITSCHE_GENERAL_SLIP);CHKERRQ(ierr);
-      ierr = SurfaceConstraintNitscheGeneralSlip_SetPenalty(sc,1.0e1);CHKERRQ(ierr);
+      ierr = SurfaceConstraintNitscheGeneralSlip_SetPenalty(sc,1.0e3);CHKERRQ(ierr);
     } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint not found");
   }
   ierr = SurfaceConstraintGetFacets(sc,&facets);CHKERRQ(ierr);
@@ -1408,6 +1457,8 @@ static PetscErrorCode ModelApplyObliqueExtensionPullApart_RiftNitsche(DM dav, BC
   /* Apply base velocity from u.n */
   u_bot = data->u_bc[1];
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&u_bot);CHKERRQ(ierr);
+  //data->component = 1;
+  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,data->component,InitialAnalyticalVelocityFunction,(void*)data);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -1470,7 +1521,7 @@ static PetscErrorCode ModelApplyOrthogonalExtensionFreeSlipNitsche_RiftNitsche(D
 
 static PetscErrorCode ModelApplyRotatedStrikeSlipNavierSlip_RiftNitsche(DM dav, BCList bclist,SurfBCList surflist,PetscBool insert_if_not_found,ModelRiftNitscheCtx *data)
 {
-  PetscReal      u_bot;
+  //PetscReal      u_bot;
   PetscErrorCode ierr;
   PetscFunctionBegin;
 
@@ -1485,9 +1536,10 @@ static PetscErrorCode ModelApplyRotatedStrikeSlipNavierSlip_RiftNitsche(DM dav, 
   ierr = ModelApplyGeneralNavierSlip_RiftNitsche(surflist,insert_if_not_found,data);CHKERRQ(ierr);
 
   /* Apply base velocity from u.n */
-  u_bot = data->u_bc[1];
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&u_bot);CHKERRQ(ierr);
-
+  //u_bot = data->u_bc[1];
+  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&u_bot);CHKERRQ(ierr);
+  data->component = 1;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,data->component,BCListEvaluator_RotatedVelocityField,(void*)data);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -1636,6 +1688,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_RiftNitsche(pTatinCtx c,Vec X,void *
  
   /* Update Mesh Refinement */
   ierr = ModelSetMeshRefinement_RiftNitsche(dav);CHKERRQ(ierr);
+  ierr = DMDABilinearizeQ2Elements(dav);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -1721,8 +1774,17 @@ PetscErrorCode ModelOutput_RiftNitsche(pTatinCtx c,Vec X,const char prefix[],voi
   if (data->output_markers) {
     ierr = pTatin3d_ModelOutput_VelocityPressure_Stokes(c,X,prefix);CHKERRQ(ierr);
     ierr = ModelOutputMarkerFields_RiftNitsche(c,prefix);CHKERRQ(ierr);
+    /*{
+      PhysCompStokes    stokes;
+      char              root[PETSC_MAX_PATH_LEN];
+      SurfaceConstraint sc;
+      ierr = pTatinGetStokesContext(c,&stokes);CHKERRQ(ierr);
+      ierr = SurfBCListGetConstraint(stokes->surf_bclist,"boundary",&sc);CHKERRQ(ierr);
+      ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s/step%D",c->outputpath,c->step);CHKERRQ(ierr);
+      ierr = SurfaceConstraintViewParaview(sc, root, "boundary");CHKERRQ(ierr);
+    }*/
   }
-  
+
   /* Output temperature (FV) */
   ierr = pTatinContextValid_EnergyFV(c,&active_energy);CHKERRQ(ierr);
   if (active_energy) {
