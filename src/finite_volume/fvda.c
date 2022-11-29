@@ -2726,6 +2726,156 @@ PetscErrorCode eval_F_diffusion_7point_local(FVDA fv,const PetscReal domain_geom
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode eval_F_upwind_diffusion_7point_local(FVDA fv,const PetscReal domain_geom_coor[],const PetscReal fv_coor[],const PetscReal X[],PetscReal F[])
+{
+  PetscErrorCode  ierr;
+  PetscInt        f,c_m,c_p,fb,d;
+  const PetscReal *vdotn,*k;
+  PetscReal       v_n,k_face,X_m,X_p,flux;
+  DM              dm;
+  PetscReal       dS;
+  PetscInt        dm_nel,dm_nen,cellid;
+  const PetscInt  *dm_element,*element;
+  PetscReal       cell_coor[3*DACELL3D_VERTS];
+
+  PetscFunctionBegin;
+  dm = fv->dm_fv;
+  
+  ierr = DMDAGetElements(fv->dm_geometry,&dm_nel,&dm_nen,&dm_element);CHKERRQ(ierr);
+
+  ierr = FVDAGetFacePropertyByNameArrayRead(fv,"v.n",&vdotn);CHKERRQ(ierr);
+  ierr = FVDAGetFacePropertyByNameArrayRead(fv,"k"  ,&k    );CHKERRQ(ierr);
+
+  /* interior face loop */
+  for (f=0; f<fv->nfaces; f++) {
+    PetscReal dl[]={0,0,0};
+    PetscReal dsn=0,flux,flux_diffusion,flux_advection;
+
+    if (fv->face_location[f] == DAFACE_BOUNDARY) continue;
+    
+    ierr = FVDAGetValidElement(fv,f,&cellid);CHKERRQ(ierr);
+    element = (const PetscInt*)&dm_element[DACELL3D_Q1_SIZE * cellid];
+    ierr = DACellGeometry3d_GetCoordinates(element,domain_geom_coor,cell_coor);CHKERRQ(ierr);
+    _EvaluateFaceArea3d(fv->face_type[f],cell_coor,&dS);
+    
+    v_n    = vdotn[f];
+    k_face = k[f];
+    
+    c_m = fv->face_fv_map[2*f+0];
+    X_m = X[c_m];
+    
+    c_p = fv->face_fv_map[2*f+1];
+    X_p = X[c_p];
+
+#ifdef FVDA_DEBUG
+    printf("interior f %d: c-/+ %d %d\n",f,c_m,c_p);
+#endif
+#ifdef FVDA_DEBUG
+    printf("interior f %d: n %+1.4e %+1.4e %+1.4e\n",f,fv->face_normal[3*f+0],fv->face_normal[3*f+1],fv->face_normal[3*f+2]);
+    printf("interior f %d: v.n %+1.4e\n",f,v_n);
+#endif
+
+    /*
+     if (v_n > 0.0) { // out
+     F[c_m] += (v_n * X_m) * dS; // cell[-]
+     F[c_p] -= (v_n * X_m) * dS; // cell[+]
+     } else {
+     F[c_m] += (v_n * X_p) * dS; // cell[-]
+     F[c_p] -= (v_n * X_p) * dS; // cell[+]
+     }
+     */
+
+    for (d=0; d<3; d++) {
+      dl[d] = fv_coor[3*c_p + d] - fv_coor[3*c_m + d];
+      dsn += dl[d] * dl[d];
+    }
+    dsn = PetscSqrtReal(dsn);
+
+    flux_diffusion = k_face * (X_p - X_m) / dsn;
+    flux_advection = 0.5 * ( v_n * (X_p + X_m) - PetscAbsReal(v_n) * (X_p - X_m ) );
+
+    /* Minus sign to replace the _F[m] *= -1.0 on the advective term in eval_F functions */
+    flux = flux_diffusion - flux_advection;
+
+    F[c_m] += flux * dS; // cell[-]
+    F[c_p] -= flux * dS; // cell[+] 
+  }
+
+  for (fb=0; fb<fv->nfaces_boundary; fb++) {
+    PetscInt   f = fv->face_idx_boundary[fb];
+    FVFluxType bctype;
+    PetscReal  bcvalue;
+    PetscReal  dl[]={0,0,0};
+    PetscReal  dsn=0,flux,flux_diffusion,flux_advection;
+
+    if (fv->face_location[f] != DAFACE_BOUNDARY) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"YOU SHOULD NEVER BE IN LOOP IF YOU ARE NOT A BOUNDARY");
+    
+    ierr = FVDAGetValidElement(fv,f,&cellid);CHKERRQ(ierr);
+    element = (const PetscInt*)&dm_element[DACELL3D_Q1_SIZE * cellid];
+    ierr = DACellGeometry3d_GetCoordinates(element,domain_geom_coor,cell_coor);CHKERRQ(ierr);
+    _EvaluateFaceArea3d(fv->face_type[f],cell_coor,&dS);
+
+    bctype = fv->boundary_flux[fb];
+    bcvalue = fv->boundary_value[fb];
+    
+    v_n    = vdotn[f];
+    k_face = k[f];
+
+    c_m = fv->face_fv_map[2*f+0];
+    X_m = X[c_m];
+    
+    for (d=0; d<3; d++) {
+      dl[d] = 2.0 * (fv->face_centroid[3*f + d] - fv_coor[3*c_m + d]);
+      dsn += dl[d]*dl[d];
+    }
+    dsn = PetscSqrtReal(dsn);
+    
+    switch (bctype) {
+      case FVFLUX_DIRICHLET_CONSTRAINT:
+      { /* Weak imposition of Dirichlet */
+        PetscReal g_D = bcvalue;
+        
+        X_p = 2.0 * g_D - X_m;
+        flux_diffusion = k_face * (X_p - X_m) / dsn;
+
+        if (v_n > 0.0) { /* ouflow */
+          flux_advection = v_n * X_m;
+        } else { /* inflow */
+          flux_advection = v_n * X_p;
+        }
+
+        flux = flux_diffusion - flux_advection;
+      }
+        break;
+        
+      case FVFLUX_NEUMANN_CONSTRAINT:
+      { /* Weak imposition of Neumann */
+        PetscReal g_N = bcvalue;
+        
+        /* Definition of X_p different for inflow and outflow */
+        if (v_n > 0.0) { /* outflow */
+          X_p = (dsn/k_face) * g_N + X_m;
+          flux_advection = v_n * X_m;
+        } else { /* inflow */
+          X_p = (dsn*g_N + k_face*X_m)/(-dsn*v_n + k_face);
+          flux_advection = v_n * X_p;
+        }
+
+        flux_diffusion = k_face * (X_p - X_m) / dsn;
+        flux = flux_diffusion - flux_advection;
+      }
+        break;
+
+      default:
+        PetscPrintf(PETSC_COMM_SELF,"[F][Diffusive flux] face %D bc not set. Should set one of Dirichlet or Neumann. Assuming zero flux\n",f);
+        flux = 0.0;
+        break;
+    }
+    F[c_m] += flux * dS;
+  }
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode eval_F(SNES snes,Vec X,Vec F,void *data)
 {
   PetscErrorCode    ierr;
@@ -2771,6 +2921,10 @@ PetscErrorCode eval_F(SNES snes,Vec X,Vec F,void *data)
     
     if (fv->equation_type == FVDA_ELLIPTIC|| fv->equation_type == FVDA_PARABOLIC) {
       ierr = eval_F_diffusion_7point_local(fv,_geom_coor,_fv_coor,_X,_F);CHKERRQ(ierr);
+    }
+
+    if (fv->equation_type == FVDA_ADV_DIFF) {
+      ierr = eval_F_upwind_diffusion_7point_local(fv,_geom_coor,_fv_coor,_X,_F);CHKERRQ(ierr);
     }
   }
 
@@ -2935,11 +3089,11 @@ PetscErrorCode eval_J_upwind_local(FVDA fv,const PetscReal domain_geom_coor[],co
       case FVFLUX_NEUMANN_CONSTRAINT:
         //X_p   = (dL/kface) * g_N + X_m;
         //flux  = v_n * X_p = v_n ( (dL/kface) * g_N + X_m );
-        ierr = MatSetValue(J, c_m, c_m, 1.0 * v_n * dS * scalefactor, ADD_VALUES);CHKERRQ(ierr);
+        ierr = MatSetValueLocal(J, c_m, c_m, 1.0 * v_n * dS * scalefactor, ADD_VALUES);CHKERRQ(ierr);
         break;
       default:
         PetscPrintf(PETSC_COMM_SELF,"[J][inflow] face %D bc not set. Should set one of Dirichlet or Neumann. Assuming zero flux\n",f);
-        ierr = MatSetValue(J, c_m, c_m, 1.0 * v_n * dS * scalefactor, ADD_VALUES);CHKERRQ(ierr);
+        ierr = MatSetValueLocal(J, c_m, c_m, 1.0 * v_n * dS * scalefactor, ADD_VALUES);CHKERRQ(ierr);
         break;
     }
   }
@@ -3060,6 +3214,134 @@ PetscErrorCode eval_J_diffusion_7point_local(FVDA fv,const PetscReal domain_geom
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode eval_J_upwind_diffusion_7point_local(FVDA fv,const PetscReal domain_geom_coor[],const PetscReal fv_coor[],const PetscReal X[],Mat J)
+{
+  PetscErrorCode  ierr;
+  const PetscReal scalefactor = -1.0;
+  PetscInt        f,c_m,c_p,fb,d;
+  const PetscReal *k,*vdotn;
+  PetscReal       k_face,v_n;
+  DM              dm;
+  PetscReal       dS;
+  PetscInt        dm_nel,dm_nen,cellid;
+  const PetscInt  *dm_element,*element;
+  PetscReal       cell_coor[3*DACELL3D_VERTS];
+
+  PetscFunctionBegin;
+  dm = fv->dm_fv;
+  
+  ierr = DMDAGetElements(fv->dm_geometry,&dm_nel,&dm_nen,&dm_element);CHKERRQ(ierr);
+  
+  ierr = FVDAGetFacePropertyByNameArrayRead(fv,"v.n",&vdotn);CHKERRQ(ierr);
+  ierr = FVDAGetFacePropertyByNameArrayRead(fv,"k"  ,&k    );CHKERRQ(ierr);
+  
+  /* interior face loop */
+  for (f=0; f<fv->nfaces; f++) {
+    PetscReal dl[]={0,0,0};
+    PetscReal dsn=0;
+
+    if (fv->face_location[f] == DAFACE_BOUNDARY) continue;
+    if (fv->face_element_map[2*f+0] == E_MINUS_OFF_RANK) continue;
+
+    ierr = FVDAGetValidElement(fv,f,&cellid);CHKERRQ(ierr);
+    element = (const PetscInt*)&dm_element[DACELL3D_Q1_SIZE * cellid];
+    ierr = DACellGeometry3d_GetCoordinates(element,domain_geom_coor,cell_coor);CHKERRQ(ierr);
+    _EvaluateFaceArea3d(fv->face_type[f],cell_coor,&dS);
+    
+    v_n    = vdotn[f];
+    k_face = k[f];
+    
+    c_m = fv->face_fv_map[2*f+0];
+    c_p = fv->face_fv_map[2*f+1];
+
+    for (d=0; d<3; d++) {
+      dl[d] = fv_coor[3*c_p + d] - fv_coor[3*c_m + d];
+      dsn += dl[d] * dl[d];
+    }
+    dsn = PetscSqrtReal(dsn);
+    
+    /* diffusion term */
+    ierr = MatSetValueLocal(J, c_m, c_m, -k_face * dS/dsn, ADD_VALUES);CHKERRQ(ierr);
+    ierr = MatSetValueLocal(J, c_m, c_p,  k_face * dS/dsn, ADD_VALUES);CHKERRQ(ierr);
+    
+    ierr = MatSetValueLocal(J, c_p, c_m,  k_face * dS/dsn, ADD_VALUES);CHKERRQ(ierr);
+    ierr = MatSetValueLocal(J, c_p, c_p, -k_face * dS/dsn, ADD_VALUES);CHKERRQ(ierr);
+
+    /* advection term */
+    if (v_n > 0.0) { /* outflow */
+      ierr = MatSetValueLocal(J, c_m, c_m,  v_n * dS * scalefactor, ADD_VALUES);CHKERRQ(ierr);
+      ierr = MatSetValueLocal(J, c_p, c_m, -v_n * dS * scalefactor, ADD_VALUES);CHKERRQ(ierr);
+    } else { /* inflow */
+      ierr = MatSetValueLocal(J, c_m, c_p,  v_n * dS * scalefactor, ADD_VALUES);CHKERRQ(ierr);
+      ierr = MatSetValueLocal(J, c_p, c_p, -v_n * dS * scalefactor, ADD_VALUES);CHKERRQ(ierr);
+    }
+  }
+
+  for (fb=0; fb<fv->nfaces_boundary; fb++) {
+    PetscInt   f = fv->face_idx_boundary[fb];
+    FVFluxType bctype;
+    PetscReal  bcvalue;
+    PetscReal  dl[]={0,0,0};
+    PetscReal  dsn=0;
+    
+    ierr = FVDAGetValidElement(fv,f,&cellid);CHKERRQ(ierr);
+    element = (const PetscInt*)&dm_element[DACELL3D_Q1_SIZE * cellid];
+    ierr = DACellGeometry3d_GetCoordinates(element,domain_geom_coor,cell_coor);CHKERRQ(ierr);
+    _EvaluateFaceArea3d(fv->face_type[f],cell_coor,&dS);
+
+    bctype  = fv->boundary_flux[fb];
+    bcvalue = fv->boundary_value[fb];
+    
+    k_face = k[f];
+    v_n    = vdotn[f];
+    
+    c_m = fv->face_fv_map[2*f+0];
+    //X_m = X[c_m];
+    
+    for (d=0; d<3; d++) {
+      dl[d] = 2.0 * (fv->face_centroid[3*f + d] - fv_coor[3*c_m + d]);
+      dsn += dl[d]*dl[d];
+    }
+    dsn = PetscSqrtReal(dsn);
+    
+    switch (bctype) {
+      /* Weak imposition of Dirichlet */
+      case FVFLUX_DIRICHLET_CONSTRAINT:
+        //X_p   = 2.0 * g_D - X_m;
+        //flux = k_face * (X_p - X_m) / dsn = (k_face/dsn) * (2 g_D - X_m - X_m)
+        ierr = MatSetValueLocal(J, c_m, c_m, -2.0 * k_face * dS/dsn, ADD_VALUES);CHKERRQ(ierr);
+        if (v_n > 0.0) { /* outflow */
+          ierr = MatSetValueLocal(J, c_m, c_m, v_n * dS * scalefactor, ADD_VALUES);CHKERRQ(ierr);
+        } else { /* inflow */
+          ierr = MatSetValueLocal(J, c_m, c_m, -1.0 * v_n * dS * scalefactor, ADD_VALUES);CHKERRQ(ierr);
+        }
+        break;
+      case FVFLUX_NEUMANN_CONSTRAINT:
+      {
+        PetscReal g_N = bcvalue;
+        
+        if (v_n > 0.0) { /* outflow */
+          //X_p  = (dsn/k_face) * g_N + X_m;
+          //flux = (k_face/dsn) * (X_p - X_m) = (k_face/dsn) * ((dsn/k_face) * g_N + X_m - X_m) = 0
+          ierr = MatSetValueLocal(J, c_m, c_m, v_n * dS * scalefactor, ADD_VALUES);CHKERRQ(ierr);
+        } else {
+          //X_p  = (dsn*g_N + k_face)/(dsn*v_n + k_face) * X_m
+          //flux = (k_face/dsn) * (X_p - X_m) + (v.n) * X_p = g_N
+          ierr = MatSetValueLocal(J, c_m, c_m, 0.0 * dS * scalefactor, ADD_VALUES);CHKERRQ(ierr);
+        }
+      }
+        break;
+      default:
+        PetscPrintf(PETSC_COMM_SELF,"[J][Advection-Diffusion flux] face %D bc not set. Should set one of Dirichlet or Neumann. Assuming zero flux\n",f);
+        if (v_n > 0.0) {
+          ierr = MatSetValueLocal(J, c_m, c_m, v_n * dS * scalefactor, ADD_VALUES);CHKERRQ(ierr);
+        } // else do nothing because g_N = 0.0
+        break;
+    }
+  }
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode eval_J(SNES snes,Vec X,Mat Ja,Mat Jb,void *data)
 {
   PetscErrorCode    ierr;
@@ -3092,6 +3374,10 @@ PetscErrorCode eval_J(SNES snes,Vec X,Mat Ja,Mat Jb,void *data)
     
     if (fv->equation_type == FVDA_ELLIPTIC|| fv->equation_type == FVDA_PARABOLIC) {
       ierr = eval_J_diffusion_7point_local(fv,_geom_coor,_fv_coor,_X,Jb);CHKERRQ(ierr);
+    }
+
+    if (fv->equation_type == FVDA_ADV_DIFF) {
+      ierr = eval_J_upwind_diffusion_7point_local(fv,_geom_coor,_fv_coor,_X,Jb);CHKERRQ(ierr);
     }
   }
   

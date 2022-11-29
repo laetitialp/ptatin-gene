@@ -143,6 +143,10 @@ PetscErrorCode fvda_eval_F_forward_ale(SNES snes,Vec X,Vec F,void *data)
     if (fv->equation_type == FVDA_ELLIPTIC|| fv->equation_type == FVDA_PARABOLIC) {
       ierr = eval_F_diffusion_7point_local(fv,_geom_coor,_fv_coor,_X,_F);CHKERRQ(ierr);
     }
+
+    if (fv->equation_type == FVDA_ADV_DIFF) {
+      ierr = eval_F_upwind_diffusion_7point_local(fv,_geom_coor,_fv_coor,_X,_F);CHKERRQ(ierr);
+    }
   }
  
   /* scale everything by dt, put in volume contributions */
@@ -234,6 +238,10 @@ PetscErrorCode fvda_eval_J_forward_ale(SNES snes,Vec X,Mat Ja,Mat Jb,void *data)
     
     if (fv->equation_type == FVDA_ELLIPTIC|| fv->equation_type == FVDA_PARABOLIC) {
       ierr = eval_J_diffusion_7point_local(fv,_geom_coor,_fv_coor,_X,Jb);CHKERRQ(ierr);
+    }
+
+    if (fv->equation_type == FVDA_ADV_DIFF) {
+      ierr = eval_J_upwind_diffusion_7point_local(fv,_geom_coor,_fv_coor,_X,Jb);CHKERRQ(ierr);
     }
   }
   

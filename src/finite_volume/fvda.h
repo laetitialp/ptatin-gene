@@ -59,7 +59,8 @@ typedef enum {
 typedef enum {
   FVDA_HYPERBOLIC=0,
   FVDA_ELLIPTIC,
-  FVDA_PARABOLIC
+  FVDA_PARABOLIC,
+  FVDA_ADV_DIFF
 } FVDAPDEType;
 
 typedef enum {
@@ -128,5 +129,8 @@ PetscErrorCode _cart_convert_ijk_to_index(const PetscInt rijk[],const PetscInt m
 
 PetscErrorCode FVDACreateMatrix(FVDA fv,DMDAStencilType type,Mat *A);
 PetscErrorCode SNESFVDAConfigureGalerkinMG(SNES snes,FVDA fv);
+
+PetscErrorCode eval_F_upwind_diffusion_7point_local(FVDA fv,const PetscReal domain_geom_coor[],const PetscReal fv_coor[],const PetscReal X[],PetscReal F[]);
+PetscErrorCode eval_J_upwind_diffusion_7point_local(FVDA fv,const PetscReal domain_geom_coor[],const PetscReal fv_coor[],const PetscReal X[],Mat J);
 
 #endif
