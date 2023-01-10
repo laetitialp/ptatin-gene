@@ -120,6 +120,11 @@ static PetscErrorCode ModelInitialBoundaryVelocity_RiftNitsche(ModelRiftNitscheC
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-alpha_r",&data->alpha_r,NULL);CHKERRQ(ierr);
   data->alpha_r = data->alpha_r * M_PI/180.0;
 
+  data->atan_sharpness = 5.0e-4;
+  data->atan_offset = 300.0e3;
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-bc_atan_sharpness",&data->atan_sharpness,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-bc_atan_offset",&data->atan_offset,NULL);CHKERRQ(ierr);
+
   /* reports before scaling */
   PetscPrintf(PETSC_COMM_WORLD,"************ Velocity Dirichlet BCs ************\n",NULL);
   PetscPrintf(PETSC_COMM_WORLD,"||u||= %1.4e, ux = %+1.4e, uy = %+1.4e, uz = %+1.4e [cm/yr]\n",data->norm_u,data->u_bc[0],data->u_bc[1],data->u_bc[2]);
@@ -127,12 +132,43 @@ static PetscErrorCode ModelInitialBoundaryVelocity_RiftNitsche(ModelRiftNitscheC
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ModelAnalyticalVelocityFunction(PetscReal position[], PetscReal u[], ModelRiftNitscheCtx *data)
+static PetscErrorCode ModelAnalyticalVelocityFunction_Linear(PetscReal position[], PetscReal u[], ModelRiftNitscheCtx *data)
 {
   PetscFunctionBegin;
   u[0] = 2.0/(data->Lz - data->Oz) * position[2] * data->u_bc[0] - data->u_bc[0];
   u[1] = 2.0*(position[1] - data->Ly)*data->u_bc[2]*(data->Ly - data->Oy)/((data->Lz - data->Oz)*(data->Oy - data->Ly));
   u[2] = 2.0/(data->Lz - data->Oz) * position[2] * data->u_bc[2] - data->u_bc[2];
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelAnalyticalVelocityFunction_Arctan(PetscReal position[], PetscReal u[], ModelRiftNitscheCtx *data)
+{
+  PetscFunctionBegin;
+  u[0] = 2.0/M_PI * data->u_bc[0] * PetscAtanReal(data->atan_sharpness*(position[2]-data->atan_offset));
+  u[1] = 2.0*(position[1] - data->Ly)*data->u_bc[2]*(data->Ly - data->Oy)/((data->Lz - data->Oz)*(data->Oy - data->Ly));
+  u[2] = 2.0/M_PI * data->u_bc[2] * PetscAtanReal(data->atan_sharpness*(position[2]-data->atan_offset));
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelAnalyticalVelocityFunction(PetscReal position[], PetscReal u[], ModelRiftNitscheCtx *data)
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  switch(data->u_func_type) {
+    case 0:
+      ierr = ModelAnalyticalVelocityFunction_Linear(position,u,data);CHKERRQ(ierr);
+      break;
+
+    case 1:
+      ierr = ModelAnalyticalVelocityFunction_Arctan(position,u,data);CHKERRQ(ierr);
+      break;
+
+    default:
+      ierr = ModelAnalyticalVelocityFunction_Linear(position,u,data);CHKERRQ(ierr);
+      break;
+  }
+
   PetscFunctionReturn(0);
 }
 
@@ -680,6 +716,9 @@ static PetscErrorCode ModelScaleParameters_RiftNitsche(DataBucket materialconsta
   data->wz_origin = data->wz_origin / data->length_bar;
   data->wz_offset = data->wz_offset / data->length_bar;
 
+  data->atan_sharpness = data->atan_sharpness * data->length_bar;
+  data->atan_offset    = data->atan_offset / data->length_bar;
+
   data->wz_width = data->wz_width / data->length_bar;
   for (i=0; i<2; i++) { data->wz_sigma[i] = data->wz_sigma[i] / data->length_bar; }
 
@@ -709,7 +748,7 @@ static PetscErrorCode ModelScaleParameters_RiftNitsche(DataBucket materialconsta
 
 static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
 {
-  PetscBool      bc_nitsche,bc_dirichlet,bc_freeslip_nitsche,bc_strikeslip,found;
+  PetscBool      bc_nitsche,bc_dirichlet,bc_freeslip_nitsche,bc_strikeslip,bc_u_func_atan,found;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -719,10 +758,12 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
   bc_dirichlet           = PETSC_FALSE;
   bc_freeslip_nitsche    = PETSC_FALSE;
   bc_strikeslip          = PETSC_FALSE;
+  bc_u_func_atan         = PETSC_FALSE;
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_nitsche",&bc_nitsche,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_dirichlet",&bc_dirichlet,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_freeslip_nitsche",&bc_freeslip_nitsche,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_strike_slip",&bc_strikeslip,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_u_func_atan",&bc_u_func_atan,&found);CHKERRQ(ierr);
 
   /* Replace boolean by int for switch */
   data->bc_type = -1;
@@ -738,6 +779,12 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
   } else if (bc_strikeslip) {
     data->bc_type = 3;
     PetscPrintf(PETSC_COMM_WORLD,"[[ BC TYPE %d: Rotated Strike-Slip Navier-slip ACTIVATED ]]\n",data->bc_type);
+  }
+
+  data->u_func_type = 0;
+  if (bc_u_func_atan) {
+    data->u_func_type = 1;
+    PetscPrintf(PETSC_COMM_WORLD,"[[ Using arctangent function for the boundary velocity ]]\n");
   }
 
   PetscFunctionReturn(0);
@@ -1299,6 +1346,109 @@ PetscErrorCode ModelApplyInitialSolution_RiftNitsche(pTatinCtx c,Vec X,void *ctx
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode StrainRateBoundaryValue_Atan(PetscReal E[][3], PetscReal position[], ModelRiftNitscheCtx *data)
+{
+  PetscFunctionBegin;
+  // Exx
+  E[0][0] = 0.0;
+  // Eyy
+  E[1][1] = 0.0;
+  // Ezz
+  E[2][2] = (2.0*data->u_bc[2]*data->atan_sharpness) / ( M_PI * ( 1.0 + pow(data->atan_sharpness,2.0)*pow(position[2]-data->atan_offset,2.0) ) );
+  // Exy
+  E[0][1] = 0.0;
+  // Exz
+  E[0][2] = (data->u_bc[0]*data->atan_sharpness) / ( M_PI * ( 1.0 + pow(data->atan_sharpness,2.0)*pow(position[2]-data->atan_offset,2.0) ) );
+  // Eyz
+  E[1][2] = 0.0;
+
+  E[1][0] = E[0][1];
+  E[2][0] = E[0][2];
+  E[2][1] = E[1][2];
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode RotateStrainRateBoundaryValue_Atan(PetscReal E_R[][3], PetscReal position[], ModelRiftNitscheCtx *data)
+{
+  PetscInt       i,j;
+  PetscReal      r[] = {0.0,1.0,0.0};
+  PetscReal      R[3][3],R_transpose[3][3],E[3][3],ERT[3][3];
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  ierr = StrainRateBoundaryValue_Atan(E,position,data);CHKERRQ(ierr);
+  RotationMatrix(data->alpha_r,r,R);
+
+  /* Transpose R */
+  for (i=0;i<3;i++) {
+    for (j=0;j<3;j++) {
+      R_transpose[i][j] = R[j][i];
+    }
+  }
+
+  /* Compute E*R^T */
+  ierr = MatMult3x3(E,R_transpose,ERT);CHKERRQ(ierr);
+  /* Compute R*E*R^T */
+  ierr = MatMult3x3(R,ERT,E_R);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode GeneralNavierSlipBC_Atan(Facet F,const PetscReal qp_coor[],
+                                               PetscReal n_hat[],
+                                               PetscReal t1_hat[],
+                                               PetscReal epsS[],
+                                               PetscReal H[],
+                                               void *data)
+{
+  ModelRiftNitscheCtx *model_data = (ModelRiftNitscheCtx*)data;
+  PetscInt            i,j;
+  const PetscInt      indices_voigt[][3] = { {0, 3, 4}, {3, 1, 5}, {4, 5, 2} };
+  PetscReal           E[3][3];
+  PetscErrorCode      ierr;
+  PetscFunctionBegin;
+
+  switch (model_data->bc_type) {
+    case 0:
+      ierr = StrainRateBoundaryValue_Atan(E,qp_coor,model_data);CHKERRQ(ierr);
+      break;
+
+    case 1:
+      ierr = StrainRateBoundaryValue_Atan(E,qp_coor,model_data);CHKERRQ(ierr);
+      break;
+
+    case 2:
+      ierr = StrainRateBoundaryValue_Atan(E,qp_coor,model_data);CHKERRQ(ierr);
+      break;
+
+    case 3:
+      ierr = RotateStrainRateBoundaryValue_Atan(E,qp_coor,model_data);CHKERRQ(ierr);
+      break;
+
+    default:
+      ierr = StrainRateBoundaryValue_Atan(E,qp_coor,model_data);CHKERRQ(ierr);
+      break;
+  }
+
+  for (i=0;i<3;i++) {
+    for (j=0;j<3;j++) {
+      epsS[ indices_voigt[i][j] ] = E[i][j];
+    }
+  }
+  /* Fill the H tensor */
+  for (i=0;i<6;i++) {
+    H[i] = model_data->H[i];
+  }
+  /* Fill the arbitrary normal and one tangent vectors */
+  for (j=0;j<3;j++) {
+    t1_hat[j] = model_data->t1_hat[j];
+    n_hat[j] = model_data->n_hat[j];
+  }
+  
+  PetscFunctionReturn(0);
+}
+
+
 static PetscErrorCode GeneralNavierSlipBC(Facet F,const PetscReal qp_coor[],
                                           PetscReal n_hat[],
                                           PetscReal t1_hat[],
@@ -1358,12 +1508,36 @@ static PetscErrorCode ModelApplyGeneralNavierSlip_RiftNitsche(SurfBCList surflis
     ierr = MeshFacetMarkDomainFaces(facets,sc->fi,nsides,sides);CHKERRQ(ierr);
   }
 
-  SURFC_CHKSETVALS(SC_NITSCHE_GENERAL_SLIP,GeneralNavierSlipBC);
-  {
-    if (!sc->dm) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->dm. Must call SurfaceConstraintSetDM() first");
-    if (!sc->quadrature) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->surfQ. Must call SurfaceConstraintSetQuadrature() first");
-    if (!sc->facets->set_values_called) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Facets have not been selected");
-    ierr = SurfaceConstraintSetValuesStrainRate_NITSCHE_GENERAL_SLIP(sc,(SurfCSetValuesNitscheGeneralSlip)GeneralNavierSlipBC,(void*)data);CHKERRQ(ierr);
+  switch(data->u_func_type) {
+    case 0:
+      {
+        SURFC_CHKSETVALS(SC_NITSCHE_GENERAL_SLIP,GeneralNavierSlipBC);
+        if (!sc->dm) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->dm. Must call SurfaceConstraintSetDM() first");
+        if (!sc->quadrature) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->surfQ. Must call SurfaceConstraintSetQuadrature() first");
+        if (!sc->facets->set_values_called) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Facets have not been selected");
+        ierr = SurfaceConstraintSetValuesStrainRate_NITSCHE_GENERAL_SLIP(sc,(SurfCSetValuesNitscheGeneralSlip)GeneralNavierSlipBC,(void*)data);CHKERRQ(ierr);
+      }
+      break;
+
+    case 1:
+      {
+        SURFC_CHKSETVALS(SC_NITSCHE_GENERAL_SLIP,GeneralNavierSlipBC_Atan);
+        if (!sc->dm) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->dm. Must call SurfaceConstraintSetDM() first");
+        if (!sc->quadrature) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->surfQ. Must call SurfaceConstraintSetQuadrature() first");
+        if (!sc->facets->set_values_called) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Facets have not been selected");
+        ierr = SurfaceConstraintSetValuesStrainRate_NITSCHE_GENERAL_SLIP(sc,(SurfCSetValuesNitscheGeneralSlip)GeneralNavierSlipBC_Atan,(void*)data);CHKERRQ(ierr);
+      }
+      break;
+
+    default:
+      {
+        SURFC_CHKSETVALS(SC_NITSCHE_GENERAL_SLIP,GeneralNavierSlipBC);
+        if (!sc->dm) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->dm. Must call SurfaceConstraintSetDM() first");
+        if (!sc->quadrature) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->surfQ. Must call SurfaceConstraintSetQuadrature() first");
+        if (!sc->facets->set_values_called) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Facets have not been selected");
+        ierr = SurfaceConstraintSetValuesStrainRate_NITSCHE_GENERAL_SLIP(sc,(SurfCSetValuesNitscheGeneralSlip)GeneralNavierSlipBC,(void*)data);CHKERRQ(ierr);
+      }
+      break;
   }
   PetscFunctionReturn(0);
 }

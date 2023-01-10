@@ -9,6 +9,8 @@ typedef struct {
   /* Velocity BCs */
   PetscReal norm_u,alpha_u,u_bc[3],alpha_r;
   PetscInt  component,bc_type;
+  PetscInt  u_func_type;
+  PetscReal atan_sharpness,atan_offset;
   /* General Navier Slip BCs */
   PetscReal epsilon_s[6],H[6],t1_hat[3],n_hat[3];
   /* Number of materials */
