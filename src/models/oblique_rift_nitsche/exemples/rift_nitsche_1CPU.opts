@@ -41,6 +41,9 @@
 #-model_rift_nitsche_bc_strike_slip
 #-model_rift_nitsche_bc_freeslip_nitsche
 #-model_rift_nitsche_bc_dirichlet
+-model_rift_nitsche_bc_u_func_atan
+-model_rift_nitsche_bc_atan_sharpness 8.0e-5
+-model_rift_nitsche_bc_atan_offset 300.0e3
 -model_rift_nitsche_norm_u 1.0 # cm/yr
 -model_rift_nitsche_alpha_u 45.0 #90.0 # Degree
 -model_rift_nitsche_alpha_r #-15.0 # Degree
@@ -153,7 +156,7 @@
 #---- SNES ----#
 -newton_its 0
 -snes_atol 1e-6
--snes_max_it 100
+-snes_max_it 5
 -snes_rtol 1e-8
 -snes_monitor
 -snes_converged_reason
