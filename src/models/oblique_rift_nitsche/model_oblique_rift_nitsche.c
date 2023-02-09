@@ -226,11 +226,12 @@ static PetscErrorCode Rotate_u(PetscReal theta, PetscReal r[], PetscReal u[], Pe
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode RotateReferential(PetscReal position[], PetscReal coords_rt[] ,ModelRiftNitscheCtx *data)
+static PetscErrorCode RotateReferential(PetscReal position[], PetscReal coords_rt[], PetscBool ccw, ModelRiftNitscheCtx *data)
 {
   PetscReal      coords[] = {0.0,0.0,0.0};
   PetscReal      r[] = {0.0,1.0,0.0};
   PetscReal      coords_r[3];
+  PetscReal      angle;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -241,7 +242,12 @@ static PetscErrorCode RotateReferential(PetscReal position[], PetscReal coords_r
   coords[2] = position[2] - 0.5*(data->Lz + data->Oz);
 
   /* Rotate */
-  ierr = Rotate_u(-data->alpha_r,r,coords,coords_r);CHKERRQ(ierr);
+  if (ccw) {
+    angle = -data->alpha_r;
+  } else {
+    angle = data->alpha_r;
+  }
+  ierr = Rotate_u(angle,r,coords,coords_r);CHKERRQ(ierr);
 
   /* Translate back */
   coords_rt[0] = coords_r[0] + 0.5*(data->Lx + data->Ox);
@@ -632,14 +638,15 @@ static PetscErrorCode ModelSetTemperatureBCs_RiftNitsche(ModelRiftNitscheCtx *da
 static PetscErrorCode ModelSetWeakZoneParameters_RiftNitsche(ModelRiftNitscheCtx *data)
 {
   PetscInt       nn;
-  PetscBool      found,wz_notch,wz_gauss,wz_oblique;
+  PetscBool      found,wz_notch,wz_gauss,wz_oblique,wz_double;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
 
-  wz_notch = PETSC_FALSE;
-  wz_gauss = PETSC_FALSE;
+  wz_notch   = PETSC_FALSE;
+  wz_gauss   = PETSC_FALSE;
   wz_oblique = PETSC_FALSE;
+  wz_double  = PETSC_FALSE;
 
   data->n_notches = 3;
   data->wz_width = 100.0e3;
@@ -652,6 +659,7 @@ static PetscErrorCode ModelSetWeakZoneParameters_RiftNitsche(ModelRiftNitscheCtx
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-wz_notch",&wz_notch,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-wz_gauss",&wz_gauss,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-wz_oblique",&wz_oblique,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-wz_double",&wz_double,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetInt(NULL,MODEL_NAME_R,"-wz_n_notches",&data->n_notches,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-wz_width",&data->wz_width,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-wz_angle",&data->wz_angle,&found);CHKERRQ(ierr);
@@ -674,6 +682,8 @@ static PetscErrorCode ModelSetWeakZoneParameters_RiftNitsche(ModelRiftNitscheCtx
     data->wz_type = 1;
   } else if (wz_oblique) {
     data->wz_type = 2;
+  } else if (wz_double) {
+    data->wz_type = 3;
   }
 
   PetscFunctionReturn(0);
@@ -1024,6 +1034,46 @@ static PetscErrorCode ModelSetInitialWeakZone_Gaussians(MPntPStokesPl *mpprop_pl
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ModelSetInitialWeakZoneDouble(MPntPStokesPl *mpprop_pls, double *position, ModelRiftNitscheCtx *data)
+{
+  PetscReal      coords_rt[] = {0.0,0.0,0.0};
+  PetscReal      zcentre;
+  float          pls;
+  short          yield;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  /* Set an initial small random noise on plastic strain */
+  pls = ptatin_RandomNumberGetDouble(0.0,0.03);
+  /* Set yield to none */
+  yield = 0;
+
+  zcentre = 0.5*(data->Lz - data->Oz);
+
+  if (position[1] >= data->y_continent[2]) {
+    /* Rotate coordinate system */
+    ierr = RotateReferential(position,coords_rt,PETSC_TRUE,data);CHKERRQ(ierr);
+    /* x < 2*width of the wz in the rotated system */
+    if (coords_rt[0] <= data->Ox + 2.0*data->wz_width) {
+      if (coords_rt[2] >= zcentre - 0.5*(data->wz_offset + data->wz_width) && coords_rt[2] <= zcentre + 0.5*(data->wz_width - data->wz_offset)) {
+        /* Set higher initial plastic strain */
+        pls = ptatin_RandomNumberGetDouble(0.1,0.8);
+      }
+    }
+  
+    if (coords_rt[0] >= data->Lx - 2.0*data->wz_width) {
+      if (coords_rt[2] >= zcentre + 0.5*(data->wz_offset - data->wz_width) && coords_rt[2] <= zcentre + 0.5*(data->wz_offset + data->wz_width)) {
+        /* Set higher initial plastic strain */
+        pls = ptatin_RandomNumberGetDouble(0.1,0.8);
+      }
+    }
+  }
+  MPntPStokesPlSetField_yield_indicator(mpprop_pls,yield);
+  MPntPStokesPlSetField_plastic_strain(mpprop_pls,pls);
+
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode ModelSetInitialWeakZoneGeometry_RiftNitsche(MPntPStokesPl *mpprop_pls, double *position, PetscReal *notch_centre, ModelRiftNitscheCtx *data)
 {
   PetscErrorCode ierr;
@@ -1040,6 +1090,10 @@ static PetscErrorCode ModelSetInitialWeakZoneGeometry_RiftNitsche(MPntPStokesPl 
 
     case 2:
       SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Oblique weak zone not implemented yet.\n");
+      break;
+
+    case 3:
+      ierr = ModelSetInitialWeakZoneDouble(mpprop_pls,position,data);CHKERRQ(ierr);
       break;
 
     default:
@@ -1209,7 +1263,7 @@ static PetscBool BCListEvaluator_RotatedVelocityField(PetscScalar position[], Pe
 
   PetscFunctionBegin;
 
-  ierr = RotateReferential(position,coords_rt,data);CHKERRQ(ierr);
+  ierr = RotateReferential(position,coords_rt,PETSC_TRUE,data);CHKERRQ(ierr);
   ierr = ModelAnalyticalVelocityFunction(coords_rt,u_xr,data);CHKERRQ(ierr);
   Rotate_u(data->alpha_r,r,u_xr,u_R);
   *value = u_R[ data->component ];
