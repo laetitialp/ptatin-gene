@@ -41,6 +41,8 @@
 #include "element_type_Q2.h"
 #include "dmda_element_q2p1.h"
 
+#include "pswarm.h"
+
 #include "oblique_rift_nitsche_ctx.h"
 
 static const char MODEL_NAME_R[] = "model_rift_nitsche_";
@@ -689,6 +691,25 @@ static PetscErrorCode ModelSetWeakZoneParameters_RiftNitsche(ModelRiftNitscheCtx
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ModelSetPassiveMarkersSwarmParameters(pTatinCtx c, ModelRiftNitscheCtx *data)
+{
+  PSwarm         pswarm;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = PSwarmCreate(PETSC_COMM_WORLD,&pswarm);CHKERRQ(ierr);
+  ierr = PSwarmSetOptionsPrefix(pswarm,"passive_");CHKERRQ(ierr);
+  ierr = PSwarmSetPtatinCtx(pswarm,c);CHKERRQ(ierr);
+  ierr = PSwarmSetTransportModeType(pswarm,PSWARM_TM_LAGRANGIAN);CHKERRQ(ierr);
+
+  ierr = PSwarmSetFromOptions(pswarm);CHKERRQ(ierr);
+
+  /* Copy reference into model data for later use in different functions */
+  data->pswarm = pswarm;
+
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode ModelScaleParameters_RiftNitsche(DataBucket materialconstants, ModelRiftNitscheCtx *data)
 {
   PetscInt  region_idx,i;
@@ -846,6 +867,9 @@ PetscErrorCode ModelInitialize_RiftNitsche(pTatinCtx c,void *ctx)
   
   data->output_markers       = PETSC_FALSE;
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-output_markers",       &data->output_markers,NULL);CHKERRQ(ierr);
+
+  /* passive markers */
+  ierr = ModelSetPassiveMarkersSwarmParameters(c,data);CHKERRQ(ierr);
   
   PetscFunctionReturn(0);
 }
@@ -1171,6 +1195,8 @@ PetscErrorCode ModelApplyInitialMaterialParameters_RiftNitsche(pTatinCtx c,void 
   PetscFunctionBegin;
 
   ierr = ModelApplyInitialMaterialGeometry_RiftNitsche(c,data);CHKERRQ(ierr);
+  /* Passive markers */
+  ierr = PSwarmSetUp(data->pswarm);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -1390,6 +1416,8 @@ PetscErrorCode ModelApplyInitialSolution_RiftNitsche(pTatinCtx c,Vec X,void *ctx
   ierr = ModelApplyInitialVelocityField_RiftNitsche(dau,velocity,data);CHKERRQ(ierr);
   /* Pressure IC */
   ierr = ModelApplyInitialHydrostaticPressureField_RiftNitsche(c,dau,dap,pressure,data);CHKERRQ(ierr);
+  /* Attach solution vector (u, p) to passive markers */
+  ierr = PSwarmAttachStateVecVelocityPressure(data->pswarm,X);CHKERRQ(ierr);
   /* Restore velocity and pressure vectors */
   ierr = DMCompositeRestoreAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
   /* Temperature IC */
@@ -1918,6 +1946,9 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_RiftNitsche(pTatinCtx c,Vec X,void *
   ierr = ModelSetMeshRefinement_RiftNitsche(dav);CHKERRQ(ierr);
   ierr = DMDABilinearizeQ2Elements(dav);CHKERRQ(ierr);
 
+  /* Passive markers update */
+  ierr = PSwarmFieldUpdateAll(data->pswarm);CHKERRQ(ierr);
+
   PetscFunctionReturn(0);
 }
 
@@ -1980,6 +2011,17 @@ static PetscErrorCode ModelOutputEnergyFV_RiftNitsche(pTatinCtx c, const char pr
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ModelOutputPassiveMarkers(ModelRiftNitscheCtx *data)
+{
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = PSwarmView(data->pswarm,PSW_VT_SINGLETON);CHKERRQ(ierr);
+  ierr = PSwarmViewInfo(data->pswarm);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode ModelOutput_RiftNitsche(pTatinCtx c,Vec X,const char prefix[],void *ctx)
 {
   ModelRiftNitscheCtx         *data;
@@ -2012,6 +2054,8 @@ PetscErrorCode ModelOutput_RiftNitsche(pTatinCtx c,Vec X,const char prefix[],voi
       ierr = SurfaceConstraintViewParaview(sc, root, "boundary");CHKERRQ(ierr);
     }*/
   }
+  /* Output passive markers */
+  ierr = ModelOutputPassiveMarkers(data);CHKERRQ(ierr);
 
   /* Output temperature (FV) */
   ierr = pTatinContextValid_EnergyFV(c,&active_energy);CHKERRQ(ierr);
@@ -2608,7 +2652,8 @@ PetscErrorCode ModelDestroy_RiftNitsche(pTatinCtx c,void *ctx)
   data = (ModelRiftNitscheCtx*)ctx;
 
   /* Free contents of structure */
-
+  /* destroy passive markers */
+  ierr = PSwarmDestroy(&data->pswarm);CHKERRQ(ierr);
   /* Free structure */
   ierr = PetscFree(data);CHKERRQ(ierr);
   PetscFunctionReturn(0);

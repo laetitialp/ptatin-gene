@@ -31,6 +31,8 @@ typedef struct {
   PetscReal wz_origin,wz_offset;
   /* Output */
   PetscBool output_markers;
+  /* Passive markers */
+  PSwarm pswarm;
 } ModelRiftNitscheCtx;
 
 #endif
