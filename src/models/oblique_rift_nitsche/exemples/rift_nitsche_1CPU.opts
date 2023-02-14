@@ -29,13 +29,18 @@
 -model_rift_nitsche_Lz 600.0e3
 -model_rift_nitsche_y_continent -25.0e3,-35.0e3,-120.0e3
 ########### Weak zones ##########
--model_rift_nitsche_wz_notch
+#-model_rift_nitsche_wz_notch
 #-model_rift_nitsche_wz_gauss
+#-model_rift_nitsche_wz_oblique
+#-model_rift_nitsche_wz_double
+-model_rift_nitsche_wz_straight_gauss
+#-model_rift_nitsche_wz_oblique_gauss
 -model_rift_nitsche_wz_sigma 3e+5,3e+5
 -model_rift_nitsche_wz_n_notches 3
 -model_rift_nitsche_wz_origin 300.0e3 # Centre z
--model_rift_nitsche_wz_offset 0.0 #-150.0e3
+-model_rift_nitsche_wz_offset -200.0e3
 -model_rift_nitsche_wz_width 100.0e3
+-model_rift_nitsche_wz_angle -30.0
 ########### Boundary conditions ##########
 -model_rift_nitsche_bc_nitsche
 #-model_rift_nitsche_bc_strike_slip

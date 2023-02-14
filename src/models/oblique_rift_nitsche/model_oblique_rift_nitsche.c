@@ -641,14 +641,17 @@ static PetscErrorCode ModelSetWeakZoneParameters_RiftNitsche(ModelRiftNitscheCtx
 {
   PetscInt       nn;
   PetscBool      found,wz_notch,wz_gauss,wz_oblique,wz_double;
+  PetscBool      wz_oblique_gauss,wz_straight_gauss;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
 
-  wz_notch   = PETSC_FALSE;
-  wz_gauss   = PETSC_FALSE;
-  wz_oblique = PETSC_FALSE;
-  wz_double  = PETSC_FALSE;
+  wz_notch          = PETSC_FALSE;
+  wz_gauss          = PETSC_FALSE;
+  wz_oblique        = PETSC_FALSE;
+  wz_double         = PETSC_FALSE;
+  wz_oblique_gauss  = PETSC_FALSE;
+  wz_straight_gauss = PETSC_FALSE;
 
   data->n_notches = 3;
   data->wz_width = 100.0e3;
@@ -658,15 +661,19 @@ static PetscErrorCode ModelSetWeakZoneParameters_RiftNitsche(ModelRiftNitscheCtx
   data->wz_origin = 300.0e3; // metres
   data->wz_offset = 0.0; // metres
 
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-wz_notch",&wz_notch,&found);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-wz_gauss",&wz_gauss,&found);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-wz_oblique",&wz_oblique,&found);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-wz_double",&wz_double,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-wz_notch",         &wz_notch,         &found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-wz_gauss",         &wz_gauss,         &found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-wz_oblique",       &wz_oblique,       &found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-wz_double",        &wz_double,        &found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-wz_oblique_gauss", &wz_oblique_gauss, &found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-wz_straight_gauss",&wz_straight_gauss,&found);CHKERRQ(ierr);
+
   ierr = PetscOptionsGetInt(NULL,MODEL_NAME_R,"-wz_n_notches",&data->n_notches,&found);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-wz_width",&data->wz_width,&found);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-wz_angle",&data->wz_angle,&found);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-wz_origin",&data->wz_origin,&found);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-wz_offset",&data->wz_offset,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-wz_width",   &data->wz_width, &found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-wz_angle",   &data->wz_angle, &found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-wz_origin",  &data->wz_origin,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-wz_offset",  &data->wz_offset,&found);CHKERRQ(ierr);
+
   nn = 2;
   ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME_R,"-wz_sigma",data->wz_sigma,&nn,&found);CHKERRQ(ierr);
   if (found) {
@@ -677,15 +684,26 @@ static PetscErrorCode ModelSetWeakZoneParameters_RiftNitsche(ModelRiftNitscheCtx
 
   data->wz_angle = data->wz_angle * M_PI/180.0;
 
+  PetscPrintf(PETSC_COMM_WORLD,"************ Weak Zones Type ************\n",NULL);
   data->wz_type = -1;
   if (wz_notch) {
     data->wz_type = 0;
+    PetscPrintf(PETSC_COMM_WORLD,"Type %d: [[ CUBES ]]\n",data->wz_type);
   } else if (wz_gauss) {
     data->wz_type = 1;
+    PetscPrintf(PETSC_COMM_WORLD,"Type %d: [[ GAUSSIANS ]]\n",data->wz_type);
   } else if (wz_oblique) {
     data->wz_type = 2;
+    PetscPrintf(PETSC_COMM_WORLD,"Type %d: [[ OBLIQUE ]]\n",data->wz_type);
   } else if (wz_double) {
     data->wz_type = 3;
+    PetscPrintf(PETSC_COMM_WORLD,"Type %d: [[ DOUBLE OFFSET RECTANGLES ]]\n",data->wz_type);
+  } else if (wz_oblique_gauss) {
+    data->wz_type = 4;
+    PetscPrintf(PETSC_COMM_WORLD,"Type %d: [[ OBLIQUE GAUSSIAN ]]\n",data->wz_type);
+  } else if (wz_straight_gauss) {
+    data->wz_type = 5;
+    PetscPrintf(PETSC_COMM_WORLD,"Type %d: [[ STRAIGHT GAUSSIAN ]]\n",data->wz_type);
   }
 
   PetscFunctionReturn(0);
@@ -1098,6 +1116,105 @@ static PetscErrorCode ModelSetInitialWeakZoneDouble(MPntPStokesPl *mpprop_pls, d
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ModelSetInitialWeakZone_Oblique(MPntPStokesPl *mpprop_pls, double *position, ModelRiftNitscheCtx *data)
+{
+  PetscReal xcentre,zcentre,buffer,a=0.0,b=0.0;
+  float     pls;
+  short     yield;
+  PetscFunctionBegin;
+
+  /* Set an initial small random noise on plastic strain */
+  pls = ptatin_RandomNumberGetDouble(0.0,0.03);
+  /* Set yield to none */
+  yield = 0;
+
+  xcentre = 0.5*(data->Lx - data->Ox);
+  zcentre = 0.5*(data->Lz - data->Oz);
+  /* width in which the plastic strain attenuates on both sides of the WZ */
+  buffer = 0.75*data->wz_width;
+
+  if (position[1] >= data->y_continent[2]) {
+    if ( (position[0] >= (zcentre - position[2])*PetscTanReal(data->wz_angle) + (xcentre - 0.5*data->wz_width/PetscCosReal(data->wz_angle))) &&
+         (position[0] <= (zcentre - position[2])*PetscTanReal(data->wz_angle) + (xcentre + 0.5*data->wz_width/PetscCosReal(data->wz_angle))) ) {
+      
+      pls = ptatin_RandomNumberGetDouble(0.1,0.8);
+    }
+
+    if ( (position[0] >= (zcentre - position[2])*PetscTanReal(data->wz_angle) + (xcentre - 0.5*data->wz_width/PetscCosReal(data->wz_angle) - buffer/PetscCosReal(data->wz_angle))) &&
+         (position[0] <= (zcentre - position[2])*PetscTanReal(data->wz_angle) + (xcentre - 0.5*data->wz_width/PetscCosReal(data->wz_angle))) ) {
+      
+      a = (zcentre - position[2])*PetscTanReal(data->wz_angle) + (xcentre - 0.5*data->wz_width/PetscCosReal(data->wz_angle));
+      b = (zcentre - position[2])*PetscTanReal(data->wz_angle) + (xcentre - 0.5*data->wz_width/PetscCosReal(data->wz_angle) - buffer/PetscCosReal(data->wz_angle));
+      pls = ptatin_RandomNumberGetDouble(0.1,0.8) * PetscAtanReal( (position[0] - b)/(a - b)*(0.5*M_PI) );
+    }
+
+    if ( (position[0] <= (zcentre - position[2])*PetscTanReal(data->wz_angle) + (xcentre + 0.5*data->wz_width/PetscCosReal(data->wz_angle) + buffer/PetscCosReal(data->wz_angle))) && 
+         (position[0] >= (zcentre - position[2])*PetscTanReal(data->wz_angle) + (xcentre + 0.5*data->wz_width/PetscCosReal(data->wz_angle))) ) {
+      
+      a = (zcentre - position[2])*PetscTanReal(data->wz_angle) + (xcentre + 0.5*data->wz_width/PetscCosReal(data->wz_angle));
+      b = (zcentre - position[2])*PetscTanReal(data->wz_angle) + (xcentre + 0.5*data->wz_width/PetscCosReal(data->wz_angle) + buffer/PetscCosReal(data->wz_angle));
+      pls = ptatin_RandomNumberGetDouble(0.1,0.8) * PetscAtanReal( (position[0] - b)/(a - b)*(0.5*M_PI) );
+    }
+  }
+
+  MPntPStokesPlSetField_yield_indicator(mpprop_pls,yield);
+  MPntPStokesPlSetField_plastic_strain(mpprop_pls,pls);
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelSetInitialWeakZone_ObliqueGaussian(MPntPStokesPl *mpprop_pls, double *position, ModelRiftNitscheCtx *data)
+{
+  PetscReal xcentre,zcentre,location;
+  PetscReal a,b,c;
+  float     pls;
+  short     yield;
+  PetscFunctionBegin;
+
+  pls = ptatin_RandomNumberGetDouble(0.0,0.03);
+  yield = 0;
+
+  if (position[1] >= data->y_continent[2]) {
+    xcentre = 0.5*(data->Lx - data->Ox);
+    zcentre = 0.5*(data->Lz - data->Oz);
+    location = (zcentre - position[2])*PetscTanReal(data->wz_angle) + xcentre;
+  
+    a = 0.5*data->wz_sigma[0]*data->wz_sigma[0];
+    b = 0.0;
+    c = 0.0;
+    pls += Gaussian2D(ptatin_RandomNumberGetDouble(0.0,1.0),a,b,c,position[0],location,0.0,0.0);
+  }
+  MPntPStokesPlSetField_yield_indicator(mpprop_pls,yield);
+  MPntPStokesPlSetField_plastic_strain(mpprop_pls,pls);
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelSetInitialWeakZone_StraightGaussian(MPntPStokesPl *mpprop_pls, double *position, ModelRiftNitscheCtx *data)
+{
+  PetscReal zcentre;
+  PetscReal a,b,c;
+  float     pls;
+  short     yield;
+  PetscFunctionBegin;
+
+  pls = ptatin_RandomNumberGetDouble(0.0,0.03);
+  yield = 0;
+
+  if (position[1] >= data->y_continent[2]) {
+    zcentre = 0.5*(data->Lz - data->Oz);
+  
+    a = 0.0;
+    b = 0.0;
+    c = 0.5*data->wz_sigma[1]*data->wz_sigma[1];
+    pls += Gaussian2D(ptatin_RandomNumberGetDouble(0.0,1.0),a,b,c,0.0,0.0,position[2],zcentre);
+  }
+  MPntPStokesPlSetField_yield_indicator(mpprop_pls,yield);
+  MPntPStokesPlSetField_plastic_strain(mpprop_pls,pls);
+
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode ModelSetInitialWeakZoneGeometry_RiftNitsche(MPntPStokesPl *mpprop_pls, double *position, PetscReal *notch_centre, ModelRiftNitscheCtx *data)
 {
   PetscErrorCode ierr;
@@ -1113,11 +1230,19 @@ static PetscErrorCode ModelSetInitialWeakZoneGeometry_RiftNitsche(MPntPStokesPl 
       break;
 
     case 2:
-      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Oblique weak zone not implemented yet.\n");
+      ierr = ModelSetInitialWeakZone_Oblique(mpprop_pls,position,data);CHKERRQ(ierr);
       break;
 
     case 3:
       ierr = ModelSetInitialWeakZoneDouble(mpprop_pls,position,data);CHKERRQ(ierr);
+      break;
+
+    case 4:
+      ierr = ModelSetInitialWeakZone_ObliqueGaussian(mpprop_pls,position,data);CHKERRQ(ierr);
+      break;
+
+    case 5:
+      ierr = ModelSetInitialWeakZone_StraightGaussian(mpprop_pls,position,data);CHKERRQ(ierr);
       break;
 
     default:
