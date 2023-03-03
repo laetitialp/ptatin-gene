@@ -1345,8 +1345,6 @@ static PetscErrorCode ModelApplyInitialMaterialGeometry_RiftNitsche(pTatinCtx c,
   /* Weak zones centre coordinates: 0 ==> x
                                     1 ==> z */
   ierr = PetscMalloc1(2*data->n_notches,&notch_centre);CHKERRQ(ierr);
-  //ierr = ComputeWeakZonesCentreEquallySpaced(notch_centre,0,data);CHKERRQ(ierr);
-  //ierr = WeakZonesCentreOffset(notch_centre,1,data);CHKERRQ(ierr);
   ierr = SetWeakZonesCentreCoordinates(notch_centre,data);CHKERRQ(ierr);
 
   PetscPrintf(PETSC_COMM_WORLD,"************ Weak Zones Centre Coordinates ************\n",NULL);
