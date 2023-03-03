@@ -26,7 +26,7 @@ typedef struct {
   /* Temperature BCs */
   PetscReal Ttop,Tbottom;
   /* Weak zone type */
-  PetscInt  n_notches,wz_type;
+  PetscInt  n_notches,wz_type,wz_centre_type;
   PetscReal wz_angle,wz_width,wz_sigma[2];
   PetscReal wz_origin,wz_offset;
   /* Output */

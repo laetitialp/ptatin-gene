@@ -642,6 +642,7 @@ static PetscErrorCode ModelSetWeakZoneParameters_RiftNitsche(ModelRiftNitscheCtx
   PetscInt       nn;
   PetscBool      found,wz_notch,wz_gauss,wz_oblique,wz_double;
   PetscBool      wz_oblique_gauss,wz_straight_gauss;
+  PetscBool      wz_centre_equal,wz_centre_opts;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -652,6 +653,8 @@ static PetscErrorCode ModelSetWeakZoneParameters_RiftNitsche(ModelRiftNitscheCtx
   wz_double         = PETSC_FALSE;
   wz_oblique_gauss  = PETSC_FALSE;
   wz_straight_gauss = PETSC_FALSE;
+  wz_centre_equal   = PETSC_FALSE;
+  wz_centre_opts    = PETSC_FALSE;
 
   data->n_notches = 3;
   data->wz_width = 100.0e3;
@@ -667,6 +670,8 @@ static PetscErrorCode ModelSetWeakZoneParameters_RiftNitsche(ModelRiftNitscheCtx
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-wz_double",        &wz_double,        &found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-wz_oblique_gauss", &wz_oblique_gauss, &found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-wz_straight_gauss",&wz_straight_gauss,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-wz_centre_equal",  &wz_centre_equal,  &found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-wz_centre_opts",   &wz_centre_opts,   &found);CHKERRQ(ierr);
 
   ierr = PetscOptionsGetInt(NULL,MODEL_NAME_R,"-wz_n_notches",&data->n_notches,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-wz_width",   &data->wz_width, &found);CHKERRQ(ierr);
@@ -704,6 +709,15 @@ static PetscErrorCode ModelSetWeakZoneParameters_RiftNitsche(ModelRiftNitscheCtx
   } else if (wz_straight_gauss) {
     data->wz_type = 5;
     PetscPrintf(PETSC_COMM_WORLD,"Type %d: [[ STRAIGHT GAUSSIAN ]]\n",data->wz_type);
+  }
+
+  data->wz_centre_type = -1;
+  if (wz_centre_equal) {
+    data->wz_centre_type = 0;
+    PetscPrintf(PETSC_COMM_WORLD,"Weak Zone Centre Type %d: [[ EQUALLY SPACED IN X DIRECTION ]]\n",data->wz_centre_type);
+  } else if (wz_centre_opts) {
+    data->wz_centre_type = 1;
+    PetscPrintf(PETSC_COMM_WORLD,"Weak Zone Centre Type %d: [[ ARBITRARY PLACED FROM OPTIONS ]]\n",data->wz_centre_type);
   }
 
   PetscFunctionReturn(0);
@@ -1000,6 +1014,59 @@ static PetscErrorCode WeakZonesCentreOffset(PetscReal *notch_centre, PetscInt di
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode WeakZoneCentreFromOptions(PetscReal *notch_centre, ModelRiftNitscheCtx *data)
+{
+  PetscInt       i,d,nn;
+  PetscBool      found=PETSC_FALSE;
+  PetscReal      centre[] = {0.0, 0.0};
+  char           *option_name;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  for (i=0; i<data->n_notches; i++) {
+    /* Search for option -wz_centrei with i \in n_notches */
+    if (asprintf (&option_name, "-wz_centre%d", (int)i) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    nn = 2;
+    ierr = PetscOptionsGetRealArray(NULL, MODEL_NAME_R, option_name, centre, &nn, &found);CHKERRQ(ierr);
+    if (found) {
+      if (nn != 2) {
+        SETERRQ2(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 2 values for -wz_centre%d. Found %d",i,nn);
+      }
+    } else {
+      SETERRQ2(PETSC_COMM_WORLD,PETSC_ERR_USER,"In function [[%s]] No options found for weak zone centre coordinates. Use -wz_centre%d x,z to set it.",PETSC_FUNCTION_NAME,i);
+    }
+    free (option_name);
+    /* Set centre coordinates, don't forget the length scalling */
+    for (d=0; d<2; d++) { notch_centre[2*i + d] = centre[d] / data->length_bar; }
+  }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode SetWeakZonesCentreCoordinates(PetscReal *notch_centre, ModelRiftNitscheCtx *data)
+{
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  switch(data->wz_centre_type) {
+    case 0:
+      ierr = ComputeWeakZonesCentreEquallySpaced(notch_centre,0,data);CHKERRQ(ierr);
+      ierr = WeakZonesCentreOffset(notch_centre,1,data);CHKERRQ(ierr);
+      break;
+
+    case 1:
+      ierr = WeakZoneCentreFromOptions(notch_centre, data);CHKERRQ(ierr);
+      break;
+
+    default:
+      PetscPrintf(PETSC_COMM_WORLD,"No option set for the weak zone centre type, assuming equally spaced weak zones.\n");
+      ierr = ComputeWeakZonesCentreEquallySpaced(notch_centre,0,data);CHKERRQ(ierr);
+      ierr = WeakZonesCentreOffset(notch_centre,1,data);CHKERRQ(ierr);
+      break;
+  }
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode ModelSetInitialWeakZone_Notches(MPntPStokesPl *mpprop_pls, double *position, PetscReal *notch_centre, ModelRiftNitscheCtx *data)
 {
   PetscInt  i;
@@ -1278,8 +1345,9 @@ static PetscErrorCode ModelApplyInitialMaterialGeometry_RiftNitsche(pTatinCtx c,
   /* Weak zones centre coordinates: 0 ==> x
                                     1 ==> z */
   ierr = PetscMalloc1(2*data->n_notches,&notch_centre);CHKERRQ(ierr);
-  ierr = ComputeWeakZonesCentreEquallySpaced(notch_centre,0,data);CHKERRQ(ierr);
-  ierr = WeakZonesCentreOffset(notch_centre,1,data);CHKERRQ(ierr);
+  //ierr = ComputeWeakZonesCentreEquallySpaced(notch_centre,0,data);CHKERRQ(ierr);
+  //ierr = WeakZonesCentreOffset(notch_centre,1,data);CHKERRQ(ierr);
+  ierr = SetWeakZonesCentreCoordinates(notch_centre,data);CHKERRQ(ierr);
 
   PetscPrintf(PETSC_COMM_WORLD,"************ Weak Zones Centre Coordinates ************\n",NULL);
   for (int II=0; II<data->n_notches; II++) {
@@ -1902,7 +1970,7 @@ static PetscErrorCode ModelApplyOrthogonalExtensionFreeSlipNitsche_RiftNitsche(D
 
 static PetscErrorCode ModelApplyRotatedStrikeSlipNavierSlip_RiftNitsche(DM dav, BCList bclist,SurfBCList surflist,PetscBool insert_if_not_found,ModelRiftNitscheCtx *data)
 {
-  //PetscReal      u_bot;
+  PetscReal      u_bot;
   PetscErrorCode ierr;
   PetscFunctionBegin;
 
@@ -1917,10 +1985,10 @@ static PetscErrorCode ModelApplyRotatedStrikeSlipNavierSlip_RiftNitsche(DM dav, 
   ierr = ModelApplyGeneralNavierSlip_RiftNitsche(surflist,insert_if_not_found,data);CHKERRQ(ierr);
 
   /* Apply base velocity from u.n */
-  //u_bot = data->u_bc[1];
-  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&u_bot);CHKERRQ(ierr);
-  data->component = 1;
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,data->component,BCListEvaluator_RotatedVelocityField,(void*)data);CHKERRQ(ierr);
+  u_bot = data->u_bc[1];
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&u_bot);CHKERRQ(ierr);
+  //data->component = 1;
+  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,data->component,BCListEvaluator_RotatedVelocityField,(void*)data);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
