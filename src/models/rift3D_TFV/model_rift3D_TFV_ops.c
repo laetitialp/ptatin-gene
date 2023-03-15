@@ -172,6 +172,7 @@ static PetscErrorCode ModelInitialize_Rift3D_T(pTatinCtx c,void *ctx)
   ierr = MaterialConstantsSetValues_EnergyMaterialConstants(1,matconstants_e,0.0,0.0,rho_ref,Cp,ENERGYDENSITY_CONSTANT,ENERGYCONDUCTIVITY_CONSTANT,NULL);CHKERRQ(ierr);
   EnergyMaterialConstantsSetFieldAll_SourceMethod(&matconstants_e[1],ENERGYSOURCE_NONE);
   EnergyMaterialConstantsSetFieldByIndex_SourceMethod(&matconstants_e[1],0,ENERGYSOURCE_CONSTANT);
+  EnergyMaterialConstantsSetFieldByIndex_SourceMethod(&matconstants_e[1],0,ENERGYSOURCE_SHEAR_HEATING);
 
   MaterialConstantsSetValues_MaterialType(materialconstants,2,VISCOUS_FRANKK,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_BOUSSINESQ);
   MaterialConstantsSetValues_ViscosityFK(materialconstants,2,1.0e30,0.018);

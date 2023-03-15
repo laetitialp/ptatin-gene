@@ -908,16 +908,6 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
 
   /* material geometry */
   ierr = pTatinModel_ApplyInitialMaterialGeometry(model,user);CHKERRQ(ierr);
-  if (active_energy) {
-    //SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Requires update for FV support");
-    PetscPrintf(PETSC_COMM_WORLD,"********* <FV SUPPORT NOTE> IS THIS REQUIRED?? pTatinPhysCompEnergy_MPProjectionQ1 ****************\n");
-    
-    ierr = EnergyFVEvaluateCoefficients(user,0.0,energyfv,NULL,NULL);CHKERRQ(ierr);
-    
-    ierr = pTatinPhysCompEnergyFV_MPProjection(energyfv,user);CHKERRQ(ierr);
-    
-    ierr = FVDACellPropertyProjectToFace_HarmonicMean(energyfv->fv,"k","k");CHKERRQ(ierr);
-  }
   DataBucketView(PetscObjectComm((PetscObject)multipys_pack), materialpoint_db,"MaterialPoints StokesCoefficients",DATABUCKET_VIEW_STDOUT);
 
   /* boundary conditions */
@@ -1087,6 +1077,17 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
       //SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Requires update for FV support");
       //ierr = BCListInsert(energy->T_bclist,T);CHKERRQ(ierr);
     }
+  }
+
+  if (active_energy) {
+    //SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Requires update for FV support");
+    PetscPrintf(PETSC_COMM_WORLD,"********* <FV SUPPORT NOTE> IS THIS REQUIRED?? pTatinPhysCompEnergy_MPProjectionQ1 ****************\n");
+    
+    ierr = EnergyFVEvaluateCoefficients(user,0.0,energyfv,NULL,X);CHKERRQ(ierr);
+    
+    ierr = pTatinPhysCompEnergyFV_MPProjection(energyfv,user);CHKERRQ(ierr);
+    
+    ierr = FVDACellPropertyProjectToFace_HarmonicMean(energyfv->fv,"k","k");CHKERRQ(ierr);
   }
 
   /* output ic */
@@ -1417,7 +1418,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
 
     // [FV EXTENSION] (1) Evaluate thermal properties on material points, project onto FV cell / cell faces
     if (active_energy) {
-      ierr = EnergyFVEvaluateCoefficients(user,0.0,energyfv,NULL,NULL);CHKERRQ(ierr);
+      ierr = EnergyFVEvaluateCoefficients(user,0.0,energyfv,NULL,X);CHKERRQ(ierr);
       
       ierr = pTatinPhysCompEnergyFV_MPProjection(energyfv,user);CHKERRQ(ierr);
       

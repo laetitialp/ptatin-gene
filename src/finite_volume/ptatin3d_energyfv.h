@@ -33,7 +33,7 @@ PetscErrorCode ptatin_macro_get_nested_fv_rank_local(
                      PetscInt q2_cell,const PetscInt q2_m[],const PetscInt sub_m[],
                      const PetscInt fv_m[],PetscInt fv_cell[]);
 
-PetscErrorCode EnergyFVEvaluateCoefficients(pTatinCtx user,PetscReal time,PhysCompEnergyFV efv,PetscScalar LA_T[],PetscScalar LA_U[]);
+PetscErrorCode EnergyFVEvaluateCoefficients(pTatinCtx user,PetscReal time,PhysCompEnergyFV efv,PetscScalar LA_T[],Vec X);
 
 PetscErrorCode MaterialPointOrderingCreate_Cellwise(int nkeys,
                                                     int L,const MPntStd point[],
