@@ -52,7 +52,7 @@
 -model_rift_nitsche_norm_u 1.0 # cm/yr
 -model_rift_nitsche_alpha_u 45.0 #90.0 # Degree
 -model_rift_nitsche_alpha_r #-15.0 # Degree
--model_rift_nitsche_mathcalH 0,1,0,1,0,0 # default
+-model_rift_nitsche_mathcalH 0,1,0,1,1,1 # default
 -model_rift_nitsche_Ttop 0.0
 -model_rift_nitsche_Tbottom 1450.0
 ########### SPM ##########

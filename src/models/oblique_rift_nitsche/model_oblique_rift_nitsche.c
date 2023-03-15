@@ -490,6 +490,7 @@ static PetscErrorCode ModelSetMaterialParametersVPT_RiftNitsche(pTatinCtx c,Data
 
   /* Set default values for parameters */
   source_type[0] = ENERGYSOURCE_CONSTANT;
+  source_type[1] = ENERGYSOURCE_SHEAR_HEATING;
   Cp             = 800.0;
   /* Set material parameters from options file */
   for (region_idx=0; region_idx<data->n_phases; region_idx++) {
@@ -2146,12 +2147,14 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_RiftNitsche(pTatinCtx c,Vec X,void *
 static PetscErrorCode ModelOutputMarkerFields_RiftNitsche(pTatinCtx c,const char prefix[])
 {
   DataBucket               materialpoint_db;
-  const int                nf = 3;
-  const MaterialPointField mp_prop_list[] = { MPField_Std, MPField_Stokes, MPField_StokesPl};//, MPField_Energy };
+  int                      nf;
+  const MaterialPointField mp_prop_list[] = { MPField_Std, MPField_Stokes, MPField_StokesPl, MPField_Energy };
   char                     mp_file_prefix[256];
   PetscErrorCode           ierr;
 
   PetscFunctionBegin;
+
+  nf = sizeof(mp_prop_list)/sizeof(mp_prop_list[0]);
 
   ierr = pTatinGetMaterialPoints(c,&materialpoint_db,NULL);CHKERRQ(ierr);
   sprintf(mp_file_prefix,"%s_mpoints",prefix);
