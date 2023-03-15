@@ -1096,7 +1096,6 @@ PetscErrorCode EnergyFVEvaluateCoefficients_MaterialPoints(pTatinCtx user,PetscR
             }
           }
           H_mp += 2.0 * eta_mp * J2_mp;
-          PetscPrintf(PETSC_COMM_WORLD,"[region: %d] eta_mp = %.4e, J2 = %.4e, H_mp = %.4e, rho_mp = %.4e, Cp = %.4e, Q = %.4e \n",region_idx, eta_mp, J2_mp, H_mp, rho_mp, Cp, H_mp/(rho_mp*Cp));
         }
           break;
           
