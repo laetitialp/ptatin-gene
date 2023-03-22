@@ -2048,13 +2048,26 @@ static PetscErrorCode ModelApplyTimeDependantEnergyBCs_RiftNitsche(pTatinCtx c,M
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ModelApplyPoissonPressureBoundaryConditions_RiftNitsche(pTatinCtx ptatin)
+{
+  PDESolveLithoP poisson_pressure;
+  PetscReal      zero=0.0;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  ierr = pTatinGetContext_LithoP(ptatin,&poisson_pressure);CHKERRQ(ierr);
+  /* P = 0 at surface */
+  ierr = DMDABCListTraverse3d(poisson_pressure->bclist,poisson_pressure->da,DMDABCList_JMAX_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode ModelApplyBoundaryConditions_RiftNitsche(pTatinCtx c,void *ctx)
 {
   ModelRiftNitscheCtx *data = (ModelRiftNitscheCtx*)ctx;
   PhysCompStokes      stokes;
   DM                  stokes_pack,dav,dap;
   Vec                 X = NULL;
-  PetscBool           active_energy;
+  PetscBool           active_energy,active_poisson;
   PetscErrorCode      ierr;
 
   PetscFunctionBegin;
@@ -2072,9 +2085,15 @@ PetscErrorCode ModelApplyBoundaryConditions_RiftNitsche(pTatinCtx c,void *ctx)
   ierr = ModelApplyBoundaryConditionsVelocity_RiftNitsche(stokes->dav,stokes->u_bclist,stokes->surf_bclist,PETSC_TRUE,data);CHKERRQ(ierr);
 
   /* Define boundary conditions for any other physics */
+  /* Temperature */
   ierr = pTatinContextValid_EnergyFV(c,&active_energy);CHKERRQ(ierr);
   if (active_energy) {
     ierr = ModelApplyTimeDependantEnergyBCs_RiftNitsche(c,data);CHKERRQ(ierr);
+  }
+  /* Poisson Pressure */
+  ierr = pTatinContextValid_LithoP(c,&active_poisson);CHKERRQ(ierr);
+  if (active_poisson) {
+    ierr = ModelApplyPoissonPressureBoundaryConditions_RiftNitsche(c);CHKERRQ(ierr);
   }
   PetscFunctionReturn(0);
 }
@@ -2148,7 +2167,7 @@ static PetscErrorCode ModelOutputMarkerFields_RiftNitsche(pTatinCtx c,const char
 {
   DataBucket               materialpoint_db;
   int                      nf;
-  const MaterialPointField mp_prop_list[] = { MPField_Std, MPField_Stokes, MPField_StokesPl, MPField_Energy };
+  const MaterialPointField mp_prop_list[] = { MPField_Std, MPField_Stokes, MPField_StokesPl};//, MPField_Energy };
   char                     mp_file_prefix[256];
   PetscErrorCode           ierr;
 
