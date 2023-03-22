@@ -40,6 +40,7 @@
 #include "stokes_rheology_viscous.h"
 #include "stokes_rheology_vp_std.h"
 #include "stokes_rheology_lava.h"
+#include "litho_pressure_PDESolve.h"
 
 
 PetscErrorCode RheologyConstantsInitialise(RheologyConstants *R)
@@ -203,6 +204,7 @@ PetscErrorCode pTatin_EvaluateRheologyNonlinearities(pTatinCtx user,DM dau,Petsc
   PetscFunctionBegin;
 
   ierr = pTatin_EvaluateRheologyNonlinearitiesMarkers(user,dau,u,dap,p);CHKERRQ(ierr);
+  ierr = AverageVolumeQuadraturePointsToSurfaceQuadraturePointsStokes(user);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }

@@ -44,6 +44,7 @@ typedef struct _p_PhysCompStokes *PhysCompStokes;
 typedef struct _p_PhysCompEnergy *PhysCompEnergy;
 typedef struct _p_Quadrature *Quadrature;
 typedef struct _p_SurfaceQuadrature *SurfaceQuadrature;
+typedef struct _p_PDESolveLithoP *PDESolveLithoP;
 
 typedef enum { LINE_QUAD=0,SURFACE_QUAD,VOLUME_QUAD } QuadratureType;
 
