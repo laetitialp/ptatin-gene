@@ -452,7 +452,7 @@ PetscErrorCode ModelRift3D_T_DefineBCList(BCList bclist,DM dav,pTatinCtx user,Mo
 PetscErrorCode ModelApplyBoundaryCondition_Rift3D_T(pTatinCtx user,void *ctx)
 {
   ModelRift3D_TCtx *data = (ModelRift3D_TCtx*)ctx;
-  PetscBool        active_energy;
+  PetscBool        active_energy,pp_active;
   PetscErrorCode   ierr;
 
   PetscFunctionBegin;
@@ -490,6 +490,14 @@ PetscErrorCode ModelApplyBoundaryCondition_Rift3D_T(pTatinCtx user,void *ctx)
       val_T = data->Ttop;
       ierr = DMDABCListTraverse3d(bclist,daT,DMDABCList_JMAX_LOC,0,BCListEvaluator_constant,(void*)&val_T);CHKERRQ(ierr);
     }
+  }
+
+  ierr = pTatinContextValid_LithoP(user,&pp_active); 
+  if (pp_active) {
+    PDESolveLithoP poisson_pressure;
+    PetscReal      zero=0.0;
+    ierr = pTatinGetContext_LithoP(user,&poisson_pressure);CHKERRQ(ierr);
+    ierr = DMDABCListTraverse3d(poisson_pressure->bclist,poisson_pressure->da,DMDABCList_JMAX_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
   }
 
   PetscFunctionReturn(0);
