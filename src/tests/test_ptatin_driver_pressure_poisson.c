@@ -220,10 +220,6 @@ static PetscErrorCode pTatin3d_PoissonPressure_FromModelICState(int argc,char **
   ierr = pTatinModel_ApplyInitialMaterialGeometry(model,ptatin);CHKERRQ(ierr);
   DataBucketView(PetscObjectComm((PetscObject)multipys_pack), materialpoint_db,"MaterialPoints StokesCoefficients",DATABUCKET_VIEW_STDOUT);
 
-  /* work vector for solution and residual */
-  ierr = DMCreateGlobalVector(multipys_pack,&X_stokes);CHKERRQ(ierr);
-  //ierr = pTatinPhysCompAttachData_Stokes(ptatin,X_stokes);CHKERRQ(ierr);
-
   /* initial condition */
   ierr = pTatinModel_ApplyInitialSolution(model,ptatin,X_stokes);CHKERRQ(ierr);
 
