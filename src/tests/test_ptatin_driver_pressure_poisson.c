@@ -57,24 +57,24 @@ static PetscErrorCode ProjectStokesVariablesOnQuadraturePoints_PressurePoisson(p
     case 0:     /* Perform P0 projection over Q2 element directly onto quadrature points */
       //SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"P0 [arithmetic avg] marker->quadrature projection not supported");
             ierr = MPntPStokesProj_P0(CoefAvgARITHMETIC,npoints,mp_std,mp_stokes,stokes->dav,stokes->volQ);CHKERRQ(ierr);
-            //ierr = QPntSurfCoefStokes_ProjectP0_Surface(stokes->mfi,stokes->volQ,stokes->surfQ);CHKERRQ(ierr);
+            ierr = QPntSurfCoefStokes_ProjectP0_Surface(stokes->mfi,stokes->volQ,stokes->surfQ);CHKERRQ(ierr);
       break;
     case 10:
       //SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"P0 [harmonic avg] marker->quadrature projection not supported");
             ierr = MPntPStokesProj_P0(CoefAvgHARMONIC,npoints,mp_std,mp_stokes,stokes->dav,stokes->volQ);CHKERRQ(ierr);
-            //ierr = QPntSurfCoefStokes_ProjectP0_Surface(stokes->mfi,stokes->volQ,stokes->surfQ);CHKERRQ(ierr);
+            ierr = QPntSurfCoefStokes_ProjectP0_Surface(stokes->mfi,stokes->volQ,stokes->surfQ);CHKERRQ(ierr);
       break;
     case 20:
       //SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"P0 [geometric avg] marker->quadrature projection not supported");
             ierr = MPntPStokesProj_P0(CoefAvgGEOMETRIC,npoints,mp_std,mp_stokes,stokes->dav,stokes->volQ);CHKERRQ(ierr);
-            //ierr = QPntSurfCoefStokes_ProjectP0_Surface(stokes->mfi,stokes->volQ,stokes->surfQ);CHKERRQ(ierr);
+            ierr = QPntSurfCoefStokes_ProjectP0_Surface(stokes->mfi,stokes->volQ,stokes->surfQ);CHKERRQ(ierr);
       break;
     case 30:
       SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"P0 [dominant phase] marker->quadrature projection not supported");
       break;
 
     case 1:     /* Perform Q1 projection over Q2 element and interpolate back to quadrature points */
-      ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes(npoints,mp_std,mp_stokes,stokes->dav,stokes->volQ);CHKERRQ(ierr);
+      ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes(npoints,mp_std,mp_stokes,stokes->dav,stokes->volQ,stokes->surfQ,stokes->mfi);CHKERRQ(ierr);
       break;
 
     case 2:       /* Perform Q2 projection and interpolate back to quadrature points */
@@ -207,7 +207,7 @@ static PetscErrorCode pTatin3d_PoissonPressure_FromModelICState(int argc,char **
 
   /* work vector for solution and residual (Not used in this driver but necessary for the BC function) */
   ierr = DMCreateGlobalVector(multipys_pack,&X_stokes);CHKERRQ(ierr);
-  //ierr = pTatinPhysCompAttachData_Stokes(ptatin,X_stokes);CHKERRQ(ierr);
+  ierr = pTatinPhysCompAttachData_Stokes(ptatin,X_stokes);CHKERRQ(ierr);
 
   /* Create Poisson Pressure struct */
   ierr = pTatinPhysCompActivate_LithoP(ptatin,PETSC_TRUE);CHKERRQ(ierr);
@@ -300,7 +300,7 @@ static PetscErrorCode pTatin3d_LoadModelDefinition_FromFile(pTatinCtx *pctx, Vec
   
   /* work vector for solution */
   ierr = DMCreateGlobalVector(dmstokes,&X_stokes);CHKERRQ(ierr);
-  //ierr = pTatinPhysCompAttachData_Stokes(ptatin,X_stokes);CHKERRQ(ierr);
+  ierr = pTatinPhysCompAttachData_Stokes(ptatin,X_stokes);CHKERRQ(ierr);
 
   /* initial condition - call ptatin method, then clobber */
   ierr = pTatinModel_ApplyInitialSolution(model,ptatin,X_stokes);CHKERRQ(ierr);
@@ -346,7 +346,7 @@ static PetscErrorCode pTatin3d_PoissonPressure_FromFile(pTatinCtx ptatin, Vec v1
     X_stokes = v1;
   } else {
     ierr = DMCreateGlobalVector(dmstokes,&X_stokes);CHKERRQ(ierr);
-    //ierr = pTatinPhysCompAttachData_Stokes(ptatin,X_stokes);CHKERRQ(ierr);
+    ierr = pTatinPhysCompAttachData_Stokes(ptatin,X_stokes);CHKERRQ(ierr);
   }
 
   /* Create Poisson Pressure struct */
