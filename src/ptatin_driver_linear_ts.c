@@ -1125,8 +1125,6 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
     ierr = pTatinModel_Output(user->model,user,X,"icbc");CHKERRQ(ierr);
   }
 
-  ierr = ModelApplyTractionFromLithoPressure(user,X);
-
   ierr = SNESCreate(PETSC_COMM_WORLD,&snes);CHKERRQ(ierr);
   ierr = SNESSetFunction(snes,F,FormFunction_Stokes,user);CHKERRQ(ierr);
   ierr = SNESSetJacobian(snes,A,B,FormJacobian_Stokes,user);CHKERRQ(ierr);
