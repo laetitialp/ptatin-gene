@@ -2341,7 +2341,7 @@ PetscErrorCode Run_NonLinearFV(pTatinCtx user,Vec v1,Vec v2)
       ierr = FVDACellPropertyProjectToFace_HarmonicMean(energyfv->fv,"k","k");CHKERRQ(ierr);
       
       ierr = EvalRHS_HeatProd(energyfv->fv,energyfv->G);CHKERRQ(ierr);
-      /* Scale by dt, note the minus sign */
+      /* Scale by dt */
       ierr = VecScale(energyfv->G,energyfv->dt);CHKERRQ(ierr);
     }
     
