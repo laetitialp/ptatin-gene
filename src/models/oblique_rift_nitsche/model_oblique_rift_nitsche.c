@@ -415,6 +415,10 @@ static PetscErrorCode ModelSetGeneralSlipBoundaryValues_RiftNitsche(ModelRiftNit
       ierr = ModelSetGeneralSlipBoundaryValues_RotatedVelocityField(data);CHKERRQ(ierr);
       break;
 
+    case 4:
+      ierr = ModelSetGeneralSlipBoundaryValues_RotatedVelocityField(data);CHKERRQ(ierr);
+      break;
+
     default:
       SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"bc_type must be set with one of the bc options\n");
       break;
@@ -710,6 +714,8 @@ static PetscErrorCode ModelSetWeakZoneParameters_RiftNitsche(ModelRiftNitscheCtx
   } else if (wz_straight_gauss) {
     data->wz_type = 5;
     PetscPrintf(PETSC_COMM_WORLD,"Type %d: [[ STRAIGHT GAUSSIAN ]]\n",data->wz_type);
+  } else {
+    PetscPrintf(PETSC_COMM_WORLD,"[[ WARNING ]]  No weak zone type chosen, setting initial plastic strain to 0\n");
   }
 
   data->wz_centre_type = -1;
@@ -812,7 +818,8 @@ static PetscErrorCode ModelScaleParameters_RiftNitsche(DataBucket materialconsta
 
 static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
 {
-  PetscBool      bc_nitsche,bc_dirichlet,bc_freeslip_nitsche,bc_strikeslip,bc_u_func_atan,found;
+  PetscBool      bc_nitsche,bc_dirichlet,bc_freeslip_nitsche;
+  PetscBool      bc_strikeslip,bc_u_func_atan,bc_strike_analogue,found;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -822,11 +829,13 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
   bc_dirichlet           = PETSC_FALSE;
   bc_freeslip_nitsche    = PETSC_FALSE;
   bc_strikeslip          = PETSC_FALSE;
+  bc_strike_analogue     = PETSC_FALSE;
   bc_u_func_atan         = PETSC_FALSE;
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_nitsche",&bc_nitsche,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_dirichlet",&bc_dirichlet,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_freeslip_nitsche",&bc_freeslip_nitsche,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_strike_slip",&bc_strikeslip,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_strike_analogue",&bc_strike_analogue,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_u_func_atan",&bc_u_func_atan,&found);CHKERRQ(ierr);
 
   /* Replace boolean by int for switch */
@@ -843,6 +852,9 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
   } else if (bc_strikeslip) {
     data->bc_type = 3;
     PetscPrintf(PETSC_COMM_WORLD,"[[ BC TYPE %d: Rotated Strike-Slip Navier-slip ACTIVATED ]]\n",data->bc_type);
+  } else if (bc_strike_analogue) {
+    data->bc_type = 4;
+    PetscPrintf(PETSC_COMM_WORLD,"[[ BC TYPE %d: Analogue model BCs (base driven) ACTIVATED ]]\n",data->bc_type);
   }
 
   data->u_func_type = 0;
@@ -1314,9 +1326,8 @@ static PetscErrorCode ModelSetInitialWeakZoneGeometry_RiftNitsche(MPntPStokesPl 
       break;
 
     default:
-      PetscPrintf(PETSC_COMM_WORLD,"[[ WARNING ]]  No weak zone type chosen, setting initial plastic strain to 0\n");
       MPntPStokesPlSetField_yield_indicator(mpprop_pls,0);
-      MPntPStokesPlSetField_plastic_strain(mpprop_pls,0.0);
+      MPntPStokesPlSetField_plastic_strain(mpprop_pls, ptatin_RandomNumberGetDouble(0.0,0.03) );
       break;
   }
   PetscFunctionReturn(0);
@@ -1551,6 +1562,10 @@ static PetscErrorCode ModelApplyInitialVelocityField_RiftNitsche(DM dau, Vec vel
       break;
 
     case 3:
+      ierr = ModelApplyInitialVelocityField_RotatedVelocityField(dau,velocity,data);CHKERRQ(ierr);
+      break;
+
+    case 4:
       ierr = ModelApplyInitialVelocityField_RotatedVelocityField(dau,velocity,data);CHKERRQ(ierr);
       break;
 
@@ -1991,6 +2006,62 @@ static PetscErrorCode ModelApplyRotatedStrikeSlipNavierSlip_RiftNitsche(DM dav, 
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode BCListEvaluator_SplitFace(PetscScalar position[], PetscScalar *value, void *ctx)
+{
+  PetscReal *input = (PetscReal*)ctx;
+  PetscReal x0,x1,v0,v1;
+  PetscInt  dim;
+  PetscBool impose = PETSC_TRUE;
+
+  PetscFunctionBegin;
+  x0 = input[0];
+  x1 = input[1];
+  v0 = input[2];
+  v1 = -v0;
+  dim = (int)input[3];
+
+  if (position[dim] < x0) {
+    *value = v0;
+  } else if (position[dim] > x1) {
+    *value = v1;
+  } else {
+    *value = v1+(position[dim]-x1)*(v0-v1)/(x0-x1);
+  }
+  PetscFunctionReturn(impose);
+}
+
+static PetscErrorCode ModelApplyAnalogueBoundaryConditions(DM dav, BCList bclist, ModelRiftNitscheCtx *data)
+{
+  PetscReal      bc_data[4],zero=0.0,u_bot;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  
+  bc_data[0] = 290.0e3 / data->length_bar; // x0
+  bc_data[1] = 310.0e3 / data->length_bar; // x1 
+  bc_data[2] = data->u_bc[0];              // v0
+  bc_data[3] = 2;                          // dim (typecasted to (int) in the function)
+
+  /* x normal faces apply vx and -vx with a split in the middle of the face */
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_SplitFace,(void*)bc_data);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_SplitFace,(void*)bc_data);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+
+  /* z normal  */
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+
+  /* y normal apply vx and -vx with a split in the middle of the face */
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,0,BCListEvaluator_SplitFace,(void*)bc_data);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  /* Apply base y velocity from u.n */
+  u_bot = data->u_bc[1];
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&u_bot);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode ModelApplyBoundaryConditionsVelocity_RiftNitsche(DM dav, BCList bclist,SurfBCList surflist,PetscBool insert_if_not_found,ModelRiftNitscheCtx *data)
 {
   PetscErrorCode ierr;
@@ -2015,6 +2086,10 @@ static PetscErrorCode ModelApplyBoundaryConditionsVelocity_RiftNitsche(DM dav, B
 
     case 3:
       ierr = ModelApplyRotatedStrikeSlipNavierSlip_RiftNitsche(dav,bclist,surflist,insert_if_not_found,data);CHKERRQ(ierr);
+      break;
+
+    case 4:
+      ierr = ModelApplyAnalogueBoundaryConditions(dav,bclist,data);CHKERRQ(ierr);
       break;
 
     default:
