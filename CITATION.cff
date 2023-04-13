@@ -1,0 +1,90 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: pTatin3D
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Dave A.
+    family-names: May
+    email: dmay@ucsd.edu
+    affiliation: >-
+      Institute of Geophysics and Planetary Physics, Scripps
+      Institution of Oceanography, UC San Diego, La Jolla,
+      CA, USA
+    orcid: 'https://orcid.org/0000-0003-2471-7498'
+  - given-names: 'Jed '
+    family-names: Brown
+    email: jed.brown@colorado.edu
+  - given-names: Laetitia
+    family-names: Le Pourhiet
+    email: laetitia.le_pourhiet@sorbonne-universite.fr
+    affiliation: Sorbonne University
+    orcid: 'https://orcid.org/0000-0001-9495-4742'
+identifiers:
+  - type: doi
+    value: 10.1109/SC.2014.28
+    description: >-
+      pTatin3D: High-performance Methods for Long-term
+      Lithospheric Dynamics
+  - type: doi
+    value: 10.1016/j.cma.2015.03.014
+    description: >-
+      A scalable, matrix-free multigrid preconditioner for
+      finite element discretizations of heterogeneous Stokes
+      flow
+repository-code: 'https://bitbucket.org/dmay/ptatin-total-dev'
+abstract: >-
+  pTatin3D is a software package designed for studying long
+  time-scale processes relevant to geodynamics. The original
+  motivation for this development was to provide the
+  community with an open-source toolkit capable of studying
+  high-resolution, three-dimensional models of lithospheric
+  deformation.
+keywords:
+  - >-
+    mixed finite elements (Q2-P1_disc) for the Stokes
+    problem
+  - >-
+    material points for tracking Lagrangian state and
+    history variables
+  - ALE formulations (with a variety of remeshing solutions)
+  - >-
+    extensible rheology components (currently supports:
+    iso-viscous, Frank-Kamenetskii, Arrhenius, power-law,
+    von Mises, Drucker Prager)
+  - >-
+    full support for spatio-temporal Dirichlet and non-zero
+    Neumann boundary conditions
+  - full support for Newton and Picard non-linear solvers
+  - massively parallel implementation
+license: GPL-3.0
+references:
+  \@inproceedings{May:2014:PHM:2683593.2683624,
+    author = {May, Dave A. and Brown, Jed and Le Pourhiet, Laetitia},
+    title = {pTatin3D: High-performance Methods for Long-term Lithospheric Dynamics},
+    booktitle = {Proceedings of the International Conference for High Performance Computing, Networking, Storage and Analysis},
+    series = {SC '14},
+    year = {2014},
+    isbn = {978-1-4799-5500-8},
+    location = {New Orleans, Louisana},
+    pages = {274--284},
+    numpages = {11},
+    url = {http://dx.doi.org/10.1109/SC.2014.28},
+    doi = {10.1109/SC.2014.28},
+    acmid = {2683624},
+    publisher = {IEEE Press},
+    address = {Piscataway, NJ, USA},
+    keywords = {geodynamics, matrix-free, multilevel preconditioners, stokes, variable viscosity, vectorization},
+  }
+    \@article{May_etal:2015:cmame,
+    author = {May, Dave A. and Brown, Jed and Le Pourhiet, Laetitia},
+    title = {A scalable, matrix-free multigrid preconditioner for finite element discretizations of heterogeneous Stokes flow},
+    journals = {Computer Methods in Applied Mechanics and Engineering},
+    volume = {290},
+    pages = {496--523},
+    year = {2015}
+  }
