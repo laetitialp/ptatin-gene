@@ -1143,3 +1143,69 @@ PetscErrorCode _DMDACoordinateRefinementTransferFunction(DM da,PetscInt dir,Pets
   PetscFunctionReturn(0);
 }
 
+/*
+Set uniformily spaced nodes on a spherical region in cartesian coordinates 
+from spherical min,max coordinates input.
+Inspired from Petsc function DMDASetUniformCoordinates()
+The indexing respects pTatin convention: the y coordinate is the vertical
+and
+JMIN is the deepest layer
+JMAX is the surface layer
+IMIN is the xmin face
+IMAX is the xmax face 
+KMIN is the zmin face 
+KMAX is the zmax face
+*/
+PetscErrorCode DMDASetUniformSphericalToCartesianCoordinates(DM da, 
+                                                             PetscReal theta_min, 
+                                                             PetscReal theta_max, 
+                                                             PetscReal r_min, 
+                                                             PetscReal r_max, 
+                                                             PetscReal phi_min, 
+                                                             PetscReal phi_max)
+{
+  MPI_Comm       comm;
+  DM             cda;
+  Vec            coord;
+  PetscScalar   *LA_coords;
+  PetscReal      h_theta, h_r, h_phi, r, theta, phi;
+  PetscInt       i, j, k, M, N, P, istart, isize, jstart, jsize, kstart, ksize, dim, cnt;
+  PetscErrorCode ierr;
+
+  ierr = DMDAGetInfo(da, &dim, &M, &N, &P, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+  ierr = PetscObjectGetComm((PetscObject)da, &comm);CHKERRQ(ierr);
+
+  if (theta_min > theta_max) { SETERRQ2(comm,PETSC_ERR_USER,"theta_max must be larger than theta_min: (theta_max = %1.4e, theta_min = %1.4e)",theta_max,theta_min); }
+  if (r_min > r_max)         { SETERRQ2(comm,PETSC_ERR_USER,"r_max must be larger than r_min: (r_max = %1.4e, r_min = %1.4e)",r_max,r_min); }
+  if (phi_min > phi_max)     { SETERRQ2(comm,PETSC_ERR_USER,"phi_max must be larger than phi_min: (phi_max = %1.4e, phi_min = %1.4e)",phi_max,phi_min); }
+
+  ierr = DMDAGetCorners(da, &istart, &jstart, &kstart, &isize, &jsize, &ksize);CHKERRQ(ierr); 
+  ierr = DMGetCoordinateDM(da, &cda);CHKERRQ(ierr);
+  ierr = DMCreateGlobalVector(cda, &coord);CHKERRQ(ierr);
+
+  /* compute uniform step in each direction */
+  h_theta = (theta_max - theta_min) / (M - 1);
+  h_r     = (r_max - r_min)         / (N - 1);
+  h_phi   = (phi_max - phi_min)     / (P - 1);
+
+  ierr = VecGetArray(coord, &LA_coords);CHKERRQ(ierr);
+  cnt = 0;
+  for (k = 0; k < ksize; k++) {
+    for (j = 0; j < jsize; j++) {
+      for (i = 0; i < isize; i++) {
+
+        r     = r_min     + h_r     * (j + jstart);
+        theta = theta_max - h_theta * (i + istart); // keeps IMAX face as xmax and IMIN face as xmin
+        phi   = phi_min   + h_phi   * (k + kstart);
+
+        LA_coords[cnt++] = r * PetscCosReal(theta);
+        LA_coords[cnt++] = r * PetscSinReal(theta) * PetscCosReal(phi);
+        LA_coords[cnt++] = r * PetscSinReal(theta) * PetscSinReal(phi);
+      }
+    }
+  }
+  ierr = VecRestoreArray(coord, &LA_coords);CHKERRQ(ierr);
+  ierr = DMSetCoordinates(da, coord);CHKERRQ(ierr);
+  ierr = VecDestroy(&coord);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
