@@ -41,13 +41,15 @@
 #include "rheology.h"
 #include "material_constants.h"
 #include "ptatin3d_energyfv.h"
+#include "gravity.h"
 
 struct _p_pTatinCtx {
-  PhysCompStokes stokes_ctx;
-  PhysCompEnergy energy_ctx;
-  PDESolveLithoP litho_p_ctx;
-  //  PhysCompCoords coords_ctx;
+  PhysCompStokes   stokes_ctx;
+  PhysCompEnergy   energy_ctx;
+  PDESolveLithoP   litho_p_ctx;
+  //PhysCompCoords coords_ctx;
   PhysCompEnergyFV energyfv_ctx;
+  GravityModel     gravity_ctx;
 
   PetscBool  restart_from_file;
   char       restart_dir[PETSC_MAX_PATH_LEN];
@@ -55,9 +57,6 @@ struct _p_pTatinCtx {
   PetscReal  checkpoint_every_ncpumins;
   PetscBool  checkpoint_disable;
   PetscBool  use_mf_stokes;
-
-  /* rheology */
-  //RheologyConstants rheology_constants;
 
   /* Mesh size */
   PetscInt   mx,my,mz;
