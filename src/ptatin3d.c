@@ -614,9 +614,10 @@ PetscErrorCode pTatin3dCreateContext(pTatinCtx *ctx)
   ierr = PetscNew(&user);CHKERRQ(ierr);
 
   /* init */
-  user->stokes_ctx = NULL;
-  user->energy_ctx = NULL;
+  user->stokes_ctx  = NULL;
+  user->energy_ctx  = NULL;
   user->litho_p_ctx = NULL;
+  user->gravity_ctx = NULL;
 //  user->coords_ctx = NULL;
 
   user->pack     = NULL; /* DM composite for velocity and pressure */
@@ -678,6 +679,7 @@ PetscErrorCode pTatin3dDestroyContext(pTatinCtx *ctx)
   if (user->energyfv_ctx) { ierr = PhysCompEnergyFVDestroy(&user->energyfv_ctx);CHKERRQ(ierr); }
   if (user->energy_ctx) { ierr = PhysCompDestroy_Energy(&user->energy_ctx);CHKERRQ(ierr); }
   if (user->stokes_ctx) { ierr = PhysCompDestroy_Stokes(&user->stokes_ctx);CHKERRQ(ierr); }
+  if (user->gravity_ctx) { ierr = GravityModelDestroyCtx(&user->gravity_ctx);CHKERRQ(ierr); }
   if (user->pack) {       ierr = DMDestroy(&user->pack);CHKERRQ(ierr); }
 
   /*
