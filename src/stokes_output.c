@@ -412,3 +412,314 @@ PetscErrorCode SurfaceQuadratureViewParaview_Stokes2(SurfaceQuadrature surfQ, Me
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode _VolumeQuadratureViewParaviewVTU_Stokes(PhysCompStokes stokes,const char name[])
+{
+  
+  PetscInt          n,e,k,d,ngp,npoints;
+  Quadrature        volQ;
+  QPntVolCoefStokes *all_gausspoints,*cell_gausspoints;
+  FILE*             fp = NULL;
+  DM                stokes_pack,dau,dap,cda;
+  Vec               gcoords;
+  PetscScalar       *LA_gcoords;
+  double            elcoords[3*Q2_NODES_PER_EL_3D];
+  double            Ni[Q2_NODES_PER_EL_3D];
+  double            *gravity_vector,*momentum_rhs;
+  double            eta,rho,Fp,qp_coor[3],xp[3];
+  const PetscInt    *elnidx;
+  PetscInt          nel,nen;
+  int               c,npoints32;
+  PetscErrorCode    ierr;
+
+  PetscFunctionBegin;
+  if ((fp = fopen ( name, "w")) == NULL)  {
+    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
+  }
+
+  /* Get Stokes DMs */
+  stokes_pack = stokes->stokes_pack;
+  ierr = DMCompositeGetEntries(stokes_pack,&dau,&dap);CHKERRQ(ierr);
+  /* Get volume quadrature data structure */
+  volQ = stokes->volQ;
+  /* Get number of quadrature points per cell */
+  ngp  = volQ->npoints;
+
+  /* Get quadrature points data */
+  ierr = VolumeQuadratureGetAllCellData_Stokes(volQ,&all_gausspoints);CHKERRQ(ierr);
+
+  /* setup for coords */
+  ierr = DMGetCoordinateDM(dau,&cda);CHKERRQ(ierr);
+  ierr = DMGetCoordinatesLocal(dau,&gcoords);CHKERRQ(ierr);
+  ierr = VecGetArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
+
+  /* Element-nodes connectivity */
+  ierr = DMDAGetElements_pTatinQ2P1(dau,&nel,&nen,&elnidx);CHKERRQ(ierr);
+  /* Total number of quadrature points */
+  npoints = nel * ngp;
+  PetscMPIIntCast(npoints,&npoints32);
+  
+  /* VTU HEADER - OPEN */
+  fprintf(fp, "<?xml version=\"1.0\"?>\n");
+#ifdef WORDSIZE_BIGENDIAN
+  fprintf(fp, "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"BigEndian\">\n");
+#else
+  fprintf(fp, "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n");
+#endif
+  fprintf(fp, "  <UnstructuredGrid>\n");
+  fprintf(fp, "    <Piece NumberOfPoints=\"%d\" NumberOfCells=\"%d\" >\n",npoints32,npoints32);
+
+  /* POINT COORDS */
+  fprintf(fp, "    <Points>\n");
+  fprintf(fp, "      <DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n");
+  /* Loop over elements */
+  for (e=0; e<nel; e++) {
+    /* Get cell quadrature points data structure */
+    ierr = VolumeQuadratureGetCellData_Stokes(volQ,all_gausspoints,e,&cell_gausspoints);CHKERRQ(ierr);
+    /* Get element coordinates */
+    ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx[nen*e],LA_gcoords);CHKERRQ(ierr);
+    /* Loop over quadrature points */
+    for (n=0; n<ngp; n++) {
+
+      for (d=0; d<NSD; d++) {
+        qp_coor[d] = volQ->q_xi_coor[3*n + d];
+      }
+      /* Construct Q2 interpolation function */
+      pTatin_ConstructNi_Q2_3D( qp_coor, Ni );
+
+      xp[0] = xp[1] = xp[2] = 0.0;
+      for (k=0; k<Q2_NODES_PER_EL_3D; k++) {
+        for (d=0; d<NSD; d++) {
+          xp[d] += Ni[k] * elcoords[3*k + d];
+        }
+      }
+      fprintf(fp, "      %1.4e %1.4e %1.4e \n", xp[0], xp[1], xp[2] );
+    }
+  }
+  fprintf(fp, "      </DataArray>\n");
+  fprintf(fp, "    </Points>\n");
+
+  /* POINT-DATA HEADER - OPEN */
+  fprintf(fp, "    <PointData>\n");
+
+  /* POINT-DATA FIELDS */
+
+  /* viscosity */
+  fprintf(fp, "      <DataArray type=\"Float32\" Name=\"eta_effective\" NumberOfComponents=\"1\" format=\"ascii\">\n");
+  for (e=0; e<nel; e++) {
+    /* Get cell quadrature points data structure */
+    ierr = VolumeQuadratureGetCellData_Stokes(volQ,all_gausspoints,e,&cell_gausspoints);CHKERRQ(ierr);
+    for (n=0; n<ngp; n++) {
+      /* Get viscosity on quadrature point */
+      QPntVolCoefStokesGetField_eta_effective(&cell_gausspoints[n],&eta); 
+      fprintf(fp, "      %1.4e \n", eta );
+    }
+  }
+  fprintf(fp, "      </DataArray>\n");
+
+  /* density */
+  fprintf(fp, "      <DataArray type=\"Float32\" Name=\"rho_effective\" NumberOfComponents=\"1\" format=\"ascii\">\n");
+  for (e=0; e<nel; e++) {
+    /* Get cell quadrature points data structure */
+    ierr = VolumeQuadratureGetCellData_Stokes(volQ,all_gausspoints,e,&cell_gausspoints);CHKERRQ(ierr);
+    for (n=0; n<ngp; n++) {
+      /* Get viscosity on quadrature point */
+      QPntVolCoefStokesGetField_rho_effective(&cell_gausspoints[n],&rho); 
+      fprintf(fp, "      %1.4e \n", rho );
+    }
+  }
+  fprintf(fp, "      </DataArray>\n");
+
+  /* momentum rhs */
+  fprintf(fp, "      <DataArray type=\"Float32\" Name=\"momentum_rhs\" NumberOfComponents=\"3\" format=\"ascii\">\n");
+  for (e=0; e<nel; e++) {
+    /* Get cell quadrature points data structure */
+    ierr = VolumeQuadratureGetCellData_Stokes(volQ,all_gausspoints,e,&cell_gausspoints);CHKERRQ(ierr);
+    for (n=0; n<ngp; n++) {
+      /* Get viscosity on quadrature point */
+      QPntVolCoefStokesGetField_momentum_rhs(&cell_gausspoints[n],&momentum_rhs);
+      fprintf(fp, "      %1.4e %1.4e %1.4e\n", momentum_rhs[0],momentum_rhs[1],momentum_rhs[2] );
+    }
+  }
+  fprintf(fp, "      </DataArray>\n");
+  
+  /* continuity_rhs */
+  fprintf(fp, "      <DataArray type=\"Float32\" Name=\"continuity_rhs\" NumberOfComponents=\"1\" format=\"ascii\">\n");
+  for (e=0; e<nel; e++) {
+    /* Get cell quadrature points data structure */
+    ierr = VolumeQuadratureGetCellData_Stokes(volQ,all_gausspoints,e,&cell_gausspoints);CHKERRQ(ierr);
+    for (n=0; n<ngp; n++) {
+      /* Get viscosity on quadrature point */
+      QPntVolCoefStokesGetField_continuity_rhs(&cell_gausspoints[n],&Fp); 
+      fprintf(fp, "      %1.4e \n", Fp );
+    }
+  }
+  fprintf(fp, "      </DataArray>\n");
+
+  /* gravity_vector */
+  fprintf(fp, "      <DataArray type=\"Float32\" Name=\"gravity_vector\" NumberOfComponents=\"3\" format=\"ascii\">\n");
+  for (e=0; e<nel; e++) {
+    /* Get cell quadrature points data structure */
+    ierr = VolumeQuadratureGetCellData_Stokes(volQ,all_gausspoints,e,&cell_gausspoints);CHKERRQ(ierr);
+    for (n=0; n<ngp; n++) {
+      /* Get viscosity on quadrature point */
+      QPntVolCoefStokesGetField_gravity_vector(&cell_gausspoints[n],&gravity_vector);
+      fprintf(fp, "      %1.4e %1.4e %1.4e\n", gravity_vector[0],gravity_vector[1],gravity_vector[2] );
+    }
+  }
+  fprintf(fp, "      </DataArray>\n");
+
+  
+  /* POINT-DATA HEADER - CLOSE */
+  fprintf(fp, "    </PointData>\n");
+
+
+
+  /* UNSTRUCTURED GRID DATA */
+  fprintf(fp, "    <Cells>\n");
+
+  // connectivity //
+  fprintf(fp, "      <DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n");
+  fprintf(fp,"      ");
+  for (c=0; c<npoints32; c++) {
+    fprintf(fp,"%d ", c);
+  }
+  fprintf(fp,"\n");
+  fprintf(fp, "      </DataArray>\n");
+
+  // offsets //
+  fprintf(fp, "      <DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n");
+  fprintf(fp,"      ");
+  for (c=0; c<npoints32; c++) {
+    fprintf(fp,"%d ", (c+1));
+  }
+  fprintf(fp,"\n");
+  fprintf(fp, "      </DataArray>\n");
+
+  // types //
+  fprintf(fp, "      <DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">\n");
+  fprintf(fp,"      ");
+  for (c=0; c<npoints32; c++) {
+    fprintf(fp,"%d ", 1);
+  }
+  fprintf(fp,"\n");
+  fprintf(fp, "      </DataArray>\n");
+
+  fprintf(fp, "    </Cells>\n");
+
+
+  /* VTU HEADER - CLOSE */
+  fprintf(fp, "    </Piece>\n");
+  fprintf(fp, "  </UnstructuredGrid>\n");
+  fprintf(fp, "</VTKFile>\n");
+
+  ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
+  fclose(fp);
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode _VolumeQuadratureViewParaviewPVTU_Stokes(const char prefix[],const char name[])
+{
+  PetscErrorCode ierr;
+  FILE* fp = NULL;
+  PetscMPIInt nproc;
+  PetscInt i,fe;
+  char *sourcename;
+
+  PetscFunctionBegin;
+  if ((fp = fopen ( name, "w")) == NULL)  {
+    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
+  }
+
+  /* PVTU HEADER - OPEN */
+  fprintf(fp, "<?xml version=\"1.0\"?>\n");
+  fprintf(fp, "<VTKFile type=\"PUnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n");
+  /* define size of the nodal mesh based on the cell DM */
+  fprintf(fp, "  <PUnstructuredGrid GhostLevel=\"0\">\n" ); /* note overlap = 0 */
+
+  /* POINT COORDS */
+  fprintf(fp, "    <PPoints>\n");
+  fprintf(fp, "      <PDataArray type=\"Float32\" Name=\"Points\" NumberOfComponents=\"3\"/>\n");
+  fprintf(fp, "    </PPoints>\n");
+
+  /* CELL-DATA HEADER - OPEN */
+  fprintf(fp, "    <PCellData>\n");
+  /* CELL-DATA HEADER - CLOSE */
+  fprintf(fp, "    </PCellData>\n");
+
+  /* POINT-DATA HEADER - OPEN */
+  fprintf(fp, "    <PPointData>\n");
+  /* POINT-DATA FIELDS */
+  fprintf(fp,"      <PDataArray type=\"Float32\" Name=\"eta_effective\" NumberOfComponents=\"1\"/>\n");
+  fprintf(fp,"      <PDataArray type=\"Float32\" Name=\"rho_effective\" NumberOfComponents=\"1\"/>\n");
+  fprintf(fp,"      <PDataArray type=\"Float32\" Name=\"momentum_rhs\" NumberOfComponents=\"3\"/>\n");
+  fprintf(fp,"      <PDataArray type=\"Float32\" Name=\"continuity_rhs\" NumberOfComponents=\"1\"/>\n");
+  fprintf(fp,"      <PDataArray type=\"Float32\" Name=\"gravity_vector\" NumberOfComponents=\"3\"/>\n");
+
+  /* POINT-DATA HEADER - CLOSE */
+  fprintf(fp, "    </PPointData>\n");
+
+
+  /* PVTU write sources */
+  ierr = MPI_Comm_size(PETSC_COMM_WORLD,&nproc);CHKERRQ(ierr);
+  for (i=0; i<nproc; i++) {
+    for (fe=0; fe<HEX_EDGES; fe++) {
+            int i32,fe32;
+
+            PetscMPIIntCast(i,&i32);
+            PetscMPIIntCast(fe,&fe32);
+
+      if (asprintf( &sourcename, "%s_face%.2d-subdomain%1.5d.vtu", prefix, fe32,i32 ) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+      fprintf( fp, "    <Piece Source=\"%s\"/>\n",sourcename);
+      free(sourcename);
+    }
+  }
+
+
+  /* PVTU HEADER - CLOSE */
+  fprintf(fp, "  </PUnstructuredGrid>\n");
+  fprintf(fp, "</VTKFile>\n");
+
+  fclose( fp );
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode VolumeQuadratureViewParaview_Stokes(PhysCompStokes stokes, const char path[], const char prefix[])
+{
+  char *vtkfilename,*filename;
+  PetscMPIInt rank;
+  char *appended;
+  PetscErrorCode ierr;
+  
+  PetscFunctionBegin;
+  ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&rank);CHKERRQ(ierr);
+
+  if (asprintf(&appended,"%s",prefix) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+  ierr = pTatinGenerateParallelVTKName(appended,"vtu",&vtkfilename);CHKERRQ(ierr);
+  if (path) {
+    if (asprintf(&filename,"%s/%s",path,vtkfilename) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+  } else {
+    if (asprintf(&filename,"./%s",vtkfilename) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+  }
+
+  ierr = _VolumeQuadratureViewParaviewVTU_Stokes(stokes,filename);CHKERRQ(ierr);
+
+  free(filename);
+  free(vtkfilename);
+  free(appended);
+  
+  if (asprintf(&appended,"%s",prefix) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+  ierr = pTatinGenerateVTKName(appended,"pvtu",&vtkfilename);CHKERRQ(ierr);
+  if (path) {
+    if (asprintf(&filename,"%s/%s",path,vtkfilename) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+  } else {
+    if (asprintf(&filename,"./%s",vtkfilename) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+  }
+  if (rank == 0) { /* not we are a bit tricky about which name we pass in here to define the edge data sets */
+    ierr = _VolumeQuadratureViewParaviewPVTU_Stokes(prefix,filename);CHKERRQ(ierr);
+  }
+  free(filename);
+  free(vtkfilename);
+  free(appended);
+  
+  PetscFunctionReturn(0);
+}
