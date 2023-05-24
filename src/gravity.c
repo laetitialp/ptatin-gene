@@ -540,6 +540,7 @@ PetscErrorCode GravityModelUpdateQuadraturePoints(PhysCompStokes stokes, QPntVol
   switch (gravity->gravity_type) {
     case CONSTANT:
       /* Nothing to do, it is constant */
+      ierr = QuadratureSetGravityModel_GravityConstant(stokes,all_gausspoints,gravity,body_forces);CHKERRQ(ierr);
       break;
 
     case RADIAL_CONSTANT:
