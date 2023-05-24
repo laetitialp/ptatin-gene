@@ -1651,6 +1651,8 @@ PetscErrorCode QPntVolCoefStokesComputeMemberOffsets(size_t property_offsets[])
   property_offsets[2] = s;
   ierr = _compute_memory_offsets(&stokes,&stokes.Fp,&s); CHKERRQ(ierr);
   property_offsets[3] = s;
+  ierr = _compute_memory_offsets(&stokes,&stokes.gravity_vector[0],&s); CHKERRQ(ierr);
+  property_offsets[4] = s;
 
   if (!been_here) {
     for (i=0; i<N; i++) {
