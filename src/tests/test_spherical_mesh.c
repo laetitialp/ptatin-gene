@@ -14,6 +14,8 @@
 #include "ptatin_log.h"
 #include "dmda_update_coords.h"
 #include "mesh_update.h"
+#include "dmda_remesh.h"
+#include "stokes_output.h"
 
 
 PetscErrorCode CartesianToSphericalCoords(DM da)
@@ -120,11 +122,11 @@ PetscErrorCode GenerateSphericalMesh()
   ierr = pTatin3dSetFromOptions(ptatin);CHKERRQ(ierr);
 
   O[0] = M_PI / 3.0; //0.0;
-  O[1] = 6375.0e3-1200e3;//650.0e3;
+  O[1] = 63.75-12.0; //6375.0e3-1200e3;//650.0e3;
   O[2] = -M_PI / 6.0; //0.0; 
 
   L[0] = M_PI / 1.5; //M_PI;
-  L[1] = 6375.0e3;
+  L[1] = 63.75; //6375.0e3;
   L[2] = M_PI / 6.0; //2.0*M_PI;
 
   PetscPrintf(PETSC_COMM_WORLD,"Box: Ox, Lx = [ %f, %f ]\n",O[0],L[0]);
@@ -142,7 +144,8 @@ PetscErrorCode GenerateSphericalMesh()
   ierr = DMCompositeGetEntries(stokes_pack,&dav,&dap);CHKERRQ(ierr);
   //ierr = DMDASetUniformCoordinates(dav,O[0],L[0],O[1],L[1],O[2],L[2]);CHKERRQ(ierr);
   //ierr = CartesianToSphericalCoords(dav);CHKERRQ(ierr);
-  ierr = DMDASetUniformCartesianCoordinatesFromSpherical(dav,O[0],L[0],O[1],L[1],O[2],L[2]);CHKERRQ(ierr);
+  //ierr = DMDASetUniformCartesianCoordinatesFromSpherical(dav,O[0],L[0],O[1],L[1],O[2],L[2]);CHKERRQ(ierr);
+  ierr = DMDASetUniformSphericalToCartesianCoordinates(dav,O[0],L[0],O[1],L[1],O[2],L[2]);CHKERRQ(ierr);
   ierr = DMDABilinearizeQ2Elements(dav);CHKERRQ(ierr);
 
   {
@@ -155,6 +158,29 @@ PetscErrorCode GenerateSphericalMesh()
   ierr = DMGetGlobalVector(stokes_pack,&X);CHKERRQ(ierr);
   ierr = DMCompositeGetAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
   ierr = VecZeroEntries(velocity);CHKERRQ(ierr);
+
+  /* Gravity */
+  {
+    GravityType gtype;
+    PetscReal gvec[] = {0.0,-9.8,0.0};
+    PetscReal gmag[] = {-9.8};
+
+    gtype = RADIAL_CONSTANT;
+
+    switch (gtype) {
+      case CONSTANT:
+        ierr = pTatinCreateGravityModel(ptatin,gtype,2.0,(void*)gvec);CHKERRQ(ierr);
+        break;
+      case RADIAL_CONSTANT:
+        ierr = pTatinCreateGravityModel(ptatin,gtype,2.0,(void*)gmag);CHKERRQ(ierr);
+        break;
+
+      default:
+        break;
+    }
+    ierr = pTatin_ApplyInitialStokesBodyForcesModel(ptatin);CHKERRQ(ierr);
+    ierr = VolumeQuadratureViewParaview_Stokes(stokes,ptatin->outputpath,"def");CHKERRQ(ierr);
+  }
 
   {
     PetscViewer viewer;
