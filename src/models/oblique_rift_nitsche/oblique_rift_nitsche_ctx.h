@@ -11,6 +11,7 @@ typedef struct {
   PetscInt  component,bc_type;
   PetscInt  u_func_type;
   PetscReal atan_sharpness,atan_offset;
+  PetscReal split_face_min[2],split_face_max[2];
   /* General Navier Slip BCs */
   PetscReal epsilon_s[6],H[6],t1_hat[3],n_hat[3];
   /* Number of materials */

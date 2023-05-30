@@ -791,6 +791,12 @@ static PetscErrorCode ModelScaleParameters_RiftNitsche(DataBucket materialconsta
 
   data->wz_width = data->wz_width / data->length_bar;
   for (i=0; i<2; i++) { data->wz_sigma[i] = data->wz_sigma[i] / data->length_bar; }
+  
+  for (i=0; i<2; i++) { 
+    data->split_face_max[i] = data->split_face_max[i] / data->length_bar;
+    data->split_face_min[i] = data->split_face_min[i] / data->length_bar; 
+  }
+
 
   /* Scale velocity */
   data->norm_u = data->norm_u*cm_per_year2m_per_sec / data->velocity_bar;
@@ -818,8 +824,9 @@ static PetscErrorCode ModelScaleParameters_RiftNitsche(DataBucket materialconsta
 
 static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
 {
-  PetscBool      bc_nitsche,bc_dirichlet,bc_freeslip_nitsche;
-  PetscBool      bc_strikeslip,bc_u_func_atan,bc_strike_analogue,found;
+  PetscBool      bc_nitsche,bc_dirichlet,bc_freeslip_nitsche,found;
+  PetscBool      bc_strikeslip,bc_u_func_atan,bc_strike_analogue;
+  PetscInt       nn;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -837,6 +844,28 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_strike_slip",&bc_strikeslip,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_strike_analogue",&bc_strike_analogue,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_u_func_atan",&bc_u_func_atan,&found);CHKERRQ(ierr);
+
+  /* Split face location for the analogue BCs */
+  data->split_face_min[0] = 290.0e3;
+  data->split_face_min[1] = 310.0e3;
+
+  data->split_face_max[0] = 290.0e3;
+  data->split_face_max[1] = 310.0e3;
+  nn = 2;
+  ierr = PetscOptionsGetRealArray(NULL, MODEL_NAME_R,"-bc_split_face_min",data->split_face_min,&nn,&found);CHKERRQ(ierr);
+  if (found) {
+    if (nn != 2) {
+      SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 2 values for -split_face_min. Found %d",nn);
+    }
+  }
+  nn = 2;
+  ierr = PetscOptionsGetRealArray(NULL, MODEL_NAME_R,"-bc_split_face_max",data->split_face_max,&nn,&found);CHKERRQ(ierr);
+  if (found) {
+    if (nn != 2) {
+      SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 2 values for -split_face_max. Found %d",nn);
+    }
+  }
+
 
   /* Replace boolean by int for switch */
   data->bc_type = -1;
@@ -2006,7 +2035,7 @@ static PetscErrorCode ModelApplyRotatedStrikeSlipNavierSlip_RiftNitsche(DM dav, 
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode BCListEvaluator_SplitFace(PetscScalar position[], PetscScalar *value, void *ctx)
+static PetscBool BCListEvaluator_SplitFace(PetscScalar position[], PetscScalar *value, void *ctx)
 {
   PetscReal *input = (PetscReal*)ctx;
   PetscReal x0,x1,v0,v1;
@@ -2037,13 +2066,15 @@ static PetscErrorCode ModelApplyAnalogueBoundaryConditions(DM dav, BCList bclist
 
   PetscFunctionBegin;
   
-  bc_data[0] = 290.0e3 / data->length_bar; // x0
-  bc_data[1] = 310.0e3 / data->length_bar; // x1 
+  bc_data[0] = data->split_face_min[0];    // x0
+  bc_data[1] = data->split_face_min[1];    // x1 
   bc_data[2] = data->u_bc[0];              // v0
   bc_data[3] = 2;                          // dim (typecasted to (int) in the function)
 
   /* x normal faces apply vx and -vx with a split in the middle of the face */
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_SplitFace,(void*)bc_data);CHKERRQ(ierr);
+  bc_data[0] = data->split_face_max[0];
+  bc_data[1] = data->split_face_max[1];
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_SplitFace,(void*)bc_data);CHKERRQ(ierr);
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
