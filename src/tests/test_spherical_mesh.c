@@ -164,9 +164,16 @@ PetscErrorCode GenerateSphericalMesh()
     GravityType gtype;
     PetscReal gvec[] = {0.0,-9.8,0.0};
     PetscReal gmag[] = {-9.8};
+    GravityConstant gc;
 
-    gtype = RADIAL_CONSTANT;
+    gtype = CONSTANT;
+    ierr = pTatinCreateGravityModel(ptatin,gtype,gvec);CHKERRQ(ierr);
+    //gc = (GravityConstant)ptatin->gravity_ctx->data;
+    ierr = GravityGetConstantCtx(ptatin->gravity_ctx,&gc);CHKERRQ(ierr);
+    PetscPrintf(PETSC_COMM_WORLD,"gvec = (%f, %f, %f), mag = %f\n",gc->gravity_const[0],gc->gravity_const[1],gc->gravity_const[2],gc->magnitude);
+    //gc->magnitude = 3.0;
 
+#if 0
     switch (gtype) {
       case CONSTANT:
         ierr = pTatinCreateGravityModel(ptatin,gtype,2.0,(void*)gvec);CHKERRQ(ierr);
@@ -180,6 +187,7 @@ PetscErrorCode GenerateSphericalMesh()
     }
     ierr = pTatin_ApplyInitialStokesBodyForcesModel(ptatin);CHKERRQ(ierr);
     ierr = VolumeQuadratureViewParaview_Stokes(stokes,ptatin->outputpath,"def");CHKERRQ(ierr);
+#endif
   }
 
   {

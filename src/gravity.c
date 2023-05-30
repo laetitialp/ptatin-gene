@@ -24,6 +24,291 @@ PetscErrorCode GravityModelCreateCtx(GravityModel *gravity)
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode GravityConstantCreateCtx(GravityConstant *ctx)
+{
+  PetscErrorCode  ierr;
+  GravityConstant gc;
+
+  PetscFunctionBegin;
+  ierr = PetscMalloc(sizeof(struct _p_GravityConstant),&gc);CHKERRQ(ierr);
+  ierr = PetscMemzero(gc,sizeof(struct _p_GravityConstant));CHKERRQ(ierr);
+  *ctx = gc;
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode GravityRadialConstantCreateCtx(GravityRadialConst *ctx)
+{
+  PetscErrorCode     ierr;
+  GravityRadialConst gc;
+
+  PetscFunctionBegin;
+  ierr = PetscMalloc(sizeof(struct _p_GravityRadialConst),&gc);CHKERRQ(ierr);
+  ierr = PetscMemzero(gc,sizeof(struct _p_GravityRadialConst));CHKERRQ(ierr);
+  *ctx = gc;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode GravityCreateTypeCtx(GravityModel gravity)
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  switch (gravity->gravity_type)
+  {
+    case CONSTANT:
+      {
+        GravityConstant gc;
+
+        ierr = GravityConstantCreateCtx(&gc);CHKERRQ(ierr);
+        gravity->data = (void*)gc;
+      }
+      break;
+
+    case RADIAL_CONSTANT:
+      {
+        GravityRadialConst grc;
+
+        ierr = GravityRadialConstantCreateCtx(&grc);CHKERRQ(ierr);
+        gravity->data = (void*)grc;
+      }
+      break;
+      
+    case RADIAL_VAR:
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"GravityType RADIAL_VAR is not implemented. Use CONSTANT or RADIAL_CONSTANT instead.");
+      break;
+
+    case ARBITRARY:
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"GravityType ARBITRARY is not implemented. Use CONSTANT or RADIAL_CONSTANT instead.");
+      break;
+
+    case POISSON:
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"GravityType POISSON is not implemented. Use CONSTANT or RADIAL_CONSTANT instead.");
+      break;
+
+    default:
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"No GravityType provided. Possible choices: CONSTANT, RADIAL_CONSTANT.");
+      break;
+  }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode GravityConstantDestroyCtx(GravityConstant *ctx)
+{
+  GravityConstant user;
+  PetscErrorCode  ierr;
+  PetscFunctionBegin;
+  if (!ctx)  { PetscFunctionReturn(0); }
+  user = *ctx;
+  if (!user) { PetscFunctionReturn(0); }
+  if (user)  { ierr = PetscFree(user);CHKERRQ(ierr); }
+  *ctx = NULL;
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode GravityRadialConstDestroyCtx(GravityRadialConst *ctx)
+{
+  GravityRadialConst user;
+  PetscErrorCode     ierr;
+  PetscFunctionBegin;
+  if (!ctx)  { PetscFunctionReturn(0); }
+  user = *ctx;
+  if (!user) { PetscFunctionReturn(0); }
+  if (user)  { ierr = PetscFree(user);CHKERRQ(ierr); }
+  *ctx = NULL;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode GravityDestroyTypeCtx(GravityModel gravity)
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  if (!gravity->data) { PetscFunctionReturn(0); }
+
+  switch (gravity->gravity_type) {
+    case CONSTANT:
+      {
+        GravityConstant gc;
+        gc = (GravityConstant)gravity->data;
+        ierr = GravityConstantDestroyCtx(&gc);CHKERRQ(ierr);
+      }
+      break;
+
+    case RADIAL_CONSTANT:
+      {
+        GravityRadialConst grc;
+        grc = (GravityRadialConst)gravity->data;
+        ierr = GravityRadialConstDestroyCtx(&grc);CHKERRQ(ierr);
+      }
+      break;
+
+    case RADIAL_VAR:
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"GravityType RADIAL_VAR is not implemented. Use CONSTANT or RADIAL_CONSTANT instead.");
+      break;
+
+    case ARBITRARY:
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"GravityType ARBITRARY is not implemented. Use CONSTANT or RADIAL_CONSTANT instead.");
+      break;
+
+    case POISSON:
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"GravityType POISSON is not implemented. Use CONSTANT or RADIAL_CONSTANT instead.");
+      break;
+
+    default:
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"No GravityType provided. Possible choices: CONSTANT, RADIAL_CONSTANT.");
+      break;
+  }
+  gravity->data = NULL;
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode GravityModelDestroyCtx(GravityModel *gravity)
+{
+  GravityModel   user;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  if (!gravity) { PetscFunctionReturn(0); }
+  user = *gravity;
+  if (!user)    { PetscFunctionReturn(0); }
+  
+  if (user) {
+    ierr = GravityDestroyTypeCtx(user);CHKERRQ(ierr);
+    ierr = PetscFree(user);CHKERRQ(ierr); 
+  }
+
+  *gravity = NULL;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode pTatinGetGravityModelCtx(pTatinCtx ptatin, GravityModel *ctx)
+{
+  GravityModel gravity;
+
+  PetscFunctionBegin;
+  gravity = ptatin->gravity_ctx;
+  *ctx = gravity;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode GravityGetConstantCtx(GravityModel gravity, GravityConstant *ctx)
+{
+  GravityConstant gc;
+  PetscFunctionBegin;
+  gc = (GravityConstant)gravity->data;
+  *ctx = gc;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode GravityGetRadialConstCtx(GravityModel gravity, GravityRadialConst *ctx)
+{
+  GravityRadialConst gc;
+  PetscFunctionBegin;
+  gc = (GravityRadialConst)gravity->data;
+  *ctx = gc;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode GravitySetType(GravityModel gravity, GravityType gtype)
+{
+  PetscFunctionBegin;
+  gravity->gravity_type = gtype;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode GravitySet_ConstantVector(GravityConstant gravity, PetscReal gvec[])
+{
+  PetscInt d;
+  PetscFunctionBegin;
+  for (d=0; d<NSD; d++) {
+    gravity->gravity_const[d] = gvec[d];
+  }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode GravitySet_ConstantMagnitude(GravityConstant gravity, PetscReal magnitude)
+{
+  PetscFunctionBegin;
+  gravity->magnitude = magnitude;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode GravitySetValues_Constant(GravityConstant gravity, void *data)
+{
+  PetscReal      *gvec = (PetscReal*)data;
+  PetscReal      grav[3],magnitude;
+  PetscInt       d;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  magnitude = 0.0;
+  for (d=0; d<NSD; d++) {
+    grav[d] = gvec[d];
+    magnitude += grav[d]*grav[d];
+  }
+  magnitude = PetscSqrtReal(magnitude);
+  ierr = GravitySet_ConstantVector(gravity,grav);CHKERRQ(ierr);
+  ierr = GravitySet_ConstantMagnitude(gravity,magnitude);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode GravitySetValues(GravityModel gravity, void *data)
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  switch (gravity->gravity_type)
+  {
+    case CONSTANT:
+      ierr = GravitySetValues_Constant((GravityConstant)gravity->data,data);CHKERRQ(ierr);
+      break;
+
+    case RADIAL_CONSTANT:
+      //ierr = GravitySetValues_Magnitude(gravity,data);CHKERRQ(ierr);
+      break;
+
+    case RADIAL_VAR:
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"GravityType RADIAL_VAR is not implemented. Use CONSTANT or RADIAL_CONSTANT instead.");
+      break;
+
+    case ARBITRARY:
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"GravityType ARBITRARY is not implemented. Use CONSTANT or RADIAL_CONSTANT instead.");
+      break;
+
+    case POISSON:
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"GravityType POISSON is not implemented. Use CONSTANT or RADIAL_CONSTANT instead.");
+      break;
+
+    default:
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"No GravityType provided. Possible choices: CONSTANT, RADIAL_CONSTANT.");
+      break;
+  }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode pTatinCreateGravityModel(pTatinCtx ptatin, GravityType gtype, void *data)
+{
+  GravityModel   gravity;
+  PhysCompStokes stokes;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  /* Get Stokes data structure */
+  ierr = pTatinGetStokesContext(ptatin,&stokes);CHKERRQ(ierr);
+  /* Create GravityModel data structure */
+  ierr = GravityModelCreateCtx(&gravity);CHKERRQ(ierr);
+  ierr = GravitySetType(gravity,gtype);CHKERRQ(ierr);
+  ierr = GravityCreateTypeCtx(gravity);CHKERRQ(ierr);
+  ierr = GravitySetValues(gravity,data);
+
+  ptatin->gravity_ctx = gravity;
+
+  PetscFunctionReturn(0);
+}
+
+#if 0
 PetscErrorCode GravityStokesDMCreateGlobalVector(PhysCompStokes stokes, GravityModel gravity)
 {
   DM             stokes_pack,dau,dap;
@@ -92,13 +377,6 @@ PetscErrorCode pTatinGetContext_GravityModel(pTatinCtx ptatin, GravityModel *gra
 {
   PetscFunctionBegin;
   if (gravity) { *gravity = ptatin->gravity_ctx; }
-  PetscFunctionReturn(0);
-}
-
-PetscErrorCode GravitySetType(GravityModel gravity, GravityType gtype)
-{
-  PetscFunctionBegin;
-  gravity->gravity_type = gtype;
   PetscFunctionReturn(0);
 }
 
@@ -650,3 +928,4 @@ PetscErrorCode pTatin_UpdateStokesGravityModel(pTatinCtx ptatin)
   ierr = GravityModelUpdateQuadraturePoints(stokes,all_gausspoints,gravity,PETSC_FALSE);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
+#endif

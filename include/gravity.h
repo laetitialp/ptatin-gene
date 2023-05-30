@@ -9,14 +9,31 @@ typedef enum {
   POISSON
 } GravityType;
 
+typedef struct _p_GravityConstant *GravityConstant;
+typedef struct _p_GravityRadialConst *GravityRadialConst;
+
 struct _p_GravityModel {
   GravityType gravity_type; 
-  Vec         gravity_vec;
-  PetscReal   gravity_const[3];
-  PetscReal   gravity_mag;
+  void        *data;
+};
+
+struct _p_GravityConstant {
+  PetscReal gravity_const[3]; /* Constant gravity vector */
+  PetscReal magnitude;        /* Magnitude of the gravity vector */
+  PetscReal scaling_factor;
 };
 
 
+struct _p_GravityRadialConst {
+  PetscReal gravity_mag;
+  PetscReal scaling_factor;
+};
+
+
+PetscErrorCode GravityCreateCtx(GravityModel gravity);
+PetscErrorCode pTatinCreateGravityModel(pTatinCtx ptatin, GravityType gtype, void *data);
+PetscErrorCode GravityGetConstantCtx(GravityModel gravity, GravityConstant *ctx);
+/*
 PetscErrorCode GravityModelDestroyCtx(GravityModel *gravity);
 PetscErrorCode pTatinGetContext_GravityModel(pTatinCtx ptatin, GravityModel *gravity);
 
@@ -38,5 +55,5 @@ PetscErrorCode pTatin_ApplyInitialStokesBodyForcesModel(pTatinCtx ptatin);
 PetscErrorCode pTatin_ApplyInitialStokesGravityModel(pTatinCtx ptatin);
 PetscErrorCode pTatin_UpdateStokesBodyForcesModel(pTatinCtx ptatin);
 PetscErrorCode pTatin_UpdateStokesGravityModel(pTatinCtx ptatin);
-
+*/
 #endif
