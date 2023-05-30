@@ -948,7 +948,73 @@ PetscErrorCode ModelInitialize_RiftNitsche(pTatinCtx c,void *ctx)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ModelSetMeshRefinement_RiftNitsche(DM dav)
+static PetscErrorCode ModelSetMeshRefinement_Horizontal(DM dav, ModelRiftNitscheCtx *data)
+{
+  PetscInt       npoints,n;
+  PetscReal      *xref,*xnat_x,*xnat_z,*dx,*dz;
+  PetscReal      Lx,Lz;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  npoints = 6;
+
+  ierr = PetscMalloc1(npoints,&xref);CHKERRQ(ierr); 
+  ierr = PetscMalloc1(npoints,&xnat_x);CHKERRQ(ierr);
+  ierr = PetscMalloc1(npoints,&xnat_z);CHKERRQ(ierr);
+  ierr = PetscMalloc1(npoints,&dx);CHKERRQ(ierr);
+  ierr = PetscMalloc1(npoints,&dz);CHKERRQ(ierr);
+
+  /* x direction interval in meters */
+  dx[0] = 0.0e3; 
+  dx[1] = 50.0e3; 
+  dx[2] = 75.0e3; 
+  dx[3] = 225.0e3; 
+  dx[4] = 250.0e3; 
+  dx[5] = 300.0e3;
+  /* z direction interval in meters */
+  dz[0] = 0.0e3; 
+  dz[1] = 90.0e3; 
+  dz[2] = 120.0e3; 
+  dz[3] = 180.0e3; 
+  dz[4] = 210.0e3; 
+  dz[5] = 300.0e3;
+  /* Scale */
+  for (n=0; n<npoints; n++) {
+    dx[n] = dx[n] / data->length_bar;
+    dz[n] = dz[n] / data->length_bar;
+  }
+
+  /* Get model length in the x and z directions */
+  Lx = data->Lx - data->Ox;
+  Lz = data->Lz - data->Oz;
+  /* normalize dx */
+  for (n=0; n<npoints; n++) {
+    xnat_x[n] = dx[n] / Lx;
+    xnat_z[n] = dz[n] / Lz;
+  }
+  /* Refinement in the centre */
+  xref[0] = 0.0;
+  xref[1] = 0.02;
+  xref[2] = 0.1;
+  xref[3] = 0.9;
+  xref[4] = 0.98;
+  xref[5] = 1.0;
+
+  /* x dir refinement */
+  ierr = DMDACoordinateRefinementTransferFunction(dav,0,PETSC_TRUE,npoints,xref,xnat_x);CHKERRQ(ierr);
+  /* z dir refinement */
+  ierr = DMDACoordinateRefinementTransferFunction(dav,2,PETSC_TRUE,npoints,xref,xnat_z);CHKERRQ(ierr);
+
+  ierr = PetscFree(xref);CHKERRQ(ierr);
+  ierr = PetscFree(xnat_x);CHKERRQ(ierr);
+  ierr = PetscFree(xnat_z);CHKERRQ(ierr);
+  ierr = PetscFree(dx);CHKERRQ(ierr);
+  ierr = PetscFree(dz);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelSetMeshRefinement_Vertical(DM dav)
 {
   PetscInt       dir,npoints;
   PetscReal      *xref,*xnat;
@@ -978,6 +1044,19 @@ static PetscErrorCode ModelSetMeshRefinement_RiftNitsche(DM dav)
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ModelSetMeshRefinement_RiftNitsche(DM dav, ModelRiftNitscheCtx *data)
+{
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = ModelSetMeshRefinement_Vertical(dav);CHKERRQ(ierr);
+  if (data->bc_type == 4) {
+    ierr = ModelSetMeshRefinement_Horizontal(dav,data);CHKERRQ(ierr);
+  }
+
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode ModelApplyInitialMeshGeometry_RiftNitsche(pTatinCtx c,void *ctx)
 {
   ModelRiftNitscheCtx *data = (ModelRiftNitscheCtx*)ctx;
@@ -993,7 +1072,7 @@ PetscErrorCode ModelApplyInitialMeshGeometry_RiftNitsche(pTatinCtx c,void *ctx)
   ierr = DMCompositeGetEntries(stokes_pack,&dav,&dap);CHKERRQ(ierr);
   ierr = DMDASetUniformCoordinates(dav,data->Ox,data->Lx,data->Oy,data->Ly,data->Oz,data->Lz);CHKERRQ(ierr);
   /* Mesh Refinement */
-  ierr = ModelSetMeshRefinement_RiftNitsche(dav);CHKERRQ(ierr);
+  ierr = ModelSetMeshRefinement_RiftNitsche(dav,data);CHKERRQ(ierr);
   ierr = DMDABilinearizeQ2Elements(dav);CHKERRQ(ierr);
   /* Gravity */
   PetscReal gvec[] = { 0.0, -9.8, 0.0 };
@@ -2260,7 +2339,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_RiftNitsche(pTatinCtx c,Vec X,void *
   ierr = DMCompositeRestoreAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
  
   /* Update Mesh Refinement */
-  ierr = ModelSetMeshRefinement_RiftNitsche(dav);CHKERRQ(ierr);
+  ierr = ModelSetMeshRefinement_RiftNitsche(dav,data);CHKERRQ(ierr);
   ierr = DMDABilinearizeQ2Elements(dav);CHKERRQ(ierr);
 
   /* Passive markers update */
