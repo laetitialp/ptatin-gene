@@ -161,33 +161,35 @@ PetscErrorCode GenerateSphericalMesh()
 
   /* Gravity */
   {
+    GravityModel gravity;
     GravityType gtype;
-    PetscReal gvec[] = {0.0,-9.8,0.0};
-    PetscReal gmag[] = {-9.8};
+    PetscReal gvec[] = {0.0,-9.8,0.0},scaling;
+    PetscReal gmag = -9.8;
     GravityConstant gc;
 
-    gtype = CONSTANT;
-    ierr = pTatinCreateGravityModel(ptatin,gtype,gvec);CHKERRQ(ierr);
-    //gc = (GravityConstant)ptatin->gravity_ctx->data;
-    ierr = GravityGetConstantCtx(ptatin->gravity_ctx,&gc);CHKERRQ(ierr);
-    PetscPrintf(PETSC_COMM_WORLD,"gvec = (%f, %f, %f), mag = %f\n",gc->gravity_const[0],gc->gravity_const[1],gc->gravity_const[2],gc->magnitude);
-    //gc->magnitude = 3.0;
+    gtype = RADIAL_CONSTANT; //CONSTANT;
+    scaling = 2.0;
 
-#if 0
+    ierr = pTatinCreateGravityModel(ptatin,gtype);CHKERRQ(ierr);
+    ierr = pTatinGetGravityModelCtx(ptatin,&gravity);CHKERRQ(ierr);
+
     switch (gtype) {
       case CONSTANT:
-        ierr = pTatinCreateGravityModel(ptatin,gtype,2.0,(void*)gvec);CHKERRQ(ierr);
+        gc = (GravityConstant)gravity->data;
+        ierr = GravitySet(gravity,(void*)gvec);CHKERRQ(ierr);
+        PetscPrintf(PETSC_COMM_WORLD,"gvec = (%f, %f, %f), mag = %f\n",gc->gravity_const[0],gc->gravity_const[1],gc->gravity_const[2],gc->magnitude);
         break;
+
       case RADIAL_CONSTANT:
-        ierr = pTatinCreateGravityModel(ptatin,gtype,2.0,(void*)gmag);CHKERRQ(ierr);
+        ierr = GravitySet(gravity,(void*)&gmag);CHKERRQ(ierr);
         break;
 
       default:
         break;
     }
-    ierr = pTatin_ApplyInitialStokesBodyForcesModel(ptatin);CHKERRQ(ierr);
+    ierr = GravityScale(gravity,scaling);CHKERRQ(ierr);
+    ierr = pTatinQuadratureSetGravityModel(ptatin);
     ierr = VolumeQuadratureViewParaview_Stokes(stokes,ptatin->outputpath,"def");CHKERRQ(ierr);
-#endif
   }
 
   {
@@ -206,6 +208,9 @@ PetscErrorCode GenerateSphericalMesh()
 
   ierr = DMCompositeRestoreAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
   ierr = DMRestoreGlobalVector(stokes_pack,&X);CHKERRQ(ierr);
+
+  ierr = VecDestroy(&X);CHKERRQ(ierr);
+  ierr = pTatin3dDestroyContext(&ptatin);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
