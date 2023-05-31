@@ -92,7 +92,6 @@ libptatin3d-y.c += $(call thisdir, \
   sc_generic.c sc_demo.c sc_nitsche_dirichlet.c sc_nitsche_navierslip.c \
   sc_nitsche_generalslip.c \
   litho_pressure_PDESolve.c \
-  gravity.c \
 )
 
 libptatin3d-$(CONFIG_CUDA).cu += $(call thisdir, \
@@ -122,4 +121,4 @@ ptatin-drivers-y.c += $(call thisdir, \
 
 TATIN_INC += -I$(abspath $(call thisdir,.))
 
-include $(call incsubdirs,externalpackages material_constants models tests finite_volume)
+include $(call incsubdirs,externalpackages material_constants models tests finite_volume gravity)
