@@ -12,7 +12,11 @@
 #include "QPntVolCoefStokes_def.h"
 #include "gravity.h"
 
-PetscErrorCode GravityDestroyCtx_RadialConstant(GravityModel gravity)
+struct _p_GravityRadialConstant {
+  PetscReal magnitude;
+};
+
+PetscErrorCode GravityDestroyCtx_RadialConstant(Gravity gravity)
 {
   PetscErrorCode ierr;
   PetscFunctionBegin;
@@ -21,7 +25,7 @@ PetscErrorCode GravityDestroyCtx_RadialConstant(GravityModel gravity)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode GravityScale_RadialConstant(GravityModel gravity, PetscReal scaling_factor)
+PetscErrorCode GravityScale_RadialConstant(Gravity gravity, PetscReal scaling_factor)
 {
   GravityRadialConstant ctx = (GravityRadialConstant)gravity->data;
   PetscFunctionBegin;
@@ -36,29 +40,59 @@ PetscErrorCode GravitySet_RadialConstantMagnitude(GravityRadialConstant gravity,
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode GravitySet_RadialConstant(GravityModel gravity, void *data)
+PetscErrorCode GravitySet_RadialConstant(Gravity gravity, PetscReal magnitude)
 {
-  GravityRadialConstant gc;
-  PetscReal             magnitude = *((PetscReal*)data);
+  GravityRadialConstant gc = NULL;
   PetscErrorCode        ierr;
   PetscFunctionBegin;
 
+  if (gravity->gravity_type != GRAVITY_RADIAL_CONSTANT) { PetscFunctionReturn(0); }
+
   gc = (GravityRadialConstant)gravity->data;
   ierr = GravitySet_RadialConstantMagnitude(gc,magnitude);CHKERRQ(ierr);
-  PetscFunctionReturn(0);
 
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode GravityGetPointWiseVector_RadialConstant(Gravity gravity, PetscInt eidx, PetscReal global_coords[], PetscReal local_coords[], PetscReal *gvec[])
+{
+  GravityRadialConstant gc = NULL;
+  PetscInt              d;
+  PetscReal             coor_norm;
+  PetscErrorCode        ierr;
+  PetscFunctionBegin;
+
+  /* Check the type */
+  if (gravity->gravity_type != GRAVITY_RADIAL_CONSTANT) { PetscFunctionReturn(0); }
+
+  gc = (GravityRadialConstant)gravity->data;
+
+  coor_norm = 0.0;
+  for (d=0; d<NSD; d++) {
+    coor_norm += global_coords[d]*global_coords[d];
+  }
+  coor_norm = PetscSqrtReal(coor_norm);
+  for (d=0; d<NSD; d++) {
+    if (coor_norm > 1.0e-20) {
+      gravity->gvec_ptwise[d] = gc->magnitude * global_coords[d]/coor_norm;
+    } else { 
+      gravity->gvec_ptwise[d] = 0.0;
+    }
+  }
+  *gvec = gravity->gvec_ptwise;
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode GravitySetOnPoint_RadialConstant(PhysCompStokes stokes,
-                                                       PetscReal magnitude,
+                                                       Gravity gravity,
                                                        QPntVolCoefStokes *cell_gausspoints,
                                                        PetscInt qp_idx,
                                                        PetscReal elcoords[])
 {
-  PetscInt  d,k;
-  PetscReal Ni[Q2_NODES_PER_EL_3D],qp_coor[3],position[3],norm;
-  double    gvec[3];
+  PetscInt       d,k;
+  PetscReal      Ni[Q2_NODES_PER_EL_3D],qp_coor[3],position[3];
+  PetscReal      *gvec=NULL;
+  PetscErrorCode ierr;
 
   PetscFunctionBegin;
   /* Get quadrature point coordinates */
@@ -76,32 +110,20 @@ static PetscErrorCode GravitySetOnPoint_RadialConstant(PhysCompStokes stokes,
     }
   }
 
-  /* Compute the coordinates vector norm */
-  norm = 0.0;
-  for (d=0; d<NSD; d++) {
-    norm += position[d]*position[d];
-  }
-  norm = PetscSqrtReal(norm);
-  for (d=0; d<NSD; d++) {
-    if (norm > 1.0e-20) {
-      gvec[d] = magnitude * position[d]/norm;
-    } else { 
-      gvec[d] = 0.0;
-    }
-  }
-  /* Set gvec[] on quadrature points */
+  ierr = GravityGetPointWiseVector_RadialConstant(gravity,0,position,qp_coor,&gvec);CHKERRQ(ierr);
+
+  /* Set grav on quadrature points */
   QPntVolCoefStokesSetField_gravity_vector(&cell_gausspoints[qp_idx],gvec);
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode QuadratureSetGravityModel_RadialConstant(PhysCompStokes stokes, GravityModel gravity)
+PetscErrorCode QuadratureSetGravity_RadialConstant(PhysCompStokes stokes, Gravity gravity)
 {
-  GravityRadialConstant gc;
   QPntVolCoefStokes     *all_gausspoints,*cell_gausspoints;
   DM                    stokes_pack,dau,dap,cda;
   Vec                   gcoords;
   PetscReal             *LA_gcoords;
-  PetscReal             elcoords[3*Q2_NODES_PER_EL_3D],magnitude;
+  PetscReal             elcoords[3*Q2_NODES_PER_EL_3D];
   const PetscInt        *elnidx_u;
   PetscInt              e,q,nel,nqp,nen_u;
   PetscErrorCode        ierr;
@@ -122,9 +144,6 @@ PetscErrorCode QuadratureSetGravityModel_RadialConstant(PhysCompStokes stokes, G
 
   ierr = VolumeQuadratureGetAllCellData_Stokes(stokes->volQ,&all_gausspoints);CHKERRQ(ierr);
 
-  gc = (GravityRadialConstant)gravity->data;
-  magnitude = gc->magnitude;
-
   /* Loop over elements */
   for (e=0; e<nel; e++) {
     /* Get cell quadrature points data structure */
@@ -133,7 +152,7 @@ PetscErrorCode QuadratureSetGravityModel_RadialConstant(PhysCompStokes stokes, G
     ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx_u[nen_u*e],LA_gcoords);CHKERRQ(ierr);
     /* Loop over quadrature points */
     for (q=0; q<nqp; q++) {
-      ierr = GravitySetOnPoint_RadialConstant(stokes,magnitude,cell_gausspoints,q,elcoords);CHKERRQ(ierr);
+      ierr = GravitySetOnPoint_RadialConstant(stokes,gravity,cell_gausspoints,q,elcoords);CHKERRQ(ierr);
       /* Set rho*g on quadrature points */
       ierr = QuadratureSetBodyForcesOnPoint(cell_gausspoints,q);CHKERRQ(ierr);
     }
@@ -142,7 +161,7 @@ PetscErrorCode QuadratureSetGravityModel_RadialConstant(PhysCompStokes stokes, G
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode GravityGetRadialConstantCtx(GravityModel gravity, GravityRadialConstant *ctx)
+PetscErrorCode GravityGetRadialConstantCtx(Gravity gravity, GravityRadialConstant *ctx)
 {
   GravityRadialConstant gc;
   PetscFunctionBegin;
@@ -151,7 +170,7 @@ PetscErrorCode GravityGetRadialConstantCtx(GravityModel gravity, GravityRadialCo
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode GravityRadialConstantCreateCtx(GravityModel gravity)
+PetscErrorCode GravityRadialConstantCreateCtx(Gravity gravity)
 {
   GravityRadialConstant gc;
   PetscErrorCode        ierr;
@@ -163,9 +182,9 @@ PetscErrorCode GravityRadialConstantCreateCtx(GravityModel gravity)
   gravity->data = (void*)gc;
   gravity->destroy        = GravityDestroyCtx_RadialConstant;
   gravity->scale          = GravityScale_RadialConstant;
-  gravity->set            = GravitySet_RadialConstant;
-  gravity->quadrature_set = QuadratureSetGravityModel_RadialConstant;
-  gravity->update         = QuadratureSetGravityModel_RadialConstant;
+  gravity->quadrature_set = QuadratureSetGravity_RadialConstant;
+  gravity->update         = QuadratureSetGravity_RadialConstant;
+  gravity->get_gvec       = GravityGetPointWiseVector_RadialConstant;
 
   PetscFunctionReturn(0);
 }
