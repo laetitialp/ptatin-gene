@@ -8,11 +8,15 @@
 #include "dmda_checkpoint.h"
 #include "element_type_Q2.h"
 #include "data_bucket.h"
-//#include "mesh_entity.h"
 #include "QPntVolCoefStokes_def.h"
 #include "gravity.h"
 
-PetscErrorCode GravityDestroyCtx_Constant(GravityModel gravity)
+struct _p_GravityConstant {
+  PetscReal gravity_const[3]; /* Constant gravity vector */
+  PetscReal magnitude;        /* Magnitude of the gravity vector */
+};
+
+PetscErrorCode GravityDestroyCtx_Constant(Gravity gravity)
 {
   PetscErrorCode ierr;
   PetscFunctionBegin;
@@ -21,7 +25,7 @@ PetscErrorCode GravityDestroyCtx_Constant(GravityModel gravity)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode GravityScale_Constant(GravityModel gravity, PetscReal scaling_factor)
+PetscErrorCode GravityScale_Constant(Gravity gravity, PetscReal scaling_factor)
 {
   GravityConstant ctx = (GravityConstant)gravity->data;
   PetscInt        d;
@@ -50,31 +54,70 @@ PetscErrorCode GravitySet_ConstantMagnitude(GravityConstant gravity, PetscReal m
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode GravitySet_Constant(GravityModel gravity, void *data)
+PetscErrorCode GravitySet_Constant(Gravity gravity, PetscReal gvec[])
 {
   GravityConstant gc;
-  PetscReal       *gvec = (PetscReal*)data;
-  PetscReal       grav[3],magnitude;
+  PetscReal       magnitude;
   PetscInt        d;
   PetscErrorCode  ierr;
   PetscFunctionBegin;
+
+  if (gravity->gravity_type != GRAVITY_CONSTANT) { PetscFunctionReturn(0); }
 
   gc = (GravityConstant)gravity->data;
 
   magnitude = 0.0;
   for (d=0; d<NSD; d++) {
-    grav[d] = gvec[d];
-    magnitude += grav[d]*grav[d];
+    magnitude += gvec[d]*gvec[d];
   }
   magnitude = PetscSqrtReal(magnitude);
-  ierr = GravitySet_ConstantVector(gc,grav);CHKERRQ(ierr);
+  ierr = GravitySet_ConstantVector(gc,gvec);CHKERRQ(ierr);
   ierr = GravitySet_ConstantMagnitude(gc,magnitude);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode QuadratureSetGravityModel_Constant(PhysCompStokes stokes, GravityModel gravity)
+PetscErrorCode GravityGet_ConstantVector(Gravity gravity, PetscReal **gvec)
+{
+  GravityConstant gc = NULL;
+  PetscFunctionBegin;
+
+  if (gravity->gravity_type != GRAVITY_CONSTANT) { PetscFunctionReturn(0); }
+  if (!gvec) { PetscFunctionReturn(0); }
+
+  gc = (GravityConstant)gravity->data;
+  memcpy( &gc->gravity_const[0], gravity->gvec_ptwise, 3 * sizeof(PetscReal) );
+  *gvec = gravity->gvec_ptwise;
+  
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode GravityGet_ConstantMagnitude(Gravity gravity, PetscReal *magnitude)
+{
+  GravityConstant gc = NULL;
+  PetscFunctionBegin;
+
+  if (gravity->gravity_type != GRAVITY_CONSTANT) { PetscFunctionReturn(0); }
+  if (!magnitude) { PetscFunctionReturn(0); }
+
+  gc = (GravityConstant)gravity->data;
+  *magnitude = gc->magnitude;
+  
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode GravityGetPointWiseVector_Constant(Gravity gravity, PetscInt eidx, PetscReal global_coords[], PetscReal local_coords[], PetscReal *gvec[])
+{
+  PetscReal *grav;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  ierr = GravityGet_ConstantVector(gravity,&grav);CHKERRQ(ierr);
+  *gvec = grav;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode QuadratureSetGravity_Constant(PhysCompStokes stokes, Gravity gravity)
 {
   GravityConstant   gc;
   QPntVolCoefStokes *all_gausspoints,*cell_gausspoints;
@@ -109,7 +152,7 @@ PetscErrorCode QuadratureSetGravityModel_Constant(PhysCompStokes stokes, Gravity
 }
 
 /* We only need to modify the body forces because of the density, but the gravity is constant */
-PetscErrorCode QuadratureUpdateGravityModel_Constant(PhysCompStokes stokes, GravityModel gravity)
+PetscErrorCode QuadratureUpdateGravity_Constant(PhysCompStokes stokes, Gravity gravity)
 {
   QPntVolCoefStokes *all_gausspoints,*cell_gausspoints;
   PetscInt          e,q,nel,nqp;
@@ -134,7 +177,7 @@ PetscErrorCode QuadratureUpdateGravityModel_Constant(PhysCompStokes stokes, Grav
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode GravityGetConstantCtx(GravityModel gravity, GravityConstant *ctx)
+PetscErrorCode GravityGetConstantCtx(Gravity gravity, GravityConstant *ctx)
 {
   GravityConstant gc;
   PetscFunctionBegin;
@@ -143,7 +186,7 @@ PetscErrorCode GravityGetConstantCtx(GravityModel gravity, GravityConstant *ctx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode GravityConstantCreateCtx(GravityModel gravity)
+PetscErrorCode GravityConstantCreateCtx(Gravity gravity)
 {
   PetscErrorCode  ierr;
   GravityConstant gc;
@@ -155,9 +198,9 @@ PetscErrorCode GravityConstantCreateCtx(GravityModel gravity)
   gravity->data = (void*)gc;
   gravity->destroy        = GravityDestroyCtx_Constant;
   gravity->scale          = GravityScale_Constant;
-  gravity->set            = GravitySet_Constant;
-  gravity->quadrature_set = QuadratureSetGravityModel_Constant;
-  gravity->update         = QuadratureUpdateGravityModel_Constant;
+  gravity->quadrature_set = QuadratureSetGravity_Constant;
+  gravity->update         = QuadratureUpdateGravity_Constant;
+  gravity->get_gvec       = GravityGetPointWiseVector_Constant;
 
   PetscFunctionReturn(0);
 }

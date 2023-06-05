@@ -3,19 +3,17 @@
 
 typedef struct _p_GravityConstant *GravityConstant;
 
-struct _p_GravityConstant {
-  PetscReal gravity_const[3]; /* Constant gravity vector */
-  PetscReal magnitude;        /* Magnitude of the gravity vector */
-};
-
-PetscErrorCode GravityDestroyCtx_Constant(GravityModel gravity);
-PetscErrorCode GravityScale_Constant(GravityModel gravity, PetscReal scaling_factor);
+PetscErrorCode GravityDestroyCtx_Constant(Gravity gravity);
+PetscErrorCode GravityScale_Constant(Gravity gravity, PetscReal scaling_factor);
 PetscErrorCode GravitySet_ConstantVector(GravityConstant gravity, PetscReal gvec[]);
 PetscErrorCode GravitySet_ConstantMagnitude(GravityConstant gravity, PetscReal magnitude);
-PetscErrorCode GravitySet_Constant(GravityModel gravity, void *data);
-PetscErrorCode GravityConstantCreateCtx(GravityModel gravity);
-PetscErrorCode GravityGetConstantCtx(GravityModel gravity, GravityConstant *ctx);
-PetscErrorCode QuadratureSetGravityModel_Constant(PhysCompStokes stokes, GravityModel gravity);
-PetscErrorCode QuadratureUpdateGravityModel_Constant(PhysCompStokes stokes, GravityModel gravity);
+PetscErrorCode GravityGet_ConstantVector(Gravity gravity, PetscReal **gvec);
+PetscErrorCode GravityGet_ConstantMagnitude(Gravity gravity, PetscReal *magnitude);
+PetscErrorCode GravitySet_Constant(Gravity gravity, PetscReal gvec[]);
+PetscErrorCode GravityGetPointWiseVector_Constant(Gravity gravity, PetscInt eidx, PetscReal global_coords[], PetscReal local_coords[], PetscReal *gvec[]);
+PetscErrorCode GravityConstantCreateCtx(Gravity gravity);
+PetscErrorCode GravityGetConstantCtx(Gravity gravity, GravityConstant *ctx);
+PetscErrorCode QuadratureSetGravity_Constant(PhysCompStokes stokes, Gravity gravity);
+PetscErrorCode QuadratureUpdateGravity_Constant(PhysCompStokes stokes, Gravity gravity);
 
 #endif
