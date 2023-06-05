@@ -5,34 +5,39 @@
 #include "gravity/gravity_radialconstant.h"
 
 typedef enum {
-  CONSTANT=0,
-  RADIAL_CONSTANT,
-  RADIAL_VAR,
-  ARBITRARY,
-  POISSON
+  GRAVITY_CONSTANT=0,
+  GRAVITY_RADIAL_CONSTANT,
+  GRAVITY_RADIAL_VAR,
+  GRAVITY_ARBITRARY,
+  GRAVITY_POISSON
 } GravityType;
 
-struct _p_GravityModel {
-  GravityType gravity_type;
-  void        *data; /* Gravity type data structure */
-  PetscErrorCode (*destroy)(GravityModel);
-  PetscErrorCode (*scale)(GravityModel,PetscReal);
-  PetscErrorCode (*set)(GravityModel,void*);
-  PetscErrorCode (*quadrature_set)(PhysCompStokes,GravityModel);
-  PetscErrorCode (*update)(PhysCompStokes,GravityModel);
+extern const char *GravityTypeNames[];
+
+extern PetscErrorCode (*create_types[])(Gravity);
+
+struct _p_Gravity {
+  GravityType gravity_type;   /* Type of gravity used */
+  PetscReal   gvec_ptwise[3]; /* stores a 3 entries gravity vec (Ease memory management) */
+  void        *data;          /* Gravity type data structure */
+  /* Function pointers to the different types implementations */
+  PetscErrorCode (*destroy)(Gravity);                                             /* Destroy data structure and free memory */
+  PetscErrorCode (*scale)(Gravity,PetscReal);                                     /* Scale values */
+  PetscErrorCode (*quadrature_set)(PhysCompStokes,Gravity);                       /* Set gravity vector on quadrature points */
+  PetscErrorCode (*update)(PhysCompStokes,Gravity);                               /* Update gravity vector on quadrature points */
+  PetscErrorCode (*get_gvec)(Gravity,PetscInt,PetscReal*,PetscReal*,PetscReal**); /* Evaluate pointwise gravity vector */
 };
 
-PetscErrorCode GravityModelCreateCtx(GravityModel *gravity);
-PetscErrorCode GravitySetType(GravityModel gravity, GravityType gtype);
-PetscErrorCode GravityScale(GravityModel gravity, PetscReal scaling_factor);
-PetscErrorCode GravitySet(GravityModel gravity, void *data);
-PetscErrorCode GravityModelDestroyCtx(GravityModel *gravity);
-PetscErrorCode pTatinDestroyGravityModelCtx(pTatinCtx ptatin);
-PetscErrorCode pTatinGetGravityModelCtx(pTatinCtx ptatin, GravityModel *ctx);
-PetscErrorCode GravityCreateTypeCtx(GravityModel gravity);
-PetscErrorCode pTatinCreateGravityModel(pTatinCtx ptatin, GravityType gtype);
+PetscErrorCode GravityCreate(Gravity *gravity);
+PetscErrorCode GravitySetType(Gravity gravity, GravityType gtype);
+PetscErrorCode GravityScale(Gravity gravity, PetscReal scaling_factor);
+PetscErrorCode GravityDestroyCtx(Gravity *gravity);
+PetscErrorCode pTatinDestroyGravityCtx(pTatinCtx ptatin);
+PetscErrorCode pTatinGetGravityCtx(pTatinCtx ptatin, Gravity *ctx);
+PetscErrorCode pTatinCreateGravity(pTatinCtx ptatin, GravityType gtype);
 PetscErrorCode QuadratureSetBodyForcesOnPoint(QPntVolCoefStokes *cell_gausspoints, PetscInt qp_idx);
-PetscErrorCode pTatinQuadratureSetGravityModel(pTatinCtx ptatin);
-PetscErrorCode pTatinQuadratureUpdateGravityModel(pTatinCtx ptatin);
+PetscErrorCode pTatinQuadratureSetGravity(pTatinCtx ptatin);
+PetscErrorCode pTatinQuadratureUpdateGravity(pTatinCtx ptatin);
+PetscErrorCode pTatinGetGravityPointWiseVector(pTatinCtx ptatin, PetscInt eidx, PetscReal global_coords[], PetscReal local_coords[], PetscReal *gvec[]);
 
 #endif
