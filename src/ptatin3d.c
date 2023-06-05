@@ -679,7 +679,7 @@ PetscErrorCode pTatin3dDestroyContext(pTatinCtx *ctx)
   if (user->energyfv_ctx) { ierr = PhysCompEnergyFVDestroy(&user->energyfv_ctx);CHKERRQ(ierr); }
   if (user->energy_ctx) { ierr = PhysCompDestroy_Energy(&user->energy_ctx);CHKERRQ(ierr); }
   if (user->stokes_ctx) { ierr = PhysCompDestroy_Stokes(&user->stokes_ctx);CHKERRQ(ierr); }
-  if (user->gravity_ctx) { ierr = GravityModelDestroyCtx(&user->gravity_ctx);CHKERRQ(ierr); }
+  if (user->gravity_ctx) { ierr = GravityDestroyCtx(&user->gravity_ctx);CHKERRQ(ierr); }
   if (user->pack) {       ierr = DMDestroy(&user->pack);CHKERRQ(ierr); }
 
   /*

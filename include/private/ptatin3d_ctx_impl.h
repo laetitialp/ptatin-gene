@@ -49,7 +49,7 @@ struct _p_pTatinCtx {
   PDESolveLithoP   litho_p_ctx;
   //PhysCompCoords coords_ctx;
   PhysCompEnergyFV energyfv_ctx;
-  GravityModel     gravity_ctx;
+  Gravity          gravity_ctx;
 
   PetscBool  restart_from_file;
   char       restart_dir[PETSC_MAX_PATH_LEN];
