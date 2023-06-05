@@ -17,94 +17,87 @@
 #include "dmda_remesh.h"
 #include "stokes_output.h"
 
-
-PetscErrorCode CartesianToSphericalCoords(DM da)
+PetscErrorCode CheckGravityOnPoint(pTatinCtx ptatin)
 {
-  DM              cda;
-  Vec             coord;
-  PetscScalar     *LA_coords;
-  PetscReal       r,theta,phi;
-  PetscInt        M,N,P,nx,ny,nz,si,sj,sk,i,j,k,nidx;
-  MPI_Comm        comm;
-  PetscErrorCode  ierr;
+  PhysCompStokes        stokes;
+  QPntVolCoefStokes     *all_gausspoints,*cell_gausspoints;
+  DM                    stokes_pack,dau,dap,cda;
+  Vec                   gcoords;
+  PetscReal             *LA_gcoords;
+  PetscReal             elcoords[3*Q2_NODES_PER_EL_3D];
+  const PetscInt        *elnidx_u;
+  PetscInt              e,q,nel,nqp,nen_u;
+  PetscInt              d,k;
+  PetscReal             Ni[Q2_NODES_PER_EL_3D],qp_coor[3],position[3],grav[3];
+  PetscReal             *gvec;
+  double                *qp_gvec;
+  PetscErrorCode        ierr;
+  
+  PetscFunctionBegin;
 
-  ierr = PetscObjectGetComm((PetscObject)da,&comm);CHKERRQ(ierr);
-  ierr = DMDAGetInfo(da,0,&M,&N,&P,0,0,0,0,0,0,0,0,0);CHKERRQ(ierr);
-  ierr = DMDAGetCorners(da,&si,&sj,&sk,&nx,&ny,&nz);CHKERRQ(ierr);
+  ierr = pTatinGetStokesContext(ptatin,&stokes);CHKERRQ(ierr);
 
-  ierr = DMGetCoordinateDM(da,&cda);CHKERRQ(ierr);
-  ierr = DMGetCoordinates(da,&coord);CHKERRQ(ierr);
-  ierr = VecGetArray(coord,&LA_coords);CHKERRQ(ierr);
+  nqp = stokes->volQ->npoints;
 
-  for (k=0; k<nz; k++) {
-    for (j=0; j<ny; j++) {
-      for (i=0; i<nx; i++) {
+  /* Get Stokes DMs */
+  stokes_pack = stokes->stokes_pack;
+  ierr = DMCompositeGetEntries(stokes_pack,&dau,&dap);CHKERRQ(ierr);
 
-        nidx = i + j*nx + k*nx*ny;
+  /* setup for coords */
+  ierr = DMGetCoordinateDM(dau,&cda);CHKERRQ(ierr);
+  ierr = DMGetCoordinatesLocal(dau,&gcoords);CHKERRQ(ierr);
+  ierr = VecGetArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
+  /* Element-nodes connectivity */
+  ierr = DMDAGetElements_pTatinQ2P1(dau,&nel,&nen_u,&elnidx_u);CHKERRQ(ierr);
 
-        r     = LA_coords[3*nidx + 1];
-        theta = LA_coords[3*nidx + 0];
-        phi   = LA_coords[3*nidx + 2];
+  ierr = VolumeQuadratureGetAllCellData_Stokes(stokes->volQ,&all_gausspoints);CHKERRQ(ierr);
 
-        LA_coords[3*nidx + 0] = r * cos(theta);
-        LA_coords[3*nidx + 1] = r * sin(theta) * cos(phi);
-        LA_coords[3*nidx + 2] = r * sin(theta) * sin(phi);
+  /* Loop over elements */
+  for (e=0; e<nel; e++) {
+    /* Get cell quadrature points data structure */
+    ierr = VolumeQuadratureGetCellData_Stokes(stokes->volQ,all_gausspoints,e,&cell_gausspoints);CHKERRQ(ierr);
+    /* Get element coordinates */
+    ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx_u[nen_u*e],LA_gcoords);CHKERRQ(ierr);
+    /* Loop over quadrature points */
+    for (q=0; q<nqp; q++) {
+
+      /* Get quadrature point coordinates */
+      for (d=0; d<NSD; d++) {
+        qp_coor[d] = stokes->volQ->q_xi_coor[3*q + d];
       }
+      /* Construct Q2 interpolation function */
+      pTatin_ConstructNi_Q2_3D( qp_coor, Ni );
+
+      /* Interpolate quadrature point global coords */
+      position[0] = position[1] = position[2] = 0.0;
+      for (k=0; k<Q2_NODES_PER_EL_3D; k++) {
+        for (d=0; d<NSD; d++) {
+          position[d] += Ni[k] * elcoords[3*k + d];
+        }
+      }
+
+      ierr = pTatinGetGravityPointWiseVector(ptatin,e,position,qp_coor,&gvec);CHKERRQ(ierr);
+      for (d=0; d<NSD; d++) {
+        grav[d] = gvec[d];
+      }
+
+      QPntVolCoefStokesGetField_gravity_vector(&cell_gausspoints[q],&qp_gvec); 
+
+      /* Check that the vector on the qpoint is the same than the vector obtained from the on the fly computing */
+
+      PetscPrintf(PETSC_COMM_WORLD,"point(%1.6e, %1.6e, %1.6e)\n",position[0],position[1],position[2]);
+      PetscPrintf(PETSC_COMM_WORLD,"\tvec    (%1.6e, %1.6e, %1.6e)\n",gvec[0],gvec[1],gvec[2]);
+      PetscPrintf(PETSC_COMM_WORLD,"\tgrav   (%1.6e, %1.6e, %1.6e)\n",grav[0],grav[1],grav[2]);
+      PetscPrintf(PETSC_COMM_WORLD,"\tqp_gvec(%1.6e, %1.6e, %1.6e)\n",qp_gvec[0],qp_gvec[1],qp_gvec[2]);
+
+      /* Free gvec (allocated in the gravity type specific getter) */
+      //ierr = PetscFree(gvec);CHKERRQ(ierr);
     }
   }
-  ierr = VecRestoreArray(coord,&LA_coords);CHKERRQ(ierr);
-
-  ierr = DMDAUpdateGhostedCoordinates(da);CHKERRQ(ierr);
+  ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMDASetUniformCartesianCoordinatesFromSpherical(DM da, PetscReal thetamin, PetscReal thetamax, PetscReal rmin, PetscReal rmax, PetscReal phimin, PetscReal phimax)
-{
-  MPI_Comm       comm;
-  DM             cda;
-  Vec            coord;
-  PetscScalar   *LA_coords;
-  PetscReal      h_theta, h_r, h_phi, r, theta, phi;
-  PetscInt       i, j, k, M, N, P, istart, isize, jstart, jsize, kstart, ksize, dim, cnt;
-  PetscErrorCode ierr;
-
-  ierr = DMDAGetInfo(da, &dim, &M, &N, &P, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-
-  /*
-  if (dim != 3) {
-    SETERRQ(PetscObjectComm((PetscObject)da), PETSC_ERR_SUP, "Cannot create uniform coordinates for this dimension %" PetscInt_FMT, dim);
-  }
-  */
-  ierr = PetscObjectGetComm((PetscObject)da, &comm);CHKERRQ(ierr);
-  ierr = DMDAGetCorners(da, &istart, &jstart, &kstart, &isize, &jsize, &ksize);CHKERRQ(ierr); 
-  ierr = DMGetCoordinateDM(da, &cda);CHKERRQ(ierr);
-  ierr = DMCreateGlobalVector(cda, &coord);CHKERRQ(ierr);
-
-  h_theta = (thetamax - thetamin) / (M - 1);
-  h_r     = (rmax - rmin)         / (N - 1);
-  h_phi   = (phimax - phimin)     / (P - 1);
-
-  ierr = VecGetArray(coord, &LA_coords);CHKERRQ(ierr);
-  cnt = 0;
-  for (k = 0; k < ksize; k++) {
-    for (j = 0; j < jsize; j++) {
-      for (i = 0; i < isize; i++) {
-
-        r     = rmin     + h_r     * (j + jstart);
-        theta = thetamax - h_theta * (i + istart); // keeps IMAX face as xmax and IMIN face as xmin
-        phi   = phimin   + h_phi   * (k + kstart);
-
-        LA_coords[cnt++] = r * PetscCosReal(theta);
-        LA_coords[cnt++] = r * PetscSinReal(theta) * PetscCosReal(phi);
-        LA_coords[cnt++] = r * PetscSinReal(theta) * PetscSinReal(phi);
-      }
-    }
-  }
-  ierr = VecRestoreArray(coord, &LA_coords);CHKERRQ(ierr);
-  ierr = DMSetCoordinates(da, coord);CHKERRQ(ierr);
-  ierr = VecDestroy(&coord);CHKERRQ(ierr);
-  PetscFunctionReturn(0);
-}
 
 PetscErrorCode GenerateSphericalMesh()
 {
@@ -133,18 +126,15 @@ PetscErrorCode GenerateSphericalMesh()
   PetscPrintf(PETSC_COMM_WORLD,"Box: Oy, Ly = [ %f, %f ]\n",O[1],L[1]);
   PetscPrintf(PETSC_COMM_WORLD,"Box: Oz, Lz = [ %f, %f ]\n",O[2],L[2]);
 
-  ptatin->mx = 32;
-  ptatin->my = 32;
-  ptatin->mz = 32;
+  ptatin->mx = 2;
+  ptatin->my = 2;
+  ptatin->mz = 2;
   // Create a Q2 mesh 
   ierr = pTatin3d_PhysCompStokesCreate(ptatin);CHKERRQ(ierr);
 
   ierr = pTatinGetStokesContext(ptatin,&stokes);CHKERRQ(ierr);
   stokes_pack = stokes->stokes_pack;
   ierr = DMCompositeGetEntries(stokes_pack,&dav,&dap);CHKERRQ(ierr);
-  //ierr = DMDASetUniformCoordinates(dav,O[0],L[0],O[1],L[1],O[2],L[2]);CHKERRQ(ierr);
-  //ierr = CartesianToSphericalCoords(dav);CHKERRQ(ierr);
-  //ierr = DMDASetUniformCartesianCoordinatesFromSpherical(dav,O[0],L[0],O[1],L[1],O[2],L[2]);CHKERRQ(ierr);
   ierr = DMDASetUniformSphericalToCartesianCoordinates(dav,O[0],L[0],O[1],L[1],O[2],L[2]);CHKERRQ(ierr);
   ierr = DMDABilinearizeQ2Elements(dav);CHKERRQ(ierr);
 
@@ -161,34 +151,42 @@ PetscErrorCode GenerateSphericalMesh()
 
   /* Gravity */
   {
-    GravityModel gravity;
+    Gravity gravity;
     GravityType gtype;
     PetscReal gvec[] = {0.0,-9.8,0.0},scaling;
     PetscReal gmag = -9.8;
-    GravityConstant gc;
 
-    gtype = RADIAL_CONSTANT; //CONSTANT;
+    gtype = GRAVITY_RADIAL_CONSTANT;//GRAVITY_CONSTANT;
     scaling = 2.0;
 
-    ierr = pTatinCreateGravityModel(ptatin,gtype);CHKERRQ(ierr);
-    ierr = pTatinGetGravityModelCtx(ptatin,&gravity);CHKERRQ(ierr);
+    ierr = pTatinCreateGravity(ptatin,gtype);CHKERRQ(ierr);
+    ierr = pTatinGetGravityCtx(ptatin,&gravity);CHKERRQ(ierr);
 
     switch (gtype) {
-      case CONSTANT:
-        gc = (GravityConstant)gravity->data;
-        ierr = GravitySet(gravity,(void*)gvec);CHKERRQ(ierr);
-        PetscPrintf(PETSC_COMM_WORLD,"gvec = (%f, %f, %f), mag = %f\n",gc->gravity_const[0],gc->gravity_const[1],gc->gravity_const[2],gc->magnitude);
+      case GRAVITY_CONSTANT:
+        {
+          PetscReal *grav;
+          PetscReal mag;
+
+          ierr = GravitySet_Constant(gravity,gvec);CHKERRQ(ierr);
+          ierr = GravityGet_ConstantVector(gravity,&grav);CHKERRQ(ierr);
+          ierr = GravityGet_ConstantMagnitude(gravity,&mag);CHKERRQ(ierr);
+          PetscPrintf(PETSC_COMM_WORLD,"gvec = (%f, %f, %f), mag = %f\n",grav[0],grav[1],grav[2],mag);
+        }
         break;
 
-      case RADIAL_CONSTANT:
-        ierr = GravitySet(gravity,(void*)&gmag);CHKERRQ(ierr);
+      case GRAVITY_RADIAL_CONSTANT:
+        ierr = GravitySet_RadialConstant(gravity,gmag);CHKERRQ(ierr);
         break;
 
       default:
         break;
     }
     ierr = GravityScale(gravity,scaling);CHKERRQ(ierr);
-    ierr = pTatinQuadratureSetGravityModel(ptatin);
+    ierr = pTatinQuadratureSetGravity(ptatin);
+
+    ierr = CheckGravityOnPoint(ptatin);
+
     ierr = VolumeQuadratureViewParaview_Stokes(stokes,ptatin->outputpath,"def");CHKERRQ(ierr);
   }
 
