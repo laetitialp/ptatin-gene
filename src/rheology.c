@@ -41,6 +41,8 @@
 #include "stokes_rheology_vp_std.h"
 #include "stokes_rheology_lava.h"
 
+#include "gravity.h"
+
 
 PetscErrorCode RheologyConstantsInitialise(RheologyConstants *R)
 {
@@ -332,6 +334,15 @@ PetscErrorCode pTatin_UpdateCoefficientTemporalDependence_Stokes(pTatinCtx ptati
 
 PetscErrorCode pTatin_ApplyStokesGravityModel(pTatinCtx ctx)
 {
+  PetscErrorCode ierr;
+  PetscFunctionBegin; 
+  ierr = pTatinQuadratureUpdateGravity(ctx);CHKERRQ(ierr); 
+  PetscFunctionReturn(0);
+}
+
+#if 0
+PetscErrorCode pTatin_ApplyStokesGravityModel(pTatinCtx ctx)
+{
   PetscErrorCode    ierr;
   PhysCompStokes    stokes;
   PetscInt          e,nel,q,nqp;
@@ -354,3 +365,4 @@ PetscErrorCode pTatin_ApplyStokesGravityModel(pTatinCtx ctx)
 
   PetscFunctionReturn(0);
 }
+#endif
