@@ -34,6 +34,7 @@ PetscErrorCode GravityScale(Gravity gravity, PetscReal scaling_factor);
 PetscErrorCode GravityDestroyCtx(Gravity *gravity);
 PetscErrorCode pTatinDestroyGravityCtx(pTatinCtx ptatin);
 PetscErrorCode pTatinGetGravityCtx(pTatinCtx ptatin, Gravity *ctx);
+PetscErrorCode pTatinContextValid_Gravity(pTatinCtx ptatin, PetscBool *exists);
 PetscErrorCode pTatinCreateGravity(pTatinCtx ptatin, GravityType gtype);
 PetscErrorCode QuadratureSetBodyForcesOnPoint(QPntVolCoefStokes *cell_gausspoints, PetscInt qp_idx);
 PetscErrorCode pTatinQuadratureSetGravity(pTatinCtx ptatin);

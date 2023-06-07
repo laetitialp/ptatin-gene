@@ -162,6 +162,16 @@ PetscErrorCode pTatinDestroyGravityCtx(pTatinCtx ptatin)
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode pTatinContextValid_Gravity(pTatinCtx ptatin, PetscBool *exists)
+{
+  PetscFunctionBegin;
+  *exists = PETSC_FALSE;
+  if (ptatin->gravity_ctx) {
+    *exists = PETSC_TRUE;
+  }
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode pTatinGetGravityCtx(pTatinCtx ptatin, Gravity *ctx)
 {
   Gravity gravity;
