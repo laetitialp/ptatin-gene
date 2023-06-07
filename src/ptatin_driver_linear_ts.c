@@ -970,6 +970,9 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
   /* material geometry */
   ierr = pTatinModel_ApplyInitialMaterialGeometry(user->model,user);CHKERRQ(ierr);
 
+  /* gravity */
+  ierr = pTatinModel_ApplyGravity(user->model,user);CHKERRQ(ierr);
+
   /* boundary conditions */
   ierr = pTatinModel_ApplyBoundaryCondition(user->model,user);CHKERRQ(ierr);
 
