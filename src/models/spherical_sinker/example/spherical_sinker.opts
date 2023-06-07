@@ -13,6 +13,7 @@
 
 # gravity
 -model_spherical_sinker_gravity_radial_constant
+#-model_spherical_sinker_gravity_constant
 -model_spherical_sinker_gravity_magnitude -9.8
 
 # Mesh resolution
@@ -91,3 +92,22 @@
     #-fieldsplit_u_mg_coarse_pc_type telescope
     #-fieldsplit_u_mg_coarse_telescope_pc_type cholesky
     #-fieldsplit_u_mg_coarse_telescope_pc_reduction_factor 1
+
+### Solver for poisson pressure
+#-LP_snes_atol 1.0e-9
+-LP_snes_rtol 1.0e-6
+#-LP_snes_max_it 10
+-LP_snes_monitor
+-LP_snes_converged_reason
+-LP_ksp_monitor
+-LP_ksp_converged_reason
+-LP_ksp_atol 1.0e-10
+-LP_ksp_rtol 1.0e-6
+-LP_ksp_type fgmres
+#-LP_snes_mf_operator
+-LP_pc_type bjacobi #gamg #lu not parallel
+#-LP_snes_type ksponly
+-LP_snes_ksp_ew
+-LP_snes_ksp_ew_rtol0 1.0e-2
+-LP_snes_ksp_ew_version 1
+-LP_snes_lag_preconditioner -2

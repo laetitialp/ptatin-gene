@@ -490,11 +490,25 @@ static PetscErrorCode ModelApplyVelocityBoundaryConditions(DM dav, BCList bclist
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ModelApplyPoissonPressureBoundaryConditions(pTatinCtx ptatin)
+{
+  PDESolveLithoP poisson_pressure;
+  PetscReal      zero=0.0;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  ierr = pTatinGetContext_LithoP(ptatin,&poisson_pressure);CHKERRQ(ierr);
+  /* P = 0 at surface */
+  ierr = DMDABCListTraverse3d(poisson_pressure->bclist,poisson_pressure->da,DMDABCList_JMAX_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode ModelApplyBoundaryConditions_Spherical(pTatinCtx ptatin, void *ctx)
 {
   ModelSphericalCtx *data;
   PhysCompStokes    stokes;
   DM                stokes_pack,dav,dap;
+  PetscBool         active_poisson=PETSC_FALSE;
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
@@ -508,6 +522,11 @@ PetscErrorCode ModelApplyBoundaryConditions_Spherical(pTatinCtx ptatin, void *ct
   /* Apply BCs */
   ierr = ModelApplyVelocityBoundaryConditions(dav,stokes->u_bclist,stokes->surf_bclist,PETSC_TRUE,data);CHKERRQ(ierr);
 
+  /* Poisson Pressure */
+  ierr = pTatinContextValid_LithoP(ptatin,&active_poisson);CHKERRQ(ierr);
+  if (active_poisson) {
+    ierr = ModelApplyPoissonPressureBoundaryConditions(ptatin);CHKERRQ(ierr);
+  }
   PetscFunctionReturn(0);
 }
 
