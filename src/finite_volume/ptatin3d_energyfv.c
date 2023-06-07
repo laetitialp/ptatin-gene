@@ -14,6 +14,8 @@
 #include <finite_volume/fvda_private.h>
 #include <finite_volume/kdtree.h>
 
+#include "gravity.h"
+
 PetscErrorCode _cart_convert_index_to_ijk(PetscInt r,const PetscInt mp[],PetscInt rijk[]);
 PetscErrorCode _cart_convert_ijk_to_index(const PetscInt rijk[],const PetscInt mp[],PetscInt *r);
 
@@ -910,8 +912,7 @@ PetscErrorCode EnergyFVEvaluateCoefficients_MaterialPoints(pTatinCtx user,PetscR
   ierr = pTatinGetMaterialConstants(user,&material_constants);CHKERRQ(ierr);
   
   ierr = pTatinGetStokesContext(user,&stokes);CHKERRQ(ierr);
-  grav_vec = stokes->gravity_vector;
-  
+
   /* fetch array to data for material constants */
   DataBucketGetDataFieldByName(material_constants,EnergyMaterialConstants_classname,&PField_MatConsts);
   DataFieldGetEntries(PField_MatConsts,(void**)&mat_consts);
@@ -953,7 +954,7 @@ PetscErrorCode EnergyFVEvaluateCoefficients_MaterialPoints(pTatinCtx user,PetscR
     MPntStd       *mp_std;
     MPntPEnergy   *mpp_energy;
     MPntPStokes   *mpprop_stokes;
-    double        *xi_mp,T_mp,u_mp[3];
+    double        *xi_mp,*coor_mp,T_mp,u_mp[3];
     int           t,i,j,k,eidx,region_idx;
     double        rho_mp,conductivity_mp,diffusivity_mp,H_mp,Cp,eta_mp;
     int           density_type,conductivity_type;
@@ -967,6 +968,11 @@ PetscErrorCode EnergyFVEvaluateCoefficients_MaterialPoints(pTatinCtx user,PetscR
     eidx = mp_std->wil;
     /* Get marker local coordinate (for interpolation) */
     xi_mp = mp_std->xi;
+    /* Get marker global coordinate */
+    coor_mp = mp_std->coor;
+
+    /* Get gravity vector */
+    ierr = pTatinGetGravityPointWiseVector(user,eidx,coor_mp,xi_mp,&grav_vec);CHKERRQ(ierr);
     
     /* Get region index */
     region_idx = mp_std->phase;
