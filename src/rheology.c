@@ -332,22 +332,15 @@ PetscErrorCode pTatin_UpdateCoefficientTemporalDependence_Stokes(pTatinCtx ptati
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode pTatin_ApplyStokesGravityModel(pTatinCtx ctx)
-{
-  PetscErrorCode ierr;
-  PetscFunctionBegin; 
-  ierr = pTatinQuadratureUpdateGravity(ctx);CHKERRQ(ierr); 
-  PetscFunctionReturn(0);
-}
-
-#if 0
-PetscErrorCode pTatin_ApplyStokesGravityModel(pTatinCtx ctx)
+PetscErrorCode Deprecated_pTatin_ApplyStokesGravityModel(pTatinCtx ctx)
 {
   PetscErrorCode    ierr;
   PhysCompStokes    stokes;
   PetscInt          e,nel,q,nqp;
   QPntVolCoefStokes *all_gausspoints,*cell_gausspoints;
   PetscFunctionBegin;
+
+  PetscPrintf(PETSC_COMM_WORLD,"[[ WARNING ]] Using stokes->gravity_vector is deprecated. Please use the set of functions provided for you in gravity.c\n");
 
   ierr = pTatinGetStokesContext(ctx,&stokes);CHKERRQ(ierr);
 
@@ -365,4 +358,18 @@ PetscErrorCode pTatin_ApplyStokesGravityModel(pTatinCtx ctx)
 
   PetscFunctionReturn(0);
 }
-#endif
+
+PetscErrorCode pTatin_ApplyStokesGravityModel(pTatinCtx ctx)
+{
+  PetscBool      gravity_active;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = pTatinContextValid_Gravity(ctx,&gravity_active);CHKERRQ(ierr);
+  if (gravity_active) {
+    ierr = pTatinQuadratureUpdateGravity(ctx);CHKERRQ(ierr);
+  } else {
+    ierr = Deprecated_pTatin_ApplyStokesGravityModel(ctx);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
