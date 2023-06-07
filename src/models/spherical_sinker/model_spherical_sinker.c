@@ -259,6 +259,21 @@ static PetscErrorCode ModelSetGravity(pTatinCtx ptatin, ModelSphericalCtx *data)
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode ModelApplyGravity_Spherical(pTatinCtx ptatin, void *ctx)
+{
+  ModelSphericalCtx *data;
+  PetscErrorCode ierr;
+  
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
+  
+  data = (ModelSphericalCtx*)ctx;
+  
+  ierr = ModelSetGravity(ptatin,data);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode ModelApplyInitialMeshGeometry_Spherical(pTatinCtx ptatin, void *ctx)
 {
   ModelSphericalCtx *data;
@@ -276,9 +291,7 @@ PetscErrorCode ModelApplyInitialMeshGeometry_Spherical(pTatinCtx ptatin, void *c
   ierr = DMCompositeGetEntries(stokes_pack,&dav,&dap);CHKERRQ(ierr);
   /* Mesh */
   ierr = DMDASetUniformSphericalToCartesianCoordinates(dav,data->O[0],data->L[0],data->O[1],data->L[1],data->O[2],data->L[2]);CHKERRQ(ierr);
-  /* Gravity */
-  ierr = ModelSetGravity(ptatin,data);CHKERRQ(ierr);
-
+  
   PetscFunctionReturn(0);
 }
 
@@ -363,8 +376,10 @@ PetscErrorCode ModelApplyInitialMaterialParameters_Spherical(pTatinCtx ptatin, v
   PetscFunctionReturn(0);
 }
 
+/* This function is not called in linear driver */
 PetscErrorCode ModelApplyInitialStokesVariableMarkers_Spherical(pTatinCtx ptatin, Vec X, void *ctx)
 {
+  ModelSphericalCtx          *data;
   DM                         stokes_pack,dau,dap;
   PhysCompStokes             stokes;
   Vec                        Uloc,Ploc;
@@ -375,6 +390,8 @@ PetscErrorCode ModelApplyInitialStokesVariableMarkers_Spherical(pTatinCtx ptatin
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
   
+  data = (ModelSphericalCtx*)ctx;
+
   DataBucketGetDataFieldByName(ptatin->material_constants,MaterialConst_MaterialType_classname,&PField);
   ierr = pTatinGetStokesContext(ptatin,&stokes);CHKERRQ(ierr);
   stokes_pack = stokes->stokes_pack;
@@ -641,6 +658,7 @@ PetscErrorCode pTatinModelRegister_Spherical(void)
   //ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_UPDATE_MESH_GEOM,(void (*)(void))ModelApplyUpdateMeshGeometry_Spherical);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_OUTPUT,                (void (*)(void))ModelOutput_Spherical);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_DESTROY,               (void (*)(void))ModelDestroy_Spherical);CHKERRQ(ierr);
+  ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_GRAVITY,         (void (*)(void))ModelApplyGravity_Spherical);CHKERRQ(ierr);
 
   /* Insert model into list */
   ierr = pTatinModelRegister(m);CHKERRQ(ierr);

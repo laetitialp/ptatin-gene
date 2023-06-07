@@ -33,7 +33,7 @@
 -mp_popctrl_nzp 2
 
 # ---- Define ptatin timestepping/io parameters ---- #
--output_path spherical-sinker-3300
+-output_path spherical-sinker-3300-gInMarkStokes
 -nsteps 15
 -output_frequency 1
 
