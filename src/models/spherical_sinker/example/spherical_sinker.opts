@@ -1,0 +1,93 @@
+#
+# Example: spherical sinker
+#   Launch using: ptatin_driver_linear_ts.app
+#
+#
+-ptatin_model spherical_sinker # Used model
+# phase 0: background
+-model_spherical_sinker_eta0_0 1.0e+20
+-model_spherical_sinker_rho0_0 2700.0 
+# phase 1: sinker
+-model_spherical_sinker_eta0_1 1.0e+23
+-model_spherical_sinker_rho0_1 3300.0
+
+# gravity
+-model_spherical_sinker_gravity_radial_constant
+-model_spherical_sinker_gravity_magnitude -9.8
+
+# Mesh resolution
+-mx 16
+-my 16
+-mz 16
+
+# Material point resolution per cell
+-lattice_layout_Nx 4
+-lattice_layout_Ny 4
+-lattice_layout_Nz 4
+
+-mp_popctrl_np_lower 4
+-mp_popctrl_np_upper 64
+-mp_popctrl_nxp 2
+-mp_popctrl_nyp 2
+-mp_popctrl_nzp 2
+
+# ---- Define ptatin timestepping/io parameters ---- #
+-output_path spherical-sinker-3300
+-nsteps 15
+-output_frequency 1
+
+-dt_min 1.0e-6
+-dt_max 0.5
+
+# ---- Solver configuration ---- #
+-A11_operator_type 2,2,0
+-dau_nlevels 3
+-stk_velocity_dm_mat_type aij
+-a11_op avx
+#---- 3 MG lvl ----#
+# 16 x 16 x 16
+#  8 x  8 x  8
+#  4 x  4 x  4
+#------------------#
+-stk_velocity_da_refine_hierarchy_x 2,2
+-stk_velocity_da_refine_hierarchy_y 2,2
+-stk_velocity_da_refine_hierarchy_z 2,2
+#---- SNES ----#
+-newton_its 0
+-snes_atol 1e-6
+-snes_max_it 5
+-snes_rtol 1e-8
+-snes_monitor
+-snes_converged_reason
+-snes_linesearch_type basic
+#-snes_view
+#---- KSP ----#
+-ksp_max_it 200
+-ksp_rtol 1.0e-6
+-ksp_type fgmres
+-pc_type fieldsplit
+-pc_fieldsplit_schur_fact_type upper
+-pc_fieldsplit_type schur
+  #---- Fieldsplit p ----#
+  -fieldsplit_p_ksp_type preonly
+  -fieldsplit_p_pc_type bjacobi
+  #---- Fieldsplit u ----#
+  -fieldsplit_u_ksp_max_it 200
+  #-fieldsplit_u_ksp_monitor_true_residual
+  -fieldsplit_u_ksp_monitor
+  -fieldsplit_u_ksp_converged_reason
+  -fieldsplit_u_ksp_rtol 1.0e-4
+  -fieldsplit_u_ksp_type fgmres
+  -fieldsplit_u_pc_type mg
+  -fieldsplit_u_pc_mg_levels 3
+  -fieldsplit_u_pc_mg_cycle_type v
+  -fieldsplit_u_mg_levels_ksp_type fgmres
+  -fieldsplit_u_mg_levels_pc_type bjacobi
+  -fieldsplit_u_mg_levels_ksp_max_it 8
+  -fieldsplit_u_mg_levels_ksp_norm_type NONE
+    #---- Coarse Grid ----#
+    # 4 x 4 x 4 #
+    -fieldsplit_u_mg_coarse_pc_type cholesky
+    #-fieldsplit_u_mg_coarse_pc_type telescope
+    #-fieldsplit_u_mg_coarse_telescope_pc_type cholesky
+    #-fieldsplit_u_mg_coarse_telescope_pc_reduction_factor 1
