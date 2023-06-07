@@ -164,6 +164,7 @@ extern PetscLogEvent PTATIN_ModelApplyBoundaryConditionMG;
 extern PetscLogEvent PTATIN_ModelAdaptMaterialPointResolution;
 extern PetscLogEvent PTATIN_ModelUpdateMeshGeometry;
 extern PetscLogEvent PTATIN_ModelOutput;
+extern PetscLogEvent PTATIN_ModelApplyGravity;
 
 
 PetscErrorCode pTatinInitialize(int *argc,char ***args,const char file[],const char help[])
@@ -215,6 +216,7 @@ PetscErrorCode pTatinInitialize(int *argc,char ***args,const char file[],const c
   ierr = PetscLogEventRegister("ModelAdaptMPRes",PTATIN_CLASSID,&PTATIN_ModelAdaptMaterialPointResolution);CHKERRQ(ierr);
   ierr = PetscLogEventRegister("ModelUpdateMesh",PTATIN_CLASSID,&PTATIN_ModelUpdateMeshGeometry);CHKERRQ(ierr);
   ierr = PetscLogEventRegister("ModelOutput",    PTATIN_CLASSID,&PTATIN_ModelOutput);CHKERRQ(ierr);
+  ierr = PetscLogEventRegister("ModelGravity",   PTATIN_CLASSID,&PTATIN_ModelApplyGravity);CHKERRQ(ierr);
 
   ierr = PetscLogEventRegister("MPAdvGCoord", PTATIN_CLASSID,&PTATIN_MaterialPointAdvGlobalCoordUpdate);CHKERRQ(ierr);
   ierr = PetscLogEventRegister("MPAdvLCoord", PTATIN_CLASSID,&PTATIN_MaterialPointAdvLocalCoordUpdate);CHKERRQ(ierr);

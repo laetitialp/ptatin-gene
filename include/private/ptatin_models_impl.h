@@ -50,6 +50,7 @@ struct _p_pTatinModel {
   PetscErrorCode (*FP_pTatinModel_Output)(pTatinCtx,Vec,const char*,void*);
   PetscErrorCode (*FP_pTatinModel_Destroy)(pTatinCtx,void*);
   PetscErrorCode (*FP_pTatinModel_AdaptMaterialPointResolution)(pTatinCtx,void*);
+  PetscErrorCode (*FP_pTatinModel_ApplyGravity)(pTatinCtx,void*);
   PetscBool disable_initial_solution;
   PetscBool disable_initial_stokes_variables;
   PetscBool disable_apply_bc;
@@ -59,6 +60,7 @@ struct _p_pTatinModel {
   PetscBool disable_update_mesh_geometry;
   PetscBool disable_output;
   PetscBool disable_adapt_mp_resolution;
+  PetscBool disable_apply_gravity;
 };
 
 #endif

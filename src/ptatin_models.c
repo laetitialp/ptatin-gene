@@ -47,6 +47,7 @@ PetscLogEvent PTATIN_ModelApplyBoundaryConditionMG;
 PetscLogEvent PTATIN_ModelUpdateMeshGeometry;
 PetscLogEvent PTATIN_ModelOutput;
 PetscLogEvent PTATIN_ModelAdaptMaterialPointResolution;
+PetscLogEvent PTATIN_ModelApplyGravity;
 
 
 PetscErrorCode pTatinModelCreate(pTatinModel *model)
@@ -67,6 +68,7 @@ PetscErrorCode pTatinModelCreate(pTatinModel *model)
   m->disable_update_mesh_geometry      = PETSC_FALSE;
   m->disable_output                    = PETSC_FALSE;
   m->disable_adapt_mp_resolution       = PETSC_FALSE;
+  m->disable_apply_gravity             = PETSC_FALSE;
 
   ierr = PetscOptionsGetBool(NULL,NULL,"-ptatin_model_intial_solution_disable",&m->disable_initial_solution,0);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,NULL,"-ptatin_model_initial_stokes_variables_disable",&m->disable_initial_stokes_variables,0);CHKERRQ(ierr);
@@ -77,6 +79,7 @@ PetscErrorCode pTatinModelCreate(pTatinModel *model)
   ierr = PetscOptionsGetBool(NULL,NULL,"-ptatin_model_update_mesh_geometry_disable",&m->disable_update_mesh_geometry,0);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,NULL,"-ptatin_model_output_disable",&m->disable_output,0);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,NULL,"-ptatin_model_adapt_mp_resolution_disable",&m->disable_adapt_mp_resolution,0);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,NULL,"-ptatin_model_apply_gravity_disable",&m->disable_apply_gravity,0);CHKERRQ(ierr);
 
   *model = m;
   PetscFunctionReturn(0);
@@ -203,7 +206,10 @@ PetscErrorCode pTatinModelSetFunctionPointer(pTatinModel model,pTatinModelOperat
       break;
     case PTATIN_MODEL_ADAPT_MP_RESOLUTION:
       model->FP_pTatinModel_AdaptMaterialPointResolution = ( PetscErrorCode(*)(pTatinCtx,void*) )func;
-	  break;
+      break;
+    case PTATIN_MODEL_APPLY_GRAVITY:
+      model->FP_pTatinModel_ApplyGravity = ( PetscErrorCode(*)(pTatinCtx,void*) )func;
+      break;
     default:
       SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"  [pTatinModel]: unknown operation specified");
       break;
@@ -550,6 +556,22 @@ PetscErrorCode pTatinModel_AdaptMaterialPointResolution(pTatinModel model,pTatin
     PetscPrintf(PETSC_COMM_WORLD,"  [pTatinModel]: pTatinModel_AdaptMaterialPointResolution deactivated for model \"%s\"\n",model->model_name );
   }
   ierr = PetscLogEventEnd(PTATIN_ModelAdaptMaterialPointResolution,0,0,0,0);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode pTatinModel_ApplyGravity(pTatinModel model,pTatinCtx ctx)
+{
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = PetscLogEventBegin(PTATIN_ModelApplyGravity,0,0,0,0);CHKERRQ(ierr);
+  if (!model->disable_apply_gravity) {
+    if (model->FP_pTatinModel_ApplyGravity) {
+      ierr = model->FP_pTatinModel_ApplyGravity(ctx,model->model_data);CHKERRQ(ierr);
+    }
+  }
+  ierr = PetscLogEventEnd(PTATIN_ModelApplyGravity,0,0,0,0);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
