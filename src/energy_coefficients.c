@@ -59,7 +59,7 @@ PetscErrorCode EnergyEvaluateCoefficients_MaterialPoints(pTatinCtx user,PetscRea
   const     PetscInt *elnidx;
   PetscReal el_T[Q1_NODES_PER_EL_3D],el_U[3*Q1_NODES_PER_EL_3D],NQ1[Q1_NODES_PER_EL_3D];
   PhysCompStokes stokes;
-  PetscReal *grav_vec;
+  PetscReal grav_vec[3];
 
   PetscFunctionBegin;
 
@@ -120,7 +120,7 @@ PetscErrorCode EnergyEvaluateCoefficients_MaterialPoints(pTatinCtx user,PetscRea
     region_idx = mp_std->phase;
 
     /* Get gravity vector */
-    ierr = pTatinGetGravityPointWiseVector(user,eidx,coor_mp,xi_mp,&grav_vec);CHKERRQ(ierr);
+    ierr = pTatinGetGravityPointWiseVector(user,eidx,coor_mp,xi_mp,grav_vec);CHKERRQ(ierr);
 
     /* Get element temperature */
     ierr = DMDAEQ1_GetScalarElementField_3D(el_T,(PetscInt*)&elnidx[nen * eidx],LA_T);CHKERRQ(ierr);

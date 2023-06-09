@@ -904,7 +904,7 @@ PetscErrorCode EnergyFVEvaluateCoefficients_MaterialPoints(pTatinCtx user,PetscR
   PetscInt       nel,nen_u;
   int       pidx,n_mp_points;
   PhysCompStokes stokes;
-  PetscReal *grav_vec;
+  PetscReal grav_vec[3];
   
   PetscFunctionBegin;
   
@@ -972,7 +972,7 @@ PetscErrorCode EnergyFVEvaluateCoefficients_MaterialPoints(pTatinCtx user,PetscR
     coor_mp = mp_std->coor;
 
     /* Get gravity vector */
-    ierr = pTatinGetGravityPointWiseVector(user,eidx,coor_mp,xi_mp,&grav_vec);CHKERRQ(ierr);
+    ierr = pTatinGetGravityPointWiseVector(user,eidx,coor_mp,xi_mp,grav_vec);CHKERRQ(ierr);
     
     /* Get region index */
     region_idx = mp_std->phase;

@@ -29,7 +29,7 @@ PetscErrorCode CheckGravityOnPoint(pTatinCtx ptatin)
   PetscInt              e,q,nel,nqp,nen_u;
   PetscInt              d,k;
   PetscReal             Ni[Q2_NODES_PER_EL_3D],qp_coor[3],position[3],grav[3];
-  PetscReal             *gvec;
+  PetscReal             gvec[3];
   double                *qp_gvec;
   PetscErrorCode        ierr;
   
@@ -76,7 +76,7 @@ PetscErrorCode CheckGravityOnPoint(pTatinCtx ptatin)
         }
       }
 
-      ierr = pTatinGetGravityPointWiseVector(ptatin,e,position,qp_coor,&gvec);CHKERRQ(ierr);
+      ierr = pTatinGetGravityPointWiseVector(ptatin,e,position,qp_coor,gvec);CHKERRQ(ierr);
       for (d=0; d<NSD; d++) {
         grav[d] = gvec[d];
       }
@@ -89,9 +89,6 @@ PetscErrorCode CheckGravityOnPoint(pTatinCtx ptatin)
       PetscPrintf(PETSC_COMM_WORLD,"\tvec    (%1.6e, %1.6e, %1.6e)\n",gvec[0],gvec[1],gvec[2]);
       PetscPrintf(PETSC_COMM_WORLD,"\tgrav   (%1.6e, %1.6e, %1.6e)\n",grav[0],grav[1],grav[2]);
       PetscPrintf(PETSC_COMM_WORLD,"\tqp_gvec(%1.6e, %1.6e, %1.6e)\n",qp_gvec[0],qp_gvec[1],qp_gvec[2]);
-
-      /* Free gvec (allocated in the gravity type specific getter) */
-      //ierr = PetscFree(gvec);CHKERRQ(ierr);
     }
   }
   ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
@@ -165,11 +162,11 @@ PetscErrorCode GenerateSphericalMesh()
     switch (gtype) {
       case GRAVITY_CONSTANT:
         {
-          PetscReal *grav;
+          PetscReal grav[3];
           PetscReal mag;
 
           ierr = GravitySet_Constant(gravity,gvec);CHKERRQ(ierr);
-          ierr = GravityGet_ConstantVector(gravity,&grav);CHKERRQ(ierr);
+          ierr = GravityGet_ConstantVector(gravity,grav);CHKERRQ(ierr);
           ierr = GravityGet_ConstantMagnitude(gravity,&mag);CHKERRQ(ierr);
           PetscPrintf(PETSC_COMM_WORLD,"gvec = (%f, %f, %f), mag = %f\n",grav[0],grav[1],grav[2],mag);
         }

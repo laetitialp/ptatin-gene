@@ -591,7 +591,6 @@ PetscErrorCode UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX(DM dav,Ve
 }
 
 #if 0
-
 PetscErrorCode UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX_InterpolateMSurfToVolSurf_Spherical(DM dm_msurf,DM dm_vol)
 {
   PetscErrorCode ierr;
@@ -665,9 +664,10 @@ PetscErrorCode UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX_Interpola
 
   /* Transform cartesian coords in spherical coords */
   for (k=0; k<ni*nk; k++) {
-    PetscReal radius = 0.0, A;
+    PetscReal radius,A;
 
     /* radius */
+    radius = 0.0;
     for (d=0; d<NSD; d++) {
       radius += LA_msurf_coords[3*k+d]*LA_msurf_coords[3*k+d];
     } 

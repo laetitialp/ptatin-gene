@@ -123,14 +123,14 @@ PetscErrorCode pTatinQuadratureUpdateGravity(pTatinCtx ptatin)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode GravityGetPointWiseVector(Gravity gravity, PetscInt eidx, PetscReal global_coords[], PetscReal local_coords[], PetscReal *gvec[])
+PetscErrorCode GravityGetPointWiseVector(Gravity gravity, PetscInt eidx, PetscReal global_coords[], PetscReal local_coords[], PetscReal gvec[])
 {
   PetscFunctionBegin;
   gravity->get_gvec(gravity,eidx,global_coords,local_coords,gvec);
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode pTatinGetGravityPointWiseVector(pTatinCtx ptatin, PetscInt eidx, PetscReal global_coords[], PetscReal local_coords[], PetscReal *gvec[])
+PetscErrorCode pTatinGetGravityPointWiseVector(pTatinCtx ptatin, PetscInt eidx, PetscReal global_coords[], PetscReal local_coords[], PetscReal gvec[])
 {
   Gravity        gravity;
   PetscErrorCode ierr;

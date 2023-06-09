@@ -78,17 +78,19 @@ PetscErrorCode GravitySet_Constant(Gravity gravity, PetscReal gvec[])
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode GravityGet_ConstantVector(Gravity gravity, PetscReal **gvec)
+PetscErrorCode GravityGet_ConstantVector(Gravity gravity, PetscReal gvec[])
 {
   GravityConstant gc = NULL;
+  PetscInt        d;
   PetscFunctionBegin;
 
   if (gravity->gravity_type != GRAVITY_CONSTANT) { PetscFunctionReturn(0); }
   if (!gvec) { PetscFunctionReturn(0); }
 
   gc = (GravityConstant)gravity->data;
-  memcpy( &gc->gravity_const[0], gravity->gvec_ptwise, 3 * sizeof(PetscReal) );
-  *gvec = gravity->gvec_ptwise;
+  for (d=0; d<NSD; d++) {
+    gvec[d] = gc->gravity_const[d];
+  }
   
   PetscFunctionReturn(0);
 }
@@ -107,13 +109,11 @@ PetscErrorCode GravityGet_ConstantMagnitude(Gravity gravity, PetscReal *magnitud
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode GravityGetPointWiseVector_Constant(Gravity gravity, PetscInt eidx, PetscReal global_coords[], PetscReal local_coords[], PetscReal *gvec[])
+PetscErrorCode GravityGetPointWiseVector_Constant(Gravity gravity, PetscInt eidx, PetscReal global_coords[], PetscReal local_coords[], PetscReal gvec[])
 {
-  PetscReal *grav;
   PetscErrorCode ierr;
   PetscFunctionBegin;
-  ierr = GravityGet_ConstantVector(gravity,&grav);CHKERRQ(ierr);
-  *gvec = grav;
+  ierr = GravityGet_ConstantVector(gravity,gvec);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 

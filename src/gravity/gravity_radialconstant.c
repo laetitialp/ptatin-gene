@@ -54,12 +54,11 @@ PetscErrorCode GravitySet_RadialConstant(Gravity gravity, PetscReal magnitude)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode GravityGetPointWiseVector_RadialConstant(Gravity gravity, PetscInt eidx, PetscReal global_coords[], PetscReal local_coords[], PetscReal *gvec[])
+PetscErrorCode GravityGetPointWiseVector_RadialConstant(Gravity gravity, PetscInt eidx, PetscReal global_coords[], PetscReal local_coords[], PetscReal gvec[])
 {
   GravityRadialConstant gc = NULL;
   PetscInt              d;
   PetscReal             coor_norm;
-  PetscErrorCode        ierr;
   PetscFunctionBegin;
 
   /* Check the type */
@@ -74,12 +73,11 @@ PetscErrorCode GravityGetPointWiseVector_RadialConstant(Gravity gravity, PetscIn
   coor_norm = PetscSqrtReal(coor_norm);
   for (d=0; d<NSD; d++) {
     if (coor_norm > 1.0e-20) {
-      gravity->gvec_ptwise[d] = gc->magnitude * global_coords[d]/coor_norm;
+      gvec[d] = gc->magnitude * global_coords[d]/coor_norm;
     } else { 
-      gravity->gvec_ptwise[d] = 0.0;
+      gvec[d] = 0.0;
     }
   }
-  *gvec = gravity->gvec_ptwise;
   PetscFunctionReturn(0);
 }
 
@@ -91,7 +89,7 @@ static PetscErrorCode GravitySetOnPoint_RadialConstant(PhysCompStokes stokes,
 {
   PetscInt       d,k;
   PetscReal      Ni[Q2_NODES_PER_EL_3D],qp_coor[3],position[3];
-  PetscReal      *gvec=NULL;
+  PetscReal      gvec[3];
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -110,7 +108,7 @@ static PetscErrorCode GravitySetOnPoint_RadialConstant(PhysCompStokes stokes,
     }
   }
 
-  ierr = GravityGetPointWiseVector_RadialConstant(gravity,0,position,qp_coor,&gvec);CHKERRQ(ierr);
+  ierr = GravityGetPointWiseVector_RadialConstant(gravity,0,position,qp_coor,gvec);CHKERRQ(ierr);
 
   /* Set grav on quadrature points */
   QPntVolCoefStokesSetField_gravity_vector(&cell_gausspoints[qp_idx],gvec);
