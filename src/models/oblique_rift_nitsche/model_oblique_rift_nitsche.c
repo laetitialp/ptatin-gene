@@ -127,6 +127,9 @@ static PetscErrorCode ModelInitialBoundaryVelocity_RiftNitsche(ModelRiftNitscheC
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-bc_atan_sharpness",&data->atan_sharpness,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-bc_atan_offset",&data->atan_offset,NULL);CHKERRQ(ierr);
 
+  data->time_full_velocity = 1.0;
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-bc_time_full_velocity",&data->time_full_velocity,NULL);CHKERRQ(ierr);
+
   /* reports before scaling */
   PetscPrintf(PETSC_COMM_WORLD,"************ Velocity Dirichlet BCs ************\n",NULL);
   PetscPrintf(PETSC_COMM_WORLD,"||u||= %1.4e, ux = %+1.4e, uy = %+1.4e, uz = %+1.4e [cm/yr]\n",data->norm_u,data->u_bc[0],data->u_bc[1],data->u_bc[2]);
@@ -419,6 +422,10 @@ static PetscErrorCode ModelSetGeneralSlipBoundaryValues_RiftNitsche(ModelRiftNit
       ierr = ModelSetGeneralSlipBoundaryValues_RotatedVelocityField(data);CHKERRQ(ierr);
       break;
 
+    case 5:
+      ierr = ModelSetGeneralSlipBoundaryValues_RotatedVelocityField(data);CHKERRQ(ierr);
+      break;
+
     default:
       SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"bc_type must be set with one of the bc options\n");
       break;
@@ -458,7 +465,117 @@ static PetscErrorCode ModelSetMaterialParametersVISCOUS_RiftNitsche(pTatinCtx c,
   }
 
   PetscFunctionReturn(0);
+}
 
+static PetscErrorCode ModelSetMaterialParametersConstantVPT_RiftNitsche(pTatinCtx c,DataBucket materialconstants, ModelRiftNitscheCtx *data)
+{
+  DataField                 PField,PField_k,PField_Q;
+  EnergyConductivityConst   *data_k;
+  EnergySourceConst         *data_Q;
+  EnergyMaterialConstants   *matconstants_e;
+  PetscInt                  region_idx;
+  int                       source_type[7] = {0, 0, 0, 0, 0, 0, 0};
+  PetscReal                 viscosity;
+  PetscReal                 phi,phi_inf,Co,Co_inf,Tens_cutoff,Hst_cutoff,eps_min,eps_max;
+  PetscReal                 beta,alpha,rho,heat_source,conductivity,Cp;
+  char                      *option_name;
+  PetscErrorCode            ierr;
+
+  PetscFunctionBegin;
+
+  /* Material constants */
+  ierr = MaterialConstantsSetDefaults(materialconstants);CHKERRQ(ierr);
+  
+  /* Energy material constants */
+  DataBucketGetDataFieldByName(materialconstants,EnergyMaterialConstants_classname,&PField);
+  DataFieldGetEntries(PField,(void**)&matconstants_e);
+  
+  /* Conductivity */
+  DataBucketGetDataFieldByName(materialconstants,EnergyConductivityConst_classname,&PField_k);
+  DataFieldGetEntries(PField_k,(void**)&data_k);
+  
+  /* Heat source */
+  DataBucketGetDataFieldByName(materialconstants,EnergySourceConst_classname,&PField_Q);
+  DataFieldGetEntries(PField_Q,(void**)&data_Q);
+
+  /* Set default values for parameters */
+  source_type[0] = ENERGYSOURCE_CONSTANT;
+  source_type[1] = ENERGYSOURCE_SHEAR_HEATING;
+  Cp             = 800.0;
+  /* Set material parameters from options file */
+  for (region_idx=0; region_idx<data->n_phases; region_idx++) {
+    /* Set material constitutive laws */
+    ierr = MaterialConstantsSetValues_MaterialType(materialconstants,region_idx,VISCOUS_CONSTANT,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_BOUSSINESQ);CHKERRQ(ierr);
+
+    /* VISCOUS PARAMETERS */
+    viscosity = 1.0e+23;
+    if (asprintf (&option_name, "-eta0_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&viscosity,NULL);CHKERRQ(ierr); 
+    free (option_name);
+    ierr = MaterialConstantsSetValues_ViscosityConst(materialconstants,region_idx,viscosity);CHKERRQ(ierr);
+
+    /* PLASTIC PARAMETERS */
+    if (asprintf (&option_name, "-phi_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&phi,NULL);CHKERRQ(ierr);
+    free (option_name);
+    if (asprintf (&option_name, "-phi_inf_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&phi_inf,NULL);CHKERRQ(ierr);
+    free (option_name);
+    if (asprintf (&option_name, "-Co_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&Co,NULL);CHKERRQ(ierr);
+    free (option_name);
+    if (asprintf (&option_name, "-Co_inf_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&Co_inf,NULL);CHKERRQ(ierr);
+    free (option_name);
+    if (asprintf (&option_name, "-Tens_cutoff_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&Tens_cutoff,NULL);CHKERRQ(ierr);
+    free (option_name);
+    if (asprintf (&option_name, "-Hst_cutoff_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&Hst_cutoff,NULL);CHKERRQ(ierr);
+    free (option_name);
+    if (asprintf (&option_name, "-eps_min_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&eps_min,NULL);CHKERRQ(ierr);
+    free (option_name);
+    if (asprintf (&option_name, "-eps_max_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&eps_max,NULL);CHKERRQ(ierr);
+    free (option_name);
+
+    phi     = M_PI * phi/180.0;
+    phi_inf = M_PI * phi_inf/180.0;
+    /* Set plastic params for region_idx */
+    MaterialConstantsSetValues_PlasticDP(materialconstants,region_idx,phi,phi_inf,Co,Co_inf,Tens_cutoff,Hst_cutoff);
+    MaterialConstantsSetValues_SoftLin(materialconstants,region_idx,eps_min,eps_max);
+
+    /* ENERGY PARAMETERS */
+    if (asprintf (&option_name, "-alpha_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&alpha,NULL);CHKERRQ(ierr);
+    free (option_name);
+    if (asprintf (&option_name, "-beta_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&beta,NULL);CHKERRQ(ierr);
+    free (option_name);
+    if (asprintf (&option_name, "-rho_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&rho,NULL);CHKERRQ(ierr);
+    free (option_name);
+    if (asprintf (&option_name, "-heat_source_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&heat_source,NULL);CHKERRQ(ierr);
+    free (option_name);
+    if (asprintf (&option_name, "-conductivity_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&conductivity,NULL);CHKERRQ(ierr);
+    free (option_name);
+    
+    /* Set energy params for region_idx */
+    MaterialConstantsSetValues_EnergyMaterialConstants(region_idx,matconstants_e,alpha,beta,rho,Cp,ENERGYDENSITY_CONSTANT,ENERGYCONDUCTIVITY_CONSTANT,source_type);
+    MaterialConstantsSetValues_DensityBoussinesq(materialconstants,region_idx,rho,alpha,beta);
+    EnergySourceConstSetField_HeatSource(&data_Q[region_idx],heat_source);
+    EnergyConductivityConstSetField_k0(&data_k[region_idx],conductivity);
+  }
+
+  /* Report all material parameters values */
+  for (region_idx=0; region_idx<data->n_phases; region_idx++) {
+    MaterialConstantsPrintAll(materialconstants,region_idx);
+    MaterialConstantsEnergyPrintAll(materialconstants,region_idx);
+  }
+  PetscFunctionReturn(0);
 }
 
 static PetscErrorCode ModelSetMaterialParametersVPT_RiftNitsche(pTatinCtx c,DataBucket materialconstants, ModelRiftNitscheCtx *data)
@@ -591,12 +708,17 @@ static PetscErrorCode ModelSetMaterialParametersVPT_RiftNitsche(pTatinCtx c,Data
 static PetscErrorCode ModelSetMaterialParameters_RiftNitsche(pTatinCtx c,DataBucket materialconstants, ModelRiftNitscheCtx *data)
 {
   PetscBool      viscous_const=PETSC_FALSE;
+  PetscBool      viscous_vpt_const=PETSC_FALSE;
   PetscErrorCode ierr;
   PetscFunctionBegin;
 
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-viscous_constant",&viscous_const,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-viscous_vpt_constant",&viscous_vpt_const,NULL);CHKERRQ(ierr);
+
   if (viscous_const) {
     ierr = ModelSetMaterialParametersVISCOUS_RiftNitsche(c,materialconstants,data);CHKERRQ(ierr);
+  } else if (viscous_vpt_const) {
+    ierr = ModelSetMaterialParametersConstantVPT_RiftNitsche(c,materialconstants,data);CHKERRQ(ierr);
   } else {
     ierr = ModelSetMaterialParametersVPT_RiftNitsche(c,materialconstants,data);CHKERRQ(ierr);
   }
@@ -752,13 +874,14 @@ static PetscErrorCode ModelSetPassiveMarkersSwarmParameters(pTatinCtx c, ModelRi
 static PetscErrorCode ModelScaleParameters_RiftNitsche(DataBucket materialconstants, ModelRiftNitscheCtx *data)
 {
   PetscInt  region_idx,i;
-  PetscReal cm_per_year2m_per_sec;
+  PetscReal cm_per_year2m_per_sec,Myr2sec;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
 
   /* scaling values */
   cm_per_year2m_per_sec = 1.0e-2 / ( 365.0 * 24.0 * 60.0 * 60.0 );
+  Myr2sec               = 1.0e6 * ( 365.0 * 24.0 * 3600.0 );
   data->length_bar     = 1.0e5;
   data->viscosity_bar  = 1.0e22;
   data->velocity_bar   = 1.0e-10;
@@ -797,6 +920,7 @@ static PetscErrorCode ModelScaleParameters_RiftNitsche(DataBucket materialconsta
     data->split_face_min[i] = data->split_face_min[i] / data->length_bar; 
   }
 
+  data->time_full_velocity = data->time_full_velocity*Myr2sec / data->time_bar;
 
   /* Scale velocity */
   data->norm_u = data->norm_u*cm_per_year2m_per_sec / data->velocity_bar;
@@ -826,24 +950,27 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
 {
   PetscBool      bc_nitsche,bc_dirichlet,bc_freeslip_nitsche,found;
   PetscBool      bc_strikeslip,bc_u_func_atan,bc_strike_analogue;
+  PetscBool      bc_strike_analogue_nitsche;
   PetscInt       nn;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
 
   /* Get BC type from options */
-  bc_nitsche             = PETSC_FALSE;
-  bc_dirichlet           = PETSC_FALSE;
-  bc_freeslip_nitsche    = PETSC_FALSE;
-  bc_strikeslip          = PETSC_FALSE;
-  bc_strike_analogue     = PETSC_FALSE;
-  bc_u_func_atan         = PETSC_FALSE;
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_nitsche",&bc_nitsche,&found);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_dirichlet",&bc_dirichlet,&found);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_freeslip_nitsche",&bc_freeslip_nitsche,&found);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_strike_slip",&bc_strikeslip,&found);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_strike_analogue",&bc_strike_analogue,&found);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_u_func_atan",&bc_u_func_atan,&found);CHKERRQ(ierr);
+  bc_nitsche                 = PETSC_FALSE;
+  bc_dirichlet               = PETSC_FALSE;
+  bc_freeslip_nitsche        = PETSC_FALSE;
+  bc_strikeslip              = PETSC_FALSE;
+  bc_strike_analogue         = PETSC_FALSE;
+  bc_strike_analogue_nitsche = PETSC_FALSE;
+  bc_u_func_atan             = PETSC_FALSE;
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_nitsche",                &bc_nitsche,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_dirichlet",              &bc_dirichlet,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_freeslip_nitsche",       &bc_freeslip_nitsche,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_strike_slip",            &bc_strikeslip,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_strike_analogue",        &bc_strike_analogue,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_strike_analogue_nitsche",&bc_strike_analogue_nitsche,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_u_func_atan",            &bc_u_func_atan,&found);CHKERRQ(ierr);
 
   /* Split face location for the analogue BCs */
   data->split_face_min[0] = 290.0e3;
@@ -884,6 +1011,9 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
   } else if (bc_strike_analogue) {
     data->bc_type = 4;
     PetscPrintf(PETSC_COMM_WORLD,"[[ BC TYPE %d: Analogue model BCs (base driven) ACTIVATED ]]\n",data->bc_type);
+  } else if (bc_strike_analogue_nitsche) {
+    data->bc_type = 5;
+    PetscPrintf(PETSC_COMM_WORLD,"[[ BC TYPE %d: Analogue model BCs (base driven) + Nitsche on vertical sides ACTIVATED ]]\n");
   }
 
   data->u_func_type = 0;
@@ -1677,6 +1807,10 @@ static PetscErrorCode ModelApplyInitialVelocityField_RiftNitsche(DM dau, Vec vel
       ierr = ModelApplyInitialVelocityField_RotatedVelocityField(dau,velocity,data);CHKERRQ(ierr);
       break;
 
+    case 5:
+      ierr = ModelApplyInitialVelocityField_RotatedVelocityField(dau,velocity,data);CHKERRQ(ierr);
+      break;
+
     default:
       SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"No velocity boundary conditions type was given. Use one of the bc options\n");
       break;
@@ -1819,6 +1953,13 @@ static PetscErrorCode GeneralNavierSlipBC_Atan(Facet F,const PetscReal qp_coor[]
       break;
 
     case 3:
+      ierr = RotateStrainRateBoundaryValue_Atan(E,qp_coor,model_data);CHKERRQ(ierr);
+      break;
+
+    case 4:
+      break;
+
+    case 5:
       ierr = RotateStrainRateBoundaryValue_Atan(E,qp_coor,model_data);CHKERRQ(ierr);
       break;
 
@@ -2172,7 +2313,68 @@ static PetscErrorCode ModelApplyAnalogueBoundaryConditions(DM dav, BCList bclist
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ModelApplyBoundaryConditionsVelocity_RiftNitsche(DM dav, BCList bclist,SurfBCList surflist,PetscBool insert_if_not_found,ModelRiftNitscheCtx *data)
+static PetscErrorCode IncreaseVelocityWithTime(pTatinCtx ptatin, ModelRiftNitscheCtx *data)
+{
+  PetscReal      velocity_bc[2],time;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  /* Get time */
+  ierr = pTatinGetTime(ptatin,&time);CHKERRQ(ierr);
+
+  /* Note: When using Atan function the strain rate on boundary is re-computed at each BC function call
+     Warning: If not using Atan function, the strain rate is only set at initialization of the model, so
+     it does not account for velocity variation thus I set an error
+  */
+
+  if (data->u_func_type != 1) { SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"This function cannot be used with linear velocity function. Take a look at notes in model_oblique_rift_nitsche.c"); }
+
+  velocity_bc[1] = data->norm_u * cos(data->alpha_u);
+  velocity_bc[0] = sqrt( pow(data->norm_u,2.0) - pow(velocity_bc[1],2.0) );
+
+  if (time > data->time_full_velocity) {
+    data->u_bc[0] = velocity_bc[0];
+    data->u_bc[2] = velocity_bc[1];
+  } else {
+    data->u_bc[0] = velocity_bc[0] + (time - data->time_full_velocity) * velocity_bc[0] / data->time_full_velocity;
+    data->u_bc[2] = velocity_bc[1] + (time - data->time_full_velocity) * velocity_bc[1] / data->time_full_velocity;
+  }
+  
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelApplyBaseDrivenRotatedStrikeSlipNavierSlip_RiftNitsche(pTatinCtx ptatin, DM dav, BCList bclist,SurfBCList surflist,PetscBool insert_if_not_found,ModelRiftNitscheCtx *data)
+{
+  PetscReal      u_bot;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = IncreaseVelocityWithTime(ptatin,data);CHKERRQ(ierr);
+
+  /* Apply rotated Couette flow on KMAX and KMIN faces */
+  data->component = 0;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,data->component,BCListEvaluator_RotatedVelocityField,(void*)data);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,data->component,BCListEvaluator_RotatedVelocityField,(void*)data);CHKERRQ(ierr);
+  data->component = 2;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,data->component,BCListEvaluator_RotatedVelocityField,(void*)data);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,data->component,BCListEvaluator_RotatedVelocityField,(void*)data);CHKERRQ(ierr);
+
+  /* Apply General Navier Slip BC on IMAX and IMIN faces */
+  ierr = ModelApplyGeneralNavierSlip_RiftNitsche(surflist,insert_if_not_found,data);CHKERRQ(ierr);
+
+  /* Apply rotated Couette flow on JMIN face */
+  data->component = 0;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,data->component,BCListEvaluator_RotatedVelocityField,(void*)data);CHKERRQ(ierr);
+  data->component = 2;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,data->component,BCListEvaluator_RotatedVelocityField,(void*)data);CHKERRQ(ierr);
+  /* Apply base y velocity from u.n */
+  u_bot = data->u_bc[1];
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&u_bot);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelApplyBoundaryConditionsVelocity_RiftNitsche(pTatinCtx ptatin, DM dav, BCList bclist,SurfBCList surflist,PetscBool insert_if_not_found,ModelRiftNitscheCtx *data)
 {
   PetscErrorCode ierr;
   PetscFunctionBegin;
@@ -2200,6 +2402,10 @@ static PetscErrorCode ModelApplyBoundaryConditionsVelocity_RiftNitsche(DM dav, B
 
     case 4:
       ierr = ModelApplyAnalogueBoundaryConditions(dav,bclist,data);CHKERRQ(ierr);
+      break;
+
+    case 5:
+      ierr = ModelApplyBaseDrivenRotatedStrikeSlipNavierSlip_RiftNitsche(ptatin,dav,bclist,surflist,insert_if_not_found,data);CHKERRQ(ierr);
       break;
 
     default:
@@ -2267,7 +2473,7 @@ PetscErrorCode ModelApplyBoundaryConditions_RiftNitsche(pTatinCtx c,void *ctx)
   /* Compute uy as int_S v.n dS */
   ierr = ModelComputeBottomFlow_udotn(c,X,data);CHKERRQ(ierr);
 
-  ierr = ModelApplyBoundaryConditionsVelocity_RiftNitsche(stokes->dav,stokes->u_bclist,stokes->surf_bclist,PETSC_TRUE,data);CHKERRQ(ierr);
+  ierr = ModelApplyBoundaryConditionsVelocity_RiftNitsche(c,stokes->dav,stokes->u_bclist,stokes->surf_bclist,PETSC_TRUE,data);CHKERRQ(ierr);
 
   /* Define boundary conditions for any other physics */
   /* Temperature */
@@ -2295,7 +2501,7 @@ PetscErrorCode ModelApplyBoundaryConditionMG_RiftNitsche(PetscInt nl,BCList bcli
   data = (ModelRiftNitscheCtx*)ctx;
   /* Define velocity boundary conditions on each level within the MG hierarchy */
   for (n=0; n<nl; n++) {
-    ierr = ModelApplyBoundaryConditionsVelocity_RiftNitsche(dav[n],bclist[n],surf_bclist[n],PETSC_FALSE,data);CHKERRQ(ierr);
+    ierr = ModelApplyBoundaryConditionsVelocity_RiftNitsche(c,dav[n],bclist[n],surf_bclist[n],PETSC_FALSE,data);CHKERRQ(ierr);
   }
   PetscFunctionReturn(0);
 }
