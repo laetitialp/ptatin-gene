@@ -69,29 +69,32 @@ PetscErrorCode GravitySetType(Gravity gravity, GravityType gtype)
   /* Check that a function was assigned */
   if (!create) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"GravityType did not match any known type"); }
   /* Call the Create() function of the corresponding type */
-  create(gravity);
+  ierr = create(gravity);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode GravityScale(Gravity gravity, PetscReal scaling_factor)
 {
+  PetscErrorCode ierr;
   PetscFunctionBegin;
-  gravity->scale(gravity,scaling_factor);
+  ierr = gravity->scale(gravity,scaling_factor);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode QuadratureSetGravity(PhysCompStokes stokes, Gravity gravity)
 {
+  PetscErrorCode ierr;
   PetscFunctionBegin;
-  gravity->quadrature_set(stokes,gravity);
+  ierr = gravity->quadrature_set(stokes,gravity);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode QuadratureUpdateGravity(PhysCompStokes stokes, Gravity gravity)
 {
+  PetscErrorCode ierr;
   PetscFunctionBegin;
-  gravity->update(stokes,gravity);
+  ierr = gravity->update(stokes,gravity);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -125,8 +128,9 @@ PetscErrorCode pTatinQuadratureUpdateGravity(pTatinCtx ptatin)
 
 PetscErrorCode GravityGetPointWiseVector(Gravity gravity, PetscInt eidx, PetscReal global_coords[], PetscReal local_coords[], PetscReal gvec[])
 {
+  PetscErrorCode ierr;
   PetscFunctionBegin;
-  gravity->get_gvec(gravity,eidx,global_coords,local_coords,gvec);
+  ierr = gravity->get_gvec(gravity,eidx,global_coords,local_coords,gvec);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
