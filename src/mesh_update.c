@@ -590,6 +590,199 @@ PetscErrorCode UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX(DM dav,Ve
   PetscFunctionReturn(0);
 }
 
+#if 0
+
+PetscErrorCode UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX_InterpolateMSurfToVolSurf_Spherical(DM dm_msurf,DM dm_vol)
+{
+  PetscErrorCode ierr;
+  PetscInt       M,N,P,si,sj,sk,nx,ny,nz,ni,nj,nk,msurf_mi,msurf_mj,msurf_mk;
+  PetscInt       i,j,k,n,d,ei,ek;
+  PetscReal      H_p,el_H[Q2_NODES_PER_EL_2D],Ni[Q2_NODES_PER_EL_2D];
+  Vec            msurf_coords,v_coords;
+  PetscScalar    *LA_msurf_coords;
+  DMDACoor3d     ***LA_v_coords;
+  PetscReal      *msurf_coords_2d;
+  PetscInt       *msurf_element,elcnt,*el,nid[Q2_NODES_PER_EL_2D];
+  DM             v_cda;
+
+  PetscFunctionBegin;
+  /* generate an element->node mapping for dm_surf for Q2 */
+  ierr = DMDAGetInfo(dm_msurf,0,&ni,&nj,&nk,0,0,0, 0,0,0,0,0,0);CHKERRQ(ierr);
+  ierr = PetscMalloc(sizeof(PetscInt)*ni*nk*Q2_NODES_PER_EL_2D,&msurf_element);CHKERRQ(ierr);
+  ierr = PetscMalloc(sizeof(PetscReal)*3*ni*nk,&msurf_spherical_coords);CHKERRQ(ierr);
+
+  msurf_mi = (ni - 1)/2;
+  msurf_mk = (nk - 1)/2;
+  msurf_mj = 1;
+  elcnt = 0;
+  for (ek=0; ek<msurf_mk; ek++) {
+    k = 2*ek;
+    for (ei=0; ei<msurf_mi; ei++) {
+      i = 2*ei;
+
+      el = &msurf_element[Q2_NODES_PER_EL_2D*elcnt];
+
+      nid[0] = (i  ) + (k  ) *ni;
+      nid[1] = (i+1) + (k  ) *ni;
+      nid[2] = (i+2) + (k  ) *ni;
+
+      nid[3] = (i  ) + (k+1) *ni;
+      nid[4] = (i+1) + (k+1) *ni;
+      nid[5] = (i+2) + (k+1) *ni;
+
+      nid[6] = (i  ) + (k+2) *ni;
+      nid[7] = (i+1) + (k+2) *ni;
+      nid[8] = (i+2) + (k+2) *ni;
+
+      for (n=0; n<Q2_NODES_PER_EL_2D; n++) {
+        if (nid[n] > ni*nj*nk) {
+          SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_CORRUPT,"Local indexing exceeds number of global nodes");
+        }
+        el[n] = nid[n];
+      }
+      elcnt++;
+
+    }
+  }
+
+  ierr = DMGetCoordinates(dm_msurf,&msurf_coords);CHKERRQ(ierr);
+  ierr = VecGetArray(msurf_coords,&LA_msurf_coords);CHKERRQ(ierr);
+
+/*
+  for (k=0; k<ni*nk; k++) {
+    msurf_coords_2d[2*k+0] = LA_msurf_coords[3*k+0]; // x
+    msurf_coords_2d[2*k+1] = LA_msurf_coords[3*k+2]; // z
+  }
+*/
+
+
+  ierr = DMDAGetInfo(dm_vol,0,&M,&N,&P,0,0,0,0,0,0,0,0,0);CHKERRQ(ierr);
+  ierr = DMDAGetCorners(dm_vol,&si,&sj,&sk,&nx,&ny,&nz);CHKERRQ(ierr);
+
+  ierr = DMGetCoordinates(dm_vol,&v_coords);CHKERRQ(ierr);
+  ierr = DMGetCoordinateDM(dm_vol,&v_cda);CHKERRQ(ierr);
+  ierr = DMDAVecGetArray(v_cda,v_coords,&LA_v_coords);CHKERRQ(ierr);
+
+  /* Transform cartesian coords in spherical coords */
+  for (k=0; k<ni*nk; k++) {
+    PetscReal radius = 0.0, A;
+
+    /* radius */
+    for (d=0; d<NSD; d++) {
+      radius += LA_msurf_coords[3*k+d]*LA_msurf_coords[3*k+d];
+    } 
+    msurf_spherical_coords[3*k] = PetscSqrtReal(radius);
+
+    /* theta */
+    A  = LA_msurf_coords[3*k + 1] * LA_msurf_coords[3*k + 1];
+    A += LA_msurf_coords[3*k + 2] * LA_msurf_coords[3*k + 2];
+    A = PetscSqrtReal(A);
+    msurf_spherical_coords[3*k + 1] = PetscAtan2Real( A , LA_msurf_coords[3*k] );
+
+    /* phi */
+    msurf_spherical_coords[3*k + 2] = PetscAtan2Real( LA_msurf_coords[3*k + 2] , LA_msurf_coords[3*k + 1] );
+  }
+
+  /* a) Insert coords of vol->surf into material point structure for interpolation purposes */
+  /* b) perform point location with msurf */
+  /* c) perform interpolation from msurf -> vol->surf.radius */
+
+  if (sj + ny == N) {
+    j = N - 1;
+
+    for (k=sk; k<sk+nz; k++) {
+      for (i=si; i<si+nx; i++) {
+        MPntStd mp;
+        PetscReal r_p,theta_p,phi_p,A_p;
+
+        /* a) */
+        /* Transform cartesian coords in spherical coords */
+        r_p  = LA_v_coords[k][j][i].x * LA_v_coords[k][j][i].x;
+        r_p += LA_v_coords[k][j][i].y * LA_v_coords[k][j][i].y;
+        r_p += LA_v_coords[k][j][i].z * LA_v_coords[k][j][i].z;
+        r_p  = PetscSqrtReal(r_p); 
+
+        A_p  = LA_v_coords[k][j][i].y * LA_v_coords[k][j][i].y;
+        A_p += 
+
+        theta_p = 
+        phi_p
+
+        mp.coor[0] = LA_v_coords[k][j][i].x;
+        mp.coor[1] = LA_v_coords[k][j][i].y;
+        mp.coor[2] = LA_v_coords[k][j][i].z;
+        /* c) */
+        InverseMappingDomain_3dQ2(1.0e-10,20,PETSC_FALSE,PETSC_FALSE,
+                                  LA_msurf_coords,msurf_mi,msurf_mj,msurf_mk,msurf_element,
+                                  1,&mp);
+
+        if (mp.wil == -1) {
+          PetscReal sep2,min_sep2 = 1.0e32;
+          PetscInt index;
+
+          //PetscPrintf(PETSC_COMM_SELF,"Warning: point %D not found\n",(i-si)+(k-sk)*nx);
+          //PetscPrintf(PETSC_COMM_SELF,"  pos(x,z) %1.8e %1.8e\n",mp.coor[0],mp.coor[1]);
+
+          index = -1;
+          for (n=0; n<ni*nk; n++) {
+            sep2 = 0.0;
+            for (d=0; d<NSD; d++) {
+              sep2 += (LA_msurf_coords[NSD*n + d] - mp.coor[d])*(LA_msurf_coords[NSD*n + d] - mp.coor[d]);
+            }
+            if (sep2 < min_sep2) {
+              min_sep2 = sep2;
+              index = n;
+            }
+          }
+
+          /* Compute radius i.e., distance from the centre of the sphere */
+          H_p = 0.0;
+          for (d=0; d<NSD; d++) {
+            H_p += LA_msurf_coords[NSD*index + d] * LA_msurf_coords[NSD*index + d];
+          }
+          H_p = PetscSqrtReal(H_p);
+
+        } else {
+
+          /* d) */
+          /* get element heights */
+          for (n=0; n<Q2_NODES_PER_EL_2D; n++) {
+            PetscInt nidx;
+
+            nidx = msurf_element[ Q2_NODES_PER_EL_2D*mp.wil + n ];
+            /* Compute radius of the node i.e., distance from the centre of the sphere */
+            el_H[n] = 0.0;
+            for (d=0; d<NSD; d++) {
+              el_H[n] += LA_msurf_coords[NSD*nidx + d] * LA_msurf_coords[NSD*nidx + d];
+            }
+            el_H[n] = PetscSqrtReal(el_H[n]);
+          }
+
+          /* evaluate basis and interplate */
+          P3D_ConstructNi_Q2_2D(mp.xi,Ni);
+          H_p = 0.0;
+          for (n=0; n<Q2_NODES_PER_EL_2D; n++) {
+            H_p += Ni[n] * el_H[n];
+          }
+
+        }
+
+        /* assign interplated height */
+        LA_v_coords[k][j][i].y = H_p;
+      }
+    }
+
+  }
+
+  ierr = DMDAVecRestoreArray(v_cda,v_coords,&LA_v_coords);CHKERRQ(ierr);
+  ierr = VecRestoreArray(msurf_coords,&LA_msurf_coords);CHKERRQ(ierr);
+  ierr = PetscFree(msurf_element);CHKERRQ(ierr);
+  ierr = PetscFree(msurf_coords_2d);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+#endif
+
 PetscErrorCode UpdateMeshGeometry_ComputeSurfaceCourantTimestep(DM dav,Vec velocity,PetscReal vert_displacement_max,PetscReal *step)
 {
   PetscReal vy;
