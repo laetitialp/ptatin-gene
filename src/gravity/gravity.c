@@ -202,20 +202,16 @@ PetscErrorCode pTatinCreateGravity(pTatinCtx ptatin, GravityType gtype)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode QuadratureSetBodyForcesOnPoint(QPntVolCoefStokes *cell_gausspoints, PetscInt qp_idx)
+PetscErrorCode QuadratureSetBodyForcesOnPoint(QPntVolCoefStokes *cell_gausspoints, PetscInt qp_idx, PetscReal gravity_vector[])
 {
   PetscInt d;
   double   density,Fu[3];
-  double   *gravity;
   PetscFunctionBegin;
   /* Get density on quadrature point */
   QPntVolCoefStokesGetField_rho_effective(&cell_gausspoints[qp_idx],&density);
-  /* Get gravity on quadrature point */
-  QPntVolCoefStokesGetField_gravity_vector(&cell_gausspoints[qp_idx],&gravity); 
   /* Compute rho*g on the quadrature point and attach it to the body force vector */
   for (d=0; d<NSD; d++) {
-    //cell_gausspoints[qp_idx].Fu[d] = cell_gausspoints[qp_idx].gravity_vector[d] * cell_gausspoints[qp_idx].rho;
-    Fu[d] = density * gravity[d];
+    Fu[d] = density * gravity_vector[d];
   }
   QPntVolCoefStokesSetField_momentum_rhs(&cell_gausspoints[qp_idx],Fu);
   PetscFunctionReturn(0);

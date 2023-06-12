@@ -555,19 +555,6 @@ PetscErrorCode _VolumeQuadratureViewParaviewVTU_Stokes(PhysCompStokes stokes,con
   }
   fprintf(fp, "      </DataArray>\n");
 
-  /* gravity_vector */
-  fprintf(fp, "      <DataArray type=\"Float32\" Name=\"gravity_vector\" NumberOfComponents=\"3\" format=\"ascii\">\n");
-  for (e=0; e<nel; e++) {
-    /* Get cell quadrature points data structure */
-    ierr = VolumeQuadratureGetCellData_Stokes(volQ,all_gausspoints,e,&cell_gausspoints);CHKERRQ(ierr);
-    for (n=0; n<ngp; n++) {
-      /* Get viscosity on quadrature point */
-      QPntVolCoefStokesGetField_gravity_vector(&cell_gausspoints[n],&gravity_vector);
-      fprintf(fp, "      %1.4e %1.4e %1.4e\n", gravity_vector[0],gravity_vector[1],gravity_vector[2] );
-    }
-  }
-  fprintf(fp, "      </DataArray>\n");
-
   
   /* POINT-DATA HEADER - CLOSE */
   fprintf(fp, "    </PointData>\n");
@@ -653,7 +640,6 @@ PetscErrorCode _VolumeQuadratureViewParaviewPVTU_Stokes(const char prefix[],cons
   fprintf(fp,"      <PDataArray type=\"Float32\" Name=\"rho_effective\" NumberOfComponents=\"1\"/>\n");
   fprintf(fp,"      <PDataArray type=\"Float32\" Name=\"momentum_rhs\" NumberOfComponents=\"3\"/>\n");
   fprintf(fp,"      <PDataArray type=\"Float32\" Name=\"continuity_rhs\" NumberOfComponents=\"1\"/>\n");
-  fprintf(fp,"      <PDataArray type=\"Float32\" Name=\"gravity_vector\" NumberOfComponents=\"3\"/>\n");
 
   /* POINT-DATA HEADER - CLOSE */
   fprintf(fp, "    </PPointData>\n");

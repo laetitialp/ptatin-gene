@@ -29,8 +29,6 @@ PetscErrorCode CheckGravityOnPoint(pTatinCtx ptatin)
   PetscInt              e,q,nel,nqp,nen_u;
   PetscInt              d,k;
   PetscReal             Ni[Q2_NODES_PER_EL_3D],qp_coor[3],position[3],grav[3];
-  PetscReal             gvec[3];
-  double                *qp_gvec;
   PetscErrorCode        ierr;
   
   PetscFunctionBegin;
@@ -76,19 +74,8 @@ PetscErrorCode CheckGravityOnPoint(pTatinCtx ptatin)
         }
       }
 
-      ierr = pTatinGetGravityPointWiseVector(ptatin,e,position,qp_coor,gvec);CHKERRQ(ierr);
-      for (d=0; d<NSD; d++) {
-        grav[d] = gvec[d];
-      }
-
-      QPntVolCoefStokesGetField_gravity_vector(&cell_gausspoints[q],&qp_gvec); 
-
-      /* Check that the vector on the qpoint is the same than the vector obtained from the on the fly computing */
-
-      PetscPrintf(PETSC_COMM_WORLD,"point(%1.6e, %1.6e, %1.6e)\n",position[0],position[1],position[2]);
-      PetscPrintf(PETSC_COMM_WORLD,"\tvec    (%1.6e, %1.6e, %1.6e)\n",gvec[0],gvec[1],gvec[2]);
-      PetscPrintf(PETSC_COMM_WORLD,"\tgrav   (%1.6e, %1.6e, %1.6e)\n",grav[0],grav[1],grav[2]);
-      PetscPrintf(PETSC_COMM_WORLD,"\tqp_gvec(%1.6e, %1.6e, %1.6e)\n",qp_gvec[0],qp_gvec[1],qp_gvec[2]);
+      QPntVolCoefStokesSetField_rho_effective(&cell_gausspoints[q],1.0);
+      ierr = pTatinGetGravityPointWiseVector(ptatin,e,position,qp_coor,grav);CHKERRQ(ierr);
     }
   }
   ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
@@ -123,9 +110,9 @@ PetscErrorCode GenerateSphericalMesh()
   PetscPrintf(PETSC_COMM_WORLD,"Box: Oy, Ly = [ %f, %f ]\n",O[1],L[1]);
   PetscPrintf(PETSC_COMM_WORLD,"Box: Oz, Lz = [ %f, %f ]\n",O[2],L[2]);
 
-  ptatin->mx = 2;
-  ptatin->my = 2;
-  ptatin->mz = 2;
+  ptatin->mx = 8;
+  ptatin->my = 8;
+  ptatin->mz = 8;
   // Create a Q2 mesh 
   ierr = pTatin3d_PhysCompStokesCreate(ptatin);CHKERRQ(ierr);
 
@@ -153,7 +140,7 @@ PetscErrorCode GenerateSphericalMesh()
     PetscReal gvec[] = {0.0,-9.8,0.0},scaling;
     PetscReal gmag = -9.8;
 
-    gtype = GRAVITY_RADIAL_CONSTANT;//GRAVITY_CONSTANT;
+    gtype = GRAVITY_RADIAL_CONSTANT; //GRAVITY_CONSTANT;
     scaling = 2.0;
 
     ierr = pTatinCreateGravity(ptatin,gtype);CHKERRQ(ierr);
@@ -182,8 +169,11 @@ PetscErrorCode GenerateSphericalMesh()
     ierr = GravityScale(gravity,scaling);CHKERRQ(ierr);
     ierr = pTatinQuadratureSetGravity(ptatin);
 
+    /* Set density on quadrature points */
     ierr = CheckGravityOnPoint(ptatin);
-
+    /* Set rho*g on quadrature points */
+    ierr = pTatinQuadratureUpdateGravity(ptatin);CHKERRQ(ierr);
+    /* output volume quadrature points */
     ierr = VolumeQuadratureViewParaview_Stokes(stokes,ptatin->outputpath,"def");CHKERRQ(ierr);
   }
 

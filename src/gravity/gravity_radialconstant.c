@@ -111,7 +111,7 @@ static PetscErrorCode GravitySetOnPoint_RadialConstant(PhysCompStokes stokes,
   ierr = GravityGetPointWiseVector_RadialConstant(gravity,0,position,qp_coor,gvec);CHKERRQ(ierr);
 
   /* Set grav on quadrature points */
-  QPntVolCoefStokesSetField_gravity_vector(&cell_gausspoints[qp_idx],gvec);
+  ierr = QuadratureSetBodyForcesOnPoint(cell_gausspoints,qp_idx,gvec);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -151,8 +151,6 @@ PetscErrorCode QuadratureSetGravity_RadialConstant(PhysCompStokes stokes, Gravit
     /* Loop over quadrature points */
     for (q=0; q<nqp; q++) {
       ierr = GravitySetOnPoint_RadialConstant(stokes,gravity,cell_gausspoints,q,elcoords);CHKERRQ(ierr);
-      /* Set rho*g on quadrature points */
-      ierr = QuadratureSetBodyForcesOnPoint(cell_gausspoints,q);CHKERRQ(ierr);
     }
   }
   ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);

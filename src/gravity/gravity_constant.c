@@ -121,8 +121,7 @@ PetscErrorCode QuadratureSetGravity_Constant(PhysCompStokes stokes, Gravity grav
 {
   GravityConstant   gc;
   QPntVolCoefStokes *all_gausspoints,*cell_gausspoints;
-  PetscInt          e,q,d,nel,nqp;
-  double            gvec[3];
+  PetscInt          e,q,nel,nqp;
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
@@ -132,38 +131,6 @@ PetscErrorCode QuadratureSetGravity_Constant(PhysCompStokes stokes, Gravity grav
   ierr = VolumeQuadratureGetAllCellData_Stokes(stokes->volQ,&all_gausspoints);CHKERRQ(ierr);
   gc = (GravityConstant)gravity->data;
 
-  for (d=0; d<NSD; d++) {
-    gvec[d] = (double)gc->gravity_const[d];
-  }
-
-  /* Loop over elements */
-  for (e=0; e<nel; e++) {
-    /* Get cell quadrature points data structure */
-    ierr = VolumeQuadratureGetCellData_Stokes(stokes->volQ,all_gausspoints,e,&cell_gausspoints);CHKERRQ(ierr);
-    /* Loop over quadrature points */
-    for (q=0; q<nqp; q++) {
-      /* Set gvec[] on quadrature points */
-      QPntVolCoefStokesSetField_gravity_vector(&cell_gausspoints[q],gvec);
-      /* Set rho*g on quadrature points */
-      ierr = QuadratureSetBodyForcesOnPoint(cell_gausspoints,q);CHKERRQ(ierr);
-    }
-  }
-  PetscFunctionReturn(0);
-}
-
-/* We only need to modify the body forces because of the density, but the gravity is constant */
-PetscErrorCode QuadratureUpdateGravity_Constant(PhysCompStokes stokes, Gravity gravity)
-{
-  QPntVolCoefStokes *all_gausspoints,*cell_gausspoints;
-  PetscInt          e,q,nel,nqp;
-  PetscErrorCode    ierr;
-
-  PetscFunctionBegin;
-  nel = stokes->volQ->n_elements;
-  nqp = stokes->volQ->npoints;
-
-  ierr = VolumeQuadratureGetAllCellData_Stokes(stokes->volQ,&all_gausspoints);CHKERRQ(ierr);
-
   /* Loop over elements */
   for (e=0; e<nel; e++) {
     /* Get cell quadrature points data structure */
@@ -171,7 +138,7 @@ PetscErrorCode QuadratureUpdateGravity_Constant(PhysCompStokes stokes, Gravity g
     /* Loop over quadrature points */
     for (q=0; q<nqp; q++) {
       /* Set rho*g on quadrature points */
-      ierr = QuadratureSetBodyForcesOnPoint(cell_gausspoints,q);CHKERRQ(ierr);
+      ierr = QuadratureSetBodyForcesOnPoint(cell_gausspoints,q,gc->gravity_const);CHKERRQ(ierr);
     }
   }
   PetscFunctionReturn(0);
@@ -199,7 +166,7 @@ PetscErrorCode GravityConstantCreateCtx(Gravity gravity)
   gravity->destroy        = GravityDestroyCtx_Constant;
   gravity->scale          = GravityScale_Constant;
   gravity->quadrature_set = QuadratureSetGravity_Constant;
-  gravity->update         = QuadratureUpdateGravity_Constant;
+  gravity->update         = QuadratureSetGravity_Constant;
   gravity->get_gvec       = GravityGetPointWiseVector_Constant;
 
   PetscFunctionReturn(0);
