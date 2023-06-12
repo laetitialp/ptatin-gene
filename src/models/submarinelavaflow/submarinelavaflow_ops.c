@@ -701,25 +701,7 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_SubmarineLavaFlow(pTatinCtx c,v
    -stokes_gravity_vector gx,gy,gz
   which is parsed from ptatin3d.c:pTatin3d_PhysCompStokesCreate()
 */
-  {
-    PhysCompStokes stokes;
-    PetscReal      grav[3];
-
-    ierr = pTatinGetStokesContext(c,&stokes);CHKERRQ(ierr);
-
-    if (data->model_conf != MT_45DEGREES) {
-      grav[0] =  0.0;
-      grav[1] = -1.0;
-      grav[2] =  0.0;
-    } else {
-      grav[0] =  0.707106781186548;
-      grav[1] = -0.707106781186548;
-      grav[2] =  0.0;
-    }
-    ierr = PhysCompStokesSetGravityUnitVector(stokes,grav);CHKERRQ(ierr);
-    ierr = PhysCompStokesScaleGravityVector(stokes,9.8);CHKERRQ(ierr);
-  }
-
+  
   ierr = pTatinGetMaterialPoints(c,&material_point_db,NULL);CHKERRQ(ierr);
   DataBucketGetSizes(material_point_db,&n_mp_points,0,0);
   ierr = MaterialPointGetAccess(material_point_db,&mpX);CHKERRQ(ierr);
@@ -763,6 +745,34 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_SubmarineLavaFlow(pTatinCtx c,v
   }
   ierr = MaterialPointRestoreAccess(material_point_db,&mpX);CHKERRQ(ierr);
 
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ModelApplyGravity_SubmarineLavaFlow(pTatinCtx c, void *ctx)
+{
+  SubmarineLavaFlowCtx *data = (SubmarineLavaFlowCtx*)ctx;
+  Gravity              gravity;
+  PetscReal            grav[3];
+  PetscErrorCode       ierr;
+
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
+
+  if (data->model_conf != MT_45DEGREES) {
+    grav[0] =  0.0;
+    grav[1] = -1.0;
+    grav[2] =  0.0;
+  } else {
+    grav[0] =  0.707106781186548;
+    grav[1] = -0.707106781186548;
+    grav[2] =  0.0;
+  }
+
+  ierr = pTatinCreateGravity(c,GRAVITY_CONSTANT);CHKERRQ(ierr);
+  ierr = pTatinGetGravityCtx(c,&gravity);CHKERRQ(ierr);
+  ierr = GravitySet_Constant(gravity,grav);CHKERRQ(ierr);
+  ierr = GravityScale(gravity,9.8);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -954,6 +964,7 @@ PetscErrorCode pTatinModelRegister_SubmarineLavaFlow(void)
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_UPDATE_MESH_GEOM,(void (*)(void))ModelApplyUpdateMeshGeometry_SubmarineLavaFlow);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_OUTPUT,                (void (*)(void))ModelOutput_SubmarineLavaFlow);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_DESTROY,               (void (*)(void))ModelDestroy_SubmarineLavaFlow);CHKERRQ(ierr);
+  ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_GRAVITY,         (void (*)(void))ModelApplyGravity_SubmarineLavaFlow);CHKERRQ(ierr);
 
   /* Insert model into list */
   ierr = pTatinModelRegister(m);CHKERRQ(ierr);

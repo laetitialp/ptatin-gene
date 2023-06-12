@@ -1127,11 +1127,22 @@ PetscErrorCode ModelApplyInitialMeshGeometry_MultilayerFolding(pTatinCtx c,void 
   if (data->quasi2d) {
     ierr = pTatin3d_DefineVelocityMeshGeometryQuasi2D(c);CHKERRQ(ierr);
   }
-  {
-    PetscReal gvec[] = { 0.0, -GRAVITY, 0.0 };
-    ierr = PhysCompStokesSetGravityVector(c->stokes_ctx,gvec);CHKERRQ(ierr);
-  }
 
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ModelApplyGravity_MultilayerFolding(pTatinCtx c, void *ctx)
+{
+  Gravity        gravity;
+  PetscReal      gvec[] = { 0.0, -GRAVITY, 0.0 };
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
+
+  ierr = pTatinCreateGravity(c,GRAVITY_CONSTANT);CHKERRQ(ierr);
+  ierr = pTatinGetGravityCtx(c,&gravity);CHKERRQ(ierr);
+  ierr = GravitySet_Constant(gravity,gvec);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -2069,6 +2080,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_MultilayerFolding(pTatinCtx c,Vec X,
     ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_UPDATE_MESH_GEOM,(void (*)(void))_ModelApplyUpdateMeshGeometry_MultilayerFolding);CHKERRQ(ierr);
     ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_OUTPUT,                (void (*)(void))ModelOutput_MultilayerFolding);CHKERRQ(ierr);
     ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_DESTROY,               (void (*)(void))ModelDestroy_MultilayerFolding);CHKERRQ(ierr);
+    ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_GRAVITY,         (void (*)(void))ModelApplyGravity_MultilayerFolding);CHKERRQ(ierr);
 
     /* Insert model into list */
     ierr = pTatinModelRegister(m);CHKERRQ(ierr);

@@ -104,14 +104,26 @@ PetscErrorCode ModelApplyBoundaryConditionMG_AnlVV(PetscInt nl,BCList bclist[],S
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode ModelApplyGravity_AnlVV(pTatinCtx c, void *ctx)
+{
+  Gravity        gravity;
+  PetscReal      gvec[] = { 0.0, -1.0, 0.0 };
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = pTatinCreateGravity(c,GRAVITY_CONSTANT);CHKERRQ(ierr);
+  ierr = pTatinGetGravityCtx(c,&gravity);CHKERRQ(ierr);
+  ierr = GravitySet_Constant(gravity,gvec);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode ModelApplyInitialMeshGeometry_AnlVV(pTatinCtx c,void *ctx)
 {
   PetscReal      Lx,Ly,Lz;
-  PetscReal      gvec[] = { 0.0, -1.0, 0.0 };
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  ierr = PhysCompStokesSetGravityVector(c->stokes_ctx,gvec);CHKERRQ(ierr);
   Lx = 1.0;
   Ly = 1.0;
   Lz = 1.0;
@@ -416,6 +428,7 @@ PetscErrorCode pTatinModelCreate_AnlVV(pTatinModel m)
   /*ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_UPDATE_MESH_GEOM,(void (*)(void))ModelApplyUpdateMeshGeometry_AnlVV);CHKERRQ(ierr);*/
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_OUTPUT,                (void (*)(void))ModelOutput_AnlVV);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_DESTROY,               (void (*)(void))ModelDestroy_AnlVV);CHKERRQ(ierr);
+  ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_GRAVITY,         (void (*)(void))ModelApplyGravity_AnlVV);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }

@@ -1220,14 +1220,23 @@ PetscErrorCode ModelApplyInitialMeshGeometry_Rift_oblique3d(pTatinCtx c,void *ct
     ierr = DMDABilinearizeQ2Elements(dau);CHKERRQ(ierr);
   }
 
-
-
-  {
-      PetscReal gvec[] = { 0.0, -10.0, 0.0 };
-      ierr = PhysCompStokesSetGravityVector(c->stokes_ctx,gvec);CHKERRQ(ierr);
-    }
-
   ierr = PSwarmSetUp(data->pswarm);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ModelApplyGravity_Rift_oblique3d(pTatinCtx c, void *ctx)
+{
+  Gravity        gravity;
+  PetscReal      gvec[] = { 0.0, -10.0, 0.0 };
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
+
+  ierr = pTatinCreateGravity(c,GRAVITY_CONSTANT);CHKERRQ(ierr);
+  ierr = pTatinGetGravityCtx(c,&gravity);CHKERRQ(ierr);
+  ierr = GravitySet_Constant(gravity,gvec);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -1964,6 +1973,7 @@ PetscErrorCode pTatinModelRegister_Rift_oblique3d(void)
 
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_OUTPUT,                (void (*)(void))ModelOutput_Rift_oblique3d);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_DESTROY,               (void (*)(void))ModelDestroy_Rift_oblique3d);CHKERRQ(ierr);
+  ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_GRAVITY,         (void (*)(void))ModelApplyGravity_Rift_oblique3d);CHKERRQ(ierr);
 
   /* Insert model into list */
   ierr = pTatinModelRegister(m);CHKERRQ(ierr);

@@ -702,10 +702,22 @@ PetscErrorCode ModelApplyInitialMeshGeometry_Riftrh(pTatinCtx c,void *ctx)
 
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
   PetscPrintf(PETSC_COMM_WORLD,"[riftrh] Lx = %1.4e \n", data->Lx );
-  {
-    PetscReal gvec[] = { 0.0, -9.81, 0.0 };
-    ierr = PhysCompStokesSetGravityVector(c->stokes_ctx,gvec);CHKERRQ(ierr);
-  }
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ModelApplyGravity_Riftrh(pTatinCtx c, void *ctx)
+{
+  Gravity        gravity;
+  PetscReal      gvec[] = { 0.0, -9.81, 0.0 };
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
+
+  ierr = pTatinCreateGravity(c,GRAVITY_CONSTANT);CHKERRQ(ierr);
+  ierr = pTatinGetGravityCtx(c,&gravity);CHKERRQ(ierr);
+  ierr = GravitySet_Constant(gravity,gvec);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -1013,6 +1025,7 @@ PetscErrorCode pTatinModelRegister_Riftrh(void)
 
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_OUTPUT,                (void (*)(void))ModelOutput_Riftrh);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_DESTROY,               (void (*)(void))ModelDestroy_Riftrh);CHKERRQ(ierr);
+  ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_GRAVITY,         (void (*)(void))ModelApplyGravity_Riftrh);CHKERRQ(ierr);
 
   /* Insert model into list */
   ierr = pTatinModelRegister(m);CHKERRQ(ierr);

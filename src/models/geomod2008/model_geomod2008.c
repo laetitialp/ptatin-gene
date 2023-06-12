@@ -39,6 +39,7 @@
 #include "material_point_std_utils.h"
 #include "material_point_popcontrol.h"
 #include "mesh_update.h"
+#include "gravity.h"
 
 typedef struct _p_ModelCtxGeoMod2008 *ModelCtxGeoMod2008;
 struct _p_ModelCtxGeoMod2008 {
@@ -500,10 +501,22 @@ PetscErrorCode ModelApplyInitialMeshGeometry_GeoMod2008(pTatinCtx c,void *ctx)
 
   ierr = pTatinGetStokesContext(c,&stokes);CHKERRQ(ierr);
   ierr = DMDASetUniformCoordinates(stokes->dav,0.0,data->Lx,0.0,data->Ly,0.0,data->Lz);CHKERRQ(ierr);
-  {
-    PetscReal gvec[] = { 0.0, -9.81, 0.0 };
-    ierr = PhysCompStokesSetGravityVector(stokes,gvec);CHKERRQ(ierr);
-  }
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ModelApplyGravity_GeoMod2008(pTatinCtx c,void *ctx)
+{
+  Gravity        gravity;
+  PetscReal      gvec[] = { 0.0, -9.81, 0.0 };
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
+
+  ierr = pTatinCreateGravity(c,GRAVITY_CONSTANT);CHKERRQ(ierr);
+  ierr = pTatinGetGravityCtx(c,&gravity);CHKERRQ(ierr);
+  ierr = GravitySet_Constant(gravity,gvec);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -939,7 +952,7 @@ PetscErrorCode pTatinModelRegister_GeoMod2008(void)
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_UPDATE_MESH_GEOM,(void (*)(void))ModelApplyUpdateMeshGeometry_GeoMod2008);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_OUTPUT,                (void (*)(void))ModelOutput_GeoMod2008);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_DESTROY,               (void (*)(void))ModelDestroy_GeoMod2008);CHKERRQ(ierr);
-
+  ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_GRAVITY,         (void (*)(void))ModelApplyGravity_GeoMod2008);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_INIT_STOKES_VARIABLE_MARKERS,   (void (*)(void))ModelApplyInitialStokesVariableMarkers_GeoMod2008);CHKERRQ(ierr);
 
   /* Insert model into list */

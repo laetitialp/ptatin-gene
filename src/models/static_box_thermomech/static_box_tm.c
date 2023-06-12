@@ -238,6 +238,22 @@ PetscErrorCode ModelApplyInitialMeshGeometry_StaticBoxTM(pTatinCtx c,void *ctx)
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode ModelApplyGravity_StaticBoxTM(pTatinCtx c, void *ctx)
+{
+  Gravity        gravity;
+  PetscReal      gvec[] = { 0.0, -10.0, 0.0 };
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
+
+  ierr = pTatinCreateGravity(c,GRAVITY_CONSTANT);CHKERRQ(ierr);
+  ierr = pTatinGetGravityCtx(c,&gravity);CHKERRQ(ierr);
+  ierr = GravitySet_Constant(gravity,gvec);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode ModelApplyInitialMaterialGeometry_StaticBoxTM_variant1(pTatinCtx c,void *ctx)
 {
   int            p,npoints;
@@ -565,6 +581,7 @@ PetscErrorCode pTatinModelCreate_StaticBoxTM(pTatinModel m)
   /*ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_UPDATE_MESH_GEOM,(void (*)(void))ModelApplyUpdateMeshGeometry_StaticBox);CHKERRQ(ierr);*/
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_OUTPUT,                (void (*)(void))ModelOutput_StaticBoxTM);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_DESTROY,               (void (*)(void))ModelDestroy_StaticBoxTM);CHKERRQ(ierr);
+  ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_GRAVITY,         (void (*)(void))ModelApplyGravity_StaticBoxTM);CHKERRQ(ierr);
 
   ierr = PetscOptionsGetBool(NULL,NULL,"-use_model_variant1",&use_v1,NULL);CHKERRQ(ierr);
   if (use_v1) {

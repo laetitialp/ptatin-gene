@@ -268,10 +268,22 @@ PetscErrorCode ModelApplyInitialMeshGeometry_SD3D(pTatinCtx ptatinctx,void *mode
   Ly = 660.0 * 1.0e3; /* km */
   Lz = 500.0 * 1.0e3; /* km */
   ierr = DMDASetUniformCoordinates(dav,0.0,Lx/modeldata->x_bar, 0.0,Ly/modeldata->x_bar, 0.0,Lz/modeldata->x_bar);CHKERRQ(ierr);
-  {
-    PetscReal gvec[] = { 0.0, -9.81, 0.0 };
-    ierr = PhysCompStokesSetGravityVector(stokes,gvec);CHKERRQ(ierr);
-  }
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ModelApplyGravity_SD3D(pTatinCtx ptatinctx, void *ctx)
+{
+  Gravity        gravity;
+  PetscReal      gvec[] = { 0.0, -9.81, 0.0 };
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
+
+  ierr = pTatinCreateGravity(ptatinctx,GRAVITY_CONSTANT);CHKERRQ(ierr);
+  ierr = pTatinGetGravityCtx(ptatinctx,&gravity);CHKERRQ(ierr);
+  ierr = GravitySet_Constant(gravity,gvec);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -1065,6 +1077,7 @@ PetscErrorCode pTatinModelRegister_SD3D(void)
   //ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_UPDATE_MESH_GEOM,(void (*)(void))ModelApplyUpdateMeshGeometry_ThermalSB);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_OUTPUT,                (void (*)(void))ModelOutput_SD3D);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_DESTROY,               (void (*)(void))ModelDestroy_SD3D);CHKERRQ(ierr);
+  ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_GRAVITY,         (void (*)(void))ModelApplyGravity_SD3D);CHKERRQ(ierr);
 
   /* Insert model into list */
   ierr = pTatinModelRegister(m);CHKERRQ(ierr);

@@ -966,10 +966,26 @@ PetscErrorCode ModelApplyInitialMeshGeometry_RiftNitsche(pTatinCtx c,void *ctx)
   /* Mesh Refinement */
   ierr = ModelSetMeshRefinement_RiftNitsche(dav);CHKERRQ(ierr);
   ierr = DMDABilinearizeQ2Elements(dav);CHKERRQ(ierr);
-  /* Gravity */
-  PetscReal gvec[] = { 0.0, -9.8, 0.0 };
-  ierr = PhysCompStokesSetGravityVector(c->stokes_ctx,gvec);CHKERRQ(ierr);
-  ierr = PhysCompStokesScaleGravityVector(c->stokes_ctx,1.0/data->acceleration_bar);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ModelApplyGravity_RiftNitsche(pTatinCtx c, void *ctx)
+{
+  ModelRiftNitscheCtx *data;
+  Gravity             gravity;
+  PetscReal           gvec[] = { 0.0, -9.8, 0.0 };
+  PetscErrorCode      ierr;
+
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
+
+  data = (ModelRiftNitscheCtx*)ctx;
+
+  ierr = pTatinCreateGravity(c,GRAVITY_CONSTANT);CHKERRQ(ierr);
+  ierr = pTatinGetGravityCtx(c,&gravity);CHKERRQ(ierr);
+  ierr = GravitySet_Constant(gravity,gvec);CHKERRQ(ierr);
+  ierr = GravityScale(gravity,1.0/data->acceleration_bar);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -2980,6 +2996,7 @@ PetscErrorCode pTatinModelRegister_RiftNitsche(void)
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_UPDATE_MESH_GEOM,(void (*)(void))ModelApplyUpdateMeshGeometry_RiftNitsche);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_OUTPUT,                (void (*)(void))ModelOutput_RiftNitsche);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_DESTROY,               (void (*)(void))ModelDestroy_RiftNitsche);CHKERRQ(ierr);
+  ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_GRAVITY,         (void (*)(void))ModelApplyGravity_RiftNitsche);CHKERRQ(ierr);
 
   /* Insert model into list */
   ierr = pTatinModelRegister(m);CHKERRQ(ierr);
