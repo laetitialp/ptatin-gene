@@ -332,33 +332,6 @@ PetscErrorCode pTatin_UpdateCoefficientTemporalDependence_Stokes(pTatinCtx ptati
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode Deprecated_pTatin_ApplyStokesGravityModel(pTatinCtx ctx)
-{
-  PetscErrorCode    ierr;
-  PhysCompStokes    stokes;
-  PetscInt          e,nel,q,nqp;
-  QPntVolCoefStokes *all_gausspoints,*cell_gausspoints;
-  PetscFunctionBegin;
-
-  PetscPrintf(PETSC_COMM_WORLD,"[[ WARNING ]] Using stokes->gravity_vector is deprecated. Please use the set of functions provided for you in gravity.c\n");
-
-  ierr = pTatinGetStokesContext(ctx,&stokes);CHKERRQ(ierr);
-
-  nel = stokes->volQ->n_elements;
-  nqp = stokes->volQ->npoints;
-  ierr = VolumeQuadratureGetAllCellData_Stokes(stokes->volQ,&all_gausspoints);CHKERRQ(ierr);
-  for (e=0; e<nel; e++) {
-    ierr = VolumeQuadratureGetCellData_Stokes(stokes->volQ,all_gausspoints,e,&cell_gausspoints);CHKERRQ(ierr);
-    for (q=0; q<nqp; q++) {
-      cell_gausspoints[q].Fu[0] = stokes->gravity_vector[0] * cell_gausspoints[q].rho;
-      cell_gausspoints[q].Fu[1] = stokes->gravity_vector[1] * cell_gausspoints[q].rho;
-      cell_gausspoints[q].Fu[2] = stokes->gravity_vector[2] * cell_gausspoints[q].rho;
-    }
-  }
-
-  PetscFunctionReturn(0);
-}
-
 PetscErrorCode pTatin_ApplyStokesGravityModel(pTatinCtx ctx)
 {
   PetscBool      gravity_active;
@@ -366,10 +339,9 @@ PetscErrorCode pTatin_ApplyStokesGravityModel(pTatinCtx ctx)
   PetscFunctionBegin;
 
   ierr = pTatinContextValid_Gravity(ctx,&gravity_active);CHKERRQ(ierr);
-  if (gravity_active) {
-    ierr = pTatinQuadratureUpdateGravity(ctx);CHKERRQ(ierr);
-  } else {
-    ierr = Deprecated_pTatin_ApplyStokesGravityModel(ctx);CHKERRQ(ierr);
-  }
+  if (!gravity_active) { SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Gravity must be set in the model using the function pointer PTATIN_MODEL_APPLY_GRAVITY and the set of functions provided in gravity.c"); }
+  
+  ierr = pTatinQuadratureUpdateGravity(ctx);CHKERRQ(ierr);
+
   PetscFunctionReturn(0);
 }
