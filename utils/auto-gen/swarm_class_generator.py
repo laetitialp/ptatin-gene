@@ -708,10 +708,10 @@ def PARTICLE_CLASS_GENERATOR( ParticleClass, ParticleClassShort, variable_name_l
 def Generate_pTatin3d_QuadraturePointVolumeCoefficientStokes():
 	ParticleClass      = 'QPntVolCoefStokes'
 	ParticleClassShort = 'QPVCStk'
-	variable_name_list = [ 'eta',    'rho',    'Fu',     'Fp',     'gravity_vector' ]
-	variable_type_list = [ 'double', 'double', 'double', 'double', 'double'         ]
-	variable_extend_list        = [ 1, 1, 3, 1, 3 ]
-	variable_textural_name_list = [ 'eta_effective', 'rho_effective', 'momentum_rhs', 'continuity_rhs', 'gravity_vector' ]
+	variable_name_list = [ 'eta',    'rho',    'Fu',     'Fp'     ]
+	variable_type_list = [ 'double', 'double', 'double', 'double' ]
+	variable_extend_list        = [ 1, 1, 3, 1 ]
+	variable_textural_name_list = [ 'eta_effective', 'rho_effective', 'momentum_rhs', 'continuity_rhs' ]
 
 	PARTICLE_CLASS_GENERATOR( ParticleClass, ParticleClassShort, variable_name_list, variable_type_list, variable_extend_list, variable_textural_name_list )
 
