@@ -1802,7 +1802,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_Rift_oblique3d_semi_eulerian(pTatinC
   //ierr = UpdateMeshGeometry_VerticalLagrangianSurfaceRemesh(dav,velocity,step);CHKERRQ(ierr);
 
   /* SURFACE REMESHING */
-  ierr = UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX(dav,velocity,NULL,step);
+  ierr = UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX(dav,velocity,NULL,step,PETSC_FALSE);
   ierr = DMCompositeRestoreAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
 
         /* UPDATE mesh refinement scheme */

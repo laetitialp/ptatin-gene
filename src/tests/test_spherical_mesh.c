@@ -16,8 +16,9 @@
 #include "mesh_update.h"
 #include "dmda_remesh.h"
 #include "stokes_output.h"
+#include "dmda_iterator.h"
 
-PetscErrorCode CheckGravityOnPoint(pTatinCtx ptatin)
+static PetscErrorCode CheckGravityOnPoint(pTatinCtx ptatin)
 {
   PhysCompStokes        stokes;
   QPntVolCoefStokes     *all_gausspoints,*cell_gausspoints;
@@ -82,6 +83,137 @@ PetscErrorCode CheckGravityOnPoint(pTatinCtx ptatin)
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode InitialTopography(DM da, PetscReal perturbation)
+{
+  MPI_Comm       comm;
+  DM             cda;
+  Vec            coord;
+  PetscScalar   *LA_coords;
+  PetscInt       i, j, k, d, M, N, P, istart, isize, jstart, jsize, kstart, ksize, dim, nidx;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  ierr = DMDAGetInfo(da, &dim, &M, &N, &P, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+  ierr = PetscObjectGetComm((PetscObject)da, &comm);CHKERRQ(ierr);
+  ierr = DMDAGetCorners(da, &istart, &jstart, &kstart, &isize, &jsize, &ksize);CHKERRQ(ierr); 
+  ierr = DMGetCoordinateDM(da, &cda);CHKERRQ(ierr);
+  ierr = DMGetCoordinates(da,&coord);CHKERRQ(ierr);
+  ierr = VecGetArray(coord,&LA_coords);CHKERRQ(ierr);
+
+  if (jstart + jsize == N) { // surface of the mesh
+    j = jsize - 1;
+    for (k=0; k<ksize; k++) {
+      for (i=0; i<isize; i++) {
+        PetscReal coor_3d[3],elevation,theta,phi,A;
+
+        nidx = i + j*isize + k*jsize*isize;
+
+        elevation = 0.0;
+        for (d=0; d<3; d++) {
+          coor_3d[d] = LA_coords[3*nidx + d];
+          elevation += coor_3d[d] * coor_3d[d];
+        }
+        elevation = PetscSqrtReal(elevation);
+        elevation += perturbation;
+
+        A  = coor_3d[1] * coor_3d[1];
+        A += coor_3d[2] * coor_3d[2];
+        A  = PetscSqrtReal(A);
+        
+        theta = PetscAtan2Real( A          , coor_3d[0] );
+        phi   = PetscAtan2Real( coor_3d[2] , coor_3d[1] );
+
+        if ( coor_3d[0] <= -20.0 && coor_3d[0] >= -25.0) {
+          LA_coords[3*nidx + 0] = elevation * PetscCosReal(theta);
+          LA_coords[3*nidx + 1] = elevation * PetscSinReal(theta) * PetscCosReal(phi) ; 
+          LA_coords[3*nidx + 2] = elevation * PetscSinReal(theta) * PetscSinReal(phi);
+        }
+      }
+    }
+  }
+
+  ierr = VecRestoreArray(coord, &LA_coords);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+static PetscBool TangentRadialVelocity(PetscScalar position[], PetscScalar *value, void *ctx)
+{
+  PetscInt  dim = *((PetscInt*)ctx);
+  PetscInt  d;
+  PetscBool impose=PETSC_TRUE;
+  PetscReal position_norm,normal[3],radial_u[3];
+
+  PetscFunctionBegin;
+
+  position_norm = 0.0;
+  for (d=0; d<3; d++) {
+    position_norm += position[d] * position[d];
+  }
+  position_norm = PetscSqrtReal(position_norm);
+
+  /* Radial normal vector */
+  for (d=0; d<3; d++) {
+    if (position_norm > 1.0e-17) {
+      normal[d] = position[d] / position_norm;
+    } else {
+      normal[d] = 0.0;
+    }
+  }
+
+  /* Compute the cross product with unit z */
+  radial_u[0] = normal[1];
+  radial_u[1] = -normal[0];
+  radial_u[2] = 0.0;
+
+  *value = radial_u[ dim ];
+
+  PetscFunctionReturn(impose);
+}
+
+static PetscErrorCode AdvectionVelocity(DM dav, Vec velocity)
+{
+  PetscInt       component;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  /* Initialize to zero the velocity vector */
+  ierr = VecZeroEntries(velocity);CHKERRQ(ierr);
+
+  /* x component */
+  component = 0;
+  ierr = DMDAVecTraverse3d(dav,velocity,component,TangentRadialVelocity,(void*)&component);CHKERRQ(ierr);
+  /* y component */
+  component = 1;
+  ierr = DMDAVecTraverse3d(dav,velocity,component,TangentRadialVelocity,(void*)&component);CHKERRQ(ierr);
+  /* z component */
+  component = 2;
+  ierr = DMDAVecTraverse3d(dav,velocity,component,TangentRadialVelocity,(void*)&component);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode WritePVD(char fname[], PetscInt nsteps)
+{
+  FILE* fp = NULL;
+  PetscInt n;
+
+  PetscFunctionBegin;
+  if ((fp = fopen ( fname, "w")) == NULL)  {
+    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",fname );
+  }
+
+  fprintf(fp, "<?xml version=\"1.0\"?>\n");
+  fprintf(fp, "<VTKFile type=\"Collection\" version=\"0.1\" byte_order=\"LittleEndian\">\n");
+  fprintf(fp, "<Collection>\n");
+  for (n=0; n<nsteps; n++) {
+    fprintf(fp, "  <DataSet timestep=\"%f\" file=\"spherical_domain_%d.vts\"/>\n",(float)n,n);
+  }
+  fprintf(fp, "</Collection>\n");
+  fprintf(fp, "</VTKFile>\n");
+  fclose( fp );
+  PetscFunctionReturn(0);
+}
 
 PetscErrorCode GenerateSphericalMesh()
 {
@@ -91,7 +223,8 @@ PetscErrorCode GenerateSphericalMesh()
   pTatinCtx      ptatin = NULL;
   PhysCompStokes   stokes;
   DM               stokes_pack,dav,dap;
-  PetscReal      O[3],L[3];
+  PetscReal      O[3],L[3],dt;
+  PetscInt       step;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -110,9 +243,9 @@ PetscErrorCode GenerateSphericalMesh()
   PetscPrintf(PETSC_COMM_WORLD,"Box: Oy, Ly = [ %f, %f ]\n",O[1],L[1]);
   PetscPrintf(PETSC_COMM_WORLD,"Box: Oz, Lz = [ %f, %f ]\n",O[2],L[2]);
 
-  ptatin->mx = 8;
+  ptatin->mx = 16;
   ptatin->my = 8;
-  ptatin->mz = 8;
+  ptatin->mz = 16;
   // Create a Q2 mesh 
   ierr = pTatin3d_PhysCompStokesCreate(ptatin);CHKERRQ(ierr);
 
@@ -120,6 +253,9 @@ PetscErrorCode GenerateSphericalMesh()
   stokes_pack = stokes->stokes_pack;
   ierr = DMCompositeGetEntries(stokes_pack,&dav,&dap);CHKERRQ(ierr);
   ierr = DMDASetUniformSphericalToCartesianCoordinates(dav,O[0],L[0],O[1],L[1],O[2],L[2]);CHKERRQ(ierr);
+
+  ierr = InitialTopography(dav,1.0);CHKERRQ(ierr);
+
   ierr = DMDABilinearizeQ2Elements(dav);CHKERRQ(ierr);
 
   {
@@ -132,6 +268,9 @@ PetscErrorCode GenerateSphericalMesh()
   ierr = DMGetGlobalVector(stokes_pack,&X);CHKERRQ(ierr);
   ierr = DMCompositeGetAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
   ierr = VecZeroEntries(velocity);CHKERRQ(ierr);
+  
+  /* Advection velocity */
+  ierr = AdvectionVelocity(dav,velocity);CHKERRQ(ierr);
 
   /* Gravity */
   {
@@ -174,21 +313,33 @@ PetscErrorCode GenerateSphericalMesh()
     /* Set rho*g on quadrature points */
     ierr = pTatinQuadratureUpdateGravity(ptatin);CHKERRQ(ierr);
     /* output volume quadrature points */
-    ierr = VolumeQuadratureViewParaview_Stokes(stokes,ptatin->outputpath,"def");CHKERRQ(ierr);
+    //ierr = VolumeQuadratureViewParaview_Stokes(stokes,ptatin->outputpath,"def");CHKERRQ(ierr);
+  }
+
+  for (step=0; step<25; step++) {
+
+    dt = 1.0;
+    {
+      PetscViewer viewer;
+      char        fname[256];
+
+      sprintf(fname,"%s/spherical_domain_%d.vts",ptatin->outputpath,step);
+
+      ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
+      ierr = PetscViewerSetType(viewer,PETSCVIEWERVTK);CHKERRQ(ierr);
+      ierr = PetscViewerFileSetMode(viewer,FILE_MODE_WRITE);CHKERRQ(ierr);
+      ierr = PetscViewerFileSetName(viewer,fname);CHKERRQ(ierr);
+      ierr = VecView(velocity,viewer);CHKERRQ(ierr);
+      ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
+    }
+    ierr = UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX(dav,velocity,NULL,dt,PETSC_TRUE);CHKERRQ(ierr);
   }
 
   {
-    PetscViewer viewer;
-    char        fname[256];
+    char pvd_name[256];
 
-    sprintf(fname,"spherical_domain.vts");
-
-    ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
-    ierr = PetscViewerSetType(viewer,PETSCVIEWERVTK);CHKERRQ(ierr);
-    ierr = PetscViewerFileSetMode(viewer,FILE_MODE_WRITE);CHKERRQ(ierr);
-    ierr = PetscViewerFileSetName(viewer,fname);CHKERRQ(ierr);
-    ierr = VecView(velocity,viewer);CHKERRQ(ierr);
-    ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
+    sprintf(pvd_name,"%s/spherical_domain.pvd",ptatin->outputpath);
+    ierr = WritePVD(pvd_name,step);CHKERRQ(ierr);
   }
 
   ierr = DMCompositeRestoreAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);

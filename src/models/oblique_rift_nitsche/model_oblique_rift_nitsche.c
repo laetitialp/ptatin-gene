@@ -2241,7 +2241,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_RiftNitsche(pTatinCtx c,Vec X,void *
   /* SURFACE REMESHING */
   ierr = ModelApplySurfaceRemeshing_RiftNitsche(dav,dt,data);CHKERRQ(ierr);
 
-  ierr = UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX(dav,velocity,NULL,dt);CHKERRQ(ierr);
+  ierr = UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX(dav,velocity,NULL,dt,PETSC_FALSE);CHKERRQ(ierr);
   ierr = DMCompositeRestoreAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
  
   /* Update Mesh Refinement */

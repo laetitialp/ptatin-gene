@@ -373,7 +373,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_ExSubduction(pTatinCtx c,Vec X,void 
     ierr = DMCompositeGetAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
 
     //ierr = UpdateMeshGeometry_VerticalLagrangianSurfaceRemesh(dav,velocity,c->dt);CHKERRQ(ierr);
-    ierr = UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX(dav,velocity,PETSC_NULL,c->dt);CHKERRQ(ierr);
+    ierr = UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX(dav,velocity,PETSC_NULL,c->dt,PETSC_FALSE);CHKERRQ(ierr);
 
     ierr = DMCompositeRestoreAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
 

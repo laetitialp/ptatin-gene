@@ -387,12 +387,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_Steady_TFV(pTatinCtx c,Vec X,void *c
   ierr = DMCompositeGetEntries(stokes_pack,&dav,&dap);CHKERRQ(ierr);
   ierr = DMCompositeGetAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
 
-  //ierr = UpdateMeshGeometry_FullLagrangian(dav,velocity,c->dt);CHKERRQ(ierr);
   ierr = UpdateMeshGeometry_VerticalLagrangianSurfaceRemesh(dav,velocity,c->dt);CHKERRQ(ierr);
-
-  // [test c] remesh interp
-  //ierr = UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX(dav,velocity,NULL,c->dt);CHKERRQ(ierr);
-  //ierr = DMDASetCoordinatesColumnRefinement(dav,1,4.0,0.75,1.0);CHKERRQ(ierr);
 
   ierr = DMCompositeRestoreAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
 

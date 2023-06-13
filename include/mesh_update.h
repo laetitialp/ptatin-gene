@@ -35,7 +35,7 @@ PetscErrorCode UpdateMeshGeometry_FullLagrangian(DM dav,Vec velocity,PetscReal s
 PetscErrorCode UpdateMeshGeometry_VerticalLagrangianSurfaceRemesh(DM dav,Vec velocity,PetscReal step);
 PetscErrorCode UpdateMeshGeometry_FullLagrangianWithVerticalSurfaceRemesh(DM dav,Vec velocity,PetscReal step);
 PetscErrorCode UpdateMeshGeometry_DecoupledHorizontalVerticalMeshMovement(DM dav,Vec velocity,PetscReal step);
-PetscErrorCode UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX(DM dav,Vec vel_fluid,Vec vel_mesh,PetscReal step);
+PetscErrorCode UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX(DM dav,Vec vel_fluid,Vec vel_mesh,PetscReal step, PetscBool spherical_domain);
 PetscErrorCode UpdateMeshGeometry_ComputeSurfaceCourantTimestep(DM dav,Vec velocity,PetscReal vert_displacement_max,PetscReal *step);
 PetscErrorCode UpdateMeshGeometry_ApplyDiffusionJMAX(DM dav,PetscReal diffusivity,PetscReal timespan,PetscBool dirichlet_east,PetscBool dirichlet_west,PetscBool dirichlet_front,PetscBool dirichlet_back,PetscBool only_update_surface);
 

@@ -1463,7 +1463,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_MultilayerFolding(pTatinCtx c,Vec X,
       }
 
       /* [B] Advect surface with fluid velocity, internal mesh geometry in x-z is advected with background strain-rate */
-      ierr = UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX(dav,velocity,mesh_velocity,dt);CHKERRQ(ierr);
+      ierr = UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX(dav,velocity,mesh_velocity,dt,PETSC_FALSE);CHKERRQ(ierr);
 
       ierr = VecDestroy(&mesh_velocity);CHKERRQ(ierr);
     }
@@ -1548,7 +1548,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_MultilayerFolding(pTatinCtx c,Vec X,
       }
 
       /* [B] Advect surface with fluid velocity, internal mesh geometry in x-z is advected with background strain-rate */
-      ierr = UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX(dav,velocity,mesh_velocity,dt);CHKERRQ(ierr);
+      ierr = UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX(dav,velocity,mesh_velocity,dt,PETSC_FALSE);CHKERRQ(ierr);
 
 
       ierr = VecDestroy(&mesh_velocity);CHKERRQ(ierr);

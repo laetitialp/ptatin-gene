@@ -461,7 +461,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_iPLUS(pTatinCtx c,Vec X,void *ctx)
 
   //ierr = UpdateMeshGeometry_VerticalLagrangianSurfaceRemesh(dav,velocity,step);CHKERRQ(ierr);
 
-  ierr = UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX(dav,velocity,NULL,c->dt);CHKERRQ(ierr);
+  ierr = UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX(dav,velocity,NULL,c->dt,PETSC_FALSE);CHKERRQ(ierr);
   /* perform vertical remeshing column wise */
   switch (data->refinement_type) {
     case 4:
