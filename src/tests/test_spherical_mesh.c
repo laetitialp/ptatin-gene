@@ -142,9 +142,11 @@ static PetscBool TangentRadialVelocity(PetscScalar position[], PetscScalar *valu
   PetscInt  dim = *((PetscInt*)ctx);
   PetscInt  d;
   PetscBool impose=PETSC_TRUE;
-  PetscReal position_norm,normal[3],radial_u[3];
+  PetscReal position_norm,normal[3],radial_u[3],norm_ru,u_mag;
 
   PetscFunctionBegin;
+
+  u_mag = 1.0;
 
   position_norm = 0.0;
   for (d=0; d<3; d++) {
@@ -165,6 +167,17 @@ static PetscBool TangentRadialVelocity(PetscScalar position[], PetscScalar *valu
   radial_u[0] = normal[1];
   radial_u[1] = -normal[0];
   radial_u[2] = 0.0;
+
+  /* normalize radial_u */
+  norm_ru = 0.0;
+  for (d=0; d<3; d++) {
+    norm_ru += radial_u[d] * radial_u[d];
+  }
+  norm_ru = PetscSqrtReal(norm_ru);
+
+  for (d=0; d<3; d++) {
+    radial_u[d] = u_mag * radial_u[d] / norm_ru;
+  }
 
   *value = radial_u[ dim ];
 
