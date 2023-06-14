@@ -38,6 +38,7 @@ PetscErrorCode UpdateMeshGeometry_DecoupledHorizontalVerticalMeshMovement(DM dav
 PetscErrorCode UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX(DM dav,Vec vel_fluid,Vec vel_mesh,PetscReal step, PetscBool spherical_domain);
 PetscErrorCode UpdateMeshGeometry_ComputeSurfaceCourantTimestep(DM dav,Vec velocity,PetscReal vert_displacement_max,PetscReal *step);
 PetscErrorCode UpdateMeshGeometry_ApplyDiffusionJMAX(DM dav,PetscReal diffusivity,PetscReal timespan,PetscBool dirichlet_east,PetscBool dirichlet_west,PetscBool dirichlet_front,PetscBool dirichlet_back,PetscBool only_update_surface);
+PetscErrorCode UpdateMeshGeometry_ApplyDiffusionJMAX_Spherical(DM dav,PetscReal diffusivity,PetscReal timespan, PetscBool dirichlet_east,PetscBool dirichlet_west,PetscBool dirichlet_front,PetscBool dirichlet_back,PetscBool only_update_surface);
 
 #endif
 

@@ -333,6 +333,7 @@ PetscErrorCode GenerateSphericalMesh()
       ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
     }
     ierr = UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX(dav,velocity,NULL,dt,PETSC_TRUE);CHKERRQ(ierr);
+    ierr = UpdateMeshGeometry_ApplyDiffusionJMAX_Spherical(dav,1.0,dt,PETSC_TRUE,PETSC_TRUE,PETSC_FALSE,PETSC_FALSE,PETSC_TRUE);CHKERRQ(ierr);
   }
 
   {
