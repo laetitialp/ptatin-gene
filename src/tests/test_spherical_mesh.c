@@ -167,7 +167,14 @@ static PetscBool TangentRadialVelocity(PetscScalar position[], PetscScalar *valu
   radial_u[0] = normal[1];
   radial_u[1] = -normal[0];
   radial_u[2] = 0.0;
+  
 
+  /* Compute the cross product with unit oblique */
+  /*
+  radial_u[0] = normal[1]*0.5*PetscSqrtReal(2.0);
+  radial_u[1] = normal[2]*0.5*PetscSqrtReal(2.0) - normal[0]*0.5*PetscSqrtReal(2.0);
+  radial_u[2] = -normal[1]*0.5*PetscSqrtReal(2.0);
+  */
   /* normalize radial_u */
   norm_ru = 0.0;
   for (d=0; d<3; d++) {
