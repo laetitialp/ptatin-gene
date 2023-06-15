@@ -148,10 +148,11 @@ PetscErrorCode pTatinGetGravityPointWiseVector(pTatinCtx ptatin, PetscInt eidx, 
 
 PetscErrorCode GravityDestroyCtx(Gravity *gravity)
 {
+  PetscErrorCode ierr;
   PetscFunctionBegin;
   if (!gravity)  { PetscFunctionReturn(0); }
   if (!*gravity) { PetscFunctionReturn(0); }
-  (*gravity)->destroy(*gravity);
+  ierr = (*gravity)->destroy(*gravity);CHKERRQ(ierr);
   *gravity = NULL;
   PetscFunctionReturn(0);
 }
