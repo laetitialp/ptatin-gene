@@ -12,14 +12,17 @@
 -model_spherical_sinker_rho0_1 3300.0
 
 # gravity
--model_spherical_sinker_gravity_radial_constant
+#-model_spherical_sinker_gravity_radial_constant
 #-model_spherical_sinker_gravity_constant
+#-model_spherical_sinker_gravity_none
+-ptatin_model_apply_gravity_disable
+
 -model_spherical_sinker_gravity_magnitude -9.8
 
 # Mesh resolution
--mx 16
--my 16
--mz 16
+-mx 8
+-my 8
+-mz 8
 
 # Material point resolution per cell
 -lattice_layout_Nx 4

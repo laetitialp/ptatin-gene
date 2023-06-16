@@ -41,6 +41,7 @@
 #include "element_type_Q2.h"
 #include "dmda_element_q2p1.h"
 #include "gravity.h"
+#include "stokes_output.c"
 
 #include "spherical_sinker.h"
 
@@ -89,7 +90,7 @@ static PetscErrorCode ModelSetGeometry(ModelSphericalCtx *data)
 static PetscErrorCode ModelSetGravityParameters(ModelSphericalCtx *data)
 {
   PetscInt       nn;
-  PetscBool      found,gravity_constant,gravity_radial_constant;
+  PetscBool      found,gravity_constant,gravity_radial_constant,gravity_none;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -110,15 +111,19 @@ static PetscErrorCode ModelSetGravityParameters(ModelSphericalCtx *data)
 
   gravity_constant        = PETSC_FALSE;
   gravity_radial_constant = PETSC_FALSE;
+  gravity_none            = PETSC_FALSE;
 
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-gravity_constant",&gravity_constant,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-gravity_radial_constant",&gravity_radial_constant,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-gravity_none",&gravity_none,&found);CHKERRQ(ierr);
 
   data->gravity_type = -1;
   if (gravity_constant) {
     data->gravity_type = 0;
   } else if (gravity_radial_constant) {
     data->gravity_type = 1;
+  } else if (gravity_none) {
+    data->gravity_type = 2;
   }
   
   PetscFunctionReturn(0);
@@ -205,6 +210,16 @@ PetscErrorCode ModelInitialize_Spherical(pTatinCtx ptatin, void *ctx)
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ModelSetGravity_None(pTatinCtx ptatin)
+{
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = pTatinCreateGravity(ptatin,GRAVITY_NONE);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode ModelSetGravity_Constant(pTatinCtx ptatin, ModelSphericalCtx *data)
 {
   Gravity        gravity;
@@ -246,6 +261,10 @@ static PetscErrorCode ModelSetGravity(pTatinCtx ptatin, ModelSphericalCtx *data)
 
     case 1:
       ierr = ModelSetGravity_RadialConstant(ptatin,data);CHKERRQ(ierr);
+      break;
+
+    case 2:
+      ierr = ModelSetGravity_None(ptatin);CHKERRQ(ierr);
       break;
 
     default:
@@ -606,6 +625,9 @@ PetscErrorCode ModelOutput_Spherical(pTatinCtx ptatin,Vec X,const char prefix[],
   ierr = pTatin3d_ModelOutput_VelocityPressure_Stokes(ptatin,X,prefix);CHKERRQ(ierr);
   /* Output markers */
   ierr = ModelOutputMarkerFields(ptatin,prefix);CHKERRQ(ierr);
+
+  /* Output volume quadrature points stokes fields */
+  ierr = VolumeQuadratureViewParaview_Stokes(ptatin->stokes_ctx,ptatin->outputpath,"qp_stokes");CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
