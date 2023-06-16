@@ -5,7 +5,8 @@
 #include "gravity/gravity_radialconstant.h"
 
 typedef enum {
-  GRAVITY_CONSTANT=0,
+  GRAVITY_NONE=0,
+  GRAVITY_CONSTANT,
   GRAVITY_RADIAL_CONSTANT,
   GRAVITY_RADIAL_VAR,
   GRAVITY_ARBITRARY,

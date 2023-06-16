@@ -13,6 +13,7 @@
 #include "gravity.h"
 
 const char *GravityTypeNames[] = {
+  "gravity_none",
   "gravity_constant",
   "gravity_radial_constant",
   "gravity_radial_var",
@@ -22,6 +23,7 @@ const char *GravityTypeNames[] = {
 };
 
 PetscErrorCode (*create_types[])(Gravity) = {
+  GravityNoneCreateCtx,
   GravityConstantCreateCtx, 
   GravityRadialConstantCreateCtx,
   0

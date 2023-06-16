@@ -62,7 +62,9 @@ PetscErrorCode GravitySet_Constant(Gravity gravity, PetscReal gvec[])
   PetscErrorCode  ierr;
   PetscFunctionBegin;
 
-  if (gravity->gravity_type != GRAVITY_CONSTANT) { PetscFunctionReturn(0); }
+  if (gravity->gravity_type != GRAVITY_CONSTANT || gravity->gravity_type != GRAVITY_NONE) { 
+    PetscFunctionReturn(0); 
+  }
 
   gc = (GravityConstant)gravity->data;
 
@@ -84,7 +86,9 @@ PetscErrorCode GravityGet_ConstantVector(Gravity gravity, PetscReal gvec[])
   PetscInt        d;
   PetscFunctionBegin;
 
-  if (gravity->gravity_type != GRAVITY_CONSTANT) { PetscFunctionReturn(0); }
+  if (gravity->gravity_type != GRAVITY_CONSTANT || gravity->gravity_type != GRAVITY_NONE) { 
+    PetscFunctionReturn(0); 
+  }
   if (!gvec) { PetscFunctionReturn(0); }
 
   gc = (GravityConstant)gravity->data;
@@ -100,7 +104,9 @@ PetscErrorCode GravityGet_ConstantMagnitude(Gravity gravity, PetscReal *magnitud
   GravityConstant gc = NULL;
   PetscFunctionBegin;
 
-  if (gravity->gravity_type != GRAVITY_CONSTANT) { PetscFunctionReturn(0); }
+  if (gravity->gravity_type != GRAVITY_CONSTANT || gravity->gravity_type != GRAVITY_NONE) { 
+    PetscFunctionReturn(0); 
+  }
   if (!magnitude) { PetscFunctionReturn(0); }
 
   gc = (GravityConstant)gravity->data;
@@ -168,6 +174,27 @@ PetscErrorCode GravityConstantCreateCtx(Gravity gravity)
   gravity->quadrature_set = QuadratureSetGravity_Constant;
   gravity->update         = QuadratureSetGravity_Constant;
   gravity->get_gvec       = GravityGetPointWiseVector_Constant;
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode GravityNoneCreateCtx(Gravity gravity)
+{
+  GravityConstant gc;
+  PetscReal       gvec[] = {0.0, 0.0, 0.0};
+  PetscErrorCode  ierr;
+
+  ierr = PetscMalloc(sizeof(struct _p_GravityConstant),&gc);CHKERRQ(ierr);
+  ierr = PetscMemzero(gc,sizeof(struct _p_GravityConstant));CHKERRQ(ierr);
+
+  gravity->data = (void*)gc;
+  gravity->destroy        = GravityDestroyCtx_Constant;
+  gravity->scale          = GravityScale_Constant;
+  gravity->quadrature_set = QuadratureSetGravity_Constant;
+  gravity->update         = QuadratureSetGravity_Constant;
+  gravity->get_gvec       = GravityGetPointWiseVector_Constant;
+
+  ierr = GravitySet_Constant(gravity,gvec);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }

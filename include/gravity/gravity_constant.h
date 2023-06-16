@@ -15,5 +15,6 @@ PetscErrorCode GravityConstantCreateCtx(Gravity gravity);
 PetscErrorCode GravityGetConstantCtx(Gravity gravity, GravityConstant *ctx);
 PetscErrorCode QuadratureSetGravity_Constant(PhysCompStokes stokes, Gravity gravity);
 PetscErrorCode QuadratureUpdateGravity_Constant(PhysCompStokes stokes, Gravity gravity);
+PetscErrorCode GravityNoneCreateCtx(Gravity gravity);
 
 #endif

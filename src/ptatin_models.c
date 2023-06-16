@@ -570,6 +570,8 @@ PetscErrorCode pTatinModel_ApplyGravity(pTatinModel model,pTatinCtx ctx)
     if (model->FP_pTatinModel_ApplyGravity) {
       ierr = model->FP_pTatinModel_ApplyGravity(ctx,model->model_data);CHKERRQ(ierr);
     }
+  } else {
+    ierr = pTatinCreateGravity(ctx,GRAVITY_NONE);CHKERRQ(ierr);
   }
   ierr = PetscLogEventEnd(PTATIN_ModelApplyGravity,0,0,0,0);CHKERRQ(ierr);
 

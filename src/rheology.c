@@ -339,7 +339,9 @@ PetscErrorCode pTatin_ApplyStokesGravityModel(pTatinCtx ctx)
   PetscFunctionBegin;
 
   ierr = pTatinContextValid_Gravity(ctx,&gravity_active);CHKERRQ(ierr);
-  if (!gravity_active) { SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Gravity must be set in the model using the function pointer PTATIN_MODEL_APPLY_GRAVITY and the set of functions provided in gravity.c"); }
+  if (!gravity_active) { 
+    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Gravity has not been set. If this is intended, please use the option -ptatin_model_apply_gravity_disable. Otherwise, Gravity must be set in the model using the function pointer PTATIN_MODEL_APPLY_GRAVITY and the set of functions provided in gravity.c"); 
+  }
   
   ierr = pTatinQuadratureUpdateGravity(ctx);CHKERRQ(ierr);
 
