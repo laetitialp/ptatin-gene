@@ -49,8 +49,9 @@
 -model_rift_nitsche_bc_strike_slip
 #-model_rift_nitsche_bc_freeslip_nitsche
 #-model_rift_nitsche_bc_dirichlet
--model_rift_nitsche_bc_u_func_atan
--model_rift_nitsche_bc_atan_sharpness 5.0e-5 #8.0e-5
+#-model_rift_nitsche_bc_u_func_atan
+-model_rift_nitsche_bc_u_func_mixte
+-model_rift_nitsche_bc_atan_sharpness 8.0e-5
 -model_rift_nitsche_bc_atan_offset 300.0e3
 -model_rift_nitsche_norm_u 1.0 # cm/yr
 -model_rift_nitsche_alpha_u 90.0 # Degree
@@ -199,7 +200,7 @@
     -fieldsplit_u_mg_coarse_pc_type cholesky
     #-fieldsplit_u_mg_coarse_pc_type telescope
     #-fieldsplit_u_mg_coarse_telescope_pc_type cholesky
-    #-fieldsplit_u_mg_coarse_telescope_pc_reduction_factor 1
+    #-fieldsplit_u_mg_coarse_telescope_pc_reduction_factor 2
 #### THERMAL SOLVER
 -ptatin_energyfv_nsub 3,3,3
 #-energyfv_ksp_monitor

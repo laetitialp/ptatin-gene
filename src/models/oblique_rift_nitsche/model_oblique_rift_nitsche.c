@@ -169,6 +169,10 @@ static PetscErrorCode ModelAnalyticalVelocityFunction(PetscReal position[], Pets
       ierr = ModelAnalyticalVelocityFunction_Arctan(position,u,data);CHKERRQ(ierr);
       break;
 
+    case 2:
+      ierr = ModelAnalyticalVelocityFunction_Arctan(position,u,data);CHKERRQ(ierr);
+      break;
+
     default:
       ierr = ModelAnalyticalVelocityFunction_Linear(position,u,data);CHKERRQ(ierr);
       break;
@@ -769,7 +773,7 @@ static PetscErrorCode ModelSetWeakZoneParameters_RiftNitsche(ModelRiftNitscheCtx
   PetscInt       nn;
   PetscBool      found,wz_notch,wz_gauss,wz_oblique,wz_double;
   PetscBool      wz_oblique_gauss,wz_straight_gauss;
-  PetscBool      wz_centre_equal,wz_centre_opts;
+  PetscBool      wz_centre_equal,wz_centre_opts,wz_centre_angle;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -782,6 +786,7 @@ static PetscErrorCode ModelSetWeakZoneParameters_RiftNitsche(ModelRiftNitscheCtx
   wz_straight_gauss = PETSC_FALSE;
   wz_centre_equal   = PETSC_FALSE;
   wz_centre_opts    = PETSC_FALSE;
+  wz_centre_angle   = PETSC_FALSE;
 
   data->n_notches = 3;
   data->wz_width = 100.0e3;
@@ -799,6 +804,7 @@ static PetscErrorCode ModelSetWeakZoneParameters_RiftNitsche(ModelRiftNitscheCtx
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-wz_straight_gauss",&wz_straight_gauss,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-wz_centre_equal",  &wz_centre_equal,  &found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-wz_centre_opts",   &wz_centre_opts,   &found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-wz_centre_angle",  &wz_centre_angle,  &found);CHKERRQ(ierr);
 
   ierr = PetscOptionsGetInt(NULL,MODEL_NAME_R,"-wz_n_notches",&data->n_notches,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-wz_width",   &data->wz_width, &found);CHKERRQ(ierr);
@@ -843,10 +849,13 @@ static PetscErrorCode ModelSetWeakZoneParameters_RiftNitsche(ModelRiftNitscheCtx
   data->wz_centre_type = -1;
   if (wz_centre_equal) {
     data->wz_centre_type = 0;
-    PetscPrintf(PETSC_COMM_WORLD,"Weak Zone Centre Type %d: [[ EQUALLY SPACED IN X DIRECTION ]]\n",data->wz_centre_type);
+    PetscPrintf(PETSC_COMM_WORLD,"Weak Zone Centre Type %d: [[ EQUALLY SPACED IN X DIRECTION AND OFFSET FROM GIVEN DISTANCE ]]\n",data->wz_centre_type);
   } else if (wz_centre_opts) {
     data->wz_centre_type = 1;
     PetscPrintf(PETSC_COMM_WORLD,"Weak Zone Centre Type %d: [[ ARBITRARY PLACED FROM OPTIONS ]]\n",data->wz_centre_type);
+  } else if (wz_centre_angle) {
+    data->wz_centre_type = 2;
+    PetscPrintf(PETSC_COMM_WORLD,"Weak Zone Centre Type %d: [[ EQUALLY SPACED IN X DIRECTION AND OFFSET FROM GIVEN ANGLE ]]\n",data->wz_centre_type);
   }
 
   PetscFunctionReturn(0);
@@ -950,7 +959,7 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
 {
   PetscBool      bc_nitsche,bc_dirichlet,bc_freeslip_nitsche,found;
   PetscBool      bc_strikeslip,bc_u_func_atan,bc_strike_analogue;
-  PetscBool      bc_strike_analogue_nitsche;
+  PetscBool      bc_strike_analogue_nitsche,bc_u_func_mixte;
   PetscInt       nn;
   PetscErrorCode ierr;
 
@@ -964,6 +973,8 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
   bc_strike_analogue         = PETSC_FALSE;
   bc_strike_analogue_nitsche = PETSC_FALSE;
   bc_u_func_atan             = PETSC_FALSE;
+  bc_u_func_mixte            = PETSC_FALSE;
+
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_nitsche",                &bc_nitsche,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_dirichlet",              &bc_dirichlet,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_freeslip_nitsche",       &bc_freeslip_nitsche,&found);CHKERRQ(ierr);
@@ -971,6 +982,7 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_strike_analogue",        &bc_strike_analogue,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_strike_analogue_nitsche",&bc_strike_analogue_nitsche,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_u_func_atan",            &bc_u_func_atan,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_u_func_mixte",           &bc_u_func_mixte,&found);CHKERRQ(ierr);
 
   /* Split face location for the analogue BCs */
   data->split_face_min[0] = 290.0e3;
@@ -1013,13 +1025,16 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
     PetscPrintf(PETSC_COMM_WORLD,"[[ BC TYPE %d: Analogue model BCs (base driven) ACTIVATED ]]\n",data->bc_type);
   } else if (bc_strike_analogue_nitsche) {
     data->bc_type = 5;
-    PetscPrintf(PETSC_COMM_WORLD,"[[ BC TYPE %d: Analogue model BCs (base driven) + Nitsche on vertical sides ACTIVATED ]]\n");
+    PetscPrintf(PETSC_COMM_WORLD,"[[ BC TYPE %d: Analogue model BCs (base driven) + Nitsche on vertical sides ACTIVATED ]]\n",data->bc_type);
   }
 
   data->u_func_type = 0;
   if (bc_u_func_atan) {
     data->u_func_type = 1;
     PetscPrintf(PETSC_COMM_WORLD,"[[ Using arctangent function for the boundary velocity ]]\n");
+  } else if (bc_u_func_mixte) {
+    data->u_func_type = 2;
+    PetscPrintf(PETSC_COMM_WORLD,"[[ Using arctangent on Dirichlet sides and linear derivative on Navier-slip sides ]]\n");
   }
 
   PetscFunctionReturn(0);
@@ -1265,6 +1280,31 @@ static PetscErrorCode WeakZonesCentreOffset(PetscReal *notch_centre, PetscInt di
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode WeakZonesCentreOffsetFromAngle(PetscReal *notch_centre, PetscInt dim, ModelRiftNitscheCtx *data)
+{
+  PetscInt  i,d;
+  PetscReal centre[2];
+
+  PetscFunctionBegin;
+
+  if (dim == 0) {
+    d = 1;
+    centre[0] = 0.5 * (data->Oz + data->Lz);
+    centre[1] = 0.5 * (data->Ox + data->Lx);
+  } else if (dim == 1) {
+    d = 0;
+    centre[0] = 0.5 * (data->Ox + data->Lx);
+    centre[1] = 0.5 * (data->Oz + data->Lz);
+  } else {
+    SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"dim can only be 0 or 1. Given %d",dim);
+  }
+
+  for (i=0; i<data->n_notches; i++) {
+    notch_centre[2*i + dim] = PetscTanReal(data->wz_angle) * (notch_centre[2*i + d] - centre[0]) + centre[1];
+  }
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode WeakZoneCentreFromOptions(PetscReal *notch_centre, ModelRiftNitscheCtx *data)
 {
   PetscInt       i,d,nn;
@@ -1307,6 +1347,11 @@ static PetscErrorCode SetWeakZonesCentreCoordinates(PetscReal *notch_centre, Mod
 
     case 1:
       ierr = WeakZoneCentreFromOptions(notch_centre, data);CHKERRQ(ierr);
+      break;
+
+    case 2:
+      ierr = ComputeWeakZonesCentreEquallySpaced(notch_centre,0,data);CHKERRQ(ierr);
+      ierr = WeakZonesCentreOffsetFromAngle(notch_centre,1,data);CHKERRQ(ierr);
       break;
 
     default:
@@ -1995,9 +2040,12 @@ static PetscErrorCode GeneralNavierSlipBC(Facet F,const PetscReal qp_coor[],
                                           void *data)
 {
   ModelRiftNitscheCtx *model_data = (ModelRiftNitscheCtx*)data;
-  PetscInt i,j;
+  PetscInt            i,j;
+  PetscErrorCode      ierr;
 
   PetscFunctionBegin;
+
+  ierr = ModelRotateStrainRateBoundaryValue(data);CHKERRQ(ierr);
 
   /* Fill the H tensor and the epsilon_s tensor */
   for (i=0;i<6;i++) {
@@ -2064,6 +2112,16 @@ static PetscErrorCode ModelApplyGeneralNavierSlip_RiftNitsche(SurfBCList surflis
         if (!sc->quadrature) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->surfQ. Must call SurfaceConstraintSetQuadrature() first");
         if (!sc->facets->set_values_called) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Facets have not been selected");
         ierr = SurfaceConstraintSetValuesStrainRate_NITSCHE_GENERAL_SLIP(sc,(SurfCSetValuesNitscheGeneralSlip)GeneralNavierSlipBC_Atan,(void*)data);CHKERRQ(ierr);
+      }
+      break;
+
+    case 2:
+      {
+        SURFC_CHKSETVALS(SC_NITSCHE_GENERAL_SLIP,GeneralNavierSlipBC);
+        if (!sc->dm) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->dm. Must call SurfaceConstraintSetDM() first");
+        if (!sc->quadrature) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->surfQ. Must call SurfaceConstraintSetQuadrature() first");
+        if (!sc->facets->set_values_called) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Facets have not been selected");
+        ierr = SurfaceConstraintSetValuesStrainRate_NITSCHE_GENERAL_SLIP(sc,(SurfCSetValuesNitscheGeneralSlip)GeneralNavierSlipBC,(void*)data);CHKERRQ(ierr);
       }
       break;
 
@@ -2321,13 +2379,6 @@ static PetscErrorCode IncreaseVelocityWithTime(pTatinCtx ptatin, ModelRiftNitsch
 
   /* Get time */
   ierr = pTatinGetTime(ptatin,&time);CHKERRQ(ierr);
-
-  /* Note: When using Atan function the strain rate on boundary is re-computed at each BC function call
-     Warning: If not using Atan function, the strain rate is only set at initialization of the model, so
-     it does not account for velocity variation thus I set an error
-  */
-
-  if (data->u_func_type != 1) { SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"This function cannot be used with linear velocity function. Take a look at notes in model_oblique_rift_nitsche.c"); }
 
   velocity_bc[1] = data->norm_u * cos(data->alpha_u);
   velocity_bc[0] = sqrt( pow(data->norm_u,2.0) - pow(velocity_bc[1],2.0) );
