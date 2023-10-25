@@ -61,7 +61,7 @@
 -model_rift_nitsche_alpha_0 3.0e-5
 -model_rift_nitsche_beta_0 0.0
 -model_rift_nitsche_rho_0 2700.0
--model_rift_nitsche_heat_source_0 3.0e-6 #1.5e-6
+-model_rift_nitsche_heat_source_0  1.5e-6 #3.0e-6
 -model_rift_nitsche_conductivity_0 2.7
 #### Continental lower crust phase number 1 ####
 #### Anorthite Rybacki & Dresen 2000 ####
@@ -82,7 +82,7 @@
 -model_rift_nitsche_alpha_1 3.0e-5
 -model_rift_nitsche_beta_1 1.0e-11
 -model_rift_nitsche_rho_1 2850.0
--model_rift_nitsche_heat_source_1 3.0e-6 #0.3e-6
+-model_rift_nitsche_heat_source_1 0.3e-6 #3.0e-6
 -model_rift_nitsche_conductivity_1 2.85
 #### Continental lithosphere mante phase number 2 ####
 #### Dry peridotite Ranalli 1997 ####
