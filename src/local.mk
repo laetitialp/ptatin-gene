@@ -97,7 +97,7 @@ libptatin3d-$(CONFIG_OPENCL).c += $(call thisdir, \
 )
 
 libptatin3d-$(CONFIG_HIP).c += $(call thisdir, \
-    stokes_operators_hip.hip \
+  stokes_operators_hip.hip \
 )
 
 # One file needs special flags.
