@@ -132,6 +132,11 @@ PetscErrorCode MatA11MFCreate(MatA11MF *B)
   ierr = PetscFunctionListAdd(&SetUp_flist,"opencl",MFA11SetUp_OpenCL);CHKERRQ(ierr);
   ierr = PetscFunctionListAdd(&Destroy_flist,"opencl",MFA11Destroy_OpenCL);CHKERRQ(ierr);
 #endif
+#ifdef TATIN_HAVE_HIP
+  ierr = PetscFunctionListAdd(&MatMult_flist,"hip",MFStokesWrapper_A11_HIP);CHKERRQ(ierr);
+  ierr = PetscFunctionListAdd(&SetUp_flist,"hip",MFA11SetUp_HIP);CHKERRQ(ierr);
+  ierr = PetscFunctionListAdd(&Destroy_flist,"hip",MFA11Destroy_HIP);CHKERRQ(ierr);
+#endif
 #if defined(__AVX__) && defined(TATIN_HAVE_CUDA)
   ierr = PetscFunctionListAdd(&MatMult_flist,"subrepart",MFStokesWrapper_A11_SubRepart);CHKERRQ(ierr);
   ierr = PetscFunctionListAdd(&SetUp_flist,"subrepart",MFA11SetUp_SubRepart);CHKERRQ(ierr);

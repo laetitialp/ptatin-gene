@@ -142,6 +142,12 @@ PetscErrorCode MFA11CUDA_CleanUp(MFA11CUDA);
 PetscErrorCode CopyTo_A11_CUDA(MatA11MF,MFA11CUDA,const PetscScalar*,const PetscReal*,const PetscReal*,PetscInt,PetscInt,const PetscInt*,PetscInt);
 PetscErrorCode ProcessElements_A11_CUDA(MFA11CUDA,PetscInt,PetscInt);
 PetscErrorCode CopyFrom_A11_CUDA(MFA11CUDA,PetscScalar*,PetscInt);
+
+PetscErrorCode MFA11HIP_SetUp(MFA11CUDA);
+PetscErrorCode MFA11HIP_CleanUp(MFA11CUDA);
+PetscErrorCode CopyTo_A11_HIP(MatA11MF,MFA11CUDA,const PetscScalar*,const PetscReal*,const PetscReal*,PetscInt,PetscInt,const PetscInt*,PetscInt);
+PetscErrorCode ProcessElements_A11_HIP(MFA11CUDA,PetscInt,PetscInt);
+PetscErrorCode CopyFrom_A11_HIP(MFA11CUDA,PetscScalar*,PetscInt);
 #ifdef __cplusplus
 }
 #endif
