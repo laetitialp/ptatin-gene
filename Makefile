@@ -70,6 +70,12 @@ TATIN_LIB += $(OPENCL_LIB)
 TATIN_INC += $(OPENCL_INC)
 endif
 
+ifeq ($(CONFIG_HIP),y)
+TATIN_CFLAGS += -DTATIN_HAVE_HIP
+TATIN_LIB += $(HIP_LIB)
+TATIN_INC += $(HIP_INC)
+endif
+
 # Directory that contains most recently-parsed makefile (current)
 thisdir = $(addprefix $(dir $(lastword $(MAKEFILE_LIST))),$(1))
 incsubdirs = $(addsuffix /local.mk,$(call thisdir,$(1)))
