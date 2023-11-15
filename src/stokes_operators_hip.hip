@@ -61,6 +61,7 @@ void check(T result, char const *const func, const char *const file, int const l
 
 
 /*for shuffle of double-precision point */
+#if 0
 __device__ __inline__ double shfl_double(double x, int lane)
 {
   // Split the double number into 2 32b registers.
@@ -73,6 +74,7 @@ __device__ __inline__ double shfl_double(double x, int lane)
   asm volatile("mov.b64 %0,{%1,%2};":"=d"(x):"r"(lo),"r"(hi));
   return x;
 }
+#endif
 
 /*
  * Performs three tensor contractions: y[l,a,b,c] += T[a,k] S[b,j] R[c,i] x[l,k,j,i]
@@ -90,14 +92,14 @@ static __device__ void TensorContract(PetscReal const *R,PetscReal const *S,Pets
 
     // u[l,k,j,c] = R[c,i] x[l,k,j,i]
     PetscReal result = 0;
-    for (PetscInt i=0; i<3; i++) result += R[i] * shfl_double(x[l], kj*3+i);
+    for (PetscInt i=0; i<3; i++) result += R[i] ;//* shfl_double(x[l], kj*3+i);
 
     // v[l,k,b,c] = S[b,j] u[l,k,j,c]
     PetscReal result2 = 0;
-    for (PetscInt j=0; j<3; j++) result2 += S[j] * shfl_double(result, (k3+j)*3+c);
+    for (PetscInt j=0; j<3; j++) result2 += S[j] ;//* shfl_double(result, (k3+j)*3+c);
 
     // y[l,a,b,c] = T[a,k] v[l,k,b,c]
-    for (PetscInt k=0; k<3; k++) y[l] += T[k] * shfl_double(result2, k*9+ji);
+    for (PetscInt k=0; k<3; k++) y[l] += T[k] ;//* shfl_double(result2, k*9+ji);
 
   } // for l
 }
