@@ -96,7 +96,7 @@ libptatin3d-$(CONFIG_OPENCL).c += $(call thisdir, \
   stokes_operators_opencl.c \
 )
 
-libptatin3d-$(CONFIG_HIP).c += $(call thisdir, \
+libptatin3d-$(CONFIG_HIP).hip += $(call thisdir, \
   stokes_operators_hip.hip \
 )
 
