@@ -1,0 +1,116 @@
+-nonlinear_driver_v1
+########## Model ##########
+-ptatin_model stokes_law # Used model
+-log_summary
+-output_path stokes_law
+-lattice_layout_Nx 8 #12
+-lattice_layout_Ny 8
+-lattice_layout_Nz 8 #8
+-mp_popctrl_np_lower 128
+-mp_popctrl_np_upper 1024
+-nsteps 1 # Max number of steps
+-dt_min 0.01
+-dt_max 5.0
+#-dt_max_surface_displacement 5.0e-3
+-output_frequency 1
+-ptatin_driver_write_icbc
+-model_stokes_law_output_markers
+-model_stokes_law_refine_mesh
+#-view_projected_marker_fields
+########## Resolution ##############
+-mx 48 # Number of elements along x
+-my 48 # Number of elements along y
+-mz 48 # Number of elements along z
+########### Model Geometry ##########
+-model_stokes_law_O 0.0,0.0,0.0
+-model_stokes_law_L 1.0,1.0,1.0
+-model_stokes_law_radius_sphere 5.0e-2
+-model_stokes_law_sphere_centre 0.5,0.5,0.5
+########### Boundary conditions ##########
+-model_stokes_law_Ttop 1.0
+-model_stokes_law_Tbottom 1.0
+########### Temperature ##########
+-model_stokes_law_Tfluid 1.0
+-model_stokes_law_Tsphere 5.0
+########### Gravity ##########
+-model_stokes_law_gravity_vector 0.0,-10.0,0.0
+############ Regions Parameters #############
+############ Region 0: fluid ################
+-model_stokes_law_viscosity_0 1.0e+3
+-model_stokes_law_density_0 1000.0
+-model_stokes_law_conductivity_0 0.0
+############ Region 1: sphere ################
+-model_stokes_law_viscosity_1 1.0e+9
+-model_stokes_law_density_1 1100.0
+-model_stokes_law_conductivity_1 0.0
+################ SOLVERS ################
+###### MG
+-A11_operator_type 2,0,1,1
+-dau_nlevels 4
+-stk_velocity_dm_mat_type aij
+-a11_op avx
+#---- 4 MG lvl ----#
+#| 48 x 48 x 48 |
+#| 24 x 24 x 24 |
+#| 12 x 12 x 12 |
+#|  6 x  6 x  6 |
+#------------------#
+#-stk_velocity_da_refine_hierarchy_x 2,2,2 
+#-stk_velocity_da_refine_hierarchy_y 2,2,2
+#-stk_velocity_da_refine_hierarchy_z 2,2,2
+#---- SNES ----#
+-newton_its 0
+#-snes_type ksponly
+-snes_monitor
+-snes_converged_reason
+-snes_rtol 1.0e-6
+-snes_atol 1.0e-12
+#-snes_view
+#---- KSP ----#
+-ksp_max_it 200
+-ksp_rtol 1.0e-6
+-ksp_atol 1.0e-12
+-ksp_type fgmres
+-pc_type fieldsplit
+-pc_fieldsplit_schur_fact_type upper
+-pc_fieldsplit_type schur
+  #---- Fieldsplit p ----#
+  -fieldsplit_p_ksp_type preonly
+  -fieldsplit_p_pc_type bjacobi
+  #---- Fieldsplit u ----#
+  -fieldsplit_u_ksp_max_it 100
+  #-fieldsplit_u_ksp_monitor_true_residual
+  -fieldsplit_u_ksp_monitor
+  -fieldsplit_u_ksp_converged_reason
+  -fieldsplit_u_ksp_rtol 1.0e-3
+  -fieldsplit_u_ksp_type fgmres
+  -fieldsplit_u_pc_type mg
+  -fieldsplit_u_pc_mg_levels 4
+  -fieldsplit_u_pc_mg_cycle_type v
+  -fieldsplit_u_mg_levels_ksp_type gmres
+  -fieldsplit_u_mg_levels_pc_type jacobi
+  -fieldsplit_u_mg_levels_ksp_max_it 8
+  -fieldsplit_u_mg_levels_ksp_norm_type NONE
+    #---- Coarse Grid ----#
+    -fieldsplit_u_mg_coarse_pc_type cholesky
+#### THERMAL SOLVER
+-ptatin_energyfv_nsub 3,3,3
+-energyfv_ksp_monitor
+-energyfv_ksp_converged_reason
+-energyfv_ksp_type fgmres
+-energyfv_mg_coarse_pc_type cholesky
+#-energyfv_mg_coarse_redundant_pc_type lu #mkl_pardiso
+-energyfv_mg_levels_esteig_ksp_norm_type none
+-energyfv_mg_levels_esteig_ksp_type cg
+-energyfv_mg_levels_ksp_chebyshev_esteig 0,0.01,0,1.1
+-energyfv_mg_levels_ksp_max_it 8
+#-energyfv_mg_levels_ksp_norm_type none
+-energyfv_mg_levels_ksp_type gmres #chebyshev
+-energyfv_mg_levels_pc_type bjacobi
+-energyfv_pc_type gamg
+-energyfv_snes_ksp_ew
+-energyfv_snes_ksp_ew_rtol0 1.0e-2
+-energyfv_snes_ksp_ew_version 1
+-energyfv_snes_lag_preconditioner -2
+-energyfv_snes_monitor
+-energyfv_snes_rtol 1.0e-6
