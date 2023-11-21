@@ -59,7 +59,7 @@ CONFIG_OPENCL      = n
 CONFIG_HIP=y
 export HIP_CC=hipcc
 export HIP_INC= 
-export HIP_LIB=
+export HIP_LIB=-L/opt/rocm/lib -lhipsparse -lhipblas -lhipsolver -lrocsparse -lrocsolver -lrocblas -lrocrand -lamdhip64
 
 # ----------------------------------------------------------------------------
 #  -- pTatin external packages (user to edit)
