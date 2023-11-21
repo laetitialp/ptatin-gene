@@ -1,12 +1,7 @@
 /*@ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  **
- **    Copyright (c) 2012
- **        Dave A. May [dave.may@erdw.ethz.ch]
- **        Institute of Geophysics
- **        ETH Zürich
- **        Sonneggstrasse 5
- **        CH-8092 Zürich
- **        Switzerland
+ **    Copyright (c) 2023
+ **        Dave A. May [dmay@ucsd.edu]
  **
  **    project:    pTatin3d
  **    filename:   stokes_operators_tensor_hip.hip
@@ -78,8 +73,8 @@ void check(T result, char const *const func, const char *const file, int const l
 Taken from
   https://stackoverflow.com/questions/24095248/cudas-warp-shuffle-for-double-precision-data
 */
-/*for shuffle of double-precision point */
 #if 0
+/*for shuffle of double-precision point */
 __device__ __inline__ double shfl_double(double x, int lane)
 {
   // Split the double number into 2 32b registers.
@@ -94,13 +89,29 @@ __device__ __inline__ double shfl_double(double x, int lane)
 }
 #endif
 
-/*
-// Note with CUDA >= 9.0 there is directly support for shuffling a double
-__device__ __inline__ double shfl_double(double x, int lane)
-{
-  return __shfl_sync(x,double,lane,32)
-}
+/* 
+Note that instruction mov.b64 and the constrain "d" are not support on the AMD GPU.
+For this reason shfl_double() is modified.
 */
+
+/*
+Taken from
+ /opt/rocm/include/hip/hcc_detail/amd_warp_functions.h
+*/
+
+__device__ inline double shfl_double(double var, int src_lane)
+{
+    static_assert(sizeof(double) == 2 * sizeof(int), "");
+    static_assert(sizeof(double) == sizeof(uint64_t), "");
+
+    int tmp[2]; __builtin_memcpy(tmp, &var, sizeof(tmp));
+    tmp[0] = __shfl(tmp[0], src_lane, WARP_SIZE);
+    tmp[1] = __shfl(tmp[1], src_lane, WARP_SIZE);
+
+    uint64_t tmp0 = (static_cast<uint64_t>(tmp[1]) << 32ull) | static_cast<uint32_t>(tmp[0]);
+    double tmp1;  __builtin_memcpy(&tmp1, &tmp0, sizeof(tmp0));
+    return tmp1;
+}
 
 /*
  * Performs three tensor contractions: y[l,a,b,c] += T[a,k] S[b,j] R[c,i] x[l,k,j,i]
@@ -118,14 +129,14 @@ static __device__ void TensorContract(PetscReal const *R,PetscReal const *S,Pets
 
     // u[l,k,j,c] = R[c,i] x[l,k,j,i]
     PetscReal result = 0;
-    for (PetscInt i=0; i<3; i++) result += R[i] ;//* shfl_double(x[l], kj*3+i);
+    for (PetscInt i=0; i<3; i++) result += R[i] * shfl_double(x[l], kj*3+i);
 
     // v[l,k,b,c] = S[b,j] u[l,k,j,c]
     PetscReal result2 = 0;
-    for (PetscInt j=0; j<3; j++) result2 += S[j] ;//* shfl_double(result, (k3+j)*3+c);
+    for (PetscInt j=0; j<3; j++) result2 += S[j] * shfl_double(result, (k3+j)*3+c);
 
     // y[l,a,b,c] = T[a,k] v[l,k,b,c]
-    for (PetscInt k=0; k<3; k++) y[l] += T[k] ;//* shfl_double(result2, k*9+ji);
+    for (PetscInt k=0; k<3; k++) y[l] += T[k] * shfl_double(result2, k*9+ji);
 
   } // for l
 }
