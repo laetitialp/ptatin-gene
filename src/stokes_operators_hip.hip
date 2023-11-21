@@ -202,7 +202,7 @@ static __global__ void MFStokesWrapper_A11_HIP_kernel(PetscInt nel,PetscInt nen_
 {
   PetscScalar el_x[3];
   PetscScalar el_uv[3]; // unifies elu, elv
-  PetscScalar dx[3][3]={0},du[3][3]={0},dv[3][3]={0};
+  PetscScalar dx[3][3]={{0,0,0},{0,0,0},{0,0,0}},du[3][3]={{0,0,0},{0,0,0},{0,0,0}},dv[3][3]={{0,0,0},{0,0,0},{0,0,0}};
   PetscScalar dxdet = 0;
   PetscInt    elidx = (blockDim.x * blockIdx.x + threadIdx.x) / 32;  // one warp per colored element. elidx is here the index within the same color.
   PetscInt    id_in_warp = threadIdx.x % 32;
