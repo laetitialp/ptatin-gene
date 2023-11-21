@@ -28,6 +28,8 @@
  ** ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ @*/
 // -*- indent-tabs-mode:t c-basic-offset:8 -*-
 
+#define CL_TARGET_OPENCL_VERSION 120
+
 #include <petscsys.h>
 #include <petscfe.h>
 #include <ptatin3d.h>
@@ -150,9 +152,8 @@ static const char * opencl_spmv_kernel_sources =
 "#define WARPS_PER_BLOCK     4 \n"
 
 
-"void TensorContract(PetscReal const *R, PetscReal const *S,PetscReal const *T,PetscReal const x[],PetscReal y[]) \n"
+"void TensorContract(PetscReal const *R, PetscReal const *S,PetscReal const *T,__local PetscReal *u[NQP],__local PetscReal *v[NQP],PetscReal const x[],PetscReal y[]) \n"
 "{ \n"
-"  __local PetscReal u[WARPS_PER_BLOCK][NQP],v[WARPS_PER_BLOCK][NQP]; \n"
 "  PetscInt warp_in_block = get_local_id(0) / 32; \n"
 "  PetscInt id_in_warp = get_local_id(0) % 32; \n"
 
@@ -160,6 +161,8 @@ static const char * opencl_spmv_kernel_sources =
 "  PetscInt kj = id_in_warp / 3; \n"
 "  PetscInt k3 = (id_in_warp / 9) * 3; \n"
 "  PetscInt ji = id_in_warp % 9; \n"
+
+"  //printf(\"warp_in_block = %d, id_in_warp = %d, c = %d, kj = %d, k3 = %d, ji = %d\",warp_in_block,id_in_warp,c,kj,k3,ji);\n"
 
 "  for (PetscInt l=0; l<3; l++) { \n"
 
@@ -244,9 +247,10 @@ static const char * opencl_spmv_kernel_sources =
 "                                  __global PetscScalar const *ufield,__global PetscReal const *gaussdata_w,__global PetscScalar *Yu, \n"
 "                                  __constant PetscReal const *D,__constant PetscReal const *B) \n"
 "{ \n"
-" PetscScalar el_x[3]; \n"
-" PetscScalar el_uv[3]; // unifies elu, elv \n"
-" PetscScalar dx[3][3]={ {0} },du[3][3]={ {0} },dv[3][3]={ {0} }; \n"
+"   PetscReal u[WARPS_PER_BLOCK][NQP],v[WARPS_PER_BLOCK][NQP]; \n"
+"   PetscScalar el_x[3]; \n"
+"   PetscScalar el_uv[3]; // unifies elu, elv \n"
+"   PetscScalar dx[3][3]={ {0} },du[3][3]={ {0} },dv[3][3]={ {0} }; \n"
 "   PetscScalar dxdet = 0; \n"
 "   PetscInt elidx = get_global_id(0) / 32;  // one warp per colored element. elidx is here the index within the same color. \n"
 "   PetscInt id_in_warp = get_local_id(0) % 32; \n"
@@ -271,22 +275,22 @@ static const char * opencl_spmv_kernel_sources =
 "        S[l] = B[3*b+l]; \n"
 "        T[l] = B[3*a+l]; \n"
 "      } \n"
-"   TensorContract(R,S,T,el_x, dx[0]); //TensorContract(D,B,B,GRAD,el_uxv,dx[0]); \n"
-"   TensorContract(R,S,T,el_uv,du[0]); //TensorContract(D,B,B,GRAD,el_uxv,du[0]); \n"
+"   TensorContract(R,S,T,u,v,el_x, dx[0]); //TensorContract(D,B,B,GRAD,el_uxv,dx[0]); \n"
+"   TensorContract(R,S,T,u,v,el_uv,du[0]); //TensorContract(D,B,B,GRAD,el_uxv,du[0]); \n"
 
 "      for (PetscInt l=0; l<3; l++) { \n"
 "        R[l] = B[3*c+l]; \n"
 "        S[l] = D[3*b+l]; \n"
 "      } \n"
-"   TensorContract(R,S,T,el_x, dx[1]); //TensorContract(B,D,B,GRAD,el_uxv,dx[1]); \n"
-"   TensorContract(R,S,T,el_uv,du[1]); //TensorContract(B,D,B,GRAD,el_uxv,du[1]); \n"
+"   TensorContract(R,S,T,u,v,el_x, dx[1]); //TensorContract(B,D,B,GRAD,el_uxv,dx[1]); \n"
+"   TensorContract(R,S,T,u,v,el_uv,du[1]); //TensorContract(B,D,B,GRAD,el_uxv,du[1]); \n"
 
 "      for (PetscInt l=0; l<3; l++) { \n"
 "        S[l] = B[3*b+l]; \n"
 "        T[l] = D[3*a+l]; \n"
 "      } \n"
-"   TensorContract(R,S,T,el_x, dx[2]); //TensorContract(B,B,D,GRAD,el_uxv,dx[2]); \n"
-"   TensorContract(R,S,T,el_uv,du[2]); //TensorContract(B,B,D,GRAD,el_uxv,du[2]); \n"
+"   TensorContract(R,S,T,u,v,el_x, dx[2]); //TensorContract(B,B,D,GRAD,el_uxv,dx[2]); \n"
+"   TensorContract(R,S,T,u,v,el_uv,du[2]); //TensorContract(B,B,D,GRAD,el_uxv,du[2]); \n"
 
 "   JacobianInvert(dx,&dxdet); \n"
 
@@ -298,17 +302,17 @@ static const char * opencl_spmv_kernel_sources =
 "        S[l] = B[3*l + b]; \n"
 "        T[l] = B[3*l + a]; \n"
 "      } \n"
-"   TensorContract(R,S,T,dv[0],el_uv); //TensorContract(D,B,B,GRAD_TRANSPOSE,dv[0],el_uxv); \n"
+"   TensorContract(R,S,T,u,v,dv[0],el_uv); //TensorContract(D,B,B,GRAD_TRANSPOSE,dv[0],el_uxv); \n"
 "      for (PetscInt l=0; l<3; l++) { \n"
 "        R[l] = B[3*l + c]; \n"
 "        S[l] = D[3*l + b]; \n"
 "      } \n"
-"   TensorContract(R,S,T,dv[1],el_uv); //TensorContract(B,D,B,GRAD_TRANSPOSE,dv[1],el_uxv); \n"
+"   TensorContract(R,S,T,u,v,dv[1],el_uv); //TensorContract(B,D,B,GRAD_TRANSPOSE,dv[1],el_uxv); \n"
 "      for (PetscInt l=0; l<3; l++) { \n"
 "        S[l] = B[3*l + b]; \n"
 "        T[l] = D[3*l + a]; \n"
 "      } \n"
-"   TensorContract(R,S,T,dv[2],el_uv); //TensorContract(B,B,D,GRAD_TRANSPOSE,dv[2],el_uxv); \n"
+"   TensorContract(R,S,T,u,v,dv[2],el_uv); //TensorContract(B,B,D,GRAD_TRANSPOSE,dv[2],el_uxv); \n"
 
 "      for (PetscInt l=0; l<3; l++) { \n"
 "        Yu[E_times_3+l] += el_uv[l]; \n"
