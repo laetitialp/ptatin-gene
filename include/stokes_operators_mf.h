@@ -61,6 +61,10 @@ extern "C" {
 PetscErrorCode MFStokesWrapper_A11_CUDA(MatA11MF mf,Quadrature volQ,DM dau,PetscScalar ufield[],PetscScalar Yu[]);
 PetscErrorCode MFA11SetUp_CUDA(MatA11MF mf);
 PetscErrorCode MFA11Destroy_CUDA(MatA11MF mf);
+
+PetscErrorCode MFStokesWrapper_A11_HIP(MatA11MF mf,Quadrature volQ,DM dau,PetscScalar ufield[],PetscScalar Yu[]);
+PetscErrorCode MFA11SetUp_HIP(MatA11MF mf);
+PetscErrorCode MFA11Destroy_HIP(MatA11MF mf);
 #ifdef __cplusplus
 }
 #endif
