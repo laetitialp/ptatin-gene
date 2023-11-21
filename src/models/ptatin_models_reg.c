@@ -56,6 +56,7 @@ extern PetscErrorCode pTatinModelCreate_AnlVV(pTatinModel m);
 extern PetscErrorCode pTatinModelRegister_NitscheDemo(void);
 extern PetscErrorCode pTatinModelRegister_RiftNitsche(void);
 extern PetscErrorCode pTatinModelRegister_Steady_TFV(void);
+extern PetscErrorCode pTatinModelRegister_StokesLaw(void);
 
 PetscErrorCode pTatinModelRegisterAll(void)
 {
@@ -92,6 +93,7 @@ PetscErrorCode pTatinModelRegisterAll(void)
 
   ierr = pTatinModelRegister_NitscheDemo();CHKERRQ(ierr);
   ierr = pTatinModelRegister_RiftNitsche();CHKERRQ(ierr);
+  ierr = pTatinModelRegister_StokesLaw();CHKERRQ(ierr);
   
   PetscFunctionReturn(0);
 }

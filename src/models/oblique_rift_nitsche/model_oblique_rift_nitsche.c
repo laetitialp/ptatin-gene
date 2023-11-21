@@ -46,7 +46,7 @@
 #include "oblique_rift_nitsche_ctx.h"
 
 static const char MODEL_NAME_R[] = "model_rift_nitsche_";
-PetscLogEvent   PTATIN_MaterialPointPopulationControlRemove;
+static PetscLogEvent   PTATIN_MaterialPointPopulationControlRemove;
 
 static PetscErrorCode ModelInitialGeometry_RiftNitsche(ModelRiftNitscheCtx *data)
 {
