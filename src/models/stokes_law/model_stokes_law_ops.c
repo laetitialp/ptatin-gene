@@ -879,12 +879,12 @@ static PetscErrorCode ComputeBallVelocity(pTatinCtx ptatin, Vec X, ModelStokesLa
   }
 
   /* Compare with the velocity predicted by the analytical solution */
-  PetscPrintf(PETSC_COMM_SELF,"****************** Analytical Solution ******************\n");
+  PetscPrintf(PETSC_COMM_WORLD,"****************** Analytical Solution ******************\n");
   for (d=0; d<3; d++) {
     u_diff[d] = PetscAbsReal(u_avg[d] - data->u_T[d]);
-    PetscPrintf(PETSC_COMM_SELF,"Analytical velocity: u_ana[%d] = %1.4e\n",d,data->u_T[d]);
-    PetscPrintf(PETSC_COMM_SELF,"Numerical average:   u_avg[%d] = %1.4e\n",d,u_avg[d]);
-    PetscPrintf(PETSC_COMM_SELF,"Difference:          u_dif[%d] = %1.4e\n",d,u_diff[d]);
+    PetscPrintf(PETSC_COMM_WORLD,"Analytical velocity: u_ana[%d] = %1.4e\n",d,data->u_T[d]);
+    PetscPrintf(PETSC_COMM_WORLD,"Numerical average:   u_avg[%d] = %1.4e\n",d,u_avg[d]);
+    PetscPrintf(PETSC_COMM_WORLD,"Difference:          u_dif[%d] = %1.4e\n",d,u_diff[d]);
   }
   
   DataFieldRestoreAccess(PField_std);
