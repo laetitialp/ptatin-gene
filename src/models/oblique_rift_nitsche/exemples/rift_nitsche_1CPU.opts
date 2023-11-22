@@ -24,34 +24,35 @@
 -model_rift_nitsche_Ox 0.0
 -model_rift_nitsche_Oy -250.0e3
 -model_rift_nitsche_Oz 0.0
--model_rift_nitsche_Lx 1200.0e3
+-model_rift_nitsche_Lx 600.0e3
 -model_rift_nitsche_Ly 0.0
--model_rift_nitsche_Lz 600.0e3
+-model_rift_nitsche_Lz 300.0e3
 -model_rift_nitsche_y_continent -25.0e3,-35.0e3,-120.0e3
 ########### Weak zones ##########
 #-model_rift_nitsche_wz_notch
 -model_rift_nitsche_wz_gauss
--model_rift_nitsche_wz_centre_angle
-#-model_rift_nitsche_wz_centre_opts
+#-model_rift_nitsche_wz_centre_angle
+-model_rift_nitsche_wz_centre_opts
 #-model_rift_nitsche_wz_oblique
 #-model_rift_nitsche_wz_double
 #-model_rift_nitsche_wz_straight_gauss
 #-model_rift_nitsche_wz_oblique_gauss
--model_rift_nitsche_wz_sigma 3e+5,3e+5
+-model_rift_nitsche_wz_sigma 6e+5,6e+5
 -model_rift_nitsche_wz_n_notches 3
--model_rift_nitsche_wz_centre0 1000.0e3,350.0e3 
--model_rift_nitsche_wz_centre1 200.0e3,250.0e3 
+-model_rift_nitsche_wz_centre0 100.0e3,91.4486e3 
+-model_rift_nitsche_wz_centre1 300.0e3,170.363e3 
+-model_rift_nitsche_wz_centre2 500.0e3,194.976e3
 -model_rift_nitsche_wz_origin 300.0e3 # Centre z
 -model_rift_nitsche_wz_offset -200.0e3
 -model_rift_nitsche_wz_width 100.0e3
--model_rift_nitsche_wz_angle 22.0
+-model_rift_nitsche_wz_angle 3.0
 ########### Boundary conditions ##########
 #-model_rift_nitsche_bc_nitsche
 -model_rift_nitsche_bc_strike_slip
 #-model_rift_nitsche_bc_freeslip_nitsche
 #-model_rift_nitsche_bc_dirichlet
 #-model_rift_nitsche_bc_u_func_atan
--model_rift_nitsche_bc_u_func_mixte
+#-model_rift_nitsche_bc_u_func_mixte
 -model_rift_nitsche_bc_atan_sharpness 8.0e-5
 -model_rift_nitsche_bc_atan_offset 300.0e3
 -model_rift_nitsche_norm_u 1.0 # cm/yr
