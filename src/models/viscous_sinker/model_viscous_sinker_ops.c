@@ -50,7 +50,7 @@
 #include "private/quadrature_impl.h"
 #include "quadrature.h"
 #include "QPntSurfCoefStokes_def.h"
-
+#include "stokes_output.h"
 #include "surface_constraint.h"
 
 #include "viscous_sinker_ctx.h"
