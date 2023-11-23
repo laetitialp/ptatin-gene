@@ -90,15 +90,16 @@ __device__ __inline__ double shfl_double(double x, int lane)
 #endif
 
 /* 
-Note that instruction mov.b64 and the constrain "d" are not support on the AMD GPU.
+Note that instruction mov.b64 and the constraint "d" are not supported on the AMD GPU.
 For this reason shfl_double() is modified.
+Specifically I copied the provided double shuffle implementation from here
+/opt/rocm/include/hip/hcc_detail/amd_warp_functions.h
 */
 
 /*
 Taken from
  /opt/rocm/include/hip/hcc_detail/amd_warp_functions.h
 */
-
 __device__ inline double shfl_double(double var, int src_lane)
 {
     static_assert(sizeof(double) == 2 * sizeof(int), "");
@@ -118,7 +119,7 @@ __device__ inline double shfl_double(double var, int src_lane)
  */
 static __device__ void TensorContract(PetscReal const *R,PetscReal const *S,PetscReal const *T,PetscReal const x[],PetscReal y[])
 {
-  PetscInt id_in_warp = threadIdx.x % 32;
+  PetscInt id_in_warp = threadIdx.x % 32; // WARP_SIZE?
 
   PetscInt c = id_in_warp % 3;
   PetscInt kj = id_in_warp / 3;
@@ -204,8 +205,8 @@ static __global__ void MFStokesWrapper_A11_HIP_kernel(PetscInt nel,PetscInt nen_
   PetscScalar el_uv[3]; // unifies elu, elv
   PetscScalar dx[3][3]={{0,0,0},{0,0,0},{0,0,0}},du[3][3]={{0,0,0},{0,0,0},{0,0,0}},dv[3][3]={{0,0,0},{0,0,0},{0,0,0}};
   PetscScalar dxdet = 0;
-  PetscInt    elidx = (blockDim.x * blockIdx.x + threadIdx.x) / 32;  // one warp per colored element. elidx is here the index within the same color.
-  PetscInt    id_in_warp = threadIdx.x % 32;
+  PetscInt    elidx = (blockDim.x * blockIdx.x + threadIdx.x) / 32;  // WARP_SIZE? // one warp per colored element. elidx is here the index within the same color.
+  PetscInt    id_in_warp = threadIdx.x % 32;  // WARP_SIZE?
   PetscInt    E_times_3;
   PetscReal   R[3],S[3],T[3];
   PetscInt    c = id_in_warp % 3;
@@ -478,7 +479,7 @@ PetscErrorCode ProcessElements_A11_HIP(MFA11CUDA ctx,PetscInt nen_u,PetscInt loc
 
   PetscFunctionBegin;
   set_zero_HIP_kernel<<<256,256>>>(ctx->Yu, localsize);
-  for (i=0; i<ctx->element_colors; ++i) {
+  for (i=0; i<ctx->element_colors; ++i) {  // replace 32 with WARP_SIZE?
     MFStokesWrapper_A11_HIP_kernel<<<(ctx->elements_per_color[i]-1)/WARPS_PER_BLOCK + 1, WARPS_PER_BLOCK*32>>>(ctx->elements_per_color[i],nen_u,ctx->el_ids_colored[i],ctx->elnidx_u,ctx->LA_gcoords,ctx->ufield,ctx->gaussdata_w,ctx->Yu);
   }
   ierr = hipDeviceSynchronize();HIPCHECK(ierr);
