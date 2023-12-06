@@ -39,6 +39,7 @@ CUDA_B -> HIP_B
 
 #include <hip/hip_runtime.h>
 
+
 extern PetscLogEvent MAT_MultMFA11_stp;
 extern PetscLogEvent MAT_MultMFA11_cto;
 extern PetscLogEvent MAT_MultMFA11_ker;
@@ -47,6 +48,8 @@ extern PetscLogEvent MAT_MultMFA11_cfr;
 /* Constant memory for D and B matrices */
 __constant__ PetscReal HIP_D[3*3], HIP_B[3*3];
 
+
+static PetscBool log_ops = PETSC_FALSE;
 
 template< typename T >
 void check(T result, char const *const func, const char *const file, int const line)
@@ -61,7 +64,7 @@ void check(T result, char const *const func, const char *const file, int const l
 }
 #define HIPCHECK(val)       check( (val), #val, __FILE__, __LINE__ )
 
-#define WARPS_PER_BLOCK    4
+#define WARPS_PER_BLOCK    16
 
 #if defined(USE_ROCM)
   #define WARP_SIZE warpSize // = 64 or 32 (Defined in hip_runtime.h)
@@ -119,7 +122,7 @@ __device__ inline double shfl_double(double var, int src_lane)
  */
 static __device__ void TensorContract(PetscReal const *R,PetscReal const *S,PetscReal const *T,PetscReal const x[],PetscReal y[])
 {
-  PetscInt id_in_warp = threadIdx.x % 32; // WARP_SIZE?
+  PetscInt id_in_warp = threadIdx.x % WARP_SIZE;
 
   PetscInt c = id_in_warp % 3;
   PetscInt kj = id_in_warp / 3;
@@ -205,8 +208,8 @@ static __global__ void MFStokesWrapper_A11_HIP_kernel(PetscInt nel,PetscInt nen_
   PetscScalar el_uv[3]; // unifies elu, elv
   PetscScalar dx[3][3]={{0,0,0},{0,0,0},{0,0,0}},du[3][3]={{0,0,0},{0,0,0},{0,0,0}},dv[3][3]={{0,0,0},{0,0,0},{0,0,0}};
   PetscScalar dxdet = 0;
-  PetscInt    elidx = (blockDim.x * blockIdx.x + threadIdx.x) / 32;  // WARP_SIZE? // one warp per colored element. elidx is here the index within the same color.
-  PetscInt    id_in_warp = threadIdx.x % 32;  // WARP_SIZE?
+  PetscInt    elidx = (blockDim.x * blockIdx.x + threadIdx.x) / WARP_SIZE;  // one warp per colored element. elidx is here the index within the same color.
+  PetscInt    id_in_warp = threadIdx.x % WARP_SIZE;
   PetscInt    E_times_3;
   PetscReal   R[3],S[3],T[3];
   PetscInt    c = id_in_warp % 3;
@@ -374,6 +377,7 @@ PetscErrorCode CopyTo_A11_HIP(MatA11MF mf,MFA11CUDA ctx,const PetscScalar *ufiel
   if (!ctx->elnidx_u) {
     ierr = hipMalloc(&ctx->elnidx_u,        nel * nen_u * sizeof(PetscInt));HIPCHECK(ierr);
     ierr = hipMemcpy(ctx->elnidx_u,elnidx_u,nel * nen_u * sizeof(PetscInt),hipMemcpyHostToDevice);HIPCHECK(ierr);
+    if (log_ops) PetscPrintf(PETSC_COMM_SELF,"<copy to device> * elnidx_u bytes %1.6e\n",(double)(nel * nen_u * sizeof(PetscInt)));
 
     /* Assign colors to elements such that there is no overlap in writes to Yu if elements are processed concurrently */
     PetscInt elements_colored = 0;
@@ -430,6 +434,7 @@ PetscErrorCode CopyTo_A11_HIP(MatA11MF mf,MFA11CUDA ctx,const PetscScalar *ufiel
 
       ierr = hipMalloc(&ctx->el_ids_colored[i],        ctx->elements_per_color[i] * sizeof(PetscInt));HIPCHECK(ierr);
       ierr = hipMemcpy(ctx->el_ids_colored[i],Yu_color,ctx->elements_per_color[i] * sizeof(PetscInt),hipMemcpyHostToDevice);HIPCHECK(ierr);
+      if (log_ops) PetscPrintf(PETSC_COMM_SELF,"<copy to device> * Yu_color bytes %1.6e\n",(double)(ctx->elements_per_color[i] * sizeof(PetscInt)));
     }
 
     /* clean up */
@@ -442,6 +447,8 @@ PetscErrorCode CopyTo_A11_HIP(MatA11MF mf,MFA11CUDA ctx,const PetscScalar *ufiel
   }
   /* ufield always needs to be copied */
   ierr = hipMemcpy(ctx->ufield,ufield, localsize * sizeof(PetscScalar),hipMemcpyHostToDevice);HIPCHECK(ierr);
+  if (log_ops) PetscPrintf(PETSC_COMM_SELF,"<copy to device> ufield bytes %1.6e\n",(double)(localsize * sizeof(PetscScalar)));
+
 
   if (!ctx->LA_gcoords) {
     ierr = hipMalloc(&ctx->LA_gcoords, localsize * sizeof(PetscReal));HIPCHECK(ierr);
@@ -453,10 +460,12 @@ PetscErrorCode CopyTo_A11_HIP(MatA11MF mf,MFA11CUDA ctx,const PetscScalar *ufiel
 
   if (mf->state != ctx->state) {
     ierr = hipMemcpy(ctx->LA_gcoords,LA_gcoords, localsize * sizeof(PetscReal),hipMemcpyHostToDevice);HIPCHECK(ierr);
+    if (log_ops) PetscPrintf(PETSC_COMM_SELF,"<copy to device> ** LA_gcoords bytes %1.6e\n",(double)(localsize * sizeof(PetscReal)));
 
     /* Note that we populate and free gaussdata_host outside this function,
        since this data may have come from another rank with SubRepart */
     ierr = hipMemcpy(ctx->gaussdata_w,gaussdata_host, nel * NQP * sizeof(PetscReal),hipMemcpyHostToDevice);HIPCHECK(ierr);
+    if (log_ops) PetscPrintf(PETSC_COMM_SELF,"<copy to device> ** gaussdata_host bytes %1.6e\n",(double)(nel * NQP * sizeof(PetscReal)));
 
     /* Save new state to avoid unnecessary subsequent copies */
     ctx->state = mf->state;
@@ -479,8 +488,8 @@ PetscErrorCode ProcessElements_A11_HIP(MFA11CUDA ctx,PetscInt nen_u,PetscInt loc
 
   PetscFunctionBegin;
   set_zero_HIP_kernel<<<256,256>>>(ctx->Yu, localsize);
-  for (i=0; i<ctx->element_colors; ++i) {  // replace 32 with WARP_SIZE?
-    MFStokesWrapper_A11_HIP_kernel<<<(ctx->elements_per_color[i]-1)/WARPS_PER_BLOCK + 1, WARPS_PER_BLOCK*32>>>(ctx->elements_per_color[i],nen_u,ctx->el_ids_colored[i],ctx->elnidx_u,ctx->LA_gcoords,ctx->ufield,ctx->gaussdata_w,ctx->Yu);
+  for (i=0; i<ctx->element_colors; ++i) {
+    MFStokesWrapper_A11_HIP_kernel<<<(ctx->elements_per_color[i]-1)/WARPS_PER_BLOCK + 1, WARPS_PER_BLOCK*WARP_SIZE>>>(ctx->elements_per_color[i],nen_u,ctx->el_ids_colored[i],ctx->elnidx_u,ctx->LA_gcoords,ctx->ufield,ctx->gaussdata_w,ctx->Yu);
   }
   ierr = hipDeviceSynchronize();HIPCHECK(ierr);
   PetscFunctionReturn(0);
@@ -491,7 +500,8 @@ PetscErrorCode CopyFrom_A11_HIP(MFA11CUDA ctx,PetscScalar *Yu,PetscInt localsize
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-    ierr = hipMemcpy(Yu,ctx->Yu,localsize * sizeof(PetscScalar),hipMemcpyDeviceToHost);HIPCHECK(ierr);
+  ierr = hipMemcpy(Yu,ctx->Yu,localsize * sizeof(PetscScalar),hipMemcpyDeviceToHost);HIPCHECK(ierr);
+  if (log_ops) PetscPrintf(PETSC_COMM_SELF,"<copy from device> Yu bytes %1.6e\n",(double)(localsize * sizeof(PetscScalar)));
   PetscFunctionReturn(0);
 }
 
@@ -555,12 +565,17 @@ PetscErrorCode MFStokesWrapper_A11_HIP(MatA11MF mf,Quadrature volQ,DM dau,PetscS
    */
 
     ierr = PetscLogEventBegin(MAT_MultMFA11_ker,0,0,0,0);CHKERRQ(ierr);
-    ierr = ProcessElements_A11_HIP(ctx,nen_u,localsize);CHKERRQ(ierr);
-    ierr = PetscLogEventEnd(MAT_MultMFA11_ker,0,0,0,0);CHKERRQ(ierr);
 
-    PetscLogFlops((nel * 9) * 3*NQP*(6+6+6));           /* 9 tensor contractions per element */
-    PetscLogFlops(nel*NQP*(14 + 1/* division */ + 27)); /* 1 Jacobi inversion per element */
-    PetscLogFlops(nel*NQP*(5*9+6+6+6*9));               /* 1 quadrature action per element */
+    ierr = ProcessElements_A11_HIP(ctx,nen_u,localsize);CHKERRQ(ierr);
+    {
+      PetscLogDouble ff;
+
+      ff = ((PetscLogDouble)nel) * 9 * 3*NQP*(6+6+6);  /* 9 tensor contractions per element */
+      ff += ((PetscLogDouble)nel) * NQP*(14 + 1 + 27); /* 1 Jacobi inversion per element */
+      ff += ((PetscLogDouble)nel) * NQP*(5*9+6+6+6*9); /* 1 quadrature action per element */
+      PetscLogFlops(ff);
+    }
+    ierr = PetscLogEventEnd(MAT_MultMFA11_ker,0,0,0,0);CHKERRQ(ierr);
 
     /* Read back HIP data */
     ierr = PetscLogEventBegin(MAT_MultMFA11_cfr,0,0,0,0);CHKERRQ(ierr);

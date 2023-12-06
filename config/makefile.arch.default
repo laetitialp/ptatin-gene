@@ -56,6 +56,12 @@ CONFIG_OPENCL      = n
 #export OPENCL_INC =
 #export OPENCL_LIB =
 
+# <HIP support>
+CONFIG_HIP         = n
+#export HIP_CC=hipcc --offload-arch=gfx90a
+#export HIP_INC=
+#export HIP_LIB=
+
 # ----------------------------------------------------------------------------
 #  -- pTatin external packages (user to edit)
 #  User should select which packages are present
