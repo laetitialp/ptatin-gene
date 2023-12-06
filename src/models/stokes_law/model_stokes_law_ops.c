@@ -370,7 +370,7 @@ PetscErrorCode ModelInitialize_StokesLaw(pTatinCtx ptatin, void *ctx)
   data->output_petscvec = PETSC_FALSE;
   data->refine_mesh     = PETSC_FALSE;
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-output_markers",  &data->output_markers,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-output_petscvec", &data->output_markers,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-output_petscvec", &data->output_petscvec,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-refine_mesh",     &data->refine_mesh,NULL);CHKERRQ(ierr);
   
   PetscFunctionReturn(0);
@@ -872,7 +872,7 @@ static PetscErrorCode ComputeBallVelocity(pTatinCtx ptatin, Vec X, ModelStokesLa
     }
     cnt_ball_point++; 
   }
-
+  PetscPrintf(PETSC_COMM_WORLD,"Points in ball: %d\n",cnt_ball_point);
   /* average */
   for (d=0; d<3; d++) {
     u_avg[d] /= cnt_ball_point;
