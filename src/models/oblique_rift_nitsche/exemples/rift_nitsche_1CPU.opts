@@ -31,16 +31,17 @@
 ########### Weak zones ##########
 #-model_rift_nitsche_wz_notch
 -model_rift_nitsche_wz_gauss
--model_rift_nitsche_wz_centre_angle
-#-model_rift_nitsche_wz_centre_opts
+#-model_rift_nitsche_wz_centre_angle
+-model_rift_nitsche_wz_centre_opts
 #-model_rift_nitsche_wz_oblique
 #-model_rift_nitsche_wz_double
 #-model_rift_nitsche_wz_straight_gauss
 #-model_rift_nitsche_wz_oblique_gauss
 -model_rift_nitsche_wz_sigma 3e+5,3e+5
 -model_rift_nitsche_wz_n_notches 3
--model_rift_nitsche_wz_centre0 1000.0e3,350.0e3 
--model_rift_nitsche_wz_centre1 200.0e3,250.0e3 
+-model_rift_nitsche_wz_centre0 213.630e3,196.472e3
+-model_rift_nitsche_wz_centre1 574.118e3,396.593e3
+-model_rift_nitsche_wz_centre2 1025.19e3,258.639e3
 -model_rift_nitsche_wz_origin 300.0e3 # Centre z
 -model_rift_nitsche_wz_offset -200.0e3
 -model_rift_nitsche_wz_width 100.0e3
