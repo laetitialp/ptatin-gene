@@ -1701,15 +1701,57 @@ PetscErrorCode InterpolateIsostaticDisplacementQ1OnQ2Mesh(DM da_q1, Vec u_q1, DM
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode IsostaticFullLagrangianAdvectionFromPoissonPressure(pTatinCtx ptatin, PetscReal density_ref, PetscInt jnode_compensation)
+PetscErrorCode FindJNodeFromDepth(DM dav, PetscReal point_coor, PetscInt *node)
+{
+  DM             dm_1d;
+  Vec            coords;
+  PetscReal      *LA_coords;
+  PetscReal      sep,coor,diff;
+  PetscInt       M,N,P,j,index;
+  PetscInt       si,sj,sk,nx,ny,nz,ni,nj,nk;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  ierr = DMDAGetInfo(dav,0,&M,&N,&P,0,0,0,0,0,0,0,0,0);CHKERRQ(ierr);
+  ierr = DMDAGetCorners(dav,&si,&sj,&sk,&nx,&ny,&nz);CHKERRQ(ierr);
+
+  /* Create a redundant DM containing all the jnodes of the imax,kmax location */
+  ierr = DMDACreate3dRedundant(dav,M-1,M,0,N,P-1,P, 1, &dm_1d);CHKERRQ(ierr);
+
+  ierr = DMDAGetInfo(dm_1d,0,&ni,&nj,&nk,0,0,0, 0,0,0,0,0,0);CHKERRQ(ierr);
+  /* Get coordinates of the 1D DM */
+  ierr = DMGetCoordinates(dm_1d,&coords);CHKERRQ(ierr);
+  ierr = VecGetArray(coords,&LA_coords);CHKERRQ(ierr);
+  
+  /* Search for the nearest j node */
+  index = -1;
+  sep = 1.0e+32;
+  for (j=0; j<nj; j++) {
+    coor = LA_coords[3*j+1];
+    diff = PetscAbsReal(coor - point_coor);
+    if (diff < sep) {
+      sep = diff;
+      index = j;
+    }
+  }
+  if (node) { *node = index; }
+  ierr = VecRestoreArray(coords,&LA_coords);CHKERRQ(ierr);
+  ierr = DMDestroy(&dm_1d);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ComputeIsostaticDisplacementVectorFromPoissonPressure(pTatinCtx ptatin, PetscReal density_ref, PetscReal depth_compensation)
 {
   PhysCompStokes stokes;
   PDESolveLithoP poisson_pressure;
   DM             dav;
   Vec            u_iso_q1,u_iso_q2;
+  PetscViewer    viewer;
   PetscReal      gravity_norm;
-  PetscInt       d;
+  PetscInt       d,jnode_compensation;
   PetscBool      active_poisson;
+  char           fname[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -1729,6 +1771,9 @@ PetscErrorCode IsostaticFullLagrangianAdvectionFromPoissonPressure(pTatinCtx pta
   if (!active_poisson) { PetscFunctionReturn(0); }
   ierr = pTatinGetContext_LithoP(ptatin,&poisson_pressure);CHKERRQ(ierr);
 
+  /* Find the nearest j node to the given compensation depth */
+  ierr = FindJNodeFromDepth(dav,depth_compensation,&jnode_compensation);
+  PetscPrintf(PETSC_COMM_SELF,"jnode = %d\n",jnode_compensation);
   /* Create a global Vec to store the isostatic displacement on the Q1 mesh */
   ierr = DMGetGlobalVector(poisson_pressure->da,&u_iso_q1);CHKERRQ(ierr);
   ierr = VecZeroEntries(u_iso_q1);CHKERRQ(ierr);
@@ -1741,13 +1786,53 @@ PetscErrorCode IsostaticFullLagrangianAdvectionFromPoissonPressure(pTatinCtx pta
   /* Interpolate on Q2 mesh */
   ierr = InterpolateIsostaticDisplacementQ1OnQ2Mesh(poisson_pressure->da,u_iso_q1,dav,u_iso_q2);CHKERRQ(ierr);
 
-  /* Update the mesh coords */
-  ierr = UpdateMeshGeometry_VerticalLagrangianSurfaceRemesh(dav,u_iso_q2,1.0);CHKERRQ(ierr);
-  /* Update markers positions */
-  ierr = MaterialPointStd_UpdateGlobalCoordinates(ptatin->materialpoint_db,dav,u_iso_q2,1.0);CHKERRQ(ierr);
+  PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/isostatic_displacement.pbvec",ptatin->outputpath);
+  ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
+  ierr = PetscViewerSetType(viewer,PETSCVIEWERBINARY);CHKERRQ(ierr);
+  ierr = PetscViewerFileSetMode(viewer,FILE_MODE_WRITE);CHKERRQ(ierr);
+  ierr = PetscViewerFileSetName(viewer,fname);CHKERRQ(ierr);
+  ierr = VecView(u_iso_q2,viewer);CHKERRQ(ierr);
+  ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
 
   ierr = DMRestoreGlobalVector(poisson_pressure->da,&u_iso_q1);CHKERRQ(ierr);
   ierr = DMRestoreGlobalVector(dav,&u_iso_q2);CHKERRQ(ierr);
 
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode LagrangianAdvectionFromIsostaticDisplacementVector(pTatinCtx ptatin)
+{
+  PhysCompStokes stokes;
+  DM             dav;
+  Vec            u_isostatic;
+  PetscViewer    viewer;
+  FILE           *fp;
+  char           fname[PETSC_MAX_PATH_LEN];
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  ierr = pTatinGetStokesContext(ptatin,&stokes);CHKERRQ(ierr);
+  dav  = stokes->dav;
+
+  PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/isostatic_displacement.pbvec",ptatin->outputpath);
+  fp = fopen(fname,"r");
+  /* If the file is not found exit */
+  if (fp == NULL) { PetscFunctionReturn(0); }
+  
+  /* Create a vector on the stokes DM (Q2) */
+  ierr = DMGetGlobalVector(dav,&u_isostatic);CHKERRQ(ierr);
+  /* Load the vector */
+  ierr = PetscViewerBinaryOpen(PETSC_COMM_WORLD,fname,FILE_MODE_READ,&viewer);CHKERRQ(ierr);
+  ierr = VecLoad(u_isostatic,viewer);CHKERRQ(ierr);
+  ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
+  
+  /* Update the mesh coords */
+  ierr = UpdateMeshGeometry_VerticalLagrangianSurfaceRemesh(dav,u_isostatic,1.0);CHKERRQ(ierr);
+  /* Update markers positions */
+  ierr = MaterialPointStd_UpdateGlobalCoordinates(ptatin->materialpoint_db,dav,u_isostatic,1.0);CHKERRQ(ierr);
+  /* Restore */
+  ierr = DMRestoreGlobalVector(dav,&u_isostatic);CHKERRQ(ierr);
+  
   PetscFunctionReturn(0);
 }

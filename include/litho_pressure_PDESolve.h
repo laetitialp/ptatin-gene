@@ -64,7 +64,7 @@ PetscErrorCode AverageVolumeQuadraturePointsToSurfaceQuadraturePointsStokes(pTat
 PetscErrorCode ModelApplyTractionFromStokesVolumeQuadrature(pTatinCtx user, Vec X_stokes);
 PetscErrorCode InterpolateIsostaticDisplacementQ1OnQ2Mesh(DM da_q1, Vec u_q1, DM da_q2, Vec u_q2);
 PetscErrorCode ComputeIsostaticDisplacementQ1(PDESolveLithoP poisson_pressure, PetscInt jnode_compensation, PetscReal gravity_norm, PetscReal density_ref, Vec u_iso_q1);
-PetscErrorCode IsostaticFullLagrangianAdvectionFromPoissonPressure(pTatinCtx ptatin, PetscReal density_ref, PetscInt jnode_compensation);
-
+PetscErrorCode ComputeIsostaticDisplacementVectorFromPoissonPressure(pTatinCtx ptatin, PetscReal density_ref, PetscReal depth_compensation);
+PetscErrorCode LagrangianAdvectionFromIsostaticDisplacementVector(pTatinCtx ptatin);
 
 #endif

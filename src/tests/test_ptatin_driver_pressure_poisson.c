@@ -157,8 +157,7 @@ static PetscErrorCode pTatin3d_PoissonPressure_FromModelICState(int argc,char **
   char              stepname[PETSC_MAX_PATH_LEN];
   PetscBool         output_vts=PETSC_FALSE;
   PetscBool         isostatic_remesh=PETSC_FALSE;
-  PetscReal         density_ref;
-  PetscInt          jnode_compensation;
+  PetscReal         density_ref,compensation_depth;
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
@@ -237,8 +236,10 @@ static PetscErrorCode pTatin3d_PoissonPressure_FromModelICState(int argc,char **
 
   if (isostatic_remesh) {
     ierr = PetscOptionsGetReal(NULL,NULL,"-isostatic_density_ref",&density_ref,NULL);CHKERRQ(ierr);
-    ierr = PetscOptionsGetInt(NULL,NULL,"-isostatic_jnode_ref",&jnode_compensation,NULL);CHKERRQ(ierr);
-    ierr = IsostaticFullLagrangianAdvectionFromPoissonPressure(ptatin,density_ref,jnode_compensation);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,NULL,"-isostatic_compensation_depth",&compensation_depth,NULL);CHKERRQ(ierr);
+    ierr = ComputeIsostaticDisplacementVectorFromPoissonPressure(ptatin,density_ref,compensation_depth);CHKERRQ(ierr);
+    /* To call in user's model */
+    ierr = LagrangianAdvectionFromIsostaticDisplacementVector(ptatin);CHKERRQ(ierr);
   }
   
   /* Output the pressure */
