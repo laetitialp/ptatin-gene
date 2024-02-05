@@ -35,6 +35,9 @@
 #include "element_utils_q2.h"
 #include "dmda_element_q1.h"
 #include "dmda_element_q2p1.h"
+#include "dmda_redundant.h"
+#include "mp_advection.h"
+#include "mesh_update.h"
 #include "quadrature.h"
 #include "dmda_checkpoint.h"
 #include "data_bucket.h"
@@ -1514,5 +1517,237 @@ PetscErrorCode ModelApplyTractionFromStokesVolumeQuadrature(pTatinCtx user, Vec 
   ierr = VecRestoreArray(Ploc,&LA_Ploc);CHKERRQ(ierr);
   ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
   
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ComputeIsostaticDisplacementQ1(PDESolveLithoP poisson_pressure, PetscInt jnode_compensation, PetscReal gravity_norm, PetscReal density_ref, Vec u_iso_q1)
+{
+  Vec            P_natural,P_ref,P_2D;
+  PetscScalar    *LA_P_ref,*LA_deltaP;
+  PetscReal      ***LA_u_iso_q1;
+  PetscReal      p_ref;
+  PetscInt       *idx_from_3D,*idx_to_2D;
+  PetscInt       idx_from[1], idx_to[] = {0};
+  PetscInt       M,N,P,si,sj,sk,ni,nj,nk,cnt;
+  PetscInt       i,j,k,jc,nidx;
+  MPI_Comm       comm;
+  PetscMPIInt    rank;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  comm = PetscObjectComm((PetscObject)poisson_pressure->da);
+  ierr = MPI_Comm_rank(comm,&rank);CHKERRQ(ierr);
+
+  /* Get DMDA size */
+  ierr = DMDAGetInfo(poisson_pressure->da,0,&M,&N,&P,0,0,0,0,0,0,0,0,0);CHKERRQ(ierr);
+  ierr = DMDAGetCorners(poisson_pressure->da,&si,&sj,&sk,&ni,&nj,&nk);CHKERRQ(ierr);
+
+  /* 
+  Create a new Vec with natural indices (i,j,k as it would be on a sequential mesh) 
+  because petsc creates its own global indexing when cutting the domain for repartition on mpi ranks 
+  which prevents from being able to use a natural node index to locate a particular node in the mesh
+  */
+  ierr = DMDACreateNaturalVector(poisson_pressure->da,&P_natural);CHKERRQ(ierr);
+  ierr = DMDAGlobalToNaturalBegin(poisson_pressure->da,poisson_pressure->X,INSERT_VALUES,P_natural);CHKERRQ(ierr);
+  ierr = DMDAGlobalToNaturalEnd(  poisson_pressure->da,poisson_pressure->X,INSERT_VALUES,P_natural);CHKERRQ(ierr);
+
+  /* Set j index to jnode_compensation */
+  jc = jnode_compensation;
+  /* Set the global index of the reference node (i=k=0, j=jc)  */
+  idx_from[0] = jc * M;
+  /* Create a redundant Vec to hold the reference pressure (1 entry) on all ranks */
+  ierr = VecCreateRedundant(P_natural,1,idx_from,idx_to,&P_ref);CHKERRQ(ierr);
+  
+  /* Allocate the arrays to store natural indices for the plane x,z at the jnode_compensation depth */
+  ierr = PetscMalloc1(M*P,&idx_from_3D);CHKERRQ(ierr);
+  ierr = PetscMalloc1(M*P,&idx_to_2D);CHKERRQ(ierr);
+
+  cnt = 0;
+  for (k=0; k<P; k++) {
+    for (i=0; i<M; i++) {
+      idx_from_3D[cnt] = i + jc * M + k * M * N;
+      idx_to_2D[cnt]   = i + k * M;
+      cnt++;
+    }
+  }
+  /* Create a redundant Vec to store the pressure at the plane x,z at the jnode_compensation depth */
+  ierr = VecCreateRedundant(P_natural,M*P,idx_from_3D,idx_to_2D,&P_2D);CHKERRQ(ierr);
+
+  /* Get the pressure at the reference node */
+  ierr = VecGetArray(P_ref,&LA_P_ref);CHKERRQ(ierr);
+  p_ref = LA_P_ref[0];
+  /* Perform the operation delta_p = p_2d - p_ref */
+  ierr = VecShift(P_2D,-p_ref);CHKERRQ(ierr);
+  ierr = VecGetArray(P_2D,&LA_deltaP);CHKERRQ(ierr);
+  ierr = DMDAVecGetArray(poisson_pressure->da,u_iso_q1,&LA_u_iso_q1);CHKERRQ(ierr);
+
+  /* Fill the (3D petsc global indices) Vec u_iso_q1 with the computed vertical displacement */
+  for (k=sk; k<sk+nk; k++) {
+    for (j=sj; j<sj+nj; j++) {
+      for (i=si; i<si+ni; i++) {
+        /* natural indices */
+        nidx = i + k * M;
+        /* petsc indices */
+        LA_u_iso_q1[k][j][i] = -LA_deltaP[nidx] / (gravity_norm * density_ref);
+      }
+    }
+  }
+
+  /* Restore arrays */
+  ierr = DMDAVecRestoreArray(poisson_pressure->da,u_iso_q1,&LA_u_iso_q1);CHKERRQ(ierr);
+  ierr = VecRestoreArray(P_2D,&LA_deltaP);CHKERRQ(ierr);
+  /* Destroy the temporary Vecs */
+  ierr = VecDestroy(&P_natural);CHKERRQ(ierr);
+  ierr = VecDestroy(&P_2D);CHKERRQ(ierr);
+  /* Free the arrays containing the indices */
+  ierr = PetscFree(idx_from_3D);CHKERRQ(ierr);
+  ierr = PetscFree(idx_to_2D);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode InterpolateIsostaticDisplacementQ1OnQ2Mesh(DM da_q1, Vec u_q1, DM da_q2, Vec u_q2)
+{
+  Vec            u_q1_local,u_q2_local;
+  PetscReal      ****LA_u_q2;
+  PetscReal      ***LA_u_q1;
+  PetscReal      u[4];
+  PetscInt       M,N,P,max_i,max_j,max_k;
+  PetscInt       i,j,k,d,dof;
+  PetscInt       si_q1,sj_q1,sk_q1;
+  PetscInt       ni_q1,nj_q1,nk_q1;
+  PetscInt       gsi_q1,gsj_q1,gsk_q1;
+  PetscInt       gni_q1,gnj_q1,gnk_q1;
+  MPI_Comm       comm;
+  PetscMPIInt    rank;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  comm = PetscObjectComm((PetscObject)da_q2);
+  ierr = MPI_Comm_rank(comm,&rank);CHKERRQ(ierr);
+
+  /* Get dmda global size */
+  ierr = DMDAGetInfo(da_q1,0,&M,&N,&P,0,0,0,0,0,0,0,0,0);CHKERRQ(ierr);
+  /* Get dmda local size */
+  ierr = DMDAGetCorners(da_q1,&si_q1,&sj_q1,&sk_q1,&ni_q1,&nj_q1,&nk_q1);CHKERRQ(ierr);
+  /* Get dmda local size ghosted */
+  ierr = DMDAGetGhostCorners(da_q1,&gsi_q1,&gsj_q1,&gsk_q1,&gni_q1,&gnj_q1,&gnk_q1);CHKERRQ(ierr);
+
+  /* Create a local (ghosted) vector for u_q1 */
+  ierr = DMGetLocalVector(da_q1,&u_q1_local);CHKERRQ(ierr);
+  /* Insert values from global u_q1 to local u_q1 */
+  ierr = DMGlobalToLocalBegin(da_q1,u_q1,INSERT_VALUES,u_q1_local);CHKERRQ(ierr);
+  ierr = DMGlobalToLocalEnd  (da_q1,u_q1,INSERT_VALUES,u_q1_local);CHKERRQ(ierr);
+
+  /* Create a local (ghosted) vector for u_q2 */
+  ierr = DMGetLocalVector(da_q2,&u_q2_local);CHKERRQ(ierr);
+  /* Initialize to 0 */
+  ierr = VecZeroEntries(u_q2_local);CHKERRQ(ierr);
+  ierr = DMGlobalToLocalBegin(da_q2,u_q2,INSERT_VALUES,u_q2_local);CHKERRQ(ierr);
+  ierr = DMGlobalToLocalEnd  (da_q2,u_q2,INSERT_VALUES,u_q2_local);CHKERRQ(ierr);
+  
+  ierr = DMDAVecGetArray(   da_q1,u_q1_local,&LA_u_q1);CHKERRQ(ierr);
+  ierr = DMDAVecGetArrayDOF(da_q2,u_q2_local,&LA_u_q2);CHKERRQ(ierr);
+
+  /* generate the max index in each direction depending if the local rank holds one end of the mesh */
+  max_i = PetscMin(si_q1+ni_q1 , M-1);
+  max_j = PetscMin(sj_q1+nj_q1 , N-1);
+  max_k = PetscMin(sk_q1+nk_q1 , P-1);
+  /* We only modify the vertical velocity, the others are 0 */
+  dof = 1;
+  /* 
+  Start from ghosted nodes in case 
+  a Q2 element has been cutted by the 
+  repartition and that we need to access the 
+  ghosted nodes for the interpolation
+  */
+  for (k=gsk_q1; k<max_k; k++) {
+    for (j=gsj_q1; j<max_j; j++ ) {
+      for (i=gsi_q1; i<max_i; i++) {
+        
+        /* Extract q1 element node values, 2D is ok since it is duplicated vertically */
+        u[0] = LA_u_q1[k    ][j][i    ];
+        u[1] = LA_u_q1[k    ][j][i + 1];
+        u[2] = LA_u_q1[k + 1][j][i    ];
+        u[3] = LA_u_q1[k + 1][j][i + 1];
+
+        /* All vertical layers are the same so we can simply loop for all j */
+        for (d=0; d<3; d++) {
+          /* Interpolate from Q1 to Q2 */
+          LA_u_q2[2*k    ][2*j + d][2*i    ][dof] = u[0];
+          LA_u_q2[2*k    ][2*j + d][2*i + 1][dof] = 0.5*(u[0] + u[1]);
+          LA_u_q2[2*k    ][2*j + d][2*i + 2][dof] = u[1];
+
+          LA_u_q2[2*k + 1][2*j + d][2*i    ][dof] = 0.5 *(u[0] + u[2]);
+          LA_u_q2[2*k + 1][2*j + d][2*i + 1][dof] = 0.25*(u[0] + u[1] + u[2] + u[3]);
+          LA_u_q2[2*k + 1][2*j + d][2*i + 2][dof] = 0.5 *(u[1] + u[3]);
+
+          LA_u_q2[2*k + 2][2*j + d][2*i    ][dof] = u[2];
+          LA_u_q2[2*k + 2][2*j + d][2*i + 1][dof] = 0.5 *(u[2] + u[3]);
+          LA_u_q2[2*k + 2][2*j + d][2*i + 2][dof] = u[3];
+        }
+      }
+    }
+  }
+  /* Restore arrays */
+  ierr = DMDAVecRestoreArrayDOF(da_q2,u_q2_local,&LA_u_q2);CHKERRQ(ierr);
+  ierr = DMDAVecRestoreArray(   da_q1,u_q1_local,&LA_u_q1);CHKERRQ(ierr);
+  /* Perform communication between the local and global Vectors because everything was done locally to get the ghost nodes */
+  ierr = DMLocalToGlobalBegin(da_q2,u_q2_local,INSERT_VALUES,u_q2);CHKERRQ(ierr);
+  ierr = DMLocalToGlobalEnd  (da_q2,u_q2_local,INSERT_VALUES,u_q2);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode IsostaticFullLagrangianAdvectionFromPoissonPressure(pTatinCtx ptatin, PetscReal density_ref, PetscInt jnode_compensation)
+{
+  PhysCompStokes stokes;
+  PDESolveLithoP poisson_pressure;
+  DM             dav;
+  Vec            u_iso_q1,u_iso_q2;
+  PetscReal      gravity_norm;
+  PetscInt       d;
+  PetscBool      active_poisson;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  
+  ierr = pTatinGetStokesContext(ptatin,&stokes);CHKERRQ(ierr);
+  dav  = stokes->dav;
+
+  /* Compute the gravity norm */
+  gravity_norm = 0.0;
+  for (d=0; d<3; d++) {
+    gravity_norm += stokes->gravity_vector[d] * stokes->gravity_vector[d];
+  }
+  gravity_norm = PetscSqrtReal(gravity_norm);
+
+  /* Verify that the poisson pressure struct exists, otherwise leave */
+  ierr = pTatinContextValid_LithoP(ptatin,&active_poisson);CHKERRQ(ierr);
+  if (!active_poisson) { PetscFunctionReturn(0); }
+  ierr = pTatinGetContext_LithoP(ptatin,&poisson_pressure);CHKERRQ(ierr);
+
+  /* Create a global Vec to store the isostatic displacement on the Q1 mesh */
+  ierr = DMGetGlobalVector(poisson_pressure->da,&u_iso_q1);CHKERRQ(ierr);
+  ierr = VecZeroEntries(u_iso_q1);CHKERRQ(ierr);
+  /* Compute the isostatic displacement on the Q1 mesh */
+  ierr = ComputeIsostaticDisplacementQ1(poisson_pressure,jnode_compensation,gravity_norm,density_ref,u_iso_q1);CHKERRQ(ierr);
+
+  /* Create a vector on the stokes DM (Q2) */
+  ierr = DMGetGlobalVector(dav,&u_iso_q2);CHKERRQ(ierr);
+  ierr = VecZeroEntries(u_iso_q2);CHKERRQ(ierr);
+  /* Interpolate on Q2 mesh */
+  ierr = InterpolateIsostaticDisplacementQ1OnQ2Mesh(poisson_pressure->da,u_iso_q1,dav,u_iso_q2);CHKERRQ(ierr);
+
+  /* Update the mesh coords */
+  ierr = UpdateMeshGeometry_VerticalLagrangianSurfaceRemesh(dav,u_iso_q2,1.0);CHKERRQ(ierr);
+  /* Update markers positions */
+  ierr = MaterialPointStd_UpdateGlobalCoordinates(ptatin->materialpoint_db,dav,u_iso_q2,1.0);CHKERRQ(ierr);
+
+  ierr = DMRestoreGlobalVector(poisson_pressure->da,&u_iso_q1);CHKERRQ(ierr);
+  ierr = DMRestoreGlobalVector(dav,&u_iso_q2);CHKERRQ(ierr);
+
   PetscFunctionReturn(0);
 }
