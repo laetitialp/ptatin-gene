@@ -56,6 +56,7 @@ extern PetscErrorCode pTatinModelCreate_AnlVV(pTatinModel m);
 extern PetscErrorCode pTatinModelRegister_NitscheDemo(void);
 extern PetscErrorCode pTatinModelRegister_RiftNitsche(void);
 extern PetscErrorCode pTatinModelRegister_Steady_TFV(void);
+extern PetscErrorCode pTatinModelRegister_PoissonPressure(void);
 
 PetscErrorCode pTatinModelRegisterAll(void)
 {
@@ -85,6 +86,7 @@ PetscErrorCode pTatinModelRegisterAll(void)
   ierr = pTatinModelRegister_PAS();CHKERRQ(ierr);
   ierr = pTatinModelRegister_PD();CHKERRQ(ierr);
   ierr = pTatinModelRegister_Steady_TFV();CHKERRQ(ierr);
+  ierr = pTatinModelRegister_PoissonPressure();CHKERRQ(ierr);
 
   ierr = pTatinModelDynamicRegister("static_box",pTatinModelCreate_StaticBox);CHKERRQ(ierr);
   ierr = pTatinModelDynamicRegister("static_box_thermomech",pTatinModelCreate_StaticBoxTM);CHKERRQ(ierr);

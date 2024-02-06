@@ -31,4 +31,5 @@ libptatin3dmodels-y.c += $(call thisdir, \
   nitsche_demo/model.c \
   oblique_rift_nitsche/model_oblique_rift_nitsche.c \
   Steady_TFV/model_steady_TFV.c \
+  poisson_pressure_model/model_poisson_pressure.c \
 )

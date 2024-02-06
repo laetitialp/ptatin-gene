@@ -156,11 +156,14 @@ static PetscErrorCode pTatin3d_PoissonPressure_FromModelICState(int argc,char **
   DataBucket        materialpoint_db;
   char              stepname[PETSC_MAX_PATH_LEN];
   PetscBool         output_vts=PETSC_FALSE;
+  PetscBool         isostatic_remesh=PETSC_FALSE;
+  PetscReal         density_ref,compensation_depth;
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
 
   ierr = PetscOptionsGetBool(NULL,NULL,"-output_vts",&output_vts,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,NULL,"-isostatic_remesh",&isostatic_remesh,NULL);CHKERRQ(ierr);
 
   ierr = pTatin3dCreateContext(&ptatin);CHKERRQ(ierr);
   ierr = pTatin3dSetFromOptions(ptatin);CHKERRQ(ierr);
@@ -231,6 +234,14 @@ static PetscErrorCode pTatin3d_PoissonPressure_FromModelICState(int argc,char **
 
   ierr = pTatin3d_Solve_PoissonPressure(ptatin,poisson_pressure);CHKERRQ(ierr);
 
+  if (isostatic_remesh) {
+    ierr = PetscOptionsGetReal(NULL,NULL,"-isostatic_density_ref_adim",&density_ref,NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,NULL,"-isostatic_compensation_depth_adim",&compensation_depth,NULL);CHKERRQ(ierr);
+    ierr = ComputeIsostaticDisplacementVectorFromPoissonPressure(ptatin,density_ref,compensation_depth);CHKERRQ(ierr);
+    /* To call in user's model */
+    //ierr = LagrangianAdvectionFromIsostaticDisplacementVector(ptatin);CHKERRQ(ierr);
+  }
+  
   /* Output the pressure */
   if (ptatin->step) {
     ierr = PetscSNPrintf(stepname,PETSC_MAX_PATH_LEN-1,"step%1.6D",ptatin->step);CHKERRQ(ierr);
@@ -238,6 +249,7 @@ static PetscErrorCode pTatin3d_PoissonPressure_FromModelICState(int argc,char **
     ierr = PetscSNPrintf(stepname,PETSC_MAX_PATH_LEN-1,"step0");CHKERRQ(ierr);
   }
   ierr = OutputPoissonPressure(ptatin,poisson_pressure,stepname,output_vts);CHKERRQ(ierr);
+
   /* Output material points variables and stokes */
   ierr = pTatinModel_Output(model,ptatin,X_stokes,stepname);CHKERRQ(ierr); 
 
