@@ -235,11 +235,11 @@ static PetscErrorCode pTatin3d_PoissonPressure_FromModelICState(int argc,char **
   ierr = pTatin3d_Solve_PoissonPressure(ptatin,poisson_pressure);CHKERRQ(ierr);
 
   if (isostatic_remesh) {
-    ierr = PetscOptionsGetReal(NULL,NULL,"-isostatic_density_ref",&density_ref,NULL);CHKERRQ(ierr);
-    ierr = PetscOptionsGetReal(NULL,NULL,"-isostatic_compensation_depth",&compensation_depth,NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,NULL,"-isostatic_density_ref_adim",&density_ref,NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,NULL,"-isostatic_compensation_depth_adim",&compensation_depth,NULL);CHKERRQ(ierr);
     ierr = ComputeIsostaticDisplacementVectorFromPoissonPressure(ptatin,density_ref,compensation_depth);CHKERRQ(ierr);
     /* To call in user's model */
-    ierr = LagrangianAdvectionFromIsostaticDisplacementVector(ptatin);CHKERRQ(ierr);
+    //ierr = LagrangianAdvectionFromIsostaticDisplacementVector(ptatin);CHKERRQ(ierr);
   }
   
   /* Output the pressure */
