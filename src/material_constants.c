@@ -49,21 +49,22 @@ PetscErrorCode MaterialConstantsStokesInitialize(DataBucket db)
 
   PetscFunctionBegin;
 
-  DataBucketRegisterField(db,MaterialConst_MaterialType_classname,      sizeof(MaterialConst_MaterialType),NULL);
+  DataBucketRegisterField(db,MaterialConst_MaterialType_classname,           sizeof(MaterialConst_MaterialType),           NULL);
 
-  DataBucketRegisterField(db,MaterialConst_ViscosityConst_classname,    sizeof(MaterialConst_ViscosityConst),NULL);
-  DataBucketRegisterField(db,MaterialConst_ViscosityZ_classname,    sizeof(MaterialConst_ViscosityZ),NULL);
-  DataBucketRegisterField(db,MaterialConst_ViscosityArrh_classname,      sizeof(MaterialConst_ViscosityArrh),NULL);
-  DataBucketRegisterField(db,MaterialConst_ViscosityFK_classname,      sizeof(MaterialConst_ViscosityFK),NULL);
+  DataBucketRegisterField(db,MaterialConst_ViscosityConst_classname,         sizeof(MaterialConst_ViscosityConst),         NULL);
+  DataBucketRegisterField(db,MaterialConst_ViscosityZ_classname,             sizeof(MaterialConst_ViscosityZ),             NULL);
+  DataBucketRegisterField(db,MaterialConst_ViscosityArrh_classname,          sizeof(MaterialConst_ViscosityArrh),          NULL);
+  DataBucketRegisterField(db,MaterialConst_ViscosityArrh_DislDiff_classname, sizeof(MaterialConst_ViscosityArrh_DislDiff), NULL);
+  DataBucketRegisterField(db,MaterialConst_ViscosityFK_classname,            sizeof(MaterialConst_ViscosityFK),            NULL);
 
-  DataBucketRegisterField(db,MaterialConst_PlasticMises_classname,      sizeof(MaterialConst_PlasticMises),NULL);
-  DataBucketRegisterField(db,MaterialConst_PlasticDP_classname,      sizeof(MaterialConst_PlasticDP),NULL);
+  DataBucketRegisterField(db,MaterialConst_PlasticMises_classname,           sizeof(MaterialConst_PlasticMises),           NULL);
+  DataBucketRegisterField(db,MaterialConst_PlasticDP_classname,              sizeof(MaterialConst_PlasticDP),              NULL);
 
-  DataBucketRegisterField(db,MaterialConst_DensityConst_classname,      sizeof(MaterialConst_DensityConst),NULL);
-  DataBucketRegisterField(db,MaterialConst_DensityBoussinesq_classname,      sizeof(MaterialConst_DensityBoussinesq),NULL);
+  DataBucketRegisterField(db,MaterialConst_DensityConst_classname,           sizeof(MaterialConst_DensityConst),           NULL);
+  DataBucketRegisterField(db,MaterialConst_DensityBoussinesq_classname,      sizeof(MaterialConst_DensityBoussinesq),      NULL);
 
-  DataBucketRegisterField(db,MaterialConst_SoftLin_classname,      sizeof(MaterialConst_SoftLin),NULL);
-  DataBucketRegisterField(db,MaterialConst_SoftExpo_classname,      sizeof(MaterialConst_SoftExpo),NULL);
+  DataBucketRegisterField(db,MaterialConst_SoftLin_classname,                sizeof(MaterialConst_SoftLin),                NULL);
+  DataBucketRegisterField(db,MaterialConst_SoftExpo_classname,               sizeof(MaterialConst_SoftExpo),               NULL);
 
   DataBucketFinalize(db);
 
@@ -1006,6 +1007,219 @@ PetscErrorCode MaterialConstantsScaleValues_ViscosityArrh(DataBucket db,const in
   PetscFunctionReturn(0);
 }
 
+/* Viscosity Arrhenius Dislocation-Diffusion */
+PetscErrorCode MaterialConstantsSetDefault_ViscosityArrh_DislDiff(DataBucket db)
+{
+  int                                   r,nregions;
+  DataField                             PField;
+  MaterialConst_ViscosityArrh_DislDiff  *data;
+
+  PetscFunctionBegin;
+
+  DataBucketGetSizes(db,&nregions,NULL,NULL);
+  DataBucketGetDataFieldByName(db,MaterialConst_ViscosityArrh_DislDiff_classname,&PField);
+
+  data = (MaterialConst_ViscosityArrh_DislDiff*)PField->data; /* should write a function to do this */
+  for (r=0; r<nregions; r++) {
+    data[r].preexpA_disl = 1.1e5;
+    data[r].Ascale_disl  = 1.0e6;
+    data[r].entalpy_disl = 530.0e3;
+    data[r].Vmol_disl    = 1.8e-5;
+    data[r].nexp_disl    = 3.5;
+    data[r].preexpA_diff = 1.5e9;
+    data[r].Ascale_diff  = 1.0e6;
+    data[r].entalpy_diff = 375.0e3;
+    data[r].Vmol_diff    = 1.0e-5;
+    data[r].pexp_diff    = 3.0;
+    data[r].gsize        = 1.0e-2;
+    data[r].Tref         = 273.0;
+    data[r].Eta_scale    = 1.0;
+    data[r].P_scale      = 1.0;
+  }
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode MaterialConstantsSetFromOptions_ViscosityArrh_DislDiff(DataBucket db,const char model_name[],const int region_id,PetscBool essential)
+{
+  char                                  opt_name[256];
+  DataField                             PField;
+  MaterialConst_ViscosityArrh_DislDiff  *data;
+  PetscBool                             found;
+  PetscReal                             value;
+  void                                  (*disl_diff_setter[12])(MaterialConst_ViscosityArrh_DislDiff*,double);
+  PetscInt                              i,n_members;
+  PetscErrorCode                        ierr;
+
+  PetscFunctionBegin;
+
+  DataBucketGetDataFieldByName(db,MaterialConst_ViscosityArrh_DislDiff_classname,&PField);
+
+  DataFieldGetAccess(PField);
+  DataFieldAccessPoint(PField,region_id,(void**)&data);
+
+  /* Assign functions to the array of functions */
+  disl_diff_setter[ 0] = MaterialConst_ViscosityArrh_DislDiffSetField_preexpA_disl;
+  disl_diff_setter[ 1] = MaterialConst_ViscosityArrh_DislDiffSetField_Ascale_disl;
+  disl_diff_setter[ 2] = MaterialConst_ViscosityArrh_DislDiffSetField_entalpy_disl;
+  disl_diff_setter[ 3] = MaterialConst_ViscosityArrh_DislDiffSetField_Vmol_disl;
+  disl_diff_setter[ 4] = MaterialConst_ViscosityArrh_DislDiffSetField_nexp_disl;
+  disl_diff_setter[ 5] = MaterialConst_ViscosityArrh_DislDiffSetField_preexpA_diff;
+  disl_diff_setter[ 6] = MaterialConst_ViscosityArrh_DislDiffSetField_Ascale_diff;
+  disl_diff_setter[ 7] = MaterialConst_ViscosityArrh_DislDiffSetField_entalpy_diff;
+  disl_diff_setter[ 8] = MaterialConst_ViscosityArrh_DislDiffSetField_Vmol_diff;
+  disl_diff_setter[ 9] = MaterialConst_ViscosityArrh_DislDiffSetField_pexp_diff;
+  disl_diff_setter[10] = MaterialConst_ViscosityArrh_DislDiffSetField_gsize;
+  disl_diff_setter[11] = MaterialConst_ViscosityArrh_DislDiffSetField_Tref;
+
+  /* number of parameters that will be set */
+  n_members = 12;
+
+  /* insert options */
+  value = 1.0; /* default - not required is nothing happens if option not found */
+
+  for (i=0; i<n_members; i++) {
+    sprintf(opt_name,"-%s_%d",MaterialConst_ViscosityArrh_DislDiff_member_names[i],region_id);
+    ierr = PetscOptionsGetReal(NULL,model_name,opt_name,&value,&found);CHKERRQ(ierr);
+    if (found) {
+      disl_diff_setter[i](data,value);
+    } else if ( (!found) && (essential) ) {
+      ierr = MaterialConstantsReportParseError(model_name,MaterialConst_ViscosityArrh_DislDiff_member_names[i],region_id);CHKERRQ(ierr);
+    }
+  }
+
+  DataFieldRestoreAccess(PField);
+
+  PetscFunctionReturn(0);
+}
+PetscErrorCode MaterialConstantsPrintValues_ViscosityArrh_DislDiff(DataBucket db,const int region_id)
+{
+  char                                  opt_name[256];
+  DataField                             PField;
+  MaterialConst_ViscosityArrh_DislDiff  *data;
+  void                                  (*disl_diff_getter[14])(MaterialConst_ViscosityArrh_DislDiff*,double*);
+  PetscInt                              i,n_members;
+  PetscReal                             value;
+
+  PetscFunctionBegin;
+
+  DataBucketGetDataFieldByName(db,MaterialConst_ViscosityArrh_DislDiff_classname,&PField);
+
+  DataFieldGetAccess(PField);
+  DataFieldAccessPoint(PField,region_id,(void**)&data);
+
+  disl_diff_getter[ 0] = MaterialConst_ViscosityArrh_DislDiffGetField_preexpA_disl;
+  disl_diff_getter[ 1] = MaterialConst_ViscosityArrh_DislDiffGetField_Ascale_disl;
+  disl_diff_getter[ 2] = MaterialConst_ViscosityArrh_DislDiffGetField_entalpy_disl;
+  disl_diff_getter[ 3] = MaterialConst_ViscosityArrh_DislDiffGetField_Vmol_disl;
+  disl_diff_getter[ 4] = MaterialConst_ViscosityArrh_DislDiffGetField_nexp_disl;
+  disl_diff_getter[ 5] = MaterialConst_ViscosityArrh_DislDiffGetField_preexpA_diff;
+  disl_diff_getter[ 6] = MaterialConst_ViscosityArrh_DislDiffGetField_Ascale_diff;
+  disl_diff_getter[ 7] = MaterialConst_ViscosityArrh_DislDiffGetField_entalpy_diff;
+  disl_diff_getter[ 8] = MaterialConst_ViscosityArrh_DislDiffGetField_Vmol_diff;
+  disl_diff_getter[ 9] = MaterialConst_ViscosityArrh_DislDiffGetField_pexp_diff;
+  disl_diff_getter[10] = MaterialConst_ViscosityArrh_DislDiffGetField_gsize;
+  disl_diff_getter[11] = MaterialConst_ViscosityArrh_DislDiffGetField_Tref;
+  disl_diff_getter[12] = MaterialConst_ViscosityArrh_DislDiffGetField_Eta_scale;
+  disl_diff_getter[13] = MaterialConst_ViscosityArrh_DislDiffGetField_P_scale;
+
+  n_members = 14;
+
+  for (i=0; i<n_members; i++) {
+    sprintf(opt_name,"-%s_%d",MaterialConst_ViscosityArrh_DislDiff_member_names[i],region_id);
+    disl_diff_getter[i](data,&value);
+    PetscPrintf(PETSC_COMM_WORLD,"Current Value %s   :  %1.4e  \n", opt_name ,value);
+  }
+
+  DataFieldRestoreAccess(PField);
+
+  PetscFunctionReturn(0);
+}
+PetscErrorCode MaterialConstantsSetValues_ViscosityArrh_DislDiff(DataBucket db,const int region_id,
+                                                                 PetscReal preexpA_disl,
+                                                                 PetscReal Ascale_disl,
+                                                                 PetscReal entalpy_disl,
+                                                                 PetscReal Vmol_disl,
+                                                                 PetscReal nexp_disl,
+                                                                 PetscReal preexpA_diff,
+                                                                 PetscReal Ascale_diff,
+                                                                 PetscReal entalpy_diff,
+                                                                 PetscReal Vmol_diff,
+                                                                 PetscReal pexp_diff,
+                                                                 PetscReal gsize,
+                                                                 PetscReal Tref)
+{
+  DataField                             PField;
+  MaterialConst_ViscosityArrh_DislDiff  *data;
+  void                                  (*disl_diff_setter[12])(MaterialConst_ViscosityArrh_DislDiff*,double);
+  PetscReal                             parameters[12];
+  PetscInt                              i,n_members=12;
+
+  PetscFunctionBegin;
+
+  DataBucketGetDataFieldByName(db,MaterialConst_ViscosityArrh_DislDiff_classname,&PField);
+
+  DataFieldGetAccess(PField);
+  DataFieldAccessPoint(PField,region_id,(void**)&data);
+
+  /* Assign parameter to the array of parameters */
+  parameters[ 0] = preexpA_disl;
+  parameters[ 1] = Ascale_disl;
+  parameters[ 2] = entalpy_disl;
+  parameters[ 3] = Vmol_disl;
+  parameters[ 4] = nexp_disl;
+  parameters[ 5] = preexpA_diff;
+  parameters[ 6] = Ascale_diff;
+  parameters[ 7] = entalpy_diff;
+  parameters[ 8] = Vmol_diff;
+  parameters[ 9] = pexp_diff;
+  parameters[10] = gsize;
+  parameters[11] = Tref;
+
+  /* Assign functions to the array of functions */
+  disl_diff_setter[ 0] = MaterialConst_ViscosityArrh_DislDiffSetField_preexpA_disl;
+  disl_diff_setter[ 1] = MaterialConst_ViscosityArrh_DislDiffSetField_Ascale_disl;
+  disl_diff_setter[ 2] = MaterialConst_ViscosityArrh_DislDiffSetField_entalpy_disl;
+  disl_diff_setter[ 3] = MaterialConst_ViscosityArrh_DislDiffSetField_Vmol_disl;
+  disl_diff_setter[ 4] = MaterialConst_ViscosityArrh_DislDiffSetField_nexp_disl;
+  disl_diff_setter[ 5] = MaterialConst_ViscosityArrh_DislDiffSetField_preexpA_diff;
+  disl_diff_setter[ 6] = MaterialConst_ViscosityArrh_DislDiffSetField_Ascale_diff;
+  disl_diff_setter[ 7] = MaterialConst_ViscosityArrh_DislDiffSetField_entalpy_diff;
+  disl_diff_setter[ 8] = MaterialConst_ViscosityArrh_DislDiffSetField_Vmol_diff;
+  disl_diff_setter[ 9] = MaterialConst_ViscosityArrh_DislDiffSetField_pexp_diff;
+  disl_diff_setter[10] = MaterialConst_ViscosityArrh_DislDiffSetField_gsize;
+  disl_diff_setter[11] = MaterialConst_ViscosityArrh_DislDiffSetField_Tref;
+
+  for (i=0; i<n_members; i++) {
+    if (parameters[i] != PETSC_DEFAULT) {
+      disl_diff_setter[i](data,parameters[i]);
+    }
+  }
+
+  DataFieldRestoreAccess(PField);
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode MaterialConstantsScaleValues_ViscosityArrh_DislDiff(DataBucket db,const int region_id,PetscReal eta_star,PetscReal sigma_star)
+{
+  DataField                             PField;
+  MaterialConst_ViscosityArrh_DislDiff  *data;
+  PetscFunctionBegin;
+
+  DataBucketGetDataFieldByName(db,MaterialConst_ViscosityArrh_DislDiff_classname,&PField);
+
+  DataFieldGetAccess(PField);
+  DataFieldAccessPoint(PField,region_id,(void**)&data);
+
+  MaterialConst_ViscosityArrh_DislDiffSetField_Eta_scale(data,eta_star);
+
+  MaterialConst_ViscosityArrh_DislDiffSetField_P_scale(data,sigma_star);
+
+  DataFieldRestoreAccess(PField);
+
+  PetscFunctionReturn(0);
+}
 
 /* ViscosityFK */
 PetscErrorCode MaterialConstantsSetDefault_ViscosityFK(DataBucket db)
@@ -1812,6 +2026,7 @@ PetscErrorCode MaterialConstantsSetDefaults(DataBucket db)
   ierr = MaterialConstantsSetDefault_ViscosityZ(db);CHKERRQ(ierr);
   ierr = MaterialConstantsSetDefault_ViscosityFK(db);CHKERRQ(ierr);
   ierr = MaterialConstantsSetDefault_ViscosityArrh(db);CHKERRQ(ierr);
+  ierr = MaterialConstantsSetDefault_ViscosityArrh_DislDiff(db);CHKERRQ(ierr);
   ierr = MaterialConstantsSetDefault_PlasticMises(db);CHKERRQ(ierr);
   ierr = MaterialConstantsSetDefault_PlasticDP(db);CHKERRQ(ierr);
   ierr = MaterialConstantsSetDefault_DensityConst(db);CHKERRQ(ierr);
@@ -1854,6 +2069,9 @@ PetscErrorCode MaterialConstantsSetFromOptions(DataBucket db,const char model_na
       break;
     case VISCOUS_ARRHENIUS_2:
       ierr = MaterialConstantsSetFromOptions_ViscosityArrh(db,model_name,region_id,essential);CHKERRQ(ierr);
+      break;
+    case VISCOUS_ARRHENIUS_DISLDIFF:
+      ierr = MaterialConstantsSetFromOptions_ViscosityArrh_DislDiff(db,model_name,region_id,essential);CHKERRQ(ierr);
       break;
     default:
       SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"VISCOUS TYPE UNDEFINED");
@@ -1948,6 +2166,9 @@ PetscErrorCode MaterialConstantsScaleAll(DataBucket db,const int region_id,Petsc
     case VISCOUS_ARRHENIUS_2:
       ierr = MaterialConstantsScaleValues_ViscosityArrh(db,region_id,eta_star,P_star);CHKERRQ(ierr);
       break;
+    case VISCOUS_ARRHENIUS_DISLDIFF:
+      ierr = MaterialConstantsScaleValues_ViscosityArrh_DislDiff(db,region_id,eta_star,P_star);CHKERRQ(ierr);
+      break;
     default:
       SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"VISCOUS TYPE UNDEFINED");
       break;
@@ -2036,6 +2257,9 @@ PetscErrorCode MaterialConstantsPrintAll(DataBucket db,const int region_id)
       break;
     case VISCOUS_ARRHENIUS_2:
       ierr = MaterialConstantsPrintValues_ViscosityArrh(db,region_id);CHKERRQ(ierr);
+      break;
+    case VISCOUS_ARRHENIUS_DISLDIFF:
+      ierr = MaterialConstantsPrintValues_ViscosityArrh_DislDiff(db,region_id);CHKERRQ(ierr);
       break;
     default:
       SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"VISCOUS TYPE UNDEFINED");
