@@ -910,6 +910,16 @@ def Generate_pTatin_MaterialConst_ViscosityArrh():
 	variable_textural_names =  [ 'preexpA','Ascale' ,'entalpy' , 'Vmol'  ,'nexp'    ,'Tref'    ,'Eta_scale','P_scale']
 	PARTICLE_CLASS_GENERATOR( ClassName, ClassNameShort, variable_names, variable_types, variable_extents, variable_textural_names )
 
+def Generate_pTatin_MaterialConst_ViscosityArrh_DislDiff():
+	ClassName      = 'MaterialConst_ViscosityArrh_DislDiff'
+	ClassNameShort = 'ViscosityArrh_DislDiff'
+	variable_names =          [ 'preexpA_disl','Ascale_disl' ,'entalpy_disl' , 'Vmol_disl'   ,'nexp_disl' ,'preexpA_diff'  ,'Ascale_diff' , 'entalpy_diff' , 'Vmol_diff' , 'pexp_diff' , 'gsize'  ,'Tref'    ,'Eta_scale','P_scale']
+	variable_types =          [ 'double'      ,'double'      , 'double'      , 'double'      ,'double'    ,'double'        ,'double'      , 'double'       , 'double'    , 'double'    , 'double' ,'double'  ,'double'   ,'double' ]
+	variable_extents        = [ 1             ,      1       ,       1       , 1             , 1          , 1              , 1            , 1              ,  1          , 1           , 1        , 1        , 1         ,    1    ]
+	variable_textural_names =  [ 'preexpA_disl','Ascale_disl' ,'entalpy_disl', 'Vmol_disl'   ,'nexp_disl' , 'preexpA_diff' ,'Ascale_diff' , 'entalpy_diff' , 'Vmol_diff' , 'pexp_diff' , 'gsize'  ,'Tref'    ,'Eta_scale','P_scale']
+	PARTICLE_CLASS_GENERATOR( ClassName, ClassNameShort, variable_names, variable_types, variable_extents, variable_textural_names )
+
+
 def Generate_pTatin_MaterialConst_ViscosityFK():
 	ClassName      = 'MaterialConst_ViscosityFK'
 	ClassNameShort = 'ViscosityFK'
@@ -960,6 +970,7 @@ Generate_pTatin_MaterialConst_ViscosityConst()
 Generate_pTatin_MaterialConst_ViscosityZ()
 Generate_pTatin_MaterialConst_ViscosityArrh()
 Generate_pTatin_MaterialConst_ViscosityFK()
+Generate_pTatin_MaterialConst_ViscosityArrh_DislDiff()
 
 Generate_pTatin_MaterialConst_DensityConst()
 Generate_pTatin_MaterialConst_DensityBoussinesq()
