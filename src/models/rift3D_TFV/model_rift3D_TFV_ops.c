@@ -73,6 +73,152 @@ static PetscErrorCode ModelAdaptMaterialPointResolution_Rift3D_T_semi_eulerian(p
 
 static PetscErrorCode ModelApplyInitialMaterialGeometry_Notchtest(pTatinCtx c,void *ctx);
 
+static PetscErrorCode ModelSetMaterialConstants_DislDiff(DataBucket materialconstants, EnergyMaterialConstants *matconstants_e, RheologyConstants *rheology)
+{
+  /* Function designed to test DislDiff viscosity, Plastic and Energy are missing */
+  PetscInt       i;
+  PetscReal      preexpA_disl,Ascale_disl,entalpy_disl,Vmol_disl,nexp_disl,preexpA_diff,Ascale_diff,entalpy_diff,Vmol_diff,pexp_diff,gsize,Tref;
+  PetscErrorCode ierr;
+
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
+
+  preexpA_disl = 1.1e5;
+  Ascale_disl  = 1.0e6;
+  entalpy_disl = 530.0e3;
+  Vmol_disl    = 1.0e-5;
+  nexp_disl    = 3.5;
+  preexpA_diff = 1.5e9;
+  Ascale_diff  = 1.0e6;
+  entalpy_diff = 375.0e3;
+  Vmol_diff    = 1.8e-5;
+  pexp_diff    = 3.0;
+  gsize        = 1.0e-2;
+  Tref         = 273.0;
+
+  for (i=0; i<rheology->nphases_active; i++) {
+    MaterialConstantsSetValues_MaterialType(materialconstants,i,VISCOUS_ARRHENIUS_DISLDIFF,PLASTIC_NONE,SOFTENING_NONE,DENSITY_CONSTANT);
+    MaterialConstantsSetValues_DensityConst(materialconstants,i,2700);
+    EnergyMaterialConstantsSetFieldAll_SourceMethod(&matconstants_e[i],ENERGYSOURCE_NONE);
+    MaterialConstantsSetValues_ViscosityArrh_DislDiff(materialconstants,i,preexpA_disl,Ascale_disl,entalpy_disl,Vmol_disl,nexp_disl,preexpA_diff,Ascale_diff,entalpy_diff,Vmol_diff,pexp_diff,gsize,Tref);
+    MaterialConstantsPrintValues_ViscosityArrh_DislDiff(materialconstants,i);
+  }
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelSetMaterialConstants_FK(DataBucket materialconstants, EnergyMaterialConstants *matconstants_e) 
+{
+  PetscReal      Cp,rho_ref;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
+
+  rho_ref = 1.0;
+  Cp  = 1.0;
+  // UPPER CRUST WITH STRIPES OF 4
+  MaterialConstantsSetValues_MaterialType(materialconstants,0,VISCOUS_FRANKK,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_BOUSSINESQ);
+  ierr = MaterialConstantsSetValues_EnergyMaterialConstants(0,matconstants_e,0.0,0.0,rho_ref,Cp,ENERGYDENSITY_CONSTANT,ENERGYCONDUCTIVITY_CONSTANT,NULL);CHKERRQ(ierr);
+  EnergyMaterialConstantsSetFieldAll_SourceMethod(&matconstants_e[0],ENERGYSOURCE_NONE);
+  EnergyMaterialConstantsSetFieldByIndex_SourceMethod(&matconstants_e[0],0,ENERGYSOURCE_CONSTANT);
+
+  MaterialConstantsSetValues_ViscosityFK(materialconstants,0,1.0e27,0.025);
+  MaterialConstantsSetValues_DensityBoussinesq(materialconstants,0,2700,2.e-5,0.0);
+  MaterialConstantsSetValues_DensityConst(materialconstants,0,2700);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,0,0.6,0.1,2.e7,2.e7,1.e7,2.e8);
+  MaterialConstantsSetValues_PlasticMises(materialconstants,0,1.e8,1.e8);
+  MaterialConstantsSetValues_SoftLin(materialconstants,0,0.0,0.3);
+
+  MaterialConstantsSetValues_MaterialType(materialconstants,1,VISCOUS_FRANKK,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_BOUSSINESQ);
+
+  MaterialConstantsSetValues_ViscosityFK(materialconstants,1,1.0e27,0.03);
+  MaterialConstantsSetValues_DensityBoussinesq(materialconstants,1,2800,2.e-5,3.e-12);
+  MaterialConstantsSetValues_DensityConst(materialconstants,1,2800);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,1,0.6,0.1,2.e7,2.e7,1.e7,2.e8);
+  MaterialConstantsSetValues_PlasticMises(materialconstants,1,1.e8,1.e8);
+  MaterialConstantsSetValues_SoftLin(materialconstants,1,0.0,0.3);
+
+  ierr = MaterialConstantsSetValues_EnergyMaterialConstants(1,matconstants_e,0.0,0.0,rho_ref,Cp,ENERGYDENSITY_CONSTANT,ENERGYCONDUCTIVITY_CONSTANT,NULL);CHKERRQ(ierr);
+  EnergyMaterialConstantsSetFieldAll_SourceMethod(&matconstants_e[1],ENERGYSOURCE_NONE);
+  EnergyMaterialConstantsSetFieldByIndex_SourceMethod(&matconstants_e[1],0,ENERGYSOURCE_CONSTANT);
+  EnergyMaterialConstantsSetFieldByIndex_SourceMethod(&matconstants_e[1],0,ENERGYSOURCE_SHEAR_HEATING);
+
+  MaterialConstantsSetValues_MaterialType(materialconstants,2,VISCOUS_FRANKK,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_BOUSSINESQ);
+  MaterialConstantsSetValues_ViscosityFK(materialconstants,2,1.0e30,0.018);
+  MaterialConstantsSetValues_DensityBoussinesq(materialconstants,2,3300,2.e-5,3.e-12);
+  MaterialConstantsSetValues_DensityConst(materialconstants,2,3300);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,2,0.6,0.1,2.e7,2.e7,2.e7,3.e8);
+  MaterialConstantsSetValues_PlasticMises(materialconstants,2,3.e8,3.e8);
+  MaterialConstantsSetValues_SoftLin(materialconstants,2,0.0,0.3);
+
+  ierr = MaterialConstantsSetValues_EnergyMaterialConstants(2,matconstants_e,0.0,0.0,rho_ref,Cp,ENERGYDENSITY_CONSTANT,ENERGYCONDUCTIVITY_CONSTANT,NULL);CHKERRQ(ierr);
+  EnergyMaterialConstantsSetFieldAll_SourceMethod(&matconstants_e[2],ENERGYSOURCE_NONE);
+  EnergyMaterialConstantsSetFieldByIndex_SourceMethod(&matconstants_e[2],0,ENERGYSOURCE_CONSTANT);
+
+  MaterialConstantsSetValues_MaterialType(materialconstants,3,VISCOUS_FRANKK,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_BOUSSINESQ);
+  MaterialConstantsSetValues_ViscosityFK(materialconstants,3,1.0e30,0.018);
+  MaterialConstantsSetValues_DensityBoussinesq(materialconstants,3,3300,2.e-5,3.e-12);
+  MaterialConstantsSetValues_DensityConst(materialconstants,3,3300);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,3,0.6,0.1,2.e7,2.e7,2.e7,3.e8);
+  MaterialConstantsSetValues_PlasticMises(materialconstants,3,3.e8,3.e8);
+  MaterialConstantsSetValues_SoftLin(materialconstants,3,0.0,0.3);
+
+  ierr = MaterialConstantsSetValues_EnergyMaterialConstants(3,matconstants_e,0.0,0.0,rho_ref,Cp,ENERGYDENSITY_CONSTANT,ENERGYCONDUCTIVITY_CONSTANT,NULL);CHKERRQ(ierr);
+  EnergyMaterialConstantsSetFieldAll_SourceMethod(&matconstants_e[3],ENERGYSOURCE_NONE);
+  EnergyMaterialConstantsSetFieldByIndex_SourceMethod(&matconstants_e[3],0,ENERGYSOURCE_CONSTANT);
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelSetMaterialConstants_Rift3D_TFV(DataBucket materialconstants, RheologyConstants *rheology) 
+{
+  EnergyMaterialConstants *matconstants_e;
+  DataField               PField;
+  PetscInt                regionidx,viscous_type;
+  PetscErrorCode          ierr;
+
+  PetscFunctionBegin;
+
+  
+  ierr = MaterialConstantsSetDefaults(materialconstants);CHKERRQ(ierr);
+
+  DataBucketGetDataFieldByName(materialconstants,EnergyMaterialConstants_classname,&PField);
+  DataFieldGetEntries(PField,(void**)&matconstants_e);
+  
+  viscous_type = 0;
+  ierr = PetscOptionsGetInt(NULL,NULL,"-viscous_type",&viscous_type,NULL);CHKERRQ(ierr);
+
+  switch (viscous_type)
+  {
+    case 0:
+      ierr = ModelSetMaterialConstants_FK(materialconstants,matconstants_e);CHKERRQ(ierr);
+      break;
+
+    case 1:
+      ierr = ModelSetMaterialConstants_DislDiff(materialconstants,matconstants_e,rheology);CHKERRQ(ierr);
+      break;
+
+    default:
+      ierr = ModelSetMaterialConstants_FK(materialconstants,matconstants_e);CHKERRQ(ierr);
+      break;
+  }
+
+  for (regionidx=0; regionidx<rheology->nphases_active;regionidx++) {
+    EnergyConductivityConst *data_k;
+    EnergySourceConst       *data_Q;
+    DataField               PField_k,PField_Q;
+
+    DataBucketGetDataFieldByName(materialconstants,EnergyConductivityConst_classname,&PField_k);
+    DataFieldGetEntries(PField_k,(void**)&data_k);
+    EnergyConductivityConstSetField_k0(&data_k[regionidx],1.0e-6);
+
+    DataBucketGetDataFieldByName(materialconstants,EnergySourceConst_classname,&PField_Q);
+    DataFieldGetEntries(PField_Q,(void**)&data_Q);
+    EnergySourceConstSetField_HeatSource(&data_Q[regionidx],0.0);
+  }
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode ModelInitialize_Rift3D_T(pTatinCtx c,void *ctx)
 {
   ModelRift3D_TCtx *data = (ModelRift3D_TCtx*)ctx;
@@ -82,9 +228,6 @@ static PetscErrorCode ModelInitialize_Rift3D_T(pTatinCtx c,void *ctx)
   PetscScalar             vx,vy,vz,Sx,Sy,Sz;
   PetscInt                regionidx;
   PetscReal               cm_per_yer2m_per_sec = 1.0e-2 / ( 365.0 * 24.0 * 60.0 * 60.0 ) ;
-  PetscReal               rho_ref,Cp;
-  DataField               PField;
-  EnergyMaterialConstants *matconstants_e;
   PetscErrorCode          ierr;
 
   PetscFunctionBegin;
@@ -141,78 +284,9 @@ static PetscErrorCode ModelInitialize_Rift3D_T(pTatinCtx c,void *ctx)
 
   /* Material constant */
   ierr = pTatinGetMaterialConstants(c,&materialconstants);CHKERRQ(ierr);
-  ierr = MaterialConstantsSetDefaults(materialconstants);CHKERRQ(ierr);
+  /* Material parameters */
+  ierr = ModelSetMaterialConstants_Rift3D_TFV(materialconstants,rheology);
 
-  DataBucketGetDataFieldByName(materialconstants,EnergyMaterialConstants_classname,&PField);
-  DataFieldGetEntries(PField,(void**)&matconstants_e);
-  rho_ref = 1.0;
-  Cp  = 1.0;
-  // UPPER CRUST WITH STRIPES OF 4
-  MaterialConstantsSetValues_MaterialType(materialconstants,0,VISCOUS_FRANKK,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_BOUSSINESQ);
-  ierr = MaterialConstantsSetValues_EnergyMaterialConstants(0,matconstants_e,0.0,0.0,rho_ref,Cp,ENERGYDENSITY_CONSTANT,ENERGYCONDUCTIVITY_CONSTANT,NULL);CHKERRQ(ierr);
-  EnergyMaterialConstantsSetFieldAll_SourceMethod(&matconstants_e[0],ENERGYSOURCE_NONE);
-  EnergyMaterialConstantsSetFieldByIndex_SourceMethod(&matconstants_e[0],0,ENERGYSOURCE_CONSTANT);
-
-  MaterialConstantsSetValues_ViscosityFK(materialconstants,0,1.0e27,0.025);
-  MaterialConstantsSetValues_DensityBoussinesq(materialconstants,0,2700,2.e-5,0.0);
-  MaterialConstantsSetValues_DensityConst(materialconstants,0,2700);
-  MaterialConstantsSetValues_PlasticDP(materialconstants,0,0.6,0.1,2.e7,2.e7,1.e7,2.e8);
-  MaterialConstantsSetValues_PlasticMises(materialconstants,0,1.e8,1.e8);
-  MaterialConstantsSetValues_SoftLin(materialconstants,0,0.0,0.3);
-
-  MaterialConstantsSetValues_MaterialType(materialconstants,1,VISCOUS_FRANKK,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_BOUSSINESQ);
-
-  MaterialConstantsSetValues_ViscosityFK(materialconstants,1,1.0e27,0.03);
-  MaterialConstantsSetValues_DensityBoussinesq(materialconstants,1,2800,2.e-5,3.e-12);
-  MaterialConstantsSetValues_DensityConst(materialconstants,1,2800);
-  MaterialConstantsSetValues_PlasticDP(materialconstants,1,0.6,0.1,2.e7,2.e7,1.e7,2.e8);
-  MaterialConstantsSetValues_PlasticMises(materialconstants,1,1.e8,1.e8);
-  MaterialConstantsSetValues_SoftLin(materialconstants,1,0.0,0.3);
-
-  ierr = MaterialConstantsSetValues_EnergyMaterialConstants(1,matconstants_e,0.0,0.0,rho_ref,Cp,ENERGYDENSITY_CONSTANT,ENERGYCONDUCTIVITY_CONSTANT,NULL);CHKERRQ(ierr);
-  EnergyMaterialConstantsSetFieldAll_SourceMethod(&matconstants_e[1],ENERGYSOURCE_NONE);
-  EnergyMaterialConstantsSetFieldByIndex_SourceMethod(&matconstants_e[1],0,ENERGYSOURCE_CONSTANT);
-  EnergyMaterialConstantsSetFieldByIndex_SourceMethod(&matconstants_e[1],0,ENERGYSOURCE_SHEAR_HEATING);
-
-  MaterialConstantsSetValues_MaterialType(materialconstants,2,VISCOUS_FRANKK,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_BOUSSINESQ);
-  MaterialConstantsSetValues_ViscosityFK(materialconstants,2,1.0e30,0.018);
-  MaterialConstantsSetValues_DensityBoussinesq(materialconstants,2,3300,2.e-5,3.e-12);
-  MaterialConstantsSetValues_DensityConst(materialconstants,2,3300);
-  MaterialConstantsSetValues_PlasticDP(materialconstants,2,0.6,0.1,2.e7,2.e7,2.e7,3.e8);
-  MaterialConstantsSetValues_PlasticMises(materialconstants,2,3.e8,3.e8);
-  MaterialConstantsSetValues_SoftLin(materialconstants,2,0.0,0.3);
-
-  ierr = MaterialConstantsSetValues_EnergyMaterialConstants(2,matconstants_e,0.0,0.0,rho_ref,Cp,ENERGYDENSITY_CONSTANT,ENERGYCONDUCTIVITY_CONSTANT,NULL);CHKERRQ(ierr);
-  EnergyMaterialConstantsSetFieldAll_SourceMethod(&matconstants_e[2],ENERGYSOURCE_NONE);
-  EnergyMaterialConstantsSetFieldByIndex_SourceMethod(&matconstants_e[2],0,ENERGYSOURCE_CONSTANT);
-
-  MaterialConstantsSetValues_MaterialType(materialconstants,3,VISCOUS_FRANKK,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_BOUSSINESQ);
-  MaterialConstantsSetValues_ViscosityFK(materialconstants,3,1.0e30,0.018);
-  MaterialConstantsSetValues_DensityBoussinesq(materialconstants,3,3300,2.e-5,3.e-12);
-  MaterialConstantsSetValues_DensityConst(materialconstants,3,3300);
-  MaterialConstantsSetValues_PlasticDP(materialconstants,3,0.6,0.1,2.e7,2.e7,2.e7,3.e8);
-  MaterialConstantsSetValues_PlasticMises(materialconstants,3,3.e8,3.e8);
-  MaterialConstantsSetValues_SoftLin(materialconstants,3,0.0,0.3);
-
-  ierr = MaterialConstantsSetValues_EnergyMaterialConstants(3,matconstants_e,0.0,0.0,rho_ref,Cp,ENERGYDENSITY_CONSTANT,ENERGYCONDUCTIVITY_CONSTANT,NULL);CHKERRQ(ierr);
-  EnergyMaterialConstantsSetFieldAll_SourceMethod(&matconstants_e[3],ENERGYSOURCE_NONE);
-  EnergyMaterialConstantsSetFieldByIndex_SourceMethod(&matconstants_e[3],0,ENERGYSOURCE_CONSTANT);
-
-  for (regionidx=0; regionidx<rheology->nphases_active;regionidx++) {
-
-    EnergyConductivityConst *data_k;
-    EnergySourceConst *data_Q;
-    DataField               PField_k,PField_Q;
-
-    DataBucketGetDataFieldByName(materialconstants,EnergyConductivityConst_classname,&PField_k);
-    DataFieldGetEntries(PField_k,(void**)&data_k);
-    EnergyConductivityConstSetField_k0(&data_k[regionidx],1.0e-6);
-
-    DataBucketGetDataFieldByName(materialconstants,EnergySourceConst_classname,&PField_Q);
-    DataFieldGetEntries(PField_Q,(void**)&data_Q);
-    EnergySourceConstSetField_HeatSource(&data_Q[regionidx],0.0);
-
-  }
   /* Read the options */
   /*cutoff */
   ierr = PetscOptionsGetBool(NULL,NULL,"-model_rift3D_T_apply_viscosity_cutoff_global",&rheology->apply_viscosity_cutoff_global,NULL);CHKERRQ(ierr);
@@ -297,6 +371,7 @@ static PetscErrorCode ModelInitialize_Rift3D_T(pTatinCtx c,void *ctx)
     //scale viscosity cutoff
     rheology->eta_lower_cutoff_global = rheology->eta_lower_cutoff_global / data->viscosity_bar;
     rheology->eta_upper_cutoff_global = rheology->eta_upper_cutoff_global / data->viscosity_bar;
+    PetscPrintf(PETSC_COMM_WORLD,"[[ Viscosity cutoff ]]: (min/max) = %1.2e/%1.2e\n",rheology->eta_lower_cutoff_global,rheology->eta_upper_cutoff_global);
     //scale length
     data->Lx = data->Lx / data->length_bar;
     data->Ly = data->Ly / data->length_bar;

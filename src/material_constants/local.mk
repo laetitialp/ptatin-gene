@@ -5,6 +5,7 @@ libptatin3d-y.c += $(call thisdir, \
   MaterialConst_ViscosityConst_def.c \
   MaterialConst_ViscosityZ_def.c \
   MaterialConst_ViscosityArrh_def.c \
+  MaterialConst_ViscosityArrh_DislDiff_def.c \
   MaterialConst_ViscosityFK_def.c \
   MaterialConst_SoftLin_def.c \
   MaterialConst_SoftExpo_def.c \
