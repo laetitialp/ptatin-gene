@@ -23,6 +23,8 @@ typedef struct {
   /* Viscosity cutoff */
   PetscBool eta_cutoff;
   PetscReal eta_max,eta_min;
+  /* Viscosity type */
+  PetscInt viscous_type;
   /* SPM parameters */
   PetscReal diffusivity_spm;
   /* Temperature BCs */

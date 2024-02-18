@@ -576,9 +576,34 @@ static PetscErrorCode ModelSetMaterialParametersConstantVPT_RiftNitsche(pTatinCt
 
   /* Report all material parameters values */
   for (region_idx=0; region_idx<data->n_phases; region_idx++) {
-    MaterialConstantsPrintAll(materialconstants,region_idx);
-    MaterialConstantsEnergyPrintAll(materialconstants,region_idx);
+    ierr = MaterialConstantsPrintAll(materialconstants,region_idx);CHKERRQ(ierr);
+    ierr = MaterialConstantsEnergyPrintAll(materialconstants,region_idx);CHKERRQ(ierr);
   }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelSetMaterialParameters_MantleDiffusionLaw(pTatinCtx c,DataBucket materialconstants, ModelRiftNitscheCtx *data)
+{
+  PetscInt       region_mantle;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  
+  region_mantle = 3;
+  /* Set material constitutive laws */
+  ierr = MaterialConstantsSetValues_MaterialType(materialconstants,region_mantle,VISCOUS_ARRHENIUS_DISLDIFF,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_BOUSSINESQ);CHKERRQ(ierr);
+  /* VISCOUS PARAMETERS */
+  ierr = MaterialConstantsSetFromOptions_ViscosityArrh_DislDiff(materialconstants,MODEL_NAME_R,region_mantle,PETSC_TRUE);CHKERRQ(ierr);
+  /* PLASTIC PARAMETERS */
+  ierr = MaterialConstantsSetFromOptions_PlasticDP(materialconstants,MODEL_NAME_R,region_mantle,PETSC_TRUE);CHKERRQ(ierr);
+  /* SOFTENING */
+  ierr = MaterialConstantsSetFromOptions_SoftLin(materialconstants,MODEL_NAME_R,region_mantle,PETSC_TRUE);CHKERRQ(ierr);
+  /* DENSITY PARAMETERS */
+  ierr = MaterialConstantsSetFromOptions_DensityBoussinesq(materialconstants,MODEL_NAME_R,region_mantle,PETSC_TRUE);CHKERRQ(ierr);
+
+  /* Report */
+  ierr = MaterialConstantsPrintAll(materialconstants,region_mantle);CHKERRQ(ierr);
+
   PetscFunctionReturn(0);
 }
 
@@ -702,8 +727,32 @@ static PetscErrorCode ModelSetMaterialParametersVPT_RiftNitsche(pTatinCtx c,Data
 
   /* Report all material parameters values */
   for (region_idx=0; region_idx<data->n_phases; region_idx++) {
-    MaterialConstantsPrintAll(materialconstants,region_idx);
-    MaterialConstantsEnergyPrintAll(materialconstants,region_idx);
+    ierr = MaterialConstantsPrintAll(materialconstants,region_idx);CHKERRQ(ierr);
+    ierr = MaterialConstantsEnergyPrintAll(materialconstants,region_idx);CHKERRQ(ierr);
+  }
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelSetViscousType(ModelRiftNitscheCtx *data)
+{
+  PetscBool      viscous_const=PETSC_FALSE;
+  PetscBool      viscous_vpt_const=PETSC_FALSE;
+  PetscBool      viscous_vpt_disl_diff=PETSC_FALSE;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-viscous_constant",&viscous_const,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-viscous_vpt_constant",&viscous_vpt_const,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-viscous_vpt_disl_diff",&viscous_vpt_disl_diff,NULL);CHKERRQ(ierr);
+
+  data->viscous_type = 0;
+  if (viscous_const) {
+    data->viscous_type = 1;
+  } else if (viscous_vpt_const) {
+    data->viscous_type = 2;
+  } else if (viscous_vpt_disl_diff) {
+    data->viscous_type = 3;
   }
 
   PetscFunctionReturn(0);
@@ -716,6 +765,7 @@ static PetscErrorCode ModelSetMaterialParameters_RiftNitsche(pTatinCtx c,DataBuc
   PetscErrorCode ierr;
   PetscFunctionBegin;
 
+#if 0
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-viscous_constant",&viscous_const,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-viscous_vpt_constant",&viscous_vpt_const,NULL);CHKERRQ(ierr);
 
@@ -726,6 +776,35 @@ static PetscErrorCode ModelSetMaterialParameters_RiftNitsche(pTatinCtx c,DataBuc
   } else {
     ierr = ModelSetMaterialParametersVPT_RiftNitsche(c,materialconstants,data);CHKERRQ(ierr);
   }
+#endif
+
+  ierr = ModelSetViscousType(data);CHKERRQ(ierr);
+  switch (data->viscous_type)
+  {
+    case 0:
+      ierr = ModelSetMaterialParametersVPT_RiftNitsche(c,materialconstants,data);CHKERRQ(ierr);
+      break;
+
+    case 1:
+      ierr = ModelSetMaterialParametersVISCOUS_RiftNitsche(c,materialconstants,data);CHKERRQ(ierr);
+      break;
+    
+    case 2:
+      ierr = ModelSetMaterialParametersConstantVPT_RiftNitsche(c,materialconstants,data);CHKERRQ(ierr);
+      break;
+
+    case 3:
+      ierr = ModelSetMaterialParametersVPT_RiftNitsche(c,materialconstants,data);CHKERRQ(ierr);
+      ierr = ModelSetMaterialParameters_MantleDiffusionLaw(c,materialconstants,data);CHKERRQ(ierr);
+      break;
+
+    default:
+      PetscPrintf(PETSC_COMM_WORLD,"[[ WARNING ]] No viscous type provided. Using default Arrhenius + Drucker-Prager + Boussinesq\n");
+      ierr = ModelSetMaterialParametersVPT_RiftNitsche(c,materialconstants,data);CHKERRQ(ierr);
+      break;
+  }
+
+
   PetscFunctionReturn(0);
 }
 
