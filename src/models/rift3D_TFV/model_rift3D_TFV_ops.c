@@ -503,6 +503,47 @@ static PetscErrorCode ModelRift3D_T_DefineBCList(BCList bclist,DM dav,pTatinCtx 
   PetscFunctionReturn(0);
 }
 
+/* This function serves as an exemple to show how to use a BCEvaluator with its own struct statically allocated */
+static PetscErrorCode ModelApplyOutflowInflowOnVerticalFaces(BCList bclist, DM dav, ModelRift3D_TCtx *data)
+{
+  BCSplitFaceCtx bc_data;
+  PetscReal      zero=0.0;
+  PetscReal      y_lab,y_lith,y_asth,v_lith,v_asth;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  y_lab  = -40.0e3;
+  y_lith = (y_lab + 5.0e3) / data->length_bar;
+  y_asth = (y_lab - 5.0e3) / data->length_bar;
+  
+  bc_data.dim = 1;
+  bc_data.x0  = y_asth;
+  bc_data.x1  = y_lith;
+  
+  /* left face */
+  v_lith = -data->vx;
+  v_asth = -v_lith * (data->Ly - y_lith)/(y_asth - data->Oy);
+  bc_data.v0  = v_asth;
+  bc_data.v1  = v_lith;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_SplitLinear,(void*)&bc_data);CHKERRQ(ierr);
+  /* right face */
+  v_lith = data->vx;
+  v_asth = -v_lith * (data->Ly - y_lith)/(y_asth - data->Oy);
+  bc_data.v0  = v_asth;
+  bc_data.v1  = v_lith;
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_SplitLinear,(void*)&bc_data);CHKERRQ(ierr);
+
+  /* free-slip along face of normal z */
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+
+  /* free-slip along face of normal y */
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode ModelApplyBoundaryCondition_Rift3D_T(pTatinCtx user,void *ctx)
 {
   ModelRift3D_TCtx *data = (ModelRift3D_TCtx*)ctx;
