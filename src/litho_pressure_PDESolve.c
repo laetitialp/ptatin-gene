@@ -1645,16 +1645,14 @@ PetscErrorCode InterpolateIsostaticDisplacementQ1OnQ2Mesh(DM da_q1, Vec u_q1, DM
   ierr = DMGetLocalVector(da_q2,&u_q2_local);CHKERRQ(ierr);
   /* Initialize to 0 */
   ierr = VecZeroEntries(u_q2_local);CHKERRQ(ierr);
-  ierr = DMGlobalToLocalBegin(da_q2,u_q2,INSERT_VALUES,u_q2_local);CHKERRQ(ierr);
-  ierr = DMGlobalToLocalEnd  (da_q2,u_q2,INSERT_VALUES,u_q2_local);CHKERRQ(ierr);
   
   ierr = DMDAVecGetArray(   da_q1,u_q1_local,&LA_u_q1);CHKERRQ(ierr);
   ierr = DMDAVecGetArrayDOF(da_q2,u_q2_local,&LA_u_q2);CHKERRQ(ierr);
 
   /* generate the max index in each direction depending if the local rank holds one end of the mesh */
-  max_i = PetscMin(si_q1+ni_q1 , M-1);
-  max_j = PetscMin(sj_q1+nj_q1 , N-1);
-  max_k = PetscMin(sk_q1+nk_q1 , P-1);
+  max_i = PetscMin(si_q1+ni_q1-1 , M-1);
+  max_j = PetscMin(sj_q1+nj_q1-1 , N-1);
+  max_k = PetscMin(sk_q1+nk_q1-1 , P-1);
   /* We only modify the vertical velocity, the others are 0 */
   dof = 1;
   /* 
@@ -1773,7 +1771,6 @@ PetscErrorCode ComputeIsostaticDisplacementVectorFromPoissonPressure(pTatinCtx p
 
   /* Find the nearest j node to the given compensation depth */
   ierr = FindJNodeFromDepth(dav,depth_compensation,&jnode_compensation);
-  PetscPrintf(PETSC_COMM_SELF,"jnode = %d\n",jnode_compensation);
   /* Create a global Vec to store the isostatic displacement on the Q1 mesh */
   ierr = DMGetGlobalVector(poisson_pressure->da,&u_iso_q1);CHKERRQ(ierr);
   ierr = VecZeroEntries(u_iso_q1);CHKERRQ(ierr);
@@ -1811,6 +1808,7 @@ PetscErrorCode LagrangianAdvectionFromIsostaticDisplacementVector(pTatinCtx ptat
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
 
   ierr = pTatinGetStokesContext(ptatin,&stokes);CHKERRQ(ierr);
   dav  = stokes->dav;
