@@ -37,6 +37,15 @@ typedef struct {
   PetscBool output_markers;
   /* Passive markers */
   PSwarm pswarm;
+  /* Poisson pressure */
+  Mat      poisson_Jacobian;
+  PetscInt prev_step;
 } ModelRiftNitscheCtx;
+
+typedef struct {
+  PetscInt          nen;
+  const PetscInt    *elnidx;
+  PetscReal         *pressure;
+} PressureTractionCtx;
 
 #endif

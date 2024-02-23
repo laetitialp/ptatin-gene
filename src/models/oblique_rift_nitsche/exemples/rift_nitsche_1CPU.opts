@@ -17,9 +17,9 @@
 -model_rift_nitsche_output_markers
 -model_rift_nitsche_temperature_ic_from_file
 ########## Resolution ##############
--mx 8 # Number of elements along x
--my 8 # Number of elements along y
--mz 8 # Number of elements along z
+-mx 32 # Number of elements along x
+-my 32 # Number of elements along y
+-mz 32 # Number of elements along z
 ########### Box Geometry ##########
 -model_rift_nitsche_Ox 0.0
 -model_rift_nitsche_Oy -250.0e3
@@ -48,11 +48,13 @@
 -model_rift_nitsche_wz_angle 22.0
 ########### Boundary conditions ##########
 #-model_rift_nitsche_bc_nitsche
--model_rift_nitsche_bc_strike_slip
+#-model_rift_nitsche_bc_strike_slip
 #-model_rift_nitsche_bc_freeslip_nitsche
 #-model_rift_nitsche_bc_dirichlet
 #-model_rift_nitsche_bc_u_func_atan
--model_rift_nitsche_bc_u_func_mixte
+#-model_rift_nitsche_bc_u_func_mixte
+#-model_rift_nitsche_bc_strikeslip_neumann
+-model_rift_nitsche_bc_extension_neumann
 -model_rift_nitsche_bc_atan_sharpness 8.0e-5
 -model_rift_nitsche_bc_atan_offset 300.0e3
 -model_rift_nitsche_norm_u 1.0 # cm/yr
@@ -176,20 +178,19 @@
 -model_rift_nitsche_compressibility_3 1.0e-11
 ################ SOLVERS ################
 ###### MG
--A11_operator_type 2,2,0
--dau_nlevels 3
+-A11_operator_type 2,2,2,0
+-dau_nlevels 4
 -stk_velocity_dm_mat_type aij
 -a11_op avx
-#---- 5 MG lvl ----#
-#| 512 x 128 x 256 |
-#| 256 x 64 x 128 |
-#| 128 x 32 x 64 |
-#| 64 x 16 x 32 |
-#| 32 x 8 x 16 |
+#---- 4 MG lvl ----#
+#| 32 x 32 x 32 |
+#| 16 x 16 x 16 |
+#|  8 x  8 x  8 |
+#|  4 x  4 x  4 |
 #------------------#
--stk_velocity_da_refine_hierarchy_x 2,2
--stk_velocity_da_refine_hierarchy_y 2,2
--stk_velocity_da_refine_hierarchy_z 2,2
+#-stk_velocity_da_refine_hierarchy_x 2,2
+#-stk_velocity_da_refine_hierarchy_y 2,2
+#-stk_velocity_da_refine_hierarchy_z 2,2
 #---- SNES ----#
 -newton_its 0
 -snes_atol 1e-6
@@ -201,7 +202,7 @@
 #-snes_view
 #---- KSP ----#
 -ksp_max_it 200
--ksp_rtol 1.0e-4
+-ksp_rtol 1.0e-3
 -ksp_type fgmres
 -pc_type fieldsplit
 -pc_fieldsplit_schur_fact_type upper
@@ -219,12 +220,12 @@
   -fieldsplit_u_pc_type mg
   -fieldsplit_u_pc_mg_levels 3
   -fieldsplit_u_pc_mg_cycle_type v
-  -fieldsplit_u_mg_levels_ksp_type gmres
+  -fieldsplit_u_mg_levels_ksp_type fgmres
   -fieldsplit_u_mg_levels_pc_type bjacobi
   -fieldsplit_u_mg_levels_ksp_max_it 8
   -fieldsplit_u_mg_levels_ksp_norm_type NONE
     #---- Coarse Grid ----#
-    # 32 x 8 x 16 #
+    # 4 x 4 x 4 #
     -fieldsplit_u_mg_coarse_pc_type cholesky
     #-fieldsplit_u_mg_coarse_pc_type telescope
     #-fieldsplit_u_mg_coarse_telescope_pc_type cholesky
@@ -263,3 +264,21 @@
 -fvpp_mg_levels_pc_type jacobi
 -fvpp_operator_fvspace false
 -fvpp_pc_type gamg
+### Solver for poisson pressure
+#-LP_snes_atol 1.0e-9
+-LP_snes_rtol 1.0e-6
+#-LP_snes_max_it 10
+-LP_snes_monitor
+-LP_snes_converged_reason
+-LP_ksp_monitor
+-LP_ksp_converged_reason
+-LP_ksp_atol 1.0e-10
+-LP_ksp_rtol 1.0e-6
+-LP_ksp_type fgmres
+#-LP_snes_mf_operator
+-LP_pc_type bjacobi #gamg #lu not parallel
+#-LP_snes_type ksponly
+-LP_snes_ksp_ew
+-LP_snes_ksp_ew_rtol0 1.0e-2
+-LP_snes_ksp_ew_version 1
+-LP_snes_lag_preconditioner -2
