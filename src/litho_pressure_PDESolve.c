@@ -1699,7 +1699,7 @@ PetscErrorCode InterpolateIsostaticDisplacementQ1OnQ2Mesh(DM da_q1, Vec u_q1, DM
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode FindJNodeFromDepth(DM dav, PetscReal point_coor, PetscInt *node)
+PetscErrorCode FindJNodeFromDepth(DM da, PetscReal point_coor, PetscInt *node)
 {
   DM             dm_1d;
   Vec            coords;
@@ -1711,11 +1711,11 @@ PetscErrorCode FindJNodeFromDepth(DM dav, PetscReal point_coor, PetscInt *node)
 
   PetscFunctionBegin;
 
-  ierr = DMDAGetInfo(dav,0,&M,&N,&P,0,0,0,0,0,0,0,0,0);CHKERRQ(ierr);
-  ierr = DMDAGetCorners(dav,&si,&sj,&sk,&nx,&ny,&nz);CHKERRQ(ierr);
+  ierr = DMDAGetInfo(da,0,&M,&N,&P,0,0,0,0,0,0,0,0,0);CHKERRQ(ierr);
+  ierr = DMDAGetCorners(da,&si,&sj,&sk,&nx,&ny,&nz);CHKERRQ(ierr);
 
   /* Create a redundant DM containing all the jnodes of the imax,kmax location */
-  ierr = DMDACreate3dRedundant(dav,M-1,M,0,N,P-1,P, 1, &dm_1d);CHKERRQ(ierr);
+  ierr = DMDACreate3dRedundant(da,M-1,M,0,N,P-1,P, 1, &dm_1d);CHKERRQ(ierr);
 
   ierr = DMDAGetInfo(dm_1d,0,&ni,&nj,&nk,0,0,0, 0,0,0,0,0,0);CHKERRQ(ierr);
   /* Get coordinates of the 1D DM */
@@ -1770,7 +1770,7 @@ PetscErrorCode ComputeIsostaticDisplacementVectorFromPoissonPressure(pTatinCtx p
   ierr = pTatinGetContext_LithoP(ptatin,&poisson_pressure);CHKERRQ(ierr);
 
   /* Find the nearest j node to the given compensation depth */
-  ierr = FindJNodeFromDepth(dav,depth_compensation,&jnode_compensation);
+  ierr = FindJNodeFromDepth(poisson_pressure->da,depth_compensation,&jnode_compensation);
   /* Create a global Vec to store the isostatic displacement on the Q1 mesh */
   ierr = DMGetGlobalVector(poisson_pressure->da,&u_iso_q1);CHKERRQ(ierr);
   ierr = VecZeroEntries(u_iso_q1);CHKERRQ(ierr);
