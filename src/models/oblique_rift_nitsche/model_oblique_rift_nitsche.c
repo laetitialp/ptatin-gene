@@ -18,6 +18,7 @@
 #include "dmda_element_q2p1.h"
 #include "material_point_std_utils.h"
 #include "material_point_popcontrol.h"
+#include "material_point_point_location.h"
 #include "model_utils.h"
 #include "ptatin_utils.h"
 
@@ -48,7 +49,7 @@
 #include "oblique_rift_nitsche_ctx.h"
 
 static const char MODEL_NAME_R[] = "model_rift_nitsche_";
-PetscLogEvent   PTATIN_MaterialPointPopulationControlRemove;
+static PetscLogEvent   PTATIN_MaterialPointPopulationControlRemove;
 
 static PetscErrorCode ModelInitialGeometry_RiftNitsche(ModelRiftNitscheCtx *data)
 {
@@ -437,6 +438,10 @@ static PetscErrorCode ModelSetGeneralSlipBoundaryValues_RiftNitsche(ModelRiftNit
       break;
 
     case 7:
+      ierr = ModelSetGeneralSlipBoundaryValues_RotatedVelocityField(data);CHKERRQ(ierr);
+      break;
+
+    case 8:
       ierr = ModelSetGeneralSlipBoundaryValues_RotatedVelocityField(data);CHKERRQ(ierr);
       break;
 
@@ -1121,9 +1126,9 @@ static PetscErrorCode ModelScaleParameters_RiftNitsche(DataBucket materialconsta
 
 static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
 {
-  PetscBool      bc_nitsche,bc_dirichlet,bc_freeslip_nitsche,found;
+  PetscBool      bc_nitsche,bc_dirichlet,bc_freeslip_nitsche,found,mark_face;
   PetscBool      bc_strikeslip,bc_u_func_atan,bc_strike_analogue,bc_extension_neumann;
-  PetscBool      bc_strike_analogue_nitsche,bc_u_func_mixte,bc_strikeslip_neumann;
+  PetscBool      bc_strike_analogue_nitsche,bc_u_func_mixte,bc_strikeslip_neumann,bc_constant_neumann;
   PetscInt       nn;
   PetscErrorCode ierr;
 
@@ -1138,8 +1143,10 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
   bc_strike_analogue_nitsche = PETSC_FALSE;
   bc_strikeslip_neumann      = PETSC_FALSE;
   bc_extension_neumann       = PETSC_FALSE;
+  bc_constant_neumann        = PETSC_FALSE;
   bc_u_func_atan             = PETSC_FALSE;
   bc_u_func_mixte            = PETSC_FALSE;
+  mark_face                  = PETSC_FALSE;
 
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_nitsche",                &bc_nitsche,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_dirichlet",              &bc_dirichlet,&found);CHKERRQ(ierr);
@@ -1149,8 +1156,10 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_strike_analogue_nitsche",&bc_strike_analogue_nitsche,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_strikeslip_neumann",     &bc_strikeslip_neumann,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_extension_neumann",      &bc_extension_neumann,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_constant_neumann",       &bc_constant_neumann,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_u_func_atan",            &bc_u_func_atan,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_u_func_mixte",           &bc_u_func_mixte,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_mark_face",              &mark_face,&found);CHKERRQ(ierr);
 
   /* Split face location for the analogue BCs */
   data->split_face_min[0] = 290.0e3;
@@ -1200,6 +1209,9 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
   } else if (bc_extension_neumann) {
     data->bc_type = 7;
     PetscPrintf(PETSC_COMM_WORLD,"[[ BC TYPE %d: Extension in lithosphere and Neumann in asthensophere ACTIVATED ]]\n",data->bc_type);
+  } else if (bc_constant_neumann) {
+    data->bc_type = 8;
+    PetscPrintf(PETSC_COMM_WORLD,"[[ BC TYPE %d: Dirichlet X, Constant Neumann Z ACTIVATED ]]\n",data->bc_type);
   }
 
   data->u_func_type = 0;
@@ -1209,6 +1221,11 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
   } else if (bc_u_func_mixte) {
     data->u_func_type = 2;
     PetscPrintf(PETSC_COMM_WORLD,"[[ Using arctangent on Dirichlet sides and linear derivative on Navier-slip sides ]]\n");
+  }
+
+  data->mark_type = 0;
+  if (mark_face) {
+    data->mark_type = 1;
   }
 
   PetscFunctionReturn(0);
@@ -2069,6 +2086,10 @@ static PetscErrorCode ModelApplyInitialVelocityField_RiftNitsche(DM dau, Vec vel
       ierr = ModelApplyInitialVelocityField_RotatedVelocityField(dau,velocity,data);CHKERRQ(ierr);
       break;
 
+    case 8:
+      ierr = ModelApplyInitialVelocityField_RotatedVelocityField(dau,velocity,data);CHKERRQ(ierr);
+      break;
+
     default:
       SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"No velocity boundary conditions type was given. Use one of the bc options\n");
       break;
@@ -2501,7 +2522,7 @@ static PetscErrorCode ModelApplyOrthogonalExtensionFreeSlipNitsche_RiftNitsche(D
   /* Navier slip u.n = 0 on faces of normal x */
   ierr = ModelApplyNormalNavierSlip_RiftNitsche(surflist,PETSC_TRUE,data);CHKERRQ(ierr);
 
-  /* Apply base velocity from \int_{\partial \Omega} u.n */
+  /* Apply base velocity */
   u_bot = data->u_bc[1];
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&u_bot);CHKERRQ(ierr);
 
@@ -2696,11 +2717,11 @@ static PetscBool MarkAsthenosphere(Facet facets, void *ctx)
   PetscBool impose = PETSC_FALSE;
   PetscFunctionBegin;
   /* Select the entire cell based on its centroid coordinate */
-  if (facets->centroid[1] < data->y_continent[2]) { impose = PETSC_TRUE; }
+  if (facets->centroid[1] <= data->y_continent[2]) { impose = PETSC_TRUE; }
   PetscFunctionReturn(impose);
 }
 
-static PetscErrorCode ModelMarkFacetsNeumann(SurfaceConstraint sc, ModelRiftNitscheCtx *data)
+static PetscErrorCode ModelMarkFacetsNeumann_Asthenosphere(SurfaceConstraint sc, ModelRiftNitscheCtx *data)
 {
   MarkDomainFaceContext face_ctx;
   MeshEntity            mesh_entity;
@@ -2726,6 +2747,43 @@ static PetscErrorCode ModelMarkFacetsNeumann(SurfaceConstraint sc, ModelRiftNits
   face_ctx.user_data = (void*)data;
   /* Mark facets */
   ierr = MeshFacetMarkByBoundary(mesh_entity,sc->fi,NULL,(void*)&face_ctx);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelMarkFacetsNeumann_Faces(SurfaceConstraint sc, ModelRiftNitscheCtx *data)
+{
+  MeshEntity     mesh_entity;
+  PetscInt       nsides;
+  HexElementFace sides[] = { HEX_FACE_Nzeta, HEX_FACE_Pzeta };//, HEX_FACE_Neta, HEX_FACE_Nxi, HEX_FACE_Pxi
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  nsides = sizeof(sides) / sizeof(HexElementFace);
+  ierr = SurfaceConstraintGetFacets(sc,&mesh_entity);CHKERRQ(ierr);
+  ierr = MeshFacetMarkDomainFaces(mesh_entity,sc->fi,nsides,sides);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelMarkFacetsNeumann(SurfaceConstraint sc, ModelRiftNitscheCtx *data)
+{
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  switch (data->mark_type) {
+    case 0:
+      ierr = ModelMarkFacetsNeumann_Asthenosphere(sc,data);CHKERRQ(ierr);
+      break;
+
+    case 1:
+      ierr = ModelMarkFacetsNeumann_Faces(sc,data);CHKERRQ(ierr);
+      break;
+
+    default:
+      ierr = ModelMarkFacetsNeumann_Asthenosphere(sc,data);CHKERRQ(ierr);
+      break;
+  }
 
   PetscFunctionReturn(0);
 }
@@ -2792,7 +2850,7 @@ static PetscErrorCode ModelSolvePoissonPressure(pTatinCtx ptatin, ModelRiftNitsc
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode SetPoissonPressureTraction(Facet facets, const PetscReal qp_coor[], PetscReal traction[], void *ctx)
+static PetscErrorCode SetPoissonPressureTraction_CellWiseConstant(Facet facets, const PetscReal qp_coor[], PetscReal traction[], void *ctx)
 {
   PressureTractionCtx *data = (PressureTractionCtx*)ctx;
   PetscInt            eidx,k,d;
@@ -2807,9 +2865,7 @@ static PetscErrorCode SetPoissonPressureTraction(Facet facets, const PetscReal q
   eidx = facets->cell_index;
   /* Get the lithostatic pressure in the element */
   ierr = DMDAEQ1_GetScalarElementField_3D(el_pressure,(PetscInt*)&data->elnidx[data->nen*eidx],data->pressure);CHKERRQ(ierr);
-
-  //POSSIBILITY: do point location on the qp coord inside the element eidx to get local coords of the qpoint
-
+  
   /* Evaluate basis function at cell local centroid (0.0,0.0,0.0)*/
   EvaluateBasis_Q1_3D(xi_centroid,NiQ1_centroid);
   /* Compute a constant cell-wise pressure value */
@@ -2825,14 +2881,73 @@ static PetscErrorCode SetPoissonPressureTraction(Facet facets, const PetscReal q
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode SetPoissonPressureTraction(Facet facets, const PetscReal qp_coor[], PetscReal traction[], void *ctx)
+{
+  PressureTractionCtx *data = (PressureTractionCtx*)ctx;
+  MPntStd             point;
+  PetscInt            eidx,k,d;
+  PetscReal           el_pressure[Q1_NODES_PER_EL_3D];
+  PetscReal           NiQ1[Q1_NODES_PER_EL_3D];
+  //PetscReal           xi_centroid[] = { 0.0, 0.0, 0.0 };
+  PetscReal           pressure_qp;
+  PetscErrorCode      ierr;
+
+  PetscFunctionBegin;
+
+  eidx = facets->cell_index;
+  /* Get the lithostatic pressure in the element */
+  ierr = DMDAEQ1_GetScalarElementField_3D(el_pressure,(PetscInt*)&data->elnidx[data->nen*eidx],data->pressure);CHKERRQ(ierr);
+  
+  /* Use point location to get local coords of quadrature points */
+
+  /* Setup marker for point location */
+  ierr =  PetscMemzero(&point,sizeof(MPntStd));CHKERRQ(ierr);
+  ierr = PetscMemcpy(&point.coor,qp_coor,sizeof(double)*3);CHKERRQ(ierr);
+  point.wil  = eidx;
+  InverseMappingDomain_3dQ2(1.0e-10,10,PETSC_TRUE,PETSC_FALSE,
+                            (const PetscReal*)data->coor,
+                            (const PetscInt)data->m[0],(const PetscInt)data->m[1],(const PetscInt)data->m[2],
+                            (const PetscInt*)data->elnidx_q2,1,&point);
+
+  //PetscPrintf(PETSC_COMM_WORLD,"point.xi = ( %1.2e, %1.2e, %1.2e )\n",point.xi[0],point.xi[1],point.xi[2]);
+
+  /* Evaluate basis function at quadrature point local coords */
+  EvaluateBasis_Q1_3D(point.xi,NiQ1);
+  /* Compute a constant cell-wise pressure value */
+  pressure_qp = 0.0;
+  for (k=0;k<Q1_NODES_PER_EL_3D;k++) {
+    pressure_qp += el_pressure[k]*NiQ1[k];
+  }
+  /* Set Traction = -p*n (cell-wise constant) */
+  for (d=0; d<3; d++) {
+    traction[d] = -pressure_qp * facets->centroid_normal[d];
+  }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelSetNeumannConstant(pTatinCtx ptatin, SurfaceConstraint sc, ModelRiftNitscheCtx *data)
+{
+  PetscReal data_neumann[3];
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  data_neumann[0] = data_neumann[1] = data_neumann[2] = 0.0;
+  SURFC_CHKSETVALS(SC_TRACTION,user_traction_set_constant);
+  ierr = SurfaceConstraintSetValues_TRACTION(sc,(SurfCSetValuesTraction)user_traction_set_constant,(void*)&data_neumann);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode ModelSetNeumannPoissonPressure(pTatinCtx ptatin, SurfaceConstraint sc, ModelRiftNitscheCtx *data)
 {
   PDESolveLithoP      poisson_pressure;
   PressureTractionCtx data_neumann;
-  Vec                 P_local;
-  PetscInt            nel_p,nen_p;
-  const PetscInt      *elnidx_p;
+  DM                  cda;
+  Vec                 P_local,gcoords;
+  PetscInt            nel_p,nen_p,nel_u,nen_u,lmx,lmy,lmz;
+  const PetscInt      *elnidx_p,*elnidx_u;
   PetscReal           *LA_pressure_local;
+  PetscScalar         *LA_gcoords;
   PetscErrorCode      ierr;
 
   PetscFunctionBegin;
@@ -2841,9 +2956,24 @@ static PetscErrorCode ModelSetNeumannPoissonPressure(pTatinCtx ptatin, SurfaceCo
 
   /* Get Q1 elements connectivity table */
   ierr = DMDAGetElements(poisson_pressure->da,&nel_p,&nen_p,&elnidx_p);CHKERRQ(ierr);
+  /* Get elements number on local rank */
+  ierr = DMDAGetLocalSizeElementQ2(sc->fi->dm,&lmx,&lmy,&lmz);CHKERRQ(ierr);
+  /* Get Q2 elements connectivity table */
+  ierr = DMDAGetElements_pTatinQ2P1(sc->fi->dm,&nel_u,&nen_u,&elnidx_u);CHKERRQ(ierr);
+  /* Get coordinates */
+  ierr = DMGetCoordinateDM(sc->fi->dm,&cda);CHKERRQ(ierr);
+  ierr = DMGetCoordinatesLocal(sc->fi->dm,&gcoords);CHKERRQ(ierr);
+  ierr = VecGetArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
+
   /* Attach element information to the data structure */
-  data_neumann.nen    = nen_p;
-  data_neumann.elnidx = elnidx_p;
+  data_neumann.nen       = nen_p;
+  data_neumann.elnidx    = elnidx_p;
+  data_neumann.elnidx_q2 = elnidx_u;
+  data_neumann.m[0]      = lmx;
+  data_neumann.m[1]      = lmy;
+  data_neumann.m[2]      = lmz;
+  /* Attach coords array to the data structure */
+  data_neumann.coor = LA_gcoords;
 
   /* Get the values of the lithostatic pressure solution vector at local rank */
   ierr = DMGetLocalVector(poisson_pressure->da,&P_local);CHKERRQ(ierr);
@@ -2864,7 +2994,27 @@ static PetscErrorCode ModelSetNeumannPoissonPressure(pTatinCtx ptatin, SurfaceCo
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ModelApplyBoundaryConditionsNeumannAsthenosphere(pTatinCtx ptatin, SurfBCList surflist, PetscBool insert_if_not_found, ModelRiftNitscheCtx *data)
+static PetscErrorCode ModelApplyBoundaryConditionsNeumannPoissonPressure(pTatinCtx ptatin, SurfaceConstraint sc, ModelRiftNitscheCtx *data)
+{
+  PetscErrorCode    ierr;
+  PetscFunctionBegin;
+  /* Perform the solve to get the poisson pressure */
+
+  if (ptatin->step == 0) {
+    ierr = ModelSolvePoissonPressure(ptatin,data);CHKERRQ(ierr);
+  }
+
+  if (ptatin->step != data->prev_step) {
+    ierr = ModelSolvePoissonPressure(ptatin,data);CHKERRQ(ierr);
+    data->prev_step = ptatin->step;
+  }
+  /* Apply pressure to the traction on quadpoints */
+  ierr = ModelSetNeumannPoissonPressure(ptatin,sc,data);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelApplyBoundaryConditionsNeumann(pTatinCtx ptatin, SurfBCList surflist, PetscBool insert_if_not_found, ModelRiftNitscheCtx *data)
 {
   SurfaceConstraint sc;
   PetscErrorCode    ierr;
@@ -2880,18 +3030,23 @@ static PetscErrorCode ModelApplyBoundaryConditionsNeumannAsthenosphere(pTatinCtx
   /* Mark facets on which we apply the constraint */
   ierr = ModelMarkFacetsNeumann(sc,data);
 
-  /* Perform the solve to get the poisson pressure */
+  switch (data->bc_type) {
+    case 6:
+      ierr = ModelApplyBoundaryConditionsNeumannPoissonPressure(ptatin,sc,data);CHKERRQ(ierr);
+      break;
 
-  if (ptatin->step == 0) {
-    ierr = ModelSolvePoissonPressure(ptatin,data);CHKERRQ(ierr);
-  }
+    case 7:
+      ierr = ModelApplyBoundaryConditionsNeumannPoissonPressure(ptatin,sc,data);CHKERRQ(ierr);
+      break;
 
-  if (ptatin->step != data->prev_step) {
-    ierr = ModelSolvePoissonPressure(ptatin,data);CHKERRQ(ierr);
-    data->prev_step = ptatin->step;
+    case 8:
+      //ierr = ModelSetNeumannConstant(ptatin,sc,data);CHKERRQ(ierr);
+      ierr = ModelApplyBoundaryConditionsNeumannPoissonPressure(ptatin,sc,data);CHKERRQ(ierr);
+      break;
+
+    default:
+      break;
   }
-  /* Apply pressure to the traction on quadpoints */
-  ierr = ModelSetNeumannPoissonPressure(ptatin,sc,data);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -2915,6 +3070,37 @@ static PetscErrorCode ModelApplyBoundaryConditionsNavierSlipLithosphere(SurfBCLi
   /* Apply */
   SURFC_CHKSETVALS(SC_NITSCHE_GENERAL_SLIP,GeneralNavierSlipBC);
   ierr = SurfaceConstraintSetValuesStrainRate_NITSCHE_GENERAL_SLIP(sc,(SurfCSetValuesNitscheGeneralSlip)GeneralNavierSlipBC,(void*)data);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelApplyDirichletX_NeumannConstantZ(
+  pTatinCtx ptatin,
+  DM dav, 
+  BCList bclist, 
+  SurfBCList surflist, 
+  PetscBool insert_if_not_found,
+  ModelRiftNitscheCtx *data)
+{
+  PetscReal      u_xp,u_xn,zero=0.0;;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  //user_traction_set_constant
+
+  u_xp = data->u_bc[0];
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_constant,(void*)&u_xp);CHKERRQ(ierr);  
+  u_xn = -data->u_bc[0];
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_constant,(void*)&u_xn);CHKERRQ(ierr);
+
+  u_xp = data->u_bc[2];
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,2,BCListEvaluator_constant,(void*)&u_xp);CHKERRQ(ierr);
+  u_xn = -data->u_bc[2];
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,2,BCListEvaluator_constant,(void*)&u_xn);CHKERRQ(ierr);
+
+  ierr = ModelApplyBoundaryConditionsNeumann(ptatin,surflist,PETSC_TRUE,data);CHKERRQ(ierr);
+
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMAX_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -2943,7 +3129,7 @@ static PetscErrorCode ModelApplyRotatedStrikeSlipNavierNeumann_RiftNitsche(
   /* Apply General Navier Slip BC on IMAX and IMIN faces */
   ierr = ModelApplyBoundaryConditionsNavierSlipLithosphere(surflist,insert_if_not_found,data);CHKERRQ(ierr);
   /* Apply Neumann BC in the asthenosphere */
-  ierr = ModelApplyBoundaryConditionsNeumannAsthenosphere(ptatin,surflist,PETSC_TRUE,data);CHKERRQ(ierr);
+  ierr = ModelApplyBoundaryConditionsNeumann(ptatin,surflist,PETSC_TRUE,data);CHKERRQ(ierr);
 
   /* Apply base velocity from u.n */
   u_bot = data->u_bc[1];
@@ -2977,7 +3163,7 @@ static PetscErrorCode ModelApplyExtensionNeumann_RiftNitsche(
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,data->component,BCListEvaluator_Lithosphere,(void*)data);CHKERRQ(ierr);
 
   /* Apply Neumann BC in the asthenosphere */
-  ierr = ModelApplyBoundaryConditionsNeumannAsthenosphere(ptatin,surflist,PETSC_TRUE,data);CHKERRQ(ierr);
+  ierr = ModelApplyBoundaryConditionsNeumann(ptatin,surflist,PETSC_TRUE,data);CHKERRQ(ierr);
 
   /* Apply base velocity from u.n */
   u_bot = data->u_bc[1];
@@ -3025,6 +3211,10 @@ static PetscErrorCode ModelApplyBoundaryConditionsVelocity_RiftNitsche(pTatinCtx
 
     case 7:
       ierr = ModelApplyExtensionNeumann_RiftNitsche(ptatin,dav,bclist,surflist,insert_if_not_found,data);CHKERRQ(ierr);
+      break;
+
+    case 8:
+      ierr = ModelApplyDirichletX_NeumannConstantZ(ptatin,dav,bclist,surflist,insert_if_not_found,data);CHKERRQ(ierr);
       break;
 
     default:

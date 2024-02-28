@@ -15,6 +15,8 @@ typedef struct {
   PetscReal time_full_velocity;
   /* General Navier Slip BCs */
   PetscReal epsilon_s[6],H[6],t1_hat[3],n_hat[3];
+  /* Neumann BCs */
+  PetscInt mark_type;
   /* Number of materials */
   PetscInt  n_phases;
   /* Scaling values */
@@ -43,9 +45,11 @@ typedef struct {
 } ModelRiftNitscheCtx;
 
 typedef struct {
-  PetscInt          nen;
+  PetscInt          nen,m[3];
   const PetscInt    *elnidx;
+  const PetscInt    *elnidx_q2;
   PetscReal         *pressure;
+  PetscScalar       *coor;
 } PressureTractionCtx;
 
 #endif
