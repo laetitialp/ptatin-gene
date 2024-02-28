@@ -185,4 +185,6 @@ PetscErrorCode SurfaceConstraintNitscheDirichlet_SetPenalty(SurfaceConstraint sc
 PetscErrorCode SurfaceConstraintNitscheNavierSlip_SetPenalty(SurfaceConstraint sc,PetscReal penalty);
 PetscErrorCode SurfaceConstraintNitscheGeneralSlip_SetPenalty(SurfaceConstraint sc,PetscReal penalty);
 
+PetscErrorCode user_traction_set_constant(Facet F,const PetscReal qp_coor[],PetscReal traction[],void *data);
+
 #endif
