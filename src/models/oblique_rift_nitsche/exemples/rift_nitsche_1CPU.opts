@@ -24,9 +24,9 @@
 -model_rift_nitsche_Ox 0.0
 -model_rift_nitsche_Oy -250.0e3
 -model_rift_nitsche_Oz 0.0
--model_rift_nitsche_Lx 1200.0e3
+-model_rift_nitsche_Lx 600.0e3
 -model_rift_nitsche_Ly 0.0
--model_rift_nitsche_Lz 600.0e3
+-model_rift_nitsche_Lz 300.0e3
 -model_rift_nitsche_y_continent -25.0e3,-35.0e3,-120.0e3
 ########### Weak zones ##########
 #-model_rift_nitsche_wz_notch
@@ -37,11 +37,11 @@
 #-model_rift_nitsche_wz_double
 #-model_rift_nitsche_wz_straight_gauss
 #-model_rift_nitsche_wz_oblique_gauss
--model_rift_nitsche_wz_sigma 3e+5,3e+5
--model_rift_nitsche_wz_n_notches 3
--model_rift_nitsche_wz_centre0 213.630e3,196.472e3
--model_rift_nitsche_wz_centre1 574.118e3,396.593e3
--model_rift_nitsche_wz_centre2 1025.19e3,258.639e3
+-model_rift_nitsche_wz_sigma 6e+5,6e+5
+-model_rift_nitsche_wz_n_notches 2
+-model_rift_nitsche_wz_centre0 496122.8125,174080.84375
+-model_rift_nitsche_wz_centre1 103877.203125,125919.1484375
+#-model_rift_nitsche_wz_centre2 1025.19e3,258.639e3
 -model_rift_nitsche_wz_origin 300.0e3 # Centre z
 -model_rift_nitsche_wz_offset -200.0e3
 -model_rift_nitsche_wz_width 100.0e3
@@ -56,8 +56,8 @@
 -model_rift_nitsche_bc_atan_sharpness 8.0e-5
 -model_rift_nitsche_bc_atan_offset 300.0e3
 -model_rift_nitsche_norm_u 1.0 # cm/yr
--model_rift_nitsche_alpha_u 90.0 # Degree
--model_rift_nitsche_alpha_r -15.0 # Degree
+-model_rift_nitsche_alpha_u 45.0 # Degree
+-model_rift_nitsche_alpha_r 0.0 #-15.0 # Degree
 -model_rift_nitsche_mathcalH 0,1,0,1,1,1 # default
 -model_rift_nitsche_Ttop 0.0
 -model_rift_nitsche_Tbottom 1450.0

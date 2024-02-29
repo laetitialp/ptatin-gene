@@ -253,6 +253,12 @@ PetscErrorCode SurfaceConstraintSetType(SurfaceConstraint sc, SurfaceConstraintT
       ierr = _SetType_NITSCHE_GENERAL_SLIP(sc);CHKERRQ(ierr);
       break;
 
+    case SC_DIRICHLET:
+      ierr = _SetType_NONE(sc);CHKERRQ(ierr);
+      sc->type = SC_DIRICHLET;
+      DataBucketFinalize(sc->properties_db);
+      break;
+
     default:
       SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_SUP,"SurfaceConstraint type %d not implemented",(int)type);
       break;
@@ -885,7 +891,6 @@ PetscErrorCode SurfaceConstraintFSSA_SetTimestep(SurfaceConstraint sc,PetscReal 
   PetscFunctionReturn(0);
 }
 
-
 PetscErrorCode SurfaceConstraintSetValues(SurfaceConstraint sc,SurfCSetValuesGeneric set,void *data)
 
 {
@@ -922,6 +927,10 @@ PetscErrorCode SurfaceConstraintSetValues(SurfaceConstraint sc,SurfCSetValuesGen
 
     case SC_NITSCHE_GENERAL_SLIP:
       ierr = SurfaceConstraintSetValues_NITSCHE_GENERAL_SLIP(sc, (SurfCSetValuesNitscheGeneralSlip)set, data);CHKERRQ(ierr);
+      break;
+
+    case SC_DIRICHLET:
+      PetscPrintf(PETSC_COMM_SELF,"[Warning] SurfaceConstraintSetValues: type DIRICHLET does not have a setter");
       break;
 
     default:
@@ -1477,3 +1486,87 @@ PetscErrorCode compute_global_penalty_nitsche(SurfaceConstraint sc,PetscInt type
   PetscFunctionReturn(0);
 }
 
+#if 1
+PetscErrorCode DMDABCListTraverseFacets3d(BCList list,DM da,SurfaceConstraint sc,PetscInt dof_idx,PetscBool (*eval)(PetscScalar*,PetscScalar*,void*),void *ctx)
+{
+  ConformingElementFamily element = NULL;
+  Facet                   cell_facet;
+  PetscInt                d,e,k,L,M,N,P,ndof,facet_index,cell_side,cell_index,nel,nen;
+  PetscInt                *idx;
+  const PetscInt          *elnidx;
+  PetscScalar             *vals;
+  PetscScalar             bc_val,elcoords[3*Q2_NODES_PER_EL_3D];
+  PetscBool               impose_dirichlet;
+  PetscErrorCode          ierr;
+
+  MPI_Comm       comm;
+  PetscMPIInt    rank;
+
+  PetscFunctionBegin;
+
+  comm = PetscObjectComm((PetscObject)da);
+  ierr = MPI_Comm_rank(comm,&rank);CHKERRQ(ierr);
+
+  if (sc->type != SC_DIRICHLET) {
+    PetscPrintf(PetscObjectComm((PetscObject)sc->dm),"[ignoring] SurfaceConstraintSetValues_TRACTION() called with different type on object with name \"%s\"\n",sc->name);
+    PetscFunctionReturn(0);
+  }
+
+  if (!sc->dm) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->dm. Must call SurfaceConstraintSetDM() first");
+  if (!sc->quadrature) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->surfQ. Must call SurfaceConstraintSetQuadrature() first");
+  if (!sc->facets->set_values_called) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Facets have not been selected");
+
+  element = sc->fi->element;
+
+  ierr = DMDAGetInfo(sc->fi->dm,NULL, &M,&N,&P, NULL,NULL,NULL, &ndof,NULL, NULL,NULL,NULL, NULL);CHKERRQ(ierr);
+  /* Get Q2 elements connectivity table */
+  ierr = MeshFacetInfoGetCoords(sc->fi);CHKERRQ(ierr);
+  ierr = FacetCreate(&cell_facet);CHKERRQ(ierr);
+  ierr = DMDAGetElements_pTatinQ2P1(sc->fi->dm,&nel,&nen,&elnidx);CHKERRQ(ierr);
+
+  ierr = BCListGetGlobalIndices(list,&L,&idx);
+  ierr = BCListGetGlobalValues(list,&L,&vals);
+
+  for (e=0; e<sc->facets->n_entities; e++) {
+    int      *face_local_indices = NULL;
+    PetscInt vel_el_lidx[3*U_BASIS_FUNCTIONS];
+
+    facet_index = sc->facets->local_index[e];            /* facet local index */
+    cell_side   = sc->fi->facet_label[facet_index];      /* side label */
+    cell_index  = sc->fi->facet_cell_index[facet_index];
+
+    ierr = FacetPack(cell_facet, facet_index, sc->fi);CHKERRQ(ierr);
+
+    face_local_indices = element->face_node_list[cell_side];
+
+    ierr = StokesVelocity_GetElementLocalIndices(vel_el_lidx,(PetscInt*)&elnidx[nen*cell_index]);CHKERRQ(ierr);
+    ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx[nen*cell_index],(PetscReal*)sc->fi->_mesh_coor);CHKERRQ(ierr);
+
+    for (k=0; k<Q2_NODES_PER_EL_2D; k++) {
+      PetscInt    blockloc,loc,nidx3d;   
+      PetscScalar pos[3];
+
+      nidx3d   = face_local_indices[k];
+      blockloc = elnidx[nen*cell_index + nidx3d]; 
+      loc      = vel_el_lidx[ ndof*nidx3d + dof_idx ];  //blockloc*ndof+dof_idx;
+      PetscPrintf(PETSC_COMM_SELF,"rank[%d]: facet_index = %d, cell_side = %d, cell_index = %d, nidx3d = %d, blockloc = %d, loc = %d\n",rank,facet_index,cell_side,cell_index,nidx3d,blockloc,loc);
+      for (d=0; d<3; d++) {
+        pos[d] = elcoords[3*nidx3d + d];
+      }
+
+      impose_dirichlet = eval(pos,&bc_val,ctx);
+
+      idx[loc] = BCList_DIRICHLET;
+      vals[loc] = bc_val;
+    }
+  }
+
+  ierr = FacetDestroy(&cell_facet);CHKERRQ(ierr);
+  ierr = MeshFacetInfoRestoreCoords(sc->fi);CHKERRQ(ierr);
+
+  ierr = BCListRestoreGlobalIndices(list,&L,&idx);
+  ierr = BCListGlobalToLocal(list);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+#endif

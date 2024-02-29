@@ -642,6 +642,10 @@ PetscErrorCode DMDABCListTraverse3d(BCList list,DM da,DMDABCListConstraintLoc do
   PetscScalar    pos[3];
   PetscScalar    *vals,bc_val;
   PetscBool      impose_dirichlet;
+
+  MPI_Comm       comm;
+  PetscMPIInt    rank;
+
   PetscErrorCode ierr;
 
   ierr = DMDAGetInfo(da,NULL, &M,&N,&P, NULL,NULL,NULL, &ndof,NULL, NULL,NULL,NULL, NULL);CHKERRQ(ierr);
@@ -655,6 +659,9 @@ PetscErrorCode DMDABCListTraverse3d(BCList list,DM da,DMDABCListConstraintLoc do
 
   ierr = BCListGetGlobalIndices(list,&L,&idx);
   ierr = BCListGetGlobalValues(list,&L,&vals);
+
+  comm = PetscObjectComm((PetscObject)da);
+  ierr = MPI_Comm_rank(comm,&rank);CHKERRQ(ierr);
 
   switch (doflocation) {
     /* volume */
@@ -736,6 +743,7 @@ PetscErrorCode DMDABCListTraverse3d(BCList list,DM da,DMDABCListConstraintLoc do
             pos[1] = LA_coords[k][j][i].y;
             pos[2] = LA_coords[k][j][i].z;
 
+            PetscPrintf(PETSC_COMM_SELF,"rank[%d]: i,j,k = ( %d, %d, %d ) / si,sj,sk = ( %d, %d, %d ) / m,n,p = ( %d, %d, %d ), blockloc = %d, loc = %d\n",rank,i,j,k,si,sj,sk,m,n,p,blockloc,loc);
             impose_dirichlet = eval(pos,&bc_val,ctx);
             if (impose_dirichlet) {
               idx[loc] = BCList_DIRICHLET;

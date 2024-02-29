@@ -7,6 +7,7 @@
 #include <data_bucket.h>
 #include <quadrature.h>
 #include <mesh_entity.h>
+#include <dmda_bcs.h>
 
 typedef enum {
   SC_NONE = 0,
@@ -15,7 +16,8 @@ typedef enum {
   SC_FSSA,
   SC_NITSCHE_DIRICHLET,
   SC_NITSCHE_NAVIER_SLIP,
-  SC_NITSCHE_GENERAL_SLIP
+  SC_NITSCHE_GENERAL_SLIP,
+  SC_DIRICHLET
 } SurfaceConstraintType;
 
 
@@ -185,4 +187,5 @@ PetscErrorCode SurfaceConstraintNitscheDirichlet_SetPenalty(SurfaceConstraint sc
 PetscErrorCode SurfaceConstraintNitscheNavierSlip_SetPenalty(SurfaceConstraint sc,PetscReal penalty);
 PetscErrorCode SurfaceConstraintNitscheGeneralSlip_SetPenalty(SurfaceConstraint sc,PetscReal penalty);
 
+PetscErrorCode DMDABCListTraverseFacets3d(BCList list,DM da,SurfaceConstraint sc,PetscInt dof_idx,PetscBool (*eval)(PetscScalar*,PetscScalar*,void*),void *ctx);
 #endif
