@@ -53,44 +53,41 @@ static PetscLogEvent   PTATIN_MaterialPointPopulationControlRemove;
 
 static PetscErrorCode ModelInitialGeometry_RiftNitsche(ModelRiftNitscheCtx *data)
 {
-  PetscInt       nn;
+  PetscInt       nn,d;
   PetscBool      found;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
 
   /* box geometry, [m] */
-  data->Lx = 1000.0e3; 
-  data->Ly = 0.0e3;
-  data->Lz = 600.0e3;
-  data->Ox = 0.0e3;
-  data->Oy = -250.0e3;
-  data->Oz = 0.0e3;
+  data->L[0] = 1000.0e3; 
+  data->L[1] = 0.0e3;
+  data->L[2] = 600.0e3;
+  data->O[0] = 0.0e3;
+  data->O[1] = -250.0e3;
+  data->O[2] = 0.0e3;
 
   data->y_continent[0] = -25.0e3;  // Conrad
   data->y_continent[1] = -35.0e3;  // Moho
   data->y_continent[2] = -120.0e3; // LAB
 
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-Lx",&data->Lx,&found);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-Ly",&data->Ly,&found);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-Lz",&data->Lz,&found);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-Ox",&data->Ox,&found);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-Oy",&data->Oy,&found);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-Oz",&data->Oz,&found);CHKERRQ(ierr);
+  nn = 3;
+  ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME_R,"-O",data->O,&nn,&found);CHKERRQ(ierr);
+  if (found) { if (nn != 3) { SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 3 values for -O. Found %d",nn); } }
+
+  nn = 3;
+  ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME_R,"-L",data->L,&nn,&found);CHKERRQ(ierr);
+  if (found) { if (nn != 3) { SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 3 values for -L. Found %d",nn); } }
 
   nn = 3;
   ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME_R,"-y_continent",data->y_continent,&nn,&found);CHKERRQ(ierr);
-  if (found) {
-    if (nn != 3) {
-      SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 3 values for -y_continent. Found %d",nn);
-    }
-  }
+  if (found) { if (nn != 3) { SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 3 values for -y_continent. Found %d",nn); } }
 
   /* reports before scaling */
   PetscPrintf(PETSC_COMM_WORLD,"************ Box Geometry ************\n",NULL);
-  PetscPrintf(PETSC_COMM_WORLD,"[Ox,Lx] = [%+1.4e [m], %+1.4e [m]]\n", data->Ox ,data->Lx );
-  PetscPrintf(PETSC_COMM_WORLD,"[Oy,Ly] = [%+1.4e [m], %+1.4e [m]]\n", data->Oy ,data->Ly );
-  PetscPrintf(PETSC_COMM_WORLD,"[Oz,Lz] = [%+1.4e [m], %+1.4e [m]]\n", data->Oz ,data->Lz );
+  for (d=0; d<3; d++) {
+    PetscPrintf(PETSC_COMM_WORLD,"[ O[%d] , L[%d] ] = [ %+1.4e [m], %+1.4e [m] ]\n", d, d, data->O[d] ,data->L[d] );
+  }
   PetscPrintf(PETSC_COMM_WORLD,"********** Initial layering **********\n",NULL);
   PetscPrintf(PETSC_COMM_WORLD,"Conrad: %+1.4e [m]\n", data->y_continent[0]);
   PetscPrintf(PETSC_COMM_WORLD,"Moho:   %+1.4e [m]\n", data->y_continent[1]);
@@ -125,11 +122,6 @@ static PetscErrorCode ModelInitialBoundaryVelocity_RiftNitsche(ModelRiftNitscheC
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-alpha_r",&data->alpha_r,NULL);CHKERRQ(ierr);
   data->alpha_r = data->alpha_r * M_PI/180.0;
 
-  data->atan_sharpness = 5.0e-4;
-  data->atan_offset = 300.0e3;
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-bc_atan_sharpness",&data->atan_sharpness,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-bc_atan_offset",&data->atan_offset,NULL);CHKERRQ(ierr);
-
   data->time_full_velocity = 1.0;
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-bc_time_full_velocity",&data->time_full_velocity,NULL);CHKERRQ(ierr);
 
@@ -143,44 +135,17 @@ static PetscErrorCode ModelInitialBoundaryVelocity_RiftNitsche(ModelRiftNitscheC
 static PetscErrorCode ModelAnalyticalVelocityFunction_Linear(PetscReal position[], PetscReal u[], ModelRiftNitscheCtx *data)
 {
   PetscFunctionBegin;
-  u[0] = 2.0/(data->Lz - data->Oz) * position[2] * data->u_bc[0] - data->u_bc[0];
-  u[1] = 2.0*(position[1] - data->Ly)*data->u_bc[2]*(data->Ly - data->Oy)/((data->Lz - data->Oz)*(data->Oy - data->Ly));
-  u[2] = 2.0/(data->Lz - data->Oz) * position[2] * data->u_bc[2] - data->u_bc[2];
-  PetscFunctionReturn(0);
-}
-
-static PetscErrorCode ModelAnalyticalVelocityFunction_Arctan(PetscReal position[], PetscReal u[], ModelRiftNitscheCtx *data)
-{
-  PetscFunctionBegin;
-  u[0] = 2.0/M_PI * data->u_bc[0] * PetscAtanReal(data->atan_sharpness*(position[2]-data->atan_offset));
-  u[1] = 2.0*(position[1] - data->Ly)*data->u_bc[2]*(data->Ly - data->Oy)/((data->Lz - data->Oz)*(data->Oy - data->Ly));
-  u[2] = 2.0/M_PI * data->u_bc[2] * PetscAtanReal(data->atan_sharpness*(position[2]-data->atan_offset));
+  u[0] = 2.0/(data->L[2] - data->O[2]) * position[2] * data->u_bc[0] - data->u_bc[0];
+  u[1] = 2.0*(position[1] - data->L[1])*data->u_bc[2]*(data->L[1] - data->O[1])/((data->L[2] - data->O[2])*(data->O[1] - data->L[1]));
+  u[2] = 2.0/(data->L[2] - data->O[2]) * position[2] * data->u_bc[2] - data->u_bc[2];
   PetscFunctionReturn(0);
 }
 
 static PetscErrorCode ModelAnalyticalVelocityFunction(PetscReal position[], PetscReal u[], ModelRiftNitscheCtx *data)
 {
   PetscErrorCode ierr;
-
   PetscFunctionBegin;
-  switch(data->u_func_type) {
-    case 0:
-      ierr = ModelAnalyticalVelocityFunction_Linear(position,u,data);CHKERRQ(ierr);
-      break;
-
-    case 1:
-      ierr = ModelAnalyticalVelocityFunction_Arctan(position,u,data);CHKERRQ(ierr);
-      break;
-
-    case 2:
-      ierr = ModelAnalyticalVelocityFunction_Arctan(position,u,data);CHKERRQ(ierr);
-      break;
-
-    default:
-      ierr = ModelAnalyticalVelocityFunction_Linear(position,u,data);CHKERRQ(ierr);
-      break;
-  }
-
+  ierr = ModelAnalyticalVelocityFunction_Linear(position,u,data);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -249,9 +214,9 @@ static PetscErrorCode RotateReferential(PetscReal position[], PetscReal coords_r
   PetscFunctionBegin;
 
   /* Translate to (0,0,0) */
-  coords[0] = position[0] - 0.5*(data->Lx + data->Ox);
-  coords[1] = position[1] - 0.5*(data->Ly + data->Oy);
-  coords[2] = position[2] - 0.5*(data->Lz + data->Oz);
+  coords[0] = position[0] - 0.5*(data->L[0] + data->O[0]);
+  coords[1] = position[1] - 0.5*(data->L[1] + data->O[1]);
+  coords[2] = position[2] - 0.5*(data->L[2] + data->O[2]);
 
   /* Rotate */
   if (ccw) {
@@ -262,9 +227,9 @@ static PetscErrorCode RotateReferential(PetscReal position[], PetscReal coords_r
   ierr = Rotate_u(angle,r,coords,coords_r);CHKERRQ(ierr);
 
   /* Translate back */
-  coords_rt[0] = coords_r[0] + 0.5*(data->Lx + data->Ox);
-  coords_rt[1] = coords_r[1] + 0.5*(data->Ly + data->Oy);
-  coords_rt[2] = coords_r[2] + 0.5*(data->Lz + data->Oz);
+  coords_rt[0] = coords_r[0] + 0.5*(data->L[0] + data->O[0]);
+  coords_rt[1] = coords_r[1] + 0.5*(data->L[1] + data->O[1]);
+  coords_rt[2] = coords_r[2] + 0.5*(data->L[2] + data->O[2]);
   PetscFunctionReturn(0);
 }
 
@@ -301,9 +266,9 @@ static PetscErrorCode ModelSetGeneralSlipBoundaryValues_ObliqueExtensionZ(ModelR
 
   data->epsilon_s[0] = 0.0;                                         // E_xx
   data->epsilon_s[1] = 0.0;                                         // E_yy
-  data->epsilon_s[2] = 2.0 / (data->Lz - data->Oz) * data->u_bc[2]; // E_zz
+  data->epsilon_s[2] = 2.0 / (data->L[2] - data->O[2]) * data->u_bc[2]; // E_zz
   data->epsilon_s[3] = 0.0;                                         // E_xy
-  data->epsilon_s[4] = 1.0 / (data->Lz - data->Oz) * data->u_bc[0]; // E_xz
+  data->epsilon_s[4] = 1.0 / (data->L[2] - data->O[2]) * data->u_bc[0]; // E_xz
   data->epsilon_s[5] = 0.0;                                         // E_yz
 
   /* Do not worry if the norm of these vectors is not 1, it is handled internally */
@@ -345,10 +310,10 @@ static PetscErrorCode ModelRotateStrainRateBoundaryValue(ModelRiftNitscheCtx *da
 
   E[0][0] = 0.0; 
   E[1][1] = 0.0;
-  E[2][2] = 2.0 / (data->Lz - data->Oz) * data->u_bc[2];
+  E[2][2] = 2.0 / (data->L[2] - data->O[2]) * data->u_bc[2];
 
   E[0][1] = 0.0;
-  E[0][2] = 1.0 / (data->Lz - data->Oz) * data->u_bc[0];
+  E[0][2] = 1.0 / (data->L[2] - data->O[2]) * data->u_bc[0];
   E[1][2] = 0.0;
 
   E[1][0] = E[0][1];
@@ -401,7 +366,7 @@ static PetscErrorCode ModelSetGeneralSlipBoundaryValues_RotatedVelocityField(Mod
   if (found) {if (nn != 6) { SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Wrong number of entries for -mathcalH, expected 6, passed %d",nn); } }
   PetscFunctionReturn(0);
 }
-
+// TODO: Modify this function because there is too much redundant code
 static PetscErrorCode ModelSetGeneralSlipBoundaryValues_RiftNitsche(ModelRiftNitscheCtx *data)
 {
   PetscErrorCode ierr;
@@ -453,364 +418,6 @@ static PetscErrorCode ModelSetGeneralSlipBoundaryValues_RiftNitsche(ModelRiftNit
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ModelSetMaterialParametersVISCOUS_RiftNitsche(pTatinCtx c,DataBucket materialconstants, ModelRiftNitscheCtx *data)
-{
-  PetscInt       region_idx;
-  PetscReal      density,viscosity;
-  char           *option_name;
-  PetscErrorCode ierr;
-
-  PetscFunctionBegin;
-
-  for (region_idx=0; region_idx<data->n_phases; region_idx++) {
-    MaterialConstantsSetValues_MaterialType(materialconstants,region_idx,VISCOUS_CONSTANT,PLASTIC_NONE,SOFTENING_NONE,DENSITY_CONSTANT);
-    /* Set region viscosity */
-    viscosity = 1.0e+23;
-    if (asprintf (&option_name, "-eta0_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&viscosity,NULL);CHKERRQ(ierr); 
-    free (option_name);
-    ierr = MaterialConstantsSetValues_ViscosityConst(materialconstants,region_idx,viscosity);CHKERRQ(ierr);
-    
-    /* Set region density */
-    density = 2700.0;
-    if (asprintf (&option_name, "-rho0_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&density,NULL);CHKERRQ(ierr);
-    free (option_name);
-    ierr = MaterialConstantsSetValues_DensityConst(materialconstants,region_idx,density);CHKERRQ(ierr);
-  }
-
-  for (region_idx=0; region_idx<data->n_phases; region_idx++) {
-    MaterialConstantsPrintAll(materialconstants,region_idx);
-  }
-
-  PetscFunctionReturn(0);
-}
-
-static PetscErrorCode ModelSetMaterialParametersConstantVPT_RiftNitsche(pTatinCtx c,DataBucket materialconstants, ModelRiftNitscheCtx *data)
-{
-  DataField                 PField,PField_k,PField_Q;
-  EnergyConductivityConst   *data_k;
-  EnergySourceConst         *data_Q;
-  EnergyMaterialConstants   *matconstants_e;
-  PetscInt                  region_idx;
-  int                       source_type[7] = {0, 0, 0, 0, 0, 0, 0};
-  PetscReal                 viscosity;
-  PetscReal                 phi,phi_inf,Co,Co_inf,Tens_cutoff,Hst_cutoff,eps_min,eps_max;
-  PetscReal                 beta,alpha,rho,heat_source,conductivity,Cp;
-  char                      *option_name;
-  PetscErrorCode            ierr;
-
-  PetscFunctionBegin;
-
-  /* Material constants */
-  ierr = MaterialConstantsSetDefaults(materialconstants);CHKERRQ(ierr);
-  
-  /* Energy material constants */
-  DataBucketGetDataFieldByName(materialconstants,EnergyMaterialConstants_classname,&PField);
-  DataFieldGetEntries(PField,(void**)&matconstants_e);
-  
-  /* Conductivity */
-  DataBucketGetDataFieldByName(materialconstants,EnergyConductivityConst_classname,&PField_k);
-  DataFieldGetEntries(PField_k,(void**)&data_k);
-  
-  /* Heat source */
-  DataBucketGetDataFieldByName(materialconstants,EnergySourceConst_classname,&PField_Q);
-  DataFieldGetEntries(PField_Q,(void**)&data_Q);
-
-  /* Set default values for parameters */
-  source_type[0] = ENERGYSOURCE_CONSTANT;
-  source_type[1] = ENERGYSOURCE_SHEAR_HEATING;
-  Cp             = 800.0;
-  /* Set material parameters from options file */
-  for (region_idx=0; region_idx<data->n_phases; region_idx++) {
-    /* Set material constitutive laws */
-    ierr = MaterialConstantsSetValues_MaterialType(materialconstants,region_idx,VISCOUS_CONSTANT,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_BOUSSINESQ);CHKERRQ(ierr);
-
-    /* VISCOUS PARAMETERS */
-    viscosity = 1.0e+23;
-    if (asprintf (&option_name, "-eta0_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&viscosity,NULL);CHKERRQ(ierr); 
-    free (option_name);
-    ierr = MaterialConstantsSetValues_ViscosityConst(materialconstants,region_idx,viscosity);CHKERRQ(ierr);
-
-    /* PLASTIC PARAMETERS */
-    if (asprintf (&option_name, "-phi_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&phi,NULL);CHKERRQ(ierr);
-    free (option_name);
-    if (asprintf (&option_name, "-phi_inf_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&phi_inf,NULL);CHKERRQ(ierr);
-    free (option_name);
-    if (asprintf (&option_name, "-Co_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&Co,NULL);CHKERRQ(ierr);
-    free (option_name);
-    if (asprintf (&option_name, "-Co_inf_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&Co_inf,NULL);CHKERRQ(ierr);
-    free (option_name);
-    if (asprintf (&option_name, "-Tens_cutoff_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&Tens_cutoff,NULL);CHKERRQ(ierr);
-    free (option_name);
-    if (asprintf (&option_name, "-Hst_cutoff_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&Hst_cutoff,NULL);CHKERRQ(ierr);
-    free (option_name);
-    if (asprintf (&option_name, "-eps_min_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&eps_min,NULL);CHKERRQ(ierr);
-    free (option_name);
-    if (asprintf (&option_name, "-eps_max_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&eps_max,NULL);CHKERRQ(ierr);
-    free (option_name);
-
-    phi     = M_PI * phi/180.0;
-    phi_inf = M_PI * phi_inf/180.0;
-    /* Set plastic params for region_idx */
-    MaterialConstantsSetValues_PlasticDP(materialconstants,region_idx,phi,phi_inf,Co,Co_inf,Tens_cutoff,Hst_cutoff);
-    MaterialConstantsSetValues_SoftLin(materialconstants,region_idx,eps_min,eps_max);
-
-    /* ENERGY PARAMETERS */
-    if (asprintf (&option_name, "-alpha_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&alpha,NULL);CHKERRQ(ierr);
-    free (option_name);
-    if (asprintf (&option_name, "-beta_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&beta,NULL);CHKERRQ(ierr);
-    free (option_name);
-    if (asprintf (&option_name, "-rho_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&rho,NULL);CHKERRQ(ierr);
-    free (option_name);
-    if (asprintf (&option_name, "-heat_source_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&heat_source,NULL);CHKERRQ(ierr);
-    free (option_name);
-    if (asprintf (&option_name, "-conductivity_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&conductivity,NULL);CHKERRQ(ierr);
-    free (option_name);
-    
-    /* Set energy params for region_idx */
-    MaterialConstantsSetValues_EnergyMaterialConstants(region_idx,matconstants_e,alpha,beta,rho,Cp,ENERGYDENSITY_CONSTANT,ENERGYCONDUCTIVITY_CONSTANT,source_type);
-    MaterialConstantsSetValues_DensityBoussinesq(materialconstants,region_idx,rho,alpha,beta);
-    EnergySourceConstSetField_HeatSource(&data_Q[region_idx],heat_source);
-    EnergyConductivityConstSetField_k0(&data_k[region_idx],conductivity);
-  }
-
-  /* Report all material parameters values */
-  for (region_idx=0; region_idx<data->n_phases; region_idx++) {
-    ierr = MaterialConstantsPrintAll(materialconstants,region_idx);CHKERRQ(ierr);
-    ierr = MaterialConstantsEnergyPrintAll(materialconstants,region_idx);CHKERRQ(ierr);
-  }
-  PetscFunctionReturn(0);
-}
-
-static PetscErrorCode ModelSetMaterialParameters_MantleDiffusionLaw(pTatinCtx c,DataBucket materialconstants, ModelRiftNitscheCtx *data)
-{
-  PetscInt       region_mantle;
-  PetscErrorCode ierr;
-
-  PetscFunctionBegin;
-  
-  region_mantle = 3;
-  /* Set material constitutive laws */
-  ierr = MaterialConstantsSetValues_MaterialType(materialconstants,region_mantle,VISCOUS_ARRHENIUS_DISLDIFF,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_BOUSSINESQ);CHKERRQ(ierr);
-  /* VISCOUS PARAMETERS */
-  ierr = MaterialConstantsSetFromOptions_ViscosityArrh_DislDiff(materialconstants,MODEL_NAME_R,region_mantle,PETSC_TRUE);CHKERRQ(ierr);
-  /* PLASTIC PARAMETERS */
-  ierr = MaterialConstantsSetFromOptions_PlasticDP(materialconstants,MODEL_NAME_R,region_mantle,PETSC_TRUE);CHKERRQ(ierr);
-  /* SOFTENING */
-  ierr = MaterialConstantsSetFromOptions_SoftLin(materialconstants,MODEL_NAME_R,region_mantle,PETSC_TRUE);CHKERRQ(ierr);
-  /* DENSITY PARAMETERS */
-  ierr = MaterialConstantsSetFromOptions_DensityBoussinesq(materialconstants,MODEL_NAME_R,region_mantle,PETSC_TRUE);CHKERRQ(ierr);
-
-  /* Report */
-  ierr = MaterialConstantsPrintAll(materialconstants,region_mantle);CHKERRQ(ierr);
-
-  PetscFunctionReturn(0);
-}
-
-static PetscErrorCode ModelSetMaterialParametersVPT_RiftNitsche(pTatinCtx c,DataBucket materialconstants, ModelRiftNitscheCtx *data)
-{
-  DataField                 PField,PField_k,PField_Q;
-  EnergyConductivityConst   *data_k;
-  EnergySourceConst         *data_Q;
-  EnergyMaterialConstants   *matconstants_e;
-  PetscInt                  region_idx;
-  int                       source_type[7] = {0, 0, 0, 0, 0, 0, 0};
-  PetscReal                 preexpA,Ascale,entalpy,Vmol,nexp,Tref;
-  PetscReal                 phi,phi_inf,Co,Co_inf,Tens_cutoff,Hst_cutoff,eps_min,eps_max;
-  PetscReal                 beta,alpha,rho,heat_source,conductivity,Cp;
-  char                      *option_name;
-  PetscErrorCode            ierr;
-
-  PetscFunctionBegin;
-
-  /* Material constants */
-  ierr = MaterialConstantsSetDefaults(materialconstants);CHKERRQ(ierr);
-  
-  /* Energy material constants */
-  DataBucketGetDataFieldByName(materialconstants,EnergyMaterialConstants_classname,&PField);
-  DataFieldGetEntries(PField,(void**)&matconstants_e);
-  
-  /* Conductivity */
-  DataBucketGetDataFieldByName(materialconstants,EnergyConductivityConst_classname,&PField_k);
-  DataFieldGetEntries(PField_k,(void**)&data_k);
-  
-  /* Heat source */
-  DataBucketGetDataFieldByName(materialconstants,EnergySourceConst_classname,&PField_Q);
-  DataFieldGetEntries(PField_Q,(void**)&data_Q);
-
-  /* Set default values for parameters */
-  source_type[0] = ENERGYSOURCE_CONSTANT;
-  source_type[1] = ENERGYSOURCE_SHEAR_HEATING;
-  Cp             = 800.0;
-  /* Set material parameters from options file */
-  for (region_idx=0; region_idx<data->n_phases; region_idx++) {
-    /* Set material constitutive laws */
-    MaterialConstantsSetValues_MaterialType(materialconstants,region_idx,VISCOUS_ARRHENIUS_2,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_BOUSSINESQ);
-
-    /* VISCOUS PARAMETERS */
-    if (asprintf (&option_name, "-preexpA_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&preexpA,NULL);CHKERRQ(ierr);
-    free (option_name);
-    if (asprintf (&option_name, "-Ascale_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&Ascale,NULL);CHKERRQ(ierr);
-    free (option_name);
-    if (asprintf (&option_name, "-entalpy_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&entalpy,NULL);CHKERRQ(ierr);
-    free (option_name); 
-    if (asprintf (&option_name, "-Vmol_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&Vmol,NULL);CHKERRQ(ierr);
-    free (option_name);
-    if (asprintf (&option_name, "-nexp_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&nexp,NULL);CHKERRQ(ierr);
-    free (option_name); 
-    if (asprintf (&option_name, "-Tref_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&Tref,NULL);CHKERRQ(ierr);
-    free (option_name);
-    /* Set viscous params for region_idx */
-    MaterialConstantsSetValues_ViscosityArrh(materialconstants,region_idx,preexpA,Ascale,entalpy,Vmol,nexp,Tref);  
-
-    /* PLASTIC PARAMETERS */
-    if (asprintf (&option_name, "-phi_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&phi,NULL);CHKERRQ(ierr);
-    free (option_name);
-    if (asprintf (&option_name, "-phi_inf_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&phi_inf,NULL);CHKERRQ(ierr);
-    free (option_name);
-    if (asprintf (&option_name, "-Co_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&Co,NULL);CHKERRQ(ierr);
-    free (option_name);
-    if (asprintf (&option_name, "-Co_inf_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&Co_inf,NULL);CHKERRQ(ierr);
-    free (option_name);
-    if (asprintf (&option_name, "-Tens_cutoff_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&Tens_cutoff,NULL);CHKERRQ(ierr);
-    free (option_name);
-    if (asprintf (&option_name, "-Hst_cutoff_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&Hst_cutoff,NULL);CHKERRQ(ierr);
-    free (option_name);
-    if (asprintf (&option_name, "-eps_min_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&eps_min,NULL);CHKERRQ(ierr);
-    free (option_name);
-    if (asprintf (&option_name, "-eps_max_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&eps_max,NULL);CHKERRQ(ierr);
-    free (option_name);
-
-    phi     = M_PI * phi/180.0;
-    phi_inf = M_PI * phi_inf/180.0;
-    /* Set plastic params for region_idx */
-    MaterialConstantsSetValues_PlasticDP(materialconstants,region_idx,phi,phi_inf,Co,Co_inf,Tens_cutoff,Hst_cutoff);
-    MaterialConstantsSetValues_SoftLin(materialconstants,region_idx,eps_min,eps_max);
-
-    /* ENERGY PARAMETERS */
-    if (asprintf (&option_name, "-alpha_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&alpha,NULL);CHKERRQ(ierr);
-    free (option_name);
-    if (asprintf (&option_name, "-beta_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&beta,NULL);CHKERRQ(ierr);
-    free (option_name);
-    if (asprintf (&option_name, "-rho_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&rho,NULL);CHKERRQ(ierr);
-    free (option_name);
-    if (asprintf (&option_name, "-heat_source_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&heat_source,NULL);CHKERRQ(ierr);
-    free (option_name);
-    if (asprintf (&option_name, "-conductivity_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R, option_name,&conductivity,NULL);CHKERRQ(ierr);
-    free (option_name);
-    
-    /* Set energy params for region_idx */
-    MaterialConstantsSetValues_EnergyMaterialConstants(region_idx,matconstants_e,alpha,beta,rho,Cp,ENERGYDENSITY_CONSTANT,ENERGYCONDUCTIVITY_CONSTANT,source_type);
-    MaterialConstantsSetValues_DensityBoussinesq(materialconstants,region_idx,rho,alpha,beta);
-    EnergySourceConstSetField_HeatSource(&data_Q[region_idx],heat_source);
-    EnergyConductivityConstSetField_k0(&data_k[region_idx],conductivity);
-  }
-
-  /* Report all material parameters values */
-  for (region_idx=0; region_idx<data->n_phases; region_idx++) {
-    ierr = MaterialConstantsPrintAll(materialconstants,region_idx);CHKERRQ(ierr);
-    ierr = MaterialConstantsEnergyPrintAll(materialconstants,region_idx);CHKERRQ(ierr);
-  }
-
-  PetscFunctionReturn(0);
-}
-
-static PetscErrorCode ModelSetViscousType(ModelRiftNitscheCtx *data)
-{
-  PetscBool      viscous_const=PETSC_FALSE;
-  PetscBool      viscous_vpt_const=PETSC_FALSE;
-  PetscBool      viscous_vpt_disl_diff=PETSC_FALSE;
-  PetscErrorCode ierr;
-  PetscFunctionBegin;
-
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-viscous_constant",&viscous_const,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-viscous_vpt_constant",&viscous_vpt_const,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-viscous_vpt_disl_diff",&viscous_vpt_disl_diff,NULL);CHKERRQ(ierr);
-
-  data->viscous_type = 0;
-  if (viscous_const) {
-    data->viscous_type = 1;
-  } else if (viscous_vpt_const) {
-    data->viscous_type = 2;
-  } else if (viscous_vpt_disl_diff) {
-    data->viscous_type = 3;
-  }
-
-  PetscFunctionReturn(0);
-}
-
-static PetscErrorCode ModelSetMaterialParameters_RiftNitsche(pTatinCtx c,DataBucket materialconstants, ModelRiftNitscheCtx *data)
-{
-  PetscBool      viscous_const=PETSC_FALSE;
-  PetscBool      viscous_vpt_const=PETSC_FALSE;
-  PetscErrorCode ierr;
-  PetscFunctionBegin;
-
-  ierr = ModelSetViscousType(data);CHKERRQ(ierr);
-  switch (data->viscous_type)
-  {
-    case 0:
-      ierr = ModelSetMaterialParametersVPT_RiftNitsche(c,materialconstants,data);CHKERRQ(ierr);
-      break;
-
-    case 1:
-      ierr = ModelSetMaterialParametersVISCOUS_RiftNitsche(c,materialconstants,data);CHKERRQ(ierr);
-      break;
-    
-    case 2:
-      ierr = ModelSetMaterialParametersConstantVPT_RiftNitsche(c,materialconstants,data);CHKERRQ(ierr);
-      break;
-
-    case 3:
-      ierr = ModelSetMaterialParametersVPT_RiftNitsche(c,materialconstants,data);CHKERRQ(ierr);
-      ierr = ModelSetMaterialParameters_MantleDiffusionLaw(c,materialconstants,data);CHKERRQ(ierr);
-      break;
-
-    default:
-      PetscPrintf(PETSC_COMM_WORLD,"[[ WARNING ]] No viscous type provided. Using default Arrhenius + Drucker-Prager + Boussinesq\n");
-      ierr = ModelSetMaterialParametersVPT_RiftNitsche(c,materialconstants,data);CHKERRQ(ierr);
-      break;
-  }
-
-
-  PetscFunctionReturn(0);
-}
-///////////////////////////////////////////
-
 static PetscErrorCode ModelSetRegionParameters_Energy(DataBucket materialconstants, const int region_idx)
 {
   DataField                 PField,PField_k,PField_Q;
@@ -822,6 +429,8 @@ static PetscErrorCode ModelSetRegionParameters_Energy(DataBucket materialconstan
   char                      *option_name;
   PetscErrorCode            ierr;
   PetscFunctionBegin;
+
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
 
   /* Energy material constants */
   DataBucketGetDataFieldByName(materialconstants,EnergyMaterialConstants_classname,&PField);
@@ -883,12 +492,12 @@ static PetscErrorCode ModelSetMaterialParameters_FromOptions(pTatinCtx ptatin, D
   ierr = pTatinContextValid_EnergyFV(ptatin,&active_energy);CHKERRQ(ierr);
 
   for (region_idx = 0; region_idx < data->n_phases; region_idx++) {
-    PetscPrintf(PETSC_COMM_WORLD,"SETTING PHASE %d\n",region_idx);
+    PetscPrintf(PETSC_COMM_WORLD,"SETTING REGION: %d\n",region_idx);
     ierr = MaterialConstantsSetFromOptions_MaterialType(materialconstants,MODEL_NAME_R,region_idx,PETSC_TRUE);CHKERRQ(ierr);
     ierr = MaterialConstantsSetFromOptions(materialconstants,MODEL_NAME_R,region_idx,PETSC_TRUE);CHKERRQ(ierr);
-    if (active_energy) {
+    //if (active_energy) {
       ierr = ModelSetRegionParameters_Energy(materialconstants,region_idx);CHKERRQ(ierr);
-    }
+    //}
   }
   /* Report all material parameters values */
   for (region_idx=0; region_idx<data->n_phases; region_idx++) {
@@ -897,7 +506,7 @@ static PetscErrorCode ModelSetMaterialParameters_FromOptions(pTatinCtx ptatin, D
   }
   PetscFunctionReturn(0);
 }
-///////////////////////////////////////////
+  
 static PetscErrorCode ModelSetViscosityCutoff_RiftNitsche(ModelRiftNitscheCtx *data)
 {
   PetscErrorCode ierr;
@@ -1030,7 +639,7 @@ static PetscErrorCode ModelSetWeakZoneParameters_RiftNitsche(ModelRiftNitscheCtx
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ModelSetPassiveMarkersSwarmParameters(pTatinCtx c, ModelRiftNitscheCtx *data)
+static PetscErrorCode ModelSetPassiveMarkersSwarmParameters(pTatinCtx ptatin, ModelRiftNitscheCtx *data)
 {
   PSwarm         pswarm;
   PetscErrorCode ierr;
@@ -1038,7 +647,7 @@ static PetscErrorCode ModelSetPassiveMarkersSwarmParameters(pTatinCtx c, ModelRi
 
   ierr = PSwarmCreate(PETSC_COMM_WORLD,&pswarm);CHKERRQ(ierr);
   ierr = PSwarmSetOptionsPrefix(pswarm,"passive_");CHKERRQ(ierr);
-  ierr = PSwarmSetPtatinCtx(pswarm,c);CHKERRQ(ierr);
+  ierr = PSwarmSetPtatinCtx(pswarm,ptatin);CHKERRQ(ierr);
   ierr = PSwarmSetTransportModeType(pswarm,PSWARM_TM_LAGRANGIAN);CHKERRQ(ierr);
 
   ierr = PSwarmSetFromOptions(pswarm);CHKERRQ(ierr);
@@ -1070,32 +679,24 @@ static PetscErrorCode ModelScaleParameters_RiftNitsche(DataBucket materialconsta
   data->acceleration_bar = data->length_bar / (data->time_bar*data->time_bar);
   
   /* Scale viscosity cutoff */
-  data->eta_max = data->eta_max / data->viscosity_bar;
-  data->eta_min = data->eta_min / data->viscosity_bar;
+  data->eta_max /= data->viscosity_bar;
+  data->eta_min /= data->viscosity_bar;
   /* Scale length */
-  data->Lx = data->Lx / data->length_bar;
-  data->Ly = data->Ly / data->length_bar;
-  data->Lz = data->Lz / data->length_bar;
-  data->Ox = data->Ox / data->length_bar;
-  data->Oy = data->Oy / data->length_bar;
-  data->Oz = data->Oz / data->length_bar;
+  for (i=0; i<3; i++) { 
+    data->L[i]           /= data->length_bar;
+    data->O[i]           /= data->length_bar;
+    data->y_continent[i] /= data->length_bar;
+  }
 
-  data->y_continent[0] = data->y_continent[0] / data->length_bar;
-  data->y_continent[1] = data->y_continent[1] / data->length_bar;
-  data->y_continent[2] = data->y_continent[2] / data->length_bar;
+  data->wz_origin /= data->length_bar;
+  data->wz_offset /= data->length_bar;
 
-  data->wz_origin = data->wz_origin / data->length_bar;
-  data->wz_offset = data->wz_offset / data->length_bar;
-
-  data->atan_sharpness = data->atan_sharpness * data->length_bar;
-  data->atan_offset    = data->atan_offset / data->length_bar;
-
-  data->wz_width = data->wz_width / data->length_bar;
-  for (i=0; i<2; i++) { data->wz_sigma[i] = data->wz_sigma[i] / data->length_bar; }
+  data->wz_width /= data->length_bar;
+  for (i=0; i<2; i++) { data->wz_sigma[i] /= data->length_bar; }
   
   for (i=0; i<2; i++) { 
-    data->split_face_max[i] = data->split_face_max[i] / data->length_bar;
-    data->split_face_min[i] = data->split_face_min[i] / data->length_bar; 
+    data->split_face_max[i] /= data->length_bar;
+    data->split_face_min[i] /= data->length_bar; 
   }
 
   data->time_full_velocity = data->time_full_velocity*Myr2sec / data->time_bar;
@@ -1104,7 +705,7 @@ static PetscErrorCode ModelScaleParameters_RiftNitsche(DataBucket materialconsta
   data->norm_u = data->norm_u*cm_per_year2m_per_sec / data->velocity_bar;
   for (i=0; i<3; i++) { data->u_bc[i] = data->u_bc[i]*cm_per_year2m_per_sec / data->velocity_bar; }
 
-  data->diffusivity_spm = data->diffusivity_spm / (data->length_bar*data->length_bar/data->time_bar);
+  data->diffusivity_spm /= (data->length_bar*data->length_bar/data->time_bar);
 
   /* scale material properties */
   for (region_idx=0; region_idx<data->n_phases; region_idx++) {
@@ -1127,8 +728,8 @@ static PetscErrorCode ModelScaleParameters_RiftNitsche(DataBucket materialconsta
 static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
 {
   PetscBool      bc_nitsche,bc_dirichlet,bc_freeslip_nitsche,found,mark_face;
-  PetscBool      bc_strikeslip,bc_u_func_atan,bc_strike_analogue,bc_extension_neumann;
-  PetscBool      bc_strike_analogue_nitsche,bc_u_func_mixte,bc_strikeslip_neumann,bc_constant_neumann;
+  PetscBool      bc_strikeslip,bc_strike_analogue;
+  PetscBool      bc_strike_analogue_nitsche,bc_strikeslip_neumann,bc_neumann_z;
   PetscInt       nn;
   PetscErrorCode ierr;
 
@@ -1142,10 +743,7 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
   bc_strike_analogue         = PETSC_FALSE;
   bc_strike_analogue_nitsche = PETSC_FALSE;
   bc_strikeslip_neumann      = PETSC_FALSE;
-  bc_extension_neumann       = PETSC_FALSE;
-  bc_constant_neumann        = PETSC_FALSE;
-  bc_u_func_atan             = PETSC_FALSE;
-  bc_u_func_mixte            = PETSC_FALSE;
+  bc_neumann_z               = PETSC_FALSE;
   mark_face                  = PETSC_FALSE;
 
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_nitsche",                &bc_nitsche,&found);CHKERRQ(ierr);
@@ -1155,10 +753,7 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_strike_analogue",        &bc_strike_analogue,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_strike_analogue_nitsche",&bc_strike_analogue_nitsche,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_strikeslip_neumann",     &bc_strikeslip_neumann,&found);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_extension_neumann",      &bc_extension_neumann,&found);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_constant_neumann",       &bc_constant_neumann,&found);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_u_func_atan",            &bc_u_func_atan,&found);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_u_func_mixte",           &bc_u_func_mixte,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_neumann_z",              &bc_neumann_z,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_mark_face",              &mark_face,&found);CHKERRQ(ierr);
 
   /* Split face location for the analogue BCs */
@@ -1206,21 +801,9 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
   } else if (bc_strikeslip_neumann) {
     data->bc_type = 6;
     PetscPrintf(PETSC_COMM_WORLD,"[[ BC TYPE %d: Rotated Strike-Slip Navier-slip in lithosphere and Neumann in asthensophere ACTIVATED ]]\n",data->bc_type);
-  } else if (bc_extension_neumann) {
+  } else if (bc_neumann_z) {
     data->bc_type = 7;
-    PetscPrintf(PETSC_COMM_WORLD,"[[ BC TYPE %d: Extension in lithosphere and Neumann in asthensophere ACTIVATED ]]\n",data->bc_type);
-  } else if (bc_constant_neumann) {
-    data->bc_type = 8;
-    PetscPrintf(PETSC_COMM_WORLD,"[[ BC TYPE %d: Dirichlet X, Constant Neumann Z ACTIVATED ]]\n",data->bc_type);
-  }
-
-  data->u_func_type = 0;
-  if (bc_u_func_atan) {
-    data->u_func_type = 1;
-    PetscPrintf(PETSC_COMM_WORLD,"[[ Using arctangent function for the boundary velocity ]]\n");
-  } else if (bc_u_func_mixte) {
-    data->u_func_type = 2;
-    PetscPrintf(PETSC_COMM_WORLD,"[[ Using arctangent on Dirichlet sides and linear derivative on Navier-slip sides ]]\n");
+    PetscPrintf(PETSC_COMM_WORLD,"[[ BC TYPE %d: Dirichlet X, Neumann Z ACTIVATED ]]\n",data->bc_type);
   }
 
   data->mark_type = 0;
@@ -1277,12 +860,43 @@ PetscErrorCode ModelInitialize_RiftNitsche(pTatinCtx ptatin,void *ctx)
   rheology->eta_upper_cutoff_global = data->eta_max;
   rheology->eta_lower_cutoff_global = data->eta_min;
   
-  data->output_markers       = PETSC_FALSE;
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-output_markers",       &data->output_markers,NULL);CHKERRQ(ierr);
-
+  data->output_markers  = PETSC_FALSE;
+  data->output_pressure = PETSC_FALSE;
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-output_markers",  &data->output_markers,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-output_pressure", &data->output_pressure,NULL);CHKERRQ(ierr);
   /* passive markers */
   ierr = ModelSetPassiveMarkersSwarmParameters(ptatin,data);CHKERRQ(ierr);
   
+  PetscFunctionReturn(0);
+}
+
+
+static PetscErrorCode ModelCreatePoissonPressure(pTatinCtx ptatin, ModelRiftNitscheCtx *data)
+{
+  PDESolveLithoP poisson_pressure;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  /* Create poisson pressure data struct and mesh */
+  ierr = pTatinPhysCompActivate_LithoP(ptatin,PETSC_TRUE);CHKERRQ(ierr);
+  ierr = pTatinGetContext_LithoP(ptatin,&poisson_pressure);CHKERRQ(ierr);
+  /* Create the matrix to store the jacobian matrix */
+  data->poisson_Jacobian = NULL;
+  ierr = DMSetMatType(poisson_pressure->da,MATAIJ);CHKERRQ(ierr);
+  ierr = DMCreateMatrix(poisson_pressure->da,&data->poisson_Jacobian);CHKERRQ(ierr);
+  ierr = MatSetFromOptions(data->poisson_Jacobian);CHKERRQ(ierr);
+
+  /* Initialize prev_step to step - 1 in case of restart */
+  data->prev_step = -1;
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelDestroyPoissonPressure(ModelRiftNitscheCtx *data)
+{
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  ierr = MatDestroy(&data->poisson_Jacobian);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -1323,8 +937,8 @@ static PetscErrorCode ModelSetMeshRefinement_Horizontal(DM dav, ModelRiftNitsche
   }
 
   /* Get model length in the x and z directions */
-  Lx = data->Lx - data->Ox;
-  Lz = data->Lz - data->Oz;
+  Lx = data->L[0] - data->O[0];
+  Lz = data->L[2] - data->O[2];
   /* normalize dx */
   for (n=0; n<npoints; n++) {
     xnat_x[n] = dx[n] / Lx;
@@ -1387,40 +1001,11 @@ static PetscErrorCode ModelSetMeshRefinement_RiftNitsche(DM dav, ModelRiftNitsch
   PetscErrorCode ierr;
   PetscFunctionBegin;
 
-  //ierr = ModelSetMeshRefinement_Vertical(dav);CHKERRQ(ierr);
+  ierr = ModelSetMeshRefinement_Vertical(dav);CHKERRQ(ierr);
   if (data->bc_type == 4) {
     ierr = ModelSetMeshRefinement_Horizontal(dav,data);CHKERRQ(ierr);
   }
 
-  PetscFunctionReturn(0);
-}
-
-static PetscErrorCode ModelCreatePoissonPressure(pTatinCtx ptatin, ModelRiftNitscheCtx *data)
-{
-  PDESolveLithoP poisson_pressure;
-  PetscErrorCode ierr;
-
-  PetscFunctionBegin;
-  /* Create poisson pressure data struct and mesh */
-  ierr = pTatinPhysCompActivate_LithoP(ptatin,PETSC_TRUE);CHKERRQ(ierr);
-  ierr = pTatinGetContext_LithoP(ptatin,&poisson_pressure);CHKERRQ(ierr);
-  /* Create the matrix to store the jacobian matrix */
-  data->poisson_Jacobian = NULL;
-  ierr = DMSetMatType(poisson_pressure->da,MATAIJ);CHKERRQ(ierr);
-  ierr = DMCreateMatrix(poisson_pressure->da,&data->poisson_Jacobian);CHKERRQ(ierr);
-  ierr = MatSetFromOptions(data->poisson_Jacobian);CHKERRQ(ierr);
-
-  /* Initialize prev_step to step - 1 in case of restart */
-  data->prev_step = -1;
-
-  PetscFunctionReturn(0);
-}
-
-static PetscErrorCode ModelDestroyPoissonPressure(ModelRiftNitscheCtx *data)
-{
-  PetscErrorCode ierr;
-  PetscFunctionBegin;
-  ierr = MatDestroy(&data->poisson_Jacobian);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -1437,7 +1022,7 @@ PetscErrorCode ModelApplyInitialMeshGeometry_RiftNitsche(pTatinCtx ptatin, void 
   ierr = pTatinGetStokesContext(ptatin,&stokes);CHKERRQ(ierr);
   stokes_pack = stokes->stokes_pack;
   ierr = DMCompositeGetEntries(stokes_pack,&dav,&dap);CHKERRQ(ierr);
-  ierr = DMDASetUniformCoordinates(dav,data->Ox,data->Lx,data->Oy,data->Ly,data->Oz,data->Lz);CHKERRQ(ierr);
+  ierr = DMDASetUniformCoordinates(dav,data->O[0],data->L[0],data->O[1],data->L[1],data->O[2],data->L[2]);CHKERRQ(ierr);
   /* Mesh Refinement */
   //ierr = ModelSetMeshRefinement_RiftNitsche(dav,data);CHKERRQ(ierr);
   //ierr = DMDABilinearizeQ2Elements(dav);CHKERRQ(ierr);
@@ -1476,11 +1061,11 @@ static PetscErrorCode ComputeWeakZonesCentreEquallySpaced(PetscReal *notch_centr
   L = 0.0;
   O = 0.0;
   if (dim == 0) {
-    L = data->Lx - data->Ox;
-    O = data->Ox;
+    L = data->L[0] - data->O[0];
+    O = data->O[0];
   } else if (dim == 1) {
-    L = data->Lz - data->Oz;
-    O = data->Oz;
+    L = data->L[2] - data->O[2];
+    O = data->O[2];
   } else {
     SETERRQ2(PETSC_COMM_WORLD,PETSC_ERR_USER,"[[%s]] dim must be 0, or 1 dim = %d was given\n",PETSC_FUNCTION_NAME,dim);
   }
@@ -1511,12 +1096,12 @@ static PetscErrorCode WeakZonesCentreOffsetFromAngle(PetscReal *notch_centre, Pe
 
   if (dim == 0) {
     d = 1;
-    centre[0] = 0.5 * (data->Oz + data->Lz);
-    centre[1] = 0.5 * (data->Ox + data->Lx);
+    centre[0] = 0.5 * (data->O[2] + data->L[2]);
+    centre[1] = 0.5 * (data->O[0] + data->L[0]);
   } else if (dim == 1) {
     d = 0;
-    centre[0] = 0.5 * (data->Ox + data->Lx);
-    centre[1] = 0.5 * (data->Oz + data->Lz);
+    centre[0] = 0.5 * (data->O[0] + data->L[0]);
+    centre[1] = 0.5 * (data->O[2] + data->L[2]);
   } else {
     SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"dim can only be 0 or 1. Given %d",dim);
   }
@@ -1599,8 +1184,8 @@ static PetscErrorCode ModelSetInitialWeakZone_Notches(MPntPStokesPl *mpprop_pls,
   yield = 0;
   
   /* z position of the weak zones */
-  //Oz_wz = 0.5*(data->Lz + data->Oz - data->wz_width); 
-  //Lz_wz = 0.5*(data->Lz + data->Oz + data->wz_width);
+  //Oz_wz = 0.5*(data->L[2] + data->O[2] - data->wz_width); 
+  //Lz_wz = 0.5*(data->L[2] + data->O[2] + data->wz_width);
 
   for (i=0; i<data->n_notches; i++) {
     PetscReal Ox_wz,Lx_wz;
@@ -1675,20 +1260,20 @@ static PetscErrorCode ModelSetInitialWeakZoneDouble(MPntPStokesPl *mpprop_pls, d
   /* Set yield to none */
   yield = 0;
 
-  zcentre = 0.5*(data->Lz - data->Oz);
+  zcentre = 0.5*(data->L[2] - data->O[2]);
 
   if (position[1] >= data->y_continent[2]) {
     /* Rotate coordinate system */
     ierr = RotateReferential(position,coords_rt,PETSC_TRUE,data);CHKERRQ(ierr);
     /* x < 2*width of the wz in the rotated system */
-    if (coords_rt[0] <= data->Ox + 2.0*data->wz_width) {
+    if (coords_rt[0] <= data->O[0] + 2.0*data->wz_width) {
       if (coords_rt[2] >= zcentre - 0.5*(data->wz_offset + data->wz_width) && coords_rt[2] <= zcentre + 0.5*(data->wz_width - data->wz_offset)) {
         /* Set higher initial plastic strain */
         pls = ptatin_RandomNumberGetDouble(0.1,0.8);
       }
     }
   
-    if (coords_rt[0] >= data->Lx - 2.0*data->wz_width) {
+    if (coords_rt[0] >= data->L[0] - 2.0*data->wz_width) {
       if (coords_rt[2] >= zcentre + 0.5*(data->wz_offset - data->wz_width) && coords_rt[2] <= zcentre + 0.5*(data->wz_offset + data->wz_width)) {
         /* Set higher initial plastic strain */
         pls = ptatin_RandomNumberGetDouble(0.1,0.8);
@@ -1713,8 +1298,8 @@ static PetscErrorCode ModelSetInitialWeakZone_Oblique(MPntPStokesPl *mpprop_pls,
   /* Set yield to none */
   yield = 0;
 
-  xcentre = 0.5*(data->Lx - data->Ox);
-  zcentre = 0.5*(data->Lz - data->Oz);
+  xcentre = 0.5*(data->L[0] - data->O[0]);
+  zcentre = 0.5*(data->L[2] - data->O[2]);
   /* width in which the plastic strain attenuates on both sides of the WZ */
   buffer = 0.75*data->wz_width;
 
@@ -1760,8 +1345,8 @@ static PetscErrorCode ModelSetInitialWeakZone_ObliqueGaussian(MPntPStokesPl *mpp
   yield = 0;
 
   if (position[1] >= data->y_continent[2]) {
-    xcentre = 0.5*(data->Lx - data->Ox);
-    zcentre = 0.5*(data->Lz - data->Oz);
+    xcentre = 0.5*(data->L[0] - data->O[0]);
+    zcentre = 0.5*(data->L[2] - data->O[2]);
     location = (zcentre - position[2])*PetscTanReal(data->wz_angle) + xcentre;
   
     a = 0.5*data->wz_sigma[0]*data->wz_sigma[0];
@@ -1787,7 +1372,7 @@ static PetscErrorCode ModelSetInitialWeakZone_StraightGaussian(MPntPStokesPl *mp
   yield = 0;
 
   if (position[1] >= data->y_continent[2]) {
-    zcentre = 0.5*(data->Lz - data->Oz);
+    zcentre = 0.5*(data->L[2] - data->O[2]);
   
     a = 0.0;
     b = 0.0;
@@ -2047,6 +1632,7 @@ static PetscErrorCode ModelApplyInitialVelocityField_RotatedVelocityField(DM dau
   PetscFunctionReturn(0);
 }
 
+// TODO: Modify this function because there is too much redundant code
 static PetscErrorCode ModelApplyInitialVelocityField_RiftNitsche(DM dau, Vec velocity,ModelRiftNitscheCtx *data)
 {
   PetscErrorCode ierr;
@@ -2098,7 +1684,7 @@ static PetscErrorCode ModelApplyInitialVelocityField_RiftNitsche(DM dau, Vec vel
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ModelApplyInitialHydrostaticPressureField_RiftNitsche(pTatinCtx c, DM dau, DM dap, Vec pressure, ModelRiftNitscheCtx *data)
+static PetscErrorCode ModelApplyInitialHydrostaticPressureField_RiftNitsche(pTatinCtx ptatin, DM dau, DM dap, Vec pressure, ModelRiftNitscheCtx *data)
 {
   PetscReal                                    MeshMin[3],MeshMax[3],domain_height;
   DMDAVecTraverse3d_HydrostaticPressureCalcCtx HPctx;
@@ -2114,7 +1700,7 @@ static PetscErrorCode ModelApplyInitialHydrostaticPressureField_RiftNitsche(pTat
   /* Values for hydrostatic pressure computing */
   HPctx.surface_pressure = 0.0;
   HPctx.ref_height = domain_height;
-  HPctx.ref_N      = c->stokes_ctx->my-1;
+  HPctx.ref_N      = ptatin->stokes_ctx->my-1;
   HPctx.grav       = 9.8 / data->acceleration_bar;
   HPctx.rho        = 3300.0 / data->density_bar;
 
@@ -2159,118 +1745,153 @@ PetscErrorCode ModelApplyInitialSolution_RiftNitsche(pTatinCtx ptatin, Vec X, vo
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode StrainRateBoundaryValue_Atan(PetscReal E[][3], PetscReal position[], ModelRiftNitscheCtx *data)
-{
-  PetscFunctionBegin;
-  // Exx
-  E[0][0] = 0.0;
-  // Eyy
-  E[1][1] = 0.0;
-  // Ezz
-  E[2][2] = (2.0*data->u_bc[2]*data->atan_sharpness) / ( M_PI * ( 1.0 + pow(data->atan_sharpness,2.0)*pow(position[2]-data->atan_offset,2.0) ) );
-  // Exy
-  E[0][1] = 0.0;
-  // Exz
-  E[0][2] = (data->u_bc[0]*data->atan_sharpness) / ( M_PI * ( 1.0 + pow(data->atan_sharpness,2.0)*pow(position[2]-data->atan_offset,2.0) ) );
-  // Eyz
-  E[1][2] = 0.0;
 
-  E[1][0] = E[0][1];
-  E[2][0] = E[0][2];
-  E[2][1] = E[1][2];
+static PetscErrorCode ModelMarkFacetsNeumann_Asthenosphere(SurfaceConstraint sc, ModelRiftNitscheCtx *data)
+{
+  MarkDomainFaceContext face_ctx;
+  MeshEntity            mesh_entity;
+  MarkFromPointCtx      mark_data;
+  PetscErrorCode        ierr;
+
+  PetscFunctionBegin;
+
+  ierr = MarkDomainFaceContextInit(&face_ctx);
+  /* Faces to mark */
+  face_ctx.n_domain_faces = 4;
+  face_ctx.domain_face[0] = HEX_FACE_Nxi;
+  face_ctx.domain_face[1] = HEX_FACE_Pxi;
+  face_ctx.domain_face[2] = HEX_FACE_Nzeta;
+  face_ctx.domain_face[3] = HEX_FACE_Pzeta;
+
+  ierr = SurfaceConstraintGetFacets(sc,&mesh_entity);CHKERRQ(ierr);
+  /* 
+  Function to use to mark the facets, 
+  can be over-rided if passed to MeshFacetMarkByBoundary() where NULL is currently passed 
+  */
+  face_ctx.mark = MarkFacetsFromPoint;
+  /* Data structure to pass to the mark function */
+  mark_data.greater = PETSC_FALSE;
+  mark_data.dim     = 1;
+  mark_data.x       = data->y_continent[2];
+
+  face_ctx.user_data = (void*)&mark_data;
+  /* Mark facets */
+  ierr = MeshFacetMarkByBoundary(mesh_entity,sc->fi,NULL,(void*)&face_ctx);CHKERRQ(ierr);
+
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode RotateStrainRateBoundaryValue_Atan(PetscReal E_R[][3], PetscReal position[], ModelRiftNitscheCtx *data)
+static PetscErrorCode ModelMarkFacetsNeumann_Faces(SurfaceConstraint sc, ModelRiftNitscheCtx *data)
 {
-  PetscInt       i,j;
-  PetscReal      r[] = {0.0,1.0,0.0};
-  PetscReal      R[3][3],R_transpose[3][3],E[3][3],ERT[3][3];
+  MeshEntity     mesh_entity;
+  PetscInt       nsides;
+  HexElementFace sides[] = { HEX_FACE_Nzeta, HEX_FACE_Pzeta };//, HEX_FACE_Neta, HEX_FACE_Nxi, HEX_FACE_Pxi
   PetscErrorCode ierr;
-
   PetscFunctionBegin;
-  ierr = StrainRateBoundaryValue_Atan(E,position,data);CHKERRQ(ierr);
-  RotationMatrix(data->alpha_r,r,R);
 
-  /* Transpose R */
-  for (i=0;i<3;i++) {
-    for (j=0;j<3;j++) {
-      R_transpose[i][j] = R[j][i];
-    }
-  }
+  nsides = sizeof(sides) / sizeof(HexElementFace);
+  ierr = SurfaceConstraintGetFacets(sc,&mesh_entity);CHKERRQ(ierr);
+  ierr = MeshFacetMarkDomainFaces(mesh_entity,sc->fi,nsides,sides);CHKERRQ(ierr);
 
-  /* Compute E*R^T */
-  ierr = MatMult3x3(E,R_transpose,ERT);CHKERRQ(ierr);
-  /* Compute R*E*R^T */
-  ierr = MatMult3x3(R,ERT,E_R);CHKERRQ(ierr);
-  
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode GeneralNavierSlipBC_Atan(Facet F,const PetscReal qp_coor[],
-                                               PetscReal n_hat[],
-                                               PetscReal t1_hat[],
-                                               PetscReal epsS[],
-                                               PetscReal H[],
-                                               void *data)
+static PetscErrorCode ModelMarkFacetsNeumann(SurfaceConstraint sc, ModelRiftNitscheCtx *data)
 {
-  ModelRiftNitscheCtx *model_data = (ModelRiftNitscheCtx*)data;
-  PetscInt            i,j;
-  const PetscInt      indices_voigt[][3] = { {0, 3, 4}, {3, 1, 5}, {4, 5, 2} };
-  PetscReal           E[3][3];
-  PetscErrorCode      ierr;
+  PetscErrorCode ierr;
   PetscFunctionBegin;
 
-  switch (model_data->bc_type) {
+  switch (data->mark_type) {
     case 0:
-      ierr = StrainRateBoundaryValue_Atan(E,qp_coor,model_data);CHKERRQ(ierr);
+      ierr = ModelMarkFacetsNeumann_Asthenosphere(sc,data);CHKERRQ(ierr);
       break;
 
     case 1:
-      ierr = StrainRateBoundaryValue_Atan(E,qp_coor,model_data);CHKERRQ(ierr);
-      break;
-
-    case 2:
-      ierr = StrainRateBoundaryValue_Atan(E,qp_coor,model_data);CHKERRQ(ierr);
-      break;
-
-    case 3:
-      ierr = RotateStrainRateBoundaryValue_Atan(E,qp_coor,model_data);CHKERRQ(ierr);
-      break;
-
-    case 4:
-      break;
-
-    case 5:
-      ierr = RotateStrainRateBoundaryValue_Atan(E,qp_coor,model_data);CHKERRQ(ierr);
-      break;
-
-    case 6:
+      ierr = ModelMarkFacetsNeumann_Faces(sc,data);CHKERRQ(ierr);
       break;
 
     default:
-      ierr = StrainRateBoundaryValue_Atan(E,qp_coor,model_data);CHKERRQ(ierr);
+      ierr = ModelMarkFacetsNeumann_Asthenosphere(sc,data);CHKERRQ(ierr);
       break;
   }
 
-  for (i=0;i<3;i++) {
-    for (j=0;j<3;j++) {
-      epsS[ indices_voigt[i][j] ] = E[i][j];
-    }
-  }
-  /* Fill the H tensor */
-  for (i=0;i<6;i++) {
-    H[i] = model_data->H[i];
-  }
-  /* Fill the arbitrary normal and one tangent vectors */
-  for (j=0;j<3;j++) {
-    t1_hat[j] = model_data->t1_hat[j];
-    n_hat[j] = model_data->n_hat[j];
-  }
-  
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ModelMarkFacetsNavierSlip(SurfaceConstraint sc, ModelRiftNitscheCtx *data)
+{
+  MarkDomainFaceContext face_ctx;
+  MarkFromPointCtx      mark_data;
+  MeshEntity            mesh_entity;
+  PetscErrorCode        ierr;
+
+  PetscFunctionBegin;
+
+  ierr = MarkDomainFaceContextInit(&face_ctx);
+  /* Faces to mark */
+  face_ctx.n_domain_faces = 2;
+  face_ctx.domain_face[0] = HEX_FACE_Nxi;
+  face_ctx.domain_face[1] = HEX_FACE_Pxi;
+
+  ierr = SurfaceConstraintGetFacets(sc,&mesh_entity);CHKERRQ(ierr);
+  /* 
+  Function to use to mark the facets, 
+  can be over-rided if passed to MeshFacetMarkByBoundary() where NULL is currently passed 
+  */
+  face_ctx.mark = MarkFacetsFromPoint;
+  /* Data structure to pass to the mark function */
+  mark_data.greater = PETSC_TRUE;
+  mark_data.dim     = 1;
+  mark_data.x       = data->y_continent[2];
+
+  face_ctx.user_data = (void*)&mark_data;
+  /* Mark facets */
+  ierr = MeshFacetMarkByBoundary(mesh_entity,sc->fi,NULL,(void*)&face_ctx);
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelSolvePoissonPressure(pTatinCtx ptatin, ModelRiftNitscheCtx *data)
+{
+  PDESolveLithoP poisson_pressure;
+  PetscReal      val_P;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  ierr = pTatinGetContext_LithoP(ptatin,&poisson_pressure);CHKERRQ(ierr);
+  
+  /* Update mesh coordinates from the velocity mesh */
+  ierr = DMDAProjectCoordinatesQ2toOverlappingQ1_3d(ptatin->stokes_ctx->dav,poisson_pressure->da);CHKERRQ(ierr);
+  /* boundary condition for the poisson pressure */
+  val_P = 0.0;
+  ierr = DMDABCListTraverse3d(poisson_pressure->bclist,poisson_pressure->da,DMDABCList_JMAX_LOC,0,BCListEvaluator_constant,(void*)&val_P);CHKERRQ(ierr);
+  /* solve the poisson pressure */
+  ierr = SNESSolve_LithoPressure(poisson_pressure,data->poisson_Jacobian,poisson_pressure->X,poisson_pressure->F,ptatin);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelApplyBoundaryConditionsNeumannPoissonPressure(pTatinCtx ptatin, SurfaceConstraint sc, ModelRiftNitscheCtx *data)
+{
+  PetscErrorCode    ierr;
+  PetscFunctionBegin;
+  /* Perform the solve to get the poisson pressure */
+
+  if (ptatin->step == 0) {
+    ierr = ModelSolvePoissonPressure(ptatin,data);CHKERRQ(ierr);
+  }
+
+  if (ptatin->step != data->prev_step) {
+    ierr = ModelSolvePoissonPressure(ptatin,data);CHKERRQ(ierr);
+    data->prev_step = ptatin->step;
+  }
+
+  /* Apply pressure to the traction on quadpoints */
+  ierr = ApplyPoissonPressureNeumannConstraint(ptatin,sc);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
 
 static PetscErrorCode GeneralNavierSlipBC(Facet F,const PetscReal qp_coor[],
                                           PetscReal n_hat[],
@@ -2308,104 +1929,163 @@ static PetscErrorCode ConstantUdotN_NormalNavierSlip(Facet F,const PetscReal qp_
   PetscFunctionReturn(0);
 }
 
+static PetscBool BCListEvaluator_RotatedVelocityField_Lithosphere(PetscScalar position[], PetscScalar *value, void *ctx)
+{
+  ModelRiftNitscheCtx *data = (ModelRiftNitscheCtx*)ctx;
+  PetscReal           coords_rt[] = {0.0,0.0,0.0};
+  PetscReal           u_xr[] = {0.0,0.0,0.0};
+  PetscReal           r[] = {0.0,1.0,0.0};
+  PetscReal           u_R[] = {0.0,0.0,0.0};
+  PetscBool           impose=PETSC_FALSE;
+  PetscErrorCode      ierr;
+
+  PetscFunctionBegin;
+
+  ierr = RotateReferential(position,coords_rt,PETSC_TRUE,data);CHKERRQ(ierr);
+  ierr = ModelAnalyticalVelocityFunction(coords_rt,u_xr,data);CHKERRQ(ierr);
+  Rotate_u(data->alpha_r,r,u_xr,u_R);
+  *value = u_R[ data->component ];
+
+  //if (position[1] >= data->y_continent[2]) { impose = PETSC_TRUE; }
+
+  if (position[1] >= -130.0e3 * data->length_bar) { impose = PETSC_TRUE; }
+
+  PetscFunctionReturn(impose);
+}
+
+static PetscBool BCListEvaluator_SplitFace(PetscScalar position[], PetscScalar *value, void *ctx)
+{
+  PetscReal *input = (PetscReal*)ctx;
+  PetscReal x0,x1,v0,v1;
+  PetscInt  dim;
+  PetscBool impose = PETSC_TRUE;
+
+  PetscFunctionBegin;
+  x0 = input[0];
+  x1 = input[1];
+  v0 = input[2];
+  v1 = -v0;
+  dim = (int)input[3];
+
+  if (position[dim] < x0) {
+    *value = v0;
+  } else if (position[dim] > x1) {
+    *value = v1;
+  } else {
+    *value = v1+(position[dim]-x1)*(v0-v1)/(x0-x1);
+  }
+  PetscFunctionReturn(impose);
+}
+
 static PetscErrorCode ModelApplyGeneralNavierSlip_RiftNitsche(SurfBCList surflist,PetscBool insert_if_not_found,ModelRiftNitscheCtx *data)
 {
   SurfaceConstraint sc;
-  MeshEntity        facets;
+  MeshEntity        mesh_entity;
+  HexElementFace    sides[] = {HEX_FACE_Nxi, HEX_FACE_Pxi}; //{ HEX_FACE_Nzeta, HEX_FACE_Pzeta };
+  PetscInt          nsides;
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
 
-  ierr = SurfBCListGetConstraint(surflist,"boundary",&sc);CHKERRQ(ierr);
+  ierr = SurfBCListGetConstraint(surflist,"bc_navier_face",&sc);CHKERRQ(ierr);
   if (!sc) {
     if (insert_if_not_found) {
-      ierr = SurfBCListAddConstraint(surflist,"boundary",&sc);CHKERRQ(ierr);
+      ierr = SurfBCListAddConstraint(surflist,"bc_navier_face",&sc);CHKERRQ(ierr);
       ierr = SurfaceConstraintSetType(sc,SC_NITSCHE_GENERAL_SLIP);CHKERRQ(ierr);
       ierr = SurfaceConstraintNitscheGeneralSlip_SetPenalty(sc,1.0e3);CHKERRQ(ierr);
-    } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint not found");
+    } else { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint not found"); }
   }
-  ierr = SurfaceConstraintGetFacets(sc,&facets);CHKERRQ(ierr);
+  ierr = SurfaceConstraintGetFacets(sc,&mesh_entity);CHKERRQ(ierr);
   
   /* Apply on faces of normal x */
-  {
-    PetscInt       nsides;
-    HexElementFace sides[] = {HEX_FACE_Nxi, HEX_FACE_Pxi}; //{ HEX_FACE_Nzeta, HEX_FACE_Pzeta };
-    nsides = sizeof(sides) / sizeof(HexElementFace);
-    ierr = MeshFacetMarkDomainFaces(facets,sc->fi,nsides,sides);CHKERRQ(ierr);
-  }
+  nsides = sizeof(sides) / sizeof(HexElementFace);
+  ierr = MeshFacetMarkDomainFaces(mesh_entity,sc->fi,nsides,sides);CHKERRQ(ierr);
 
-  switch(data->u_func_type) {
-    case 0:
-      {
-        SURFC_CHKSETVALS(SC_NITSCHE_GENERAL_SLIP,GeneralNavierSlipBC);
-        if (!sc->dm) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->dm. Must call SurfaceConstraintSetDM() first");
-        if (!sc->quadrature) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->surfQ. Must call SurfaceConstraintSetQuadrature() first");
-        if (!sc->facets->set_values_called) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Facets have not been selected");
-        ierr = SurfaceConstraintSetValuesStrainRate_NITSCHE_GENERAL_SLIP(sc,(SurfCSetValuesNitscheGeneralSlip)GeneralNavierSlipBC,(void*)data);CHKERRQ(ierr);
-      }
-      break;
+  SURFC_CHKSETVALS(SC_NITSCHE_GENERAL_SLIP,GeneralNavierSlipBC);
+  if (!sc->dm) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->dm. Must call SurfaceConstraintSetDM() first");
+  if (!sc->quadrature) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->surfQ. Must call SurfaceConstraintSetQuadrature() first");
+  if (!sc->facets->set_values_called) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Facets have not been selected");
+  ierr = SurfaceConstraintSetValuesStrainRate_NITSCHE_GENERAL_SLIP(sc,(SurfCSetValuesNitscheGeneralSlip)GeneralNavierSlipBC,(void*)data);CHKERRQ(ierr);
 
-    case 1:
-      {
-        SURFC_CHKSETVALS(SC_NITSCHE_GENERAL_SLIP,GeneralNavierSlipBC_Atan);
-        if (!sc->dm) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->dm. Must call SurfaceConstraintSetDM() first");
-        if (!sc->quadrature) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->surfQ. Must call SurfaceConstraintSetQuadrature() first");
-        if (!sc->facets->set_values_called) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Facets have not been selected");
-        ierr = SurfaceConstraintSetValuesStrainRate_NITSCHE_GENERAL_SLIP(sc,(SurfCSetValuesNitscheGeneralSlip)GeneralNavierSlipBC_Atan,(void*)data);CHKERRQ(ierr);
-      }
-      break;
-
-    case 2:
-      {
-        SURFC_CHKSETVALS(SC_NITSCHE_GENERAL_SLIP,GeneralNavierSlipBC);
-        if (!sc->dm) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->dm. Must call SurfaceConstraintSetDM() first");
-        if (!sc->quadrature) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->surfQ. Must call SurfaceConstraintSetQuadrature() first");
-        if (!sc->facets->set_values_called) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Facets have not been selected");
-        ierr = SurfaceConstraintSetValuesStrainRate_NITSCHE_GENERAL_SLIP(sc,(SurfCSetValuesNitscheGeneralSlip)GeneralNavierSlipBC,(void*)data);CHKERRQ(ierr);
-      }
-      break;
-
-    default:
-      {
-        SURFC_CHKSETVALS(SC_NITSCHE_GENERAL_SLIP,GeneralNavierSlipBC);
-        if (!sc->dm) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->dm. Must call SurfaceConstraintSetDM() first");
-        if (!sc->quadrature) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->surfQ. Must call SurfaceConstraintSetQuadrature() first");
-        if (!sc->facets->set_values_called) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Facets have not been selected");
-        ierr = SurfaceConstraintSetValuesStrainRate_NITSCHE_GENERAL_SLIP(sc,(SurfCSetValuesNitscheGeneralSlip)GeneralNavierSlipBC,(void*)data);CHKERRQ(ierr);
-      }
-      break;
-  }
   PetscFunctionReturn(0);
 }
 
 static PetscErrorCode ModelApplyNormalNavierSlip_RiftNitsche(SurfBCList surflist,PetscBool insert_if_not_found,ModelRiftNitscheCtx *data)
 {
   SurfaceConstraint sc;
-  MeshEntity        facets;
+  HexElementFace    sides[] = { HEX_FACE_Nxi, HEX_FACE_Pxi };//, HEX_FACE_Neta, HEX_FACE_Nzeta, HEX_FACE_Pzeta };
+  MeshEntity        mesh_entity;
+  PetscInt          nsides;
   PetscErrorCode    ierr;
   
-  ierr = SurfBCListGetConstraint(surflist,"boundary_x",&sc);CHKERRQ(ierr);
+  ierr = SurfBCListGetConstraint(surflist,"bc_navier_normal",&sc);CHKERRQ(ierr);
   if (!sc) {
     if (insert_if_not_found) {
-      ierr = SurfBCListAddConstraint(surflist,"boundary_x",&sc);CHKERRQ(ierr);
+      ierr = SurfBCListAddConstraint(surflist,"bc_navier_normal",&sc);CHKERRQ(ierr);
       ierr = SurfaceConstraintSetType(sc,SC_NITSCHE_NAVIER_SLIP);CHKERRQ(ierr);
       ierr = SurfaceConstraintNitscheNavierSlip_SetPenalty(sc,1.0e3);CHKERRQ(ierr);
-    } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint not found");
+    } else { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint not found"); }
   }
-  ierr = SurfaceConstraintGetFacets(sc,&facets);CHKERRQ(ierr);
+  ierr = SurfaceConstraintGetFacets(sc,&mesh_entity);CHKERRQ(ierr);
   
-  {
-    PetscInt       nsides;
-    HexElementFace sides[] = { HEX_FACE_Nxi, HEX_FACE_Pxi };//, HEX_FACE_Neta, HEX_FACE_Nzeta, HEX_FACE_Pzeta };
-    nsides = sizeof(sides) / sizeof(HexElementFace);
-    ierr = MeshFacetMarkDomainFaces(facets,sc->fi,nsides,sides);CHKERRQ(ierr);
-  }
+  nsides = sizeof(sides) / sizeof(HexElementFace);
+  ierr = MeshFacetMarkDomainFaces(mesh_entity,sc->fi,nsides,sides);CHKERRQ(ierr);
   
   SURFC_CHKSETVALS(SC_NITSCHE_NAVIER_SLIP,ConstantUdotN_NormalNavierSlip);
   {
     PetscReal uD_c[] = {0.0};
     ierr = SurfaceConstraintSetValues(sc,(SurfCSetValuesGeneric)ConstantUdotN_NormalNavierSlip,(void*)uD_c);CHKERRQ(ierr);
   }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelApplyBoundaryConditionsNeumann(pTatinCtx ptatin, SurfBCList surflist, PetscBool insert_if_not_found, ModelRiftNitscheCtx *data)
+{
+  SurfaceConstraint sc;
+  PetscBool         active_poisson;
+  PetscErrorCode    ierr;
+
+  PetscFunctionBegin;
+  ierr = SurfBCListGetConstraint(surflist,"boundary_neumann",&sc);CHKERRQ(ierr);
+  if (!sc) {
+    if (insert_if_not_found) {
+      ierr = SurfBCListAddConstraint(surflist,"boundary_neumann",&sc);CHKERRQ(ierr);
+      ierr = SurfaceConstraintSetType(sc,SC_TRACTION);CHKERRQ(ierr);
+    } else { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint not found"); }
+  }
+  /* Mark facets on which we apply the constraint */
+  ierr = ModelMarkFacetsNeumann(sc,data);
+  /* Apply BC */
+  ierr = pTatinContextValid_LithoP(ptatin,&active_poisson);CHKERRQ(ierr);
+  if (!active_poisson) { 
+    PetscPrintf(PETSC_COMM_WORLD,"[[ WARNING ]] PDESolveLithoP data structure does not exist. Ignoring poisson pressure solve\n");
+    PetscFunctionReturn(0); 
+  }
+  ierr = ModelApplyBoundaryConditionsNeumannPoissonPressure(ptatin,sc,data);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelApplyBoundaryConditionsNavierSlipLithosphere(SurfBCList surflist, PetscBool insert_if_not_found, ModelRiftNitscheCtx *data)
+{
+  SurfaceConstraint sc;
+  PetscErrorCode    ierr;
+
+  PetscFunctionBegin;
+  ierr = SurfBCListGetConstraint(surflist,"boundary_navier",&sc);CHKERRQ(ierr);
+  if (!sc) {
+    if (insert_if_not_found) {
+      ierr = SurfBCListAddConstraint(surflist,"boundary_navier",&sc);CHKERRQ(ierr);
+      ierr = SurfaceConstraintSetType(sc,SC_NITSCHE_GENERAL_SLIP);CHKERRQ(ierr);
+      ierr = SurfaceConstraintNitscheGeneralSlip_SetPenalty(sc,1.0e3);CHKERRQ(ierr);
+    } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint not found");
+  }
+  /* Mark facets on which we apply the constraint */
+  ierr = ModelMarkFacetsNavierSlip(sc,data);CHKERRQ(ierr);
+  /* Apply */
+  SURFC_CHKSETVALS(SC_NITSCHE_GENERAL_SLIP,GeneralNavierSlipBC);
+  ierr = SurfaceConstraintSetValuesStrainRate_NITSCHE_GENERAL_SLIP(sc,(SurfCSetValuesNitscheGeneralSlip)GeneralNavierSlipBC,(void*)data);CHKERRQ(ierr);
+
   PetscFunctionReturn(0);
 }
 
@@ -2434,10 +2114,10 @@ static PetscErrorCode ModelComputeBottomFlow_udotn(pTatinCtx c,Vec X, ModelRiftN
   ierr = DMCompositeRestoreAccess(dms,X,&velocity,&pressure);CHKERRQ(ierr);
 
   if (c->step == 0) {
-    data->u_bc[1] = 2.0*data->u_bc[2]*(data->Lx - data->Ox)*(data->Ly - data->Oy)/((data->Lx - data->Ox)*(data->Lz - data->Oz));
+    data->u_bc[1] = 2.0*data->u_bc[2]*(data->L[0] - data->O[0])*(data->L[1] - data->O[1])/((data->L[0] - data->O[0])*(data->L[2] - data->O[2]));
   } else {
     /* Compute the vy velocity based on faces inflow/outflow except the top free surface */
-    data->u_bc[1] = (int_u_dot_n[WEST_FACE-1]+int_u_dot_n[EAST_FACE-1]+int_u_dot_n[BACK_FACE-1]+int_u_dot_n[FRONT_FACE-1])/((data->Lx - data->Ox)*(data->Lz - data->Oz));
+    data->u_bc[1] = (int_u_dot_n[WEST_FACE-1]+int_u_dot_n[EAST_FACE-1]+int_u_dot_n[BACK_FACE-1]+int_u_dot_n[FRONT_FACE-1])/((data->L[0] - data->O[0])*(data->L[2] - data->O[2]));
     PetscPrintf(PETSC_COMM_WORLD,"Vy = %+1.4e\n",data->u_bc[1]);    
   }
   PetscFunctionReturn(0);
@@ -2467,8 +2147,6 @@ static PetscErrorCode ModelApplyObliqueExtensionPullApart_RiftNitsche(DM dav, BC
   /* Apply base velocity from u.n */
   u_bot = data->u_bc[1];
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&u_bot);CHKERRQ(ierr);
-  //data->component = 1;
-  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,data->component,InitialAnalyticalVelocityFunction,(void*)data);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -2548,33 +2226,8 @@ static PetscErrorCode ModelApplyRotatedStrikeSlipNavierSlip_RiftNitsche(DM dav, 
   /* Apply base velocity from u.n */
   u_bot = data->u_bc[1];
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&u_bot);CHKERRQ(ierr);
-  //data->component = 1;
-  //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,data->component,BCListEvaluator_RotatedVelocityField,(void*)data);CHKERRQ(ierr);
+ 
   PetscFunctionReturn(0);
-}
-
-static PetscBool BCListEvaluator_SplitFace(PetscScalar position[], PetscScalar *value, void *ctx)
-{
-  PetscReal *input = (PetscReal*)ctx;
-  PetscReal x0,x1,v0,v1;
-  PetscInt  dim;
-  PetscBool impose = PETSC_TRUE;
-
-  PetscFunctionBegin;
-  x0 = input[0];
-  x1 = input[1];
-  v0 = input[2];
-  v1 = -v0;
-  dim = (int)input[3];
-
-  if (position[dim] < x0) {
-    *value = v0;
-  } else if (position[dim] > x1) {
-    *value = v1;
-  } else {
-    *value = v1+(position[dim]-x1)*(v0-v1)/(x0-x1);
-  }
-  PetscFunctionReturn(impose);
 }
 
 static PetscErrorCode ModelApplyAnalogueBoundaryConditions(DM dav, BCList bclist, ModelRiftNitscheCtx *data)
@@ -2665,416 +2318,7 @@ static PetscErrorCode ModelApplyBaseDrivenRotatedStrikeSlipNavierSlip_RiftNitsch
   PetscFunctionReturn(0);
 }
 
-static PetscBool BCListEvaluator_RotatedVelocityField_Lithosphere(PetscScalar position[], PetscScalar *value, void *ctx)
-{
-  ModelRiftNitscheCtx *data = (ModelRiftNitscheCtx*)ctx;
-  PetscReal           coords_rt[] = {0.0,0.0,0.0};
-  PetscReal           u_xr[] = {0.0,0.0,0.0};
-  PetscReal           r[] = {0.0,1.0,0.0};
-  PetscReal           u_R[] = {0.0,0.0,0.0};
-  PetscBool           impose=PETSC_FALSE;
-  PetscErrorCode      ierr;
-
-  PetscFunctionBegin;
-
-  ierr = RotateReferential(position,coords_rt,PETSC_TRUE,data);CHKERRQ(ierr);
-  ierr = ModelAnalyticalVelocityFunction(coords_rt,u_xr,data);CHKERRQ(ierr);
-  Rotate_u(data->alpha_r,r,u_xr,u_R);
-  *value = u_R[ data->component ];
-
-  if (position[1] >= data->y_continent[2]) { impose = PETSC_TRUE; }
-
-  PetscFunctionReturn(impose);
-}
-
-static PetscBool BCListEvaluator_Lithosphere(PetscScalar position[], PetscScalar *value, void *ctx)
-{
-  ModelRiftNitscheCtx *data = (ModelRiftNitscheCtx*)ctx;
-  PetscBool           impose = PETSC_FALSE;
-  PetscFunctionBegin;
-
-  if (position[1] >= data->y_continent[2]) {
-    impose = PETSC_TRUE;
-  }
-  *value = data->u_bc[ data->component ]; 
-
-  PetscFunctionReturn(impose);
-}
-
-static PetscBool MarkLithosphere(Facet facets, void *ctx)
-{
-  ModelRiftNitscheCtx *data = (ModelRiftNitscheCtx*)ctx;
-  PetscBool impose = PETSC_FALSE;
-  PetscFunctionBegin;
-  /* Select the entire cell based on its centroid coordinate */
-  if (facets->centroid[1] >= data->y_continent[2]) { impose = PETSC_TRUE; }
-  PetscFunctionReturn(impose);
-}
-
-static PetscBool MarkAsthenosphere(Facet facets, void *ctx)
-{
-  ModelRiftNitscheCtx *data = (ModelRiftNitscheCtx*)ctx;
-  PetscBool impose = PETSC_FALSE;
-  PetscFunctionBegin;
-  /* Select the entire cell based on its centroid coordinate */
-  if (facets->centroid[1] <= data->y_continent[2]) { impose = PETSC_TRUE; }
-  PetscFunctionReturn(impose);
-}
-
-static PetscErrorCode ModelMarkFacetsNeumann_Asthenosphere(SurfaceConstraint sc, ModelRiftNitscheCtx *data)
-{
-  MarkDomainFaceContext face_ctx;
-  MeshEntity            mesh_entity;
-  PetscErrorCode        ierr;
-
-  PetscFunctionBegin;
-
-  ierr = MarkDomainFaceContextInit(&face_ctx);
-  /* Faces to mark */
-  face_ctx.n_domain_faces = 4;
-  face_ctx.domain_face[0] = HEX_FACE_Nxi;
-  face_ctx.domain_face[1] = HEX_FACE_Pxi;
-  face_ctx.domain_face[2] = HEX_FACE_Nzeta;
-  face_ctx.domain_face[3] = HEX_FACE_Pzeta;
-
-  ierr = SurfaceConstraintGetFacets(sc,&mesh_entity);CHKERRQ(ierr);
-  /* 
-  Function to use to mark the facets, 
-  can be over-rided if passed to MeshFacetMarkByBoundary() where NULL is currently passed 
-  */
-  face_ctx.mark = MarkAsthenosphere;
-  /* Data structure to pass to the mark function */
-  face_ctx.user_data = (void*)data;
-  /* Mark facets */
-  ierr = MeshFacetMarkByBoundary(mesh_entity,sc->fi,NULL,(void*)&face_ctx);CHKERRQ(ierr);
-
-  PetscFunctionReturn(0);
-}
-
-static PetscErrorCode ModelMarkFacetsNeumann_Faces(SurfaceConstraint sc, ModelRiftNitscheCtx *data)
-{
-  MeshEntity     mesh_entity;
-  PetscInt       nsides;
-  HexElementFace sides[] = { HEX_FACE_Nzeta, HEX_FACE_Pzeta };//, HEX_FACE_Neta, HEX_FACE_Nxi, HEX_FACE_Pxi
-  PetscErrorCode ierr;
-  PetscFunctionBegin;
-
-  nsides = sizeof(sides) / sizeof(HexElementFace);
-  ierr = SurfaceConstraintGetFacets(sc,&mesh_entity);CHKERRQ(ierr);
-  ierr = MeshFacetMarkDomainFaces(mesh_entity,sc->fi,nsides,sides);CHKERRQ(ierr);
-
-  PetscFunctionReturn(0);
-}
-
-static PetscErrorCode ModelMarkFacetsNeumann(SurfaceConstraint sc, ModelRiftNitscheCtx *data)
-{
-  PetscErrorCode ierr;
-  PetscFunctionBegin;
-
-  switch (data->mark_type) {
-    case 0:
-      ierr = ModelMarkFacetsNeumann_Asthenosphere(sc,data);CHKERRQ(ierr);
-      break;
-
-    case 1:
-      ierr = ModelMarkFacetsNeumann_Faces(sc,data);CHKERRQ(ierr);
-      break;
-
-    default:
-      ierr = ModelMarkFacetsNeumann_Asthenosphere(sc,data);CHKERRQ(ierr);
-      break;
-  }
-
-  PetscFunctionReturn(0);
-}
-
-static PetscErrorCode ModelMarkFacetsNavierSlip(SurfaceConstraint sc, ModelRiftNitscheCtx *data)
-{
-  MarkDomainFaceContext face_ctx;
-  MeshEntity            mesh_entity;
-  PetscErrorCode        ierr;
-
-  PetscFunctionBegin;
-
-  ierr = MarkDomainFaceContextInit(&face_ctx);
-  /* Faces to mark */
-  face_ctx.n_domain_faces = 2;
-  face_ctx.domain_face[0] = HEX_FACE_Nxi;
-  face_ctx.domain_face[1] = HEX_FACE_Pxi;
-
-  ierr = SurfaceConstraintGetFacets(sc,&mesh_entity);CHKERRQ(ierr);
-  /* 
-  Function to use to mark the facets, 
-  can be over-rided if passed to MeshFacetMarkByBoundary() where NULL is currently passed 
-  */
-  face_ctx.mark = MarkLithosphere;
-  /* Data structure to pass to the mark function */
-  face_ctx.user_data = (void*)data;
-  /* Mark facets */
-  ierr = MeshFacetMarkByBoundary(mesh_entity,sc->fi,NULL,(void*)&face_ctx);
-
-  PetscFunctionReturn(0);
-}
-
-static PetscErrorCode ModelSolvePoissonPressure(pTatinCtx ptatin, ModelRiftNitscheCtx *data)
-{
-  PDESolveLithoP poisson_pressure;
-  PetscReal      val_P;
-  PetscErrorCode ierr;
-
-  PetscFunctionBegin;
-  ierr = pTatinGetContext_LithoP(ptatin,&poisson_pressure);CHKERRQ(ierr);
-  
-  /* Update mesh coordinates from the velocity mesh */
-  ierr = DMDAProjectCoordinatesQ2toOverlappingQ1_3d(ptatin->stokes_ctx->dav,poisson_pressure->da);CHKERRQ(ierr);
-  /* boundary condition for the poisson pressure */
-  val_P = 0.0;
-  ierr = DMDABCListTraverse3d(poisson_pressure->bclist,poisson_pressure->da,DMDABCList_JMAX_LOC,0,BCListEvaluator_constant,(void*)&val_P);CHKERRQ(ierr);
-  /* solve the poisson pressure */
-  ierr = SNESSolve_LithoPressure(poisson_pressure,data->poisson_Jacobian,poisson_pressure->X,poisson_pressure->F,ptatin);CHKERRQ(ierr);
-
-  {
-    PetscViewer viewer;
-    char        fname[PETSC_MAX_PATH_LEN],stepname[PETSC_MAX_PATH_LEN];;
-
-    ierr = PetscSNPrintf(stepname,PETSC_MAX_PATH_LEN-1,"step%1.6D",ptatin->step);CHKERRQ(ierr);
-    ierr = PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/%sPoissonPressure.vts",ptatin->outputpath,stepname);CHKERRQ(ierr);
-    ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
-    ierr = PetscViewerSetType(viewer,PETSCVIEWERVTK);CHKERRQ(ierr);
-    ierr = PetscViewerFileSetMode(viewer,FILE_MODE_WRITE);CHKERRQ(ierr);
-    ierr = PetscViewerFileSetName(viewer,fname);CHKERRQ(ierr);
-    ierr = VecView(poisson_pressure->X,viewer);CHKERRQ(ierr);
-    ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
-  }
-
-  PetscFunctionReturn(0);
-}
-
-static PetscErrorCode SetPoissonPressureTraction_CellWiseConstant(Facet facets, const PetscReal qp_coor[], PetscReal traction[], void *ctx)
-{
-  PressureTractionCtx *data = (PressureTractionCtx*)ctx;
-  PetscInt            eidx,k,d;
-  PetscReal           el_pressure[Q1_NODES_PER_EL_3D];
-  PetscReal           NiQ1_centroid[Q1_NODES_PER_EL_3D];
-  PetscReal           xi_centroid[] = { 0.0, 0.0, 0.0 };
-  PetscReal           pressure_centroid;
-  PetscErrorCode      ierr;
-
-  PetscFunctionBegin;
-
-  eidx = facets->cell_index;
-  /* Get the lithostatic pressure in the element */
-  ierr = DMDAEQ1_GetScalarElementField_3D(el_pressure,(PetscInt*)&data->elnidx[data->nen*eidx],data->pressure);CHKERRQ(ierr);
-  
-  /* Evaluate basis function at cell local centroid (0.0,0.0,0.0)*/
-  EvaluateBasis_Q1_3D(xi_centroid,NiQ1_centroid);
-  /* Compute a constant cell-wise pressure value */
-  pressure_centroid = 0.0;
-  for (k=0;k<Q1_NODES_PER_EL_3D;k++) {
-    pressure_centroid += el_pressure[k]*NiQ1_centroid[k];
-  }
-  /* Set Traction = -p*n (cell-wise constant) */
-  for (d=0; d<3; d++) {
-    traction[d] = -pressure_centroid * facets->centroid_normal[d];
-  }
-
-  PetscFunctionReturn(0);
-}
-
-static PetscErrorCode SetPoissonPressureTraction(Facet facets, const PetscReal qp_coor[], PetscReal traction[], void *ctx)
-{
-  PressureTractionCtx *data = (PressureTractionCtx*)ctx;
-  MPntStd             point;
-  PetscInt            eidx,k,d;
-  PetscReal           el_pressure[Q1_NODES_PER_EL_3D];
-  PetscReal           NiQ1[Q1_NODES_PER_EL_3D];
-  //PetscReal           xi_centroid[] = { 0.0, 0.0, 0.0 };
-  PetscReal           pressure_qp;
-  PetscErrorCode      ierr;
-
-  PetscFunctionBegin;
-
-  eidx = facets->cell_index;
-  /* Get the lithostatic pressure in the element */
-  ierr = DMDAEQ1_GetScalarElementField_3D(el_pressure,(PetscInt*)&data->elnidx[data->nen*eidx],data->pressure);CHKERRQ(ierr);
-  
-  /* Use point location to get local coords of quadrature points */
-
-  /* Setup marker for point location */
-  ierr =  PetscMemzero(&point,sizeof(MPntStd));CHKERRQ(ierr);
-  ierr = PetscMemcpy(&point.coor,qp_coor,sizeof(double)*3);CHKERRQ(ierr);
-  point.wil  = eidx;
-  InverseMappingDomain_3dQ2(1.0e-10,10,PETSC_TRUE,PETSC_FALSE,
-                            (const PetscReal*)data->coor,
-                            (const PetscInt)data->m[0],(const PetscInt)data->m[1],(const PetscInt)data->m[2],
-                            (const PetscInt*)data->elnidx_q2,1,&point);
-
-  //PetscPrintf(PETSC_COMM_WORLD,"point.xi = ( %1.2e, %1.2e, %1.2e )\n",point.xi[0],point.xi[1],point.xi[2]);
-
-  /* Evaluate basis function at quadrature point local coords */
-  EvaluateBasis_Q1_3D(point.xi,NiQ1);
-  /* Compute a constant cell-wise pressure value */
-  pressure_qp = 0.0;
-  for (k=0;k<Q1_NODES_PER_EL_3D;k++) {
-    pressure_qp += el_pressure[k]*NiQ1[k];
-  }
-  /* Set Traction = -p*n (cell-wise constant) */
-  for (d=0; d<3; d++) {
-    traction[d] = -pressure_qp * facets->centroid_normal[d];
-  }
-  PetscFunctionReturn(0);
-}
-
-static PetscErrorCode ModelSetNeumannConstant(pTatinCtx ptatin, SurfaceConstraint sc, ModelRiftNitscheCtx *data)
-{
-  PetscReal data_neumann[3];
-  PetscErrorCode ierr;
-  PetscFunctionBegin;
-
-  data_neumann[0] = data_neumann[1] = data_neumann[2] = 0.0;
-  SURFC_CHKSETVALS(SC_TRACTION,user_traction_set_constant);
-  ierr = SurfaceConstraintSetValues_TRACTION(sc,(SurfCSetValuesTraction)user_traction_set_constant,(void*)&data_neumann);CHKERRQ(ierr);
-
-  PetscFunctionReturn(0);
-}
-
-static PetscErrorCode ModelSetNeumannPoissonPressure(pTatinCtx ptatin, SurfaceConstraint sc, ModelRiftNitscheCtx *data)
-{
-  PDESolveLithoP      poisson_pressure;
-  PressureTractionCtx data_neumann;
-  DM                  cda;
-  Vec                 P_local,gcoords;
-  PetscInt            nel_p,nen_p,nel_u,nen_u,lmx,lmy,lmz;
-  const PetscInt      *elnidx_p,*elnidx_u;
-  PetscReal           *LA_pressure_local;
-  PetscScalar         *LA_gcoords;
-  PetscErrorCode      ierr;
-
-  PetscFunctionBegin;
-
-  ierr = pTatinGetContext_LithoP(ptatin,&poisson_pressure);CHKERRQ(ierr);
-
-  /* Get Q1 elements connectivity table */
-  ierr = DMDAGetElements(poisson_pressure->da,&nel_p,&nen_p,&elnidx_p);CHKERRQ(ierr);
-  /* Get elements number on local rank */
-  ierr = DMDAGetLocalSizeElementQ2(sc->fi->dm,&lmx,&lmy,&lmz);CHKERRQ(ierr);
-  /* Get Q2 elements connectivity table */
-  ierr = DMDAGetElements_pTatinQ2P1(sc->fi->dm,&nel_u,&nen_u,&elnidx_u);CHKERRQ(ierr);
-  /* Get coordinates */
-  ierr = DMGetCoordinateDM(sc->fi->dm,&cda);CHKERRQ(ierr);
-  ierr = DMGetCoordinatesLocal(sc->fi->dm,&gcoords);CHKERRQ(ierr);
-  ierr = VecGetArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
-
-  /* Attach element information to the data structure */
-  data_neumann.nen       = nen_p;
-  data_neumann.elnidx    = elnidx_p;
-  data_neumann.elnidx_q2 = elnidx_u;
-  data_neumann.m[0]      = lmx;
-  data_neumann.m[1]      = lmy;
-  data_neumann.m[2]      = lmz;
-  /* Attach coords array to the data structure */
-  data_neumann.coor = LA_gcoords;
-
-  /* Get the values of the lithostatic pressure solution vector at local rank */
-  ierr = DMGetLocalVector(poisson_pressure->da,&P_local);CHKERRQ(ierr);
-  ierr = VecZeroEntries(P_local);CHKERRQ(ierr);
-  ierr = DMGlobalToLocalBegin(poisson_pressure->da,poisson_pressure->X,INSERT_VALUES,P_local);CHKERRQ(ierr);
-  ierr = DMGlobalToLocalEnd  (poisson_pressure->da,poisson_pressure->X,INSERT_VALUES,P_local);CHKERRQ(ierr);
-  ierr = VecGetArray(P_local,&LA_pressure_local);CHKERRQ(ierr);
-  /* Attach the pressure array to the data structure */
-  data_neumann.pressure = LA_pressure_local;
-
-  SURFC_CHKSETVALS(SC_TRACTION,SetPoissonPressureTraction);
-  ierr = SurfaceConstraintSetValues_TRACTION(sc,(SurfCSetValuesTraction)SetPoissonPressureTraction,(void*)&data_neumann);CHKERRQ(ierr);
-
-  ierr = VecRestoreArray(P_local,&LA_pressure_local);CHKERRQ(ierr);
-  ierr = DMRestoreLocalVector(poisson_pressure->da,&P_local);CHKERRQ(ierr);
-  ierr = DMDARestoreElements(poisson_pressure->da,&nel_p,&nen_p,&elnidx_p);CHKERRQ(ierr);
-
-  PetscFunctionReturn(0);
-}
-
-static PetscErrorCode ModelApplyBoundaryConditionsNeumannPoissonPressure(pTatinCtx ptatin, SurfaceConstraint sc, ModelRiftNitscheCtx *data)
-{
-  PetscErrorCode    ierr;
-  PetscFunctionBegin;
-  /* Perform the solve to get the poisson pressure */
-
-  if (ptatin->step == 0) {
-    ierr = ModelSolvePoissonPressure(ptatin,data);CHKERRQ(ierr);
-  }
-
-  if (ptatin->step != data->prev_step) {
-    ierr = ModelSolvePoissonPressure(ptatin,data);CHKERRQ(ierr);
-    data->prev_step = ptatin->step;
-  }
-  /* Apply pressure to the traction on quadpoints */
-  ierr = ModelSetNeumannPoissonPressure(ptatin,sc,data);CHKERRQ(ierr);
-
-  PetscFunctionReturn(0);
-}
-
-static PetscErrorCode ModelApplyBoundaryConditionsNeumann(pTatinCtx ptatin, SurfBCList surflist, PetscBool insert_if_not_found, ModelRiftNitscheCtx *data)
-{
-  SurfaceConstraint sc;
-  PetscErrorCode    ierr;
-
-  PetscFunctionBegin;
-  ierr = SurfBCListGetConstraint(surflist,"boundary_neumann",&sc);CHKERRQ(ierr);
-  if (!sc) {
-    if (insert_if_not_found) {
-      ierr = SurfBCListAddConstraint(surflist,"boundary_neumann",&sc);CHKERRQ(ierr);
-      ierr = SurfaceConstraintSetType(sc,SC_TRACTION);CHKERRQ(ierr);
-    } else { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint not found"); }
-  }
-  /* Mark facets on which we apply the constraint */
-  ierr = ModelMarkFacetsNeumann(sc,data);
-
-  switch (data->bc_type) {
-    case 6:
-      ierr = ModelApplyBoundaryConditionsNeumannPoissonPressure(ptatin,sc,data);CHKERRQ(ierr);
-      break;
-
-    case 7:
-      ierr = ModelApplyBoundaryConditionsNeumannPoissonPressure(ptatin,sc,data);CHKERRQ(ierr);
-      break;
-
-    case 8:
-      //ierr = ModelSetNeumannConstant(ptatin,sc,data);CHKERRQ(ierr);
-      ierr = ModelApplyBoundaryConditionsNeumannPoissonPressure(ptatin,sc,data);CHKERRQ(ierr);
-      break;
-
-    default:
-      break;
-  }
-
-  PetscFunctionReturn(0);
-}
-
-static PetscErrorCode ModelApplyBoundaryConditionsNavierSlipLithosphere(SurfBCList surflist, PetscBool insert_if_not_found, ModelRiftNitscheCtx *data)
-{
-  SurfaceConstraint sc;
-  PetscErrorCode    ierr;
-
-  PetscFunctionBegin;
-  ierr = SurfBCListGetConstraint(surflist,"boundary_navier",&sc);CHKERRQ(ierr);
-  if (!sc) {
-    if (insert_if_not_found) {
-      ierr = SurfBCListAddConstraint(surflist,"boundary_navier",&sc);CHKERRQ(ierr);
-      ierr = SurfaceConstraintSetType(sc,SC_NITSCHE_GENERAL_SLIP);CHKERRQ(ierr);
-      ierr = SurfaceConstraintNitscheGeneralSlip_SetPenalty(sc,1.0e3);CHKERRQ(ierr);
-    } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint not found");
-  }
-  /* Mark facets on which we apply the constraint */
-  ierr = ModelMarkFacetsNavierSlip(sc,data);CHKERRQ(ierr);
-  /* Apply */
-  SURFC_CHKSETVALS(SC_NITSCHE_GENERAL_SLIP,GeneralNavierSlipBC);
-  ierr = SurfaceConstraintSetValuesStrainRate_NITSCHE_GENERAL_SLIP(sc,(SurfCSetValuesNitscheGeneralSlip)GeneralNavierSlipBC,(void*)data);CHKERRQ(ierr);
-
-  PetscFunctionReturn(0);
-}
-
-static PetscErrorCode ModelApplyDirichletX_NeumannConstantZ(
+static PetscErrorCode ModelApplyDirichletX_NeumannZ(
   pTatinCtx ptatin,
   DM dav, 
   BCList bclist, 
@@ -3085,7 +2329,6 @@ static PetscErrorCode ModelApplyDirichletX_NeumannConstantZ(
   PetscReal      u_xp,u_xn,zero=0.0;;
   PetscErrorCode ierr;
   PetscFunctionBegin;
-  //user_traction_set_constant
 
   u_xp = data->u_bc[0];
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_constant,(void*)&u_xp);CHKERRQ(ierr);  
@@ -3137,40 +2380,6 @@ static PetscErrorCode ModelApplyRotatedStrikeSlipNavierNeumann_RiftNitsche(
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ModelApplyExtensionNeumann_RiftNitsche(
-  pTatinCtx ptatin, 
-  DM dav, 
-  BCList bclist, 
-  SurfBCList surflist, 
-  PetscBool insert_if_not_found, 
-  ModelRiftNitscheCtx *data)
-{
-  PetscReal      u_bot;
-  PetscReal      zero=0.0;
-  PetscErrorCode ierr;
-  PetscFunctionBegin;
-
-  /* Apply Dirichlet oblique velocities in the lithosphere */
-  data->component = 2;
-  data->u_bc[2] = 0.0;
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,data->component,BCListEvaluator_Lithosphere,(void*)data);CHKERRQ(ierr);
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,data->component,BCListEvaluator_Lithosphere,(void*)data);CHKERRQ(ierr);
-  
-  data->component = 0;
-  data->u_bc[0] = -3.0;
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,data->component,BCListEvaluator_Lithosphere,(void*)data);CHKERRQ(ierr);
-  data->u_bc[0] = 3.0;
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,data->component,BCListEvaluator_Lithosphere,(void*)data);CHKERRQ(ierr);
-
-  /* Apply Neumann BC in the asthenosphere */
-  ierr = ModelApplyBoundaryConditionsNeumann(ptatin,surflist,PETSC_TRUE,data);CHKERRQ(ierr);
-
-  /* Apply base velocity from u.n */
-  u_bot = data->u_bc[1];
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
-  PetscFunctionReturn(0);
-}
-
 static PetscErrorCode ModelApplyBoundaryConditionsVelocity_RiftNitsche(pTatinCtx ptatin, DM dav, BCList bclist,SurfBCList surflist,PetscBool insert_if_not_found,ModelRiftNitscheCtx *data)
 {
   PetscErrorCode ierr;
@@ -3210,11 +2419,7 @@ static PetscErrorCode ModelApplyBoundaryConditionsVelocity_RiftNitsche(pTatinCtx
       break;
 
     case 7:
-      ierr = ModelApplyExtensionNeumann_RiftNitsche(ptatin,dav,bclist,surflist,insert_if_not_found,data);CHKERRQ(ierr);
-      break;
-
-    case 8:
-      ierr = ModelApplyDirichletX_NeumannConstantZ(ptatin,dav,bclist,surflist,insert_if_not_found,data);CHKERRQ(ierr);
+      ierr = ModelApplyDirichletX_NeumannZ(ptatin,dav,bclist,surflist,insert_if_not_found,data);CHKERRQ(ierr);
       break;
 
     default:
@@ -3363,7 +2568,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_RiftNitsche(pTatinCtx c,Vec X,void *
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ModelOutputMarkerFields_RiftNitsche(pTatinCtx c,const char prefix[])
+static PetscErrorCode ModelOutputMarkerFields_RiftNitsche(pTatinCtx ptatin,const char prefix[])
 {
   DataBucket               materialpoint_db;
   int                      nf;
@@ -3375,14 +2580,14 @@ static PetscErrorCode ModelOutputMarkerFields_RiftNitsche(pTatinCtx c,const char
 
   nf = sizeof(mp_prop_list)/sizeof(mp_prop_list[0]);
 
-  ierr = pTatinGetMaterialPoints(c,&materialpoint_db,NULL);CHKERRQ(ierr);
+  ierr = pTatinGetMaterialPoints(ptatin,&materialpoint_db,NULL);CHKERRQ(ierr);
   sprintf(mp_file_prefix,"%s_mpoints",prefix);
-  ierr = SwarmViewGeneric_ParaView(materialpoint_db,nf,mp_prop_list,c->outputpath,mp_file_prefix);CHKERRQ(ierr);
+  ierr = SwarmViewGeneric_ParaView(materialpoint_db,nf,mp_prop_list,ptatin->outputpath,mp_file_prefix);CHKERRQ(ierr);
   
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ModelOutputEnergyFV_RiftNitsche(pTatinCtx c, const char prefix[], PetscBool been_here, ModelRiftNitscheCtx *data)
+static PetscErrorCode ModelOutputEnergyFV_RiftNitsche(pTatinCtx ptatin, const char prefix[], PetscBool been_here, ModelRiftNitscheCtx *data)
 {
   PhysCompEnergyFV energy;
   char             root[PETSC_MAX_PATH_LEN],pvoutputdir[PETSC_MAX_PATH_LEN],fname[PETSC_MAX_PATH_LEN];
@@ -3392,22 +2597,22 @@ static PetscErrorCode ModelOutputEnergyFV_RiftNitsche(pTatinCtx c, const char pr
 
   PetscFunctionBegin;
 
-  ierr = pTatinGetContext_EnergyFV(c,&energy);CHKERRQ(ierr);
+  ierr = pTatinGetContext_EnergyFV(ptatin,&energy);CHKERRQ(ierr);
   // PVD
-  PetscSNPrintf(pvdfilename,PETSC_MAX_PATH_LEN-1,"%s/timeseries_T_fv.pvd",c->outputpath);
+  PetscSNPrintf(pvdfilename,PETSC_MAX_PATH_LEN-1,"%s/timeseries_T_fv.pvd",ptatin->outputpath);
   if (prefix) { PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "%s_T_fv.pvts",prefix);
   } else {      PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "T_fv.pvts");           }
   
-  PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%D",c->step);
+  PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%D",ptatin->step);
   if (!been_here) { /* new file */
     ierr = ParaviewPVDOpen(pvdfilename);CHKERRQ(ierr);
-    ierr = ParaviewPVDAppend(pvdfilename,c->time,vtkfilename,stepprefix);CHKERRQ(ierr);
+    ierr = ParaviewPVDAppend(pvdfilename,ptatin->time,vtkfilename,stepprefix);CHKERRQ(ierr);
   } else {
-    ierr = ParaviewPVDAppend(pvdfilename,c->time,vtkfilename,stepprefix);CHKERRQ(ierr);
+    ierr = ParaviewPVDAppend(pvdfilename,ptatin->time,vtkfilename,stepprefix);CHKERRQ(ierr);
   }
   
-  ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s",c->outputpath);CHKERRQ(ierr);
-  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%D",root,c->step);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s",ptatin->outputpath);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%D",root,ptatin->step);CHKERRQ(ierr);
   
   /* PetscVec */
   ierr = PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s_energy",prefix);CHKERRQ(ierr);
@@ -3439,23 +2644,59 @@ static PetscErrorCode ModelViewSurfaceConstraint(pTatinCtx ptatin, ModelRiftNits
 {
   PhysCompStokes    stokes;
   char              root[PETSC_MAX_PATH_LEN];
-  SurfaceConstraint sc_navier,sc_neumann;
+  SurfaceConstraint sc_navier,sc_neumann,sc_navier_face,sc_navier_normal;
   PetscErrorCode    ierr;
   PetscFunctionBegin;
 
   ierr = pTatinGetStokesContext(ptatin,&stokes);CHKERRQ(ierr);
 
-  ierr = SurfBCListGetConstraint(stokes->surf_bclist,"boundary_neumann",&sc_neumann);CHKERRQ(ierr);
-  ierr = SurfBCListGetConstraint(stokes->surf_bclist,"boundary_navier", &sc_navier);CHKERRQ(ierr);
-
-  ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s/step%D",ptatin->outputpath,ptatin->step);CHKERRQ(ierr);
-  if (sc_neumann) {
-    ierr = SurfaceConstraintViewParaview(sc_neumann, root, "boundary_neumann");CHKERRQ(ierr);
-  }
-  if (sc_navier) {
-    ierr = SurfaceConstraintViewParaview(sc_navier,  root, "boundary_navier");CHKERRQ(ierr);
-  }
+  ierr = SurfBCListGetConstraint(stokes->surf_bclist,"boundary_neumann", &sc_neumann);CHKERRQ(ierr);
+  ierr = SurfBCListGetConstraint(stokes->surf_bclist,"boundary_navier",  &sc_navier);CHKERRQ(ierr);
+  ierr = SurfBCListGetConstraint(stokes->surf_bclist,"bc_navier_face",   &sc_navier_face);CHKERRQ(ierr);
+  ierr = SurfBCListGetConstraint(stokes->surf_bclist,"bc_navier_normal", &sc_navier_normal);CHKERRQ(ierr);
   
+  ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s/step%D",ptatin->outputpath,ptatin->step);CHKERRQ(ierr);
+  if (sc_neumann)       { ierr = SurfaceConstraintViewParaview(sc_neumann,       root, "boundary_neumann");CHKERRQ(ierr); }
+  if (sc_navier)        { ierr = SurfaceConstraintViewParaview(sc_navier,        root, "boundary_navier");CHKERRQ(ierr);  }
+  if (sc_navier_face)   { ierr = SurfaceConstraintViewParaview(sc_navier_face,   root, "bc_navier_face");CHKERRQ(ierr);   }
+  if (sc_navier_normal) { ierr = SurfaceConstraintViewParaview(sc_navier_normal, root, "bc_navier_normal");CHKERRQ(ierr); }
+  
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelOutputPoissonPressure(pTatinCtx ptatin, ModelRiftNitscheCtx *data)
+{
+  PDESolveLithoP poisson_pressure;
+  PetscBool      active_poisson;
+  PetscViewer    viewer;
+  char           fname[PETSC_MAX_PATH_LEN],stepname[PETSC_MAX_PATH_LEN];
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  ierr = pTatinContextValid_LithoP(ptatin,&active_poisson);CHKERRQ(ierr);
+  if (!active_poisson) { PetscFunctionReturn(0); }
+
+  ierr = pTatinGetContext_LithoP(ptatin,&poisson_pressure);CHKERRQ(ierr);
+
+  ierr = PetscSNPrintf(stepname,PETSC_MAX_PATH_LEN-1,"step%1.6D",ptatin->step);CHKERRQ(ierr);
+  if (data->output_markers) {
+    ierr = PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/%sPoissonPressure.vts",ptatin->outputpath,stepname);CHKERRQ(ierr);
+    ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
+    ierr = PetscViewerSetType(viewer,PETSCVIEWERVTK);CHKERRQ(ierr);
+    ierr = PetscViewerFileSetMode(viewer,FILE_MODE_WRITE);CHKERRQ(ierr);
+    ierr = PetscViewerFileSetName(viewer,fname);CHKERRQ(ierr);
+    ierr = VecView(poisson_pressure->X,viewer);CHKERRQ(ierr);
+    ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
+  } else {
+    ierr = PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/%sPoissonPressure.pbvec",ptatin->outputpath,stepname);CHKERRQ(ierr);
+    ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
+    ierr = PetscViewerSetType(viewer,PETSCVIEWERBINARY);CHKERRQ(ierr);
+    ierr = PetscViewerFileSetMode(viewer,FILE_MODE_WRITE);CHKERRQ(ierr);
+    ierr = PetscViewerFileSetName(viewer,fname);CHKERRQ(ierr);
+    ierr = VecView(poisson_pressure->X,viewer);CHKERRQ(ierr);
+    ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
+  }
   PetscFunctionReturn(0);
 }
 
@@ -3490,6 +2731,10 @@ PetscErrorCode ModelOutput_RiftNitsche(pTatinCtx ptatin,Vec X,const char prefix[
   ierr = pTatinContextValid_EnergyFV(ptatin,&active_energy);CHKERRQ(ierr);
   if (active_energy) {
     ierr = ModelOutputEnergyFV_RiftNitsche(ptatin,prefix,been_here,data);CHKERRQ(ierr);
+  }
+  /* Output poisson pressure */
+  if (data->output_pressure) {
+    ierr = ModelOutputPoissonPressure(ptatin,data);CHKERRQ(ierr);
   }
   been_here = PETSC_TRUE;
   PetscFunctionReturn(0);

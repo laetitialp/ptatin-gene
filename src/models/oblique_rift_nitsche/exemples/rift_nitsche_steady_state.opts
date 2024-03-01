@@ -20,113 +20,198 @@
 -my 8 # Number of elements along y
 -mz 8 # Number of elements along z
 ########### Box Geometry ##########
--model_rift_nitsche_Ox 0.0
--model_rift_nitsche_Oy -250.0e3
--model_rift_nitsche_Oz 0.0
--model_rift_nitsche_Lx 1200.0e3
--model_rift_nitsche_Ly 0.0
--model_rift_nitsche_Lz 600.0e3
+-model_rift_nitsche_O 0.0,-250.0e3,0.0
+-model_rift_nitsche_L 1200.0e3,0.0,600.0e3
 -model_rift_nitsche_y_continent -25.0e3,-35.0e3,-120.0e3
 ########### Weak zones ##########
--model_rift_nitsche_wz_notch
+#-model_rift_nitsche_wz_notch
+-model_rift_nitsche_wz_gauss
+#-model_rift_nitsche_wz_centre_angle
+-model_rift_nitsche_wz_centre_opts
+#-model_rift_nitsche_wz_oblique
+#-model_rift_nitsche_wz_double
+#-model_rift_nitsche_wz_straight_gauss
+#-model_rift_nitsche_wz_oblique_gauss
+-model_rift_nitsche_wz_sigma 3e+5,3e+5
 -model_rift_nitsche_wz_n_notches 3
+-model_rift_nitsche_wz_centre0 213.630e3,196.472e3
+-model_rift_nitsche_wz_centre1 574.118e3,396.593e3
+-model_rift_nitsche_wz_centre2 1025.19e3,258.639e3
+-model_rift_nitsche_wz_origin 300.0e3 # Centre z
+-model_rift_nitsche_wz_offset -200.0e3
 -model_rift_nitsche_wz_width 100.0e3
+-model_rift_nitsche_wz_angle 22.0
 ########### Boundary conditions ##########
 #-model_rift_nitsche_bc_nitsche
--model_rift_nitsche_bc_dirichlet
+#-model_rift_nitsche_bc_strike_slip
+#-model_rift_nitsche_bc_freeslip_nitsche
+#-model_rift_nitsche_bc_dirichlet
+-model_rift_nitsche_bc_strikeslip_neumann
+#-model_rift_nitsche_bc_neumann_z
+#-model_rift_nitsche_bc_mark_face
 -model_rift_nitsche_norm_u 1.0 # cm/yr
--model_rift_nitsche_alpha_u 45.0 # Degree
--model_rift_nitsche_mathcalH 0,1,0,1,1,0 # default
+-model_rift_nitsche_alpha_u 90.0 # Degree
+-model_rift_nitsche_alpha_r -15.0 # Degree
+-model_rift_nitsche_mathcalH 0,1,0,1,1,1 # default
 -model_rift_nitsche_Ttop 0.0
 -model_rift_nitsche_Tbottom 1450.0
 ########### SPM ##########
 -model_rift_nitsche_diffusivity_spm 1.0e-6
 ############ Phases Parameters #############
+############################################
+#### Viscosity type ####
+# 0: VISCOUS_CONSTANT    , 1: VISCOUS_FRANKK
+# 2: VISCOUS_Z           , 3: VISCOUS_ARRHENIUS
+# 4: VISCOUS_ARRHENIUS_2 , 5: VISCOUS_ARRHENIUS_DISLDIFF
+#### Plasticity type ####
+# 0: PLASTIC_NONE , 1: PLASTIC_MISES
+# 2: PLASTIC_DP   , 3: PLASTIC_MISES_H
+# 4: PLASTIC_DP_H
+#### Softening type ####
+# 0: SOFTENING_NONE        , 1: SOFTENING_LINEAR
+# 2: SOFTENING_EXPONENTIAL
+#### Density type ####
+# 0: DENSITY_CONSTANT , 1: DENSITY_BOUSSINESQ
+############################################
 #### Continental upper crust phase number 0 ####
 #### Quartzite Ranalli 1997 ####
+#### viscosity ####
+-model_rift_nitsche_visc_type_0 3
 -model_rift_nitsche_preexpA_0 6.7e-6
 -model_rift_nitsche_Ascale_0 1.0e+6
 -model_rift_nitsche_entalpy_0 156.0e3
 -model_rift_nitsche_Vmol_0 0.0
 -model_rift_nitsche_nexp_0 2.4
 -model_rift_nitsche_Tref_0 273.15
--model_rift_nitsche_phi_0 0.0
--model_rift_nitsche_phi_inf_0 0.0
--model_rift_nitsche_Co_0 3.0e+8
--model_rift_nitsche_Co_inf_0 2.0e+7
--model_rift_nitsche_Tens_cutoff_0 1.0e+7
--model_rift_nitsche_Hst_cutoff_0 4.0e+8
+#### plasticity ####
+-model_rift_nitsche_plastic_type_0 2
+-model_rift_nitsche_friction_0 0.523599 # 30.0 degree
+-model_rift_nitsche_friction_inf_0 0.0872665 # 5.0 degree
+-model_rift_nitsche_cohesion_0 2.0e7
+-model_rift_nitsche_cohesion_inf_0 5.0e6
+-model_rift_nitsche_tens_cutoff_0 1.0e7
+-model_rift_nitsche_hst_cutoff_0 4.0e8
+#### softening ####
+-model_rift_nitsche_softening_type_0 1
 -model_rift_nitsche_eps_min_0 0.0
--model_rift_nitsche_eps_max_0 1.0
--model_rift_nitsche_alpha_0 3.0e-5
--model_rift_nitsche_beta_0 0.0
--model_rift_nitsche_rho_0 2700.0
--model_rift_nitsche_heat_source_0  1.5e-6 #3.0e-6
+-model_rift_nitsche_eps_max_0 0.5
+#### density ####
+-model_rift_nitsche_density_type_0 1
+-model_rift_nitsche_density_0 2700.0
+-model_rift_nitsche_thermalexpension_0 3.0e-5
+-model_rift_nitsche_compressibility_0 1.0e-11
+#### energy ####
+-model_rift_nitsche_heat_source_0 1.5e-6
 -model_rift_nitsche_conductivity_0 2.7
 #### Continental lower crust phase number 1 ####
 #### Anorthite Rybacki & Dresen 2000 ####
+#### viscosity ####
+-model_rift_nitsche_visc_type_1 3
 -model_rift_nitsche_preexpA_1 13.4637
 -model_rift_nitsche_Ascale_1 1.0e+6
 -model_rift_nitsche_entalpy_1 345.e+3
 -model_rift_nitsche_Vmol_1 38.0e-6
 -model_rift_nitsche_nexp_1 3.0
 -model_rift_nitsche_Tref_1 273.15
--model_rift_nitsche_phi_1 0.0
--model_rift_nitsche_phi_inf_1 0.0
--model_rift_nitsche_Co_1 3.0e+8
--model_rift_nitsche_Co_inf_1 2.0e+7
--model_rift_nitsche_Tens_cutoff_1 1.0e+7
--model_rift_nitsche_Hst_cutoff_1 4.0e+8
+#### plasticity ####
+-model_rift_nitsche_plastic_type_1 2
+-model_rift_nitsche_friction_1 0.523599 # 30.0 degree
+-model_rift_nitsche_friction_inf_1 0.0872665 # 5.0 degree
+-model_rift_nitsche_cohesion_1 2.0e7
+-model_rift_nitsche_cohesion_inf_1 5.0e6
+-model_rift_nitsche_tens_cutoff_1 1.0e7
+-model_rift_nitsche_hst_cutoff_1 4.0e8
+#### softening ####
+-model_rift_nitsche_softening_type_1 1
 -model_rift_nitsche_eps_min_1 0.0
--model_rift_nitsche_eps_max_1 1.0
--model_rift_nitsche_alpha_1 3.0e-5
--model_rift_nitsche_beta_1 1.0e-11
--model_rift_nitsche_rho_1 2850.0
--model_rift_nitsche_heat_source_1 0.3e-6 #3.0e-6
+-model_rift_nitsche_eps_max_1 0.5
+#### density ####
+-model_rift_nitsche_density_type_1 1
+-model_rift_nitsche_density_1 2850.0
+-model_rift_nitsche_thermalexpension_1 3.0e-5
+-model_rift_nitsche_compressibility_1 1.0e-11
+#### energy ####
+-model_rift_nitsche_heat_source_1 0.3e-6
 -model_rift_nitsche_conductivity_1 2.85
 #### Continental lithosphere mante phase number 2 ####
 #### Dry peridotite Ranalli 1997 ####
+-model_rift_nitsche_visc_type_2 3
 -model_rift_nitsche_preexpA_2 2.5e4
 -model_rift_nitsche_Ascale_2 1.0e+6
 -model_rift_nitsche_entalpy_2 532.0e3
 -model_rift_nitsche_Vmol_2 8.0e-6
 -model_rift_nitsche_nexp_2 3.5
 -model_rift_nitsche_Tref_2 273.15
--model_rift_nitsche_phi_2 0.0
--model_rift_nitsche_phi_inf_2 0.0
--model_rift_nitsche_Co_2 3.0e+8
--model_rift_nitsche_Co_inf_2 2.0e+7
--model_rift_nitsche_Tens_cutoff_2 1.0e+7
--model_rift_nitsche_Hst_cutoff_2 4.0e+8
+#### plasticity ####
+-model_rift_nitsche_plastic_type_2 2
+-model_rift_nitsche_friction_2 0.523599 # 30.0 degree
+-model_rift_nitsche_friction_inf_2 0.0872665 # 5.0 degree
+-model_rift_nitsche_cohesion_2 2.0e7
+-model_rift_nitsche_cohesion_inf_2 5.0e6
+-model_rift_nitsche_tens_cutoff_2 1.0e7
+-model_rift_nitsche_hst_cutoff_2 4.0e8
+#### softening ####
+-model_rift_nitsche_softening_type_2 1
 -model_rift_nitsche_eps_min_2 0.0
--model_rift_nitsche_eps_max_2 1.0
--model_rift_nitsche_alpha_2 3.0e-5
--model_rift_nitsche_beta_2 1.0e-11
--model_rift_nitsche_rho_2 3300.0
+-model_rift_nitsche_eps_max_2 0.5
+#### density ####
+-model_rift_nitsche_density_type_2 1
+-model_rift_nitsche_density_2 3300.0
+-model_rift_nitsche_thermalexpension_2 3.0e-5
+-model_rift_nitsche_compressibility_2 1.0e-11
+#### energy ####
 -model_rift_nitsche_heat_source_2 0.0
 -model_rift_nitsche_conductivity_2 3.3
 #### Asthenosphere phase number 3 ####
 #### Dry peridotite Ranalli 1997 ####
--model_rift_nitsche_preexpA_3 1e-20 #2.5e4
--model_rift_nitsche_Ascale_3 1.0 #0.5e+6
--model_rift_nitsche_entalpy_3 3.0e4 #532.0e3
--model_rift_nitsche_Vmol_3 0.0
--model_rift_nitsche_nexp_3 1.0 #3.5
+-model_rift_nitsche_visc_type_3 3
+-model_rift_nitsche_preexpA_3 2.5e4
+-model_rift_nitsche_Ascale_3 1.0e+6
+-model_rift_nitsche_entalpy_3 532.0e3
+-model_rift_nitsche_Vmol_3 8.0e-6
+-model_rift_nitsche_nexp_3 3.5
 -model_rift_nitsche_Tref_3 273.15
--model_rift_nitsche_phi_3 0.0
--model_rift_nitsche_phi_inf_3 0.0
--model_rift_nitsche_Co_3 3.0e+8
--model_rift_nitsche_Co_inf_3 2.0e+7
--model_rift_nitsche_Tens_cutoff_3 1.0e+7
--model_rift_nitsche_Hst_cutoff_3 4.0e+8
+#### plasticity ####
+-model_rift_nitsche_plastic_type_3 2
+-model_rift_nitsche_friction_3 0.523599 # 30.0 degree
+-model_rift_nitsche_friction_inf_3 0.0872665 # 5.0 degree
+-model_rift_nitsche_cohesion_3 2.0e7
+-model_rift_nitsche_cohesion_inf_3 5.0e6
+-model_rift_nitsche_tens_cutoff_3 1.0e7
+-model_rift_nitsche_hst_cutoff_3 4.0e8
+#### softening ####
+-model_rift_nitsche_softening_type_3 1
 -model_rift_nitsche_eps_min_3 0.0
--model_rift_nitsche_eps_max_3 1.0
--model_rift_nitsche_alpha_3 3.0e-5
--model_rift_nitsche_beta_3 1.0e-11
--model_rift_nitsche_rho_3 3300.0
+-model_rift_nitsche_eps_max_3 0.5
+#### density ####
+-model_rift_nitsche_density_type_3 1
+-model_rift_nitsche_density_3 3300.0
+-model_rift_nitsche_thermalexpension_3 3.0e-5
+-model_rift_nitsche_compressibility_3 1.0e-11
+#### energy ####
 -model_rift_nitsche_heat_source_3 0.0
--model_rift_nitsche_conductivity_3 70.0 #3.3
+-model_rift_nitsche_conductivity_3 70.0
 ################ SOLVERS ################
+#### THERMAL SOLVER
+-ptatin_energyfv_nsub 3,3,3
+-energyfv_ksp_monitor
+-energyfv_ksp_type fgmres
+-energyfv_mg_coarse_pc_type redundant
+-energyfv_mg_coarse_redundant_pc_type lu #mkl_pardiso
+-energyfv_mg_levels_esteig_ksp_norm_type none
+-energyfv_mg_levels_esteig_ksp_type cg
+-energyfv_mg_levels_ksp_chebyshev_esteig 0,0.01,0,1.1
+-energyfv_mg_levels_ksp_max_it 8
+#-energyfv_mg_levels_ksp_norm_type none
+-energyfv_mg_levels_ksp_type gmres #chebyshev
+-energyfv_mg_levels_pc_type bjacobi
+-energyfv_pc_type gamg
+-energyfv_snes_ksp_ew
+-energyfv_snes_ksp_ew_rtol0 1.0e-2
+-energyfv_snes_ksp_ew_version 1
+-energyfv_snes_lag_preconditioner -2
+-energyfv_snes_monitor
+-energyfv_snes_rtol 1.0e-6
 ###### MG
 -A11_operator_type 0,1,1,1
 -dau_nlevels 4
@@ -200,23 +285,3 @@
     #-fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_dmdarepart_mg_levels_ksp_norm_type NONE
     -fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_dmdarepart_mg_levels_pc_type bjacobi
     -fieldsplit_u_mg_coarse_dmdarepart_mg_coarse_dmdarepart_mg_levels_ksp_max_it 6
-#### THERMAL SOLVER
--ptatin_energyfv_nsub 3,3,3
--energyfv_ksp_monitor
--energyfv_ksp_type fgmres
--energyfv_mg_coarse_pc_type redundant
--energyfv_mg_coarse_redundant_pc_type lu #mkl_pardiso
--energyfv_mg_levels_esteig_ksp_norm_type none
--energyfv_mg_levels_esteig_ksp_type cg
--energyfv_mg_levels_ksp_chebyshev_esteig 0,0.01,0,1.1
--energyfv_mg_levels_ksp_max_it 8
-#-energyfv_mg_levels_ksp_norm_type none
--energyfv_mg_levels_ksp_type gmres #chebyshev
--energyfv_mg_levels_pc_type bjacobi
--energyfv_pc_type gamg
--energyfv_snes_ksp_ew
--energyfv_snes_ksp_ew_rtol0 1.0e-2
--energyfv_snes_ksp_ew_version 1
--energyfv_snes_lag_preconditioner -2
--energyfv_snes_monitor
--energyfv_snes_rtol 1.0e-6
