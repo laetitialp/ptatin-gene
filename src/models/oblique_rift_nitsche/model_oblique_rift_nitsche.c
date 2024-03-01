@@ -1876,17 +1876,20 @@ static PetscErrorCode ModelApplyBoundaryConditionsNeumannPoissonPressure(pTatinC
 {
   PetscErrorCode    ierr;
   PetscFunctionBegin;
-  /* Perform the solve to get the poisson pressure */
 
+  /* 
+  Perform the solve to get the poisson pressure 
+  At step 0 we solve the pressure every time the BC function is called,
+  After, we solve it once per time step ==> to check in non-linear higher resolution 
+  problems if it is ok or if we need to solve for it at ever BC function call 
+  */
   if (ptatin->step == 0) {
     ierr = ModelSolvePoissonPressure(ptatin,data);CHKERRQ(ierr);
   }
-
   if (ptatin->step != data->prev_step) {
     ierr = ModelSolvePoissonPressure(ptatin,data);CHKERRQ(ierr);
     data->prev_step = ptatin->step;
   }
-
   /* Apply pressure to the traction on quadpoints */
   ierr = ApplyPoissonPressureNeumannConstraint(ptatin,sc);CHKERRQ(ierr);
 
@@ -1950,30 +1953,6 @@ static PetscBool BCListEvaluator_RotatedVelocityField_Lithosphere(PetscScalar po
 
   if (position[1] >= -130.0e3 * data->length_bar) { impose = PETSC_TRUE; }
 
-  PetscFunctionReturn(impose);
-}
-
-static PetscBool BCListEvaluator_SplitFace(PetscScalar position[], PetscScalar *value, void *ctx)
-{
-  PetscReal *input = (PetscReal*)ctx;
-  PetscReal x0,x1,v0,v1;
-  PetscInt  dim;
-  PetscBool impose = PETSC_TRUE;
-
-  PetscFunctionBegin;
-  x0 = input[0];
-  x1 = input[1];
-  v0 = input[2];
-  v1 = -v0;
-  dim = (int)input[3];
-
-  if (position[dim] < x0) {
-    *value = v0;
-  } else if (position[dim] > x1) {
-    *value = v1;
-  } else {
-    *value = v1+(position[dim]-x1)*(v0-v1)/(x0-x1);
-  }
   PetscFunctionReturn(impose);
 }
 
@@ -2232,21 +2211,23 @@ static PetscErrorCode ModelApplyRotatedStrikeSlipNavierSlip_RiftNitsche(DM dav, 
 
 static PetscErrorCode ModelApplyAnalogueBoundaryConditions(DM dav, BCList bclist, ModelRiftNitscheCtx *data)
 {
-  PetscReal      bc_data[4],zero=0.0,u_bot;
+  BCSplitFaceCtx bc_data;
+  PetscReal      zero=0.0,u_bot;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
   
-  bc_data[0] = data->split_face_min[0];    // x0
-  bc_data[1] = data->split_face_min[1];    // x1 
-  bc_data[2] = data->u_bc[0];              // v0
-  bc_data[3] = 2;                          // dim (typecasted to (int) in the function)
+  bc_data.x0  = data->split_face_min[0];    // x0
+  bc_data.x1  = data->split_face_min[1];    // x1 
+  bc_data.v0  = data->u_bc[0];              // v0
+  bc_data.v1  = -data->u_bc[0];             // v1
+  bc_data.dim = 2;                          // dim
 
   /* x normal faces apply vx and -vx with a split in the middle of the face */
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_SplitFace,(void*)bc_data);CHKERRQ(ierr);
-  bc_data[0] = data->split_face_max[0];
-  bc_data[1] = data->split_face_max[1];
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_SplitFace,(void*)bc_data);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_SplitLinear,(void*)&bc_data);CHKERRQ(ierr);
+  bc_data.x0 = data->split_face_max[0];
+  bc_data.x1 = data->split_face_max[1];
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_SplitLinear,(void*)&bc_data);CHKERRQ(ierr);
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
 
@@ -2255,7 +2236,7 @@ static PetscErrorCode ModelApplyAnalogueBoundaryConditions(DM dav, BCList bclist
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
 
   /* y normal apply vx and -vx with a split in the middle of the face */
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,0,BCListEvaluator_SplitFace,(void*)bc_data);CHKERRQ(ierr);
+  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,0,BCListEvaluator_SplitLinear,(void*)&bc_data);CHKERRQ(ierr);
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
   /* Apply base y velocity from u.n */
   u_bot = data->u_bc[1];
