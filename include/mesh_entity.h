@@ -96,4 +96,11 @@ PetscErrorCode MeshFacetMarkByBoundary(MeshEntity e, MeshFacetInfo fi, PetscBool
 
 PetscErrorCode MeshEntityViewPV(PetscInt n,MeshEntity m[]);
 
+typedef struct {
+  PetscBool greater;
+  PetscInt  dim;
+  PetscReal x;
+} MarkFromPointCtx;
+
+PetscBool MarkFacetsFromPoint(Facet facets, void *ctx);
 #endif

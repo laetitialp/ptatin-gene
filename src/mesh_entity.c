@@ -846,4 +846,18 @@ PetscErrorCode MeshEntityViewPV(PetscInt n,MeshEntity m[])
   PetscFunctionReturn(0);
 }
 
+PetscBool MarkFacetsFromPoint(Facet facets, void *ctx)
+{
+  MarkFromPointCtx *data = (MarkFromPointCtx*)ctx;
+  PetscBool impose = PETSC_FALSE;
+  PetscFunctionBegin;
+  
+  /* Select the entire cell based on its centroid coordinate */
+  if (data->greater) {
+    if (facets->centroid[ data->dim ] >= data->x) { impose = PETSC_TRUE; }
+  } else {
+    if (facets->centroid[ data->dim ] <= data->x) { impose = PETSC_TRUE; }
+  }
 
+  PetscFunctionReturn(impose);
+}
