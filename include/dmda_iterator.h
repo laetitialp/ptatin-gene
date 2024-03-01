@@ -47,6 +47,11 @@ typedef struct {
   PetscScalar A[3],B[3];
 } DMDAVecTraverse3d_InterpCtx;
 
+typedef struct {
+  PetscInt  dim;
+  PetscReal x0,x1;
+  PetscReal v0,v1;
+} BCSplitFaceCtx;
 
 PetscErrorCode DMDAVecTraverse3d_InterpCtxSetUp_X(DMDAVecTraverse3d_InterpCtx *c,PetscScalar a, PetscScalar b,PetscScalar ox);
 PetscErrorCode DMDAVecTraverse3d_InterpCtxSetUp_Y(DMDAVecTraverse3d_InterpCtx *c,PetscScalar a, PetscScalar b,PetscScalar ox);
@@ -88,4 +93,6 @@ PetscErrorCode DMDACoordTraverseIJK(DM da,PetscInt plane,PetscInt index,PetscInt
 
 PetscBool DMDAVecTraverse3d_ROTXZ_Z(PetscScalar pos[],PetscScalar *val,void *ctx);
 PetscBool DMDAVecTraverse3d_ROTXZ_X(PetscScalar pos[],PetscScalar *val,void *ctx);
+
+PetscBool BCListEvaluator_SplitLinear(PetscScalar position[], PetscScalar *value, void *ctx);
 #endif
