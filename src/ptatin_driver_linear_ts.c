@@ -970,6 +970,9 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
   /* material geometry */
   ierr = pTatinModel_ApplyInitialMaterialGeometry(user->model,user);CHKERRQ(ierr);
 
+  /* initial condition */
+  ierr = pTatinModel_ApplyInitialSolution(user->model,user,X);CHKERRQ(ierr);
+
   /* boundary conditions */
   ierr = pTatinModel_ApplyBoundaryCondition(user->model,user);CHKERRQ(ierr);
 
@@ -1075,9 +1078,6 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
   
   /* define bc's for hiearchy */
   ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,surf_bclist,dav_hierarchy,user->model,user);CHKERRQ(ierr);
-
-  /* initial condition */
-  ierr = pTatinModel_ApplyInitialSolution(user->model,user,X);CHKERRQ(ierr);
 
   /* boundary condition */
   {

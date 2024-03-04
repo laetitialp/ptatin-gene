@@ -3,18 +3,18 @@
 
 typedef struct {
   /* Bounding box */
-  PetscReal Lx,Ly,Lz,Ox,Oy,Oz;
+  PetscReal L[3],O[3];
   /* Layering */
   PetscReal y_continent[3];
   /* Velocity BCs */
   PetscReal norm_u,alpha_u,u_bc[3],alpha_r;
   PetscInt  component,bc_type;
-  PetscInt  u_func_type;
-  PetscReal atan_sharpness,atan_offset;
   PetscReal split_face_min[2],split_face_max[2];
   PetscReal time_full_velocity;
   /* General Navier Slip BCs */
   PetscReal epsilon_s[6],H[6],t1_hat[3],n_hat[3];
+  /* Neumann BCs */
+  PetscInt mark_type;
   /* Number of materials */
   PetscInt  n_phases;
   /* Scaling values */
@@ -23,8 +23,6 @@ typedef struct {
   /* Viscosity cutoff */
   PetscBool eta_cutoff;
   PetscReal eta_max,eta_min;
-  /* Viscosity type */
-  PetscInt viscous_type;
   /* SPM parameters */
   PetscReal diffusivity_spm;
   /* Temperature BCs */
@@ -34,9 +32,12 @@ typedef struct {
   PetscReal wz_angle,wz_width,wz_sigma[2];
   PetscReal wz_origin,wz_offset;
   /* Output */
-  PetscBool output_markers;
+  PetscBool output_markers,output_pressure;
   /* Passive markers */
   PSwarm pswarm;
+  /* Poisson pressure */
+  Mat      poisson_Jacobian;
+  PetscInt prev_step;
 } ModelRiftNitscheCtx;
 
 #endif

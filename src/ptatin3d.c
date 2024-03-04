@@ -679,6 +679,7 @@ PetscErrorCode pTatin3dDestroyContext(pTatinCtx *ctx)
   if (user->energy_ctx) { ierr = PhysCompDestroy_Energy(&user->energy_ctx);CHKERRQ(ierr); }
   if (user->stokes_ctx) { ierr = PhysCompDestroy_Stokes(&user->stokes_ctx);CHKERRQ(ierr); }
   if (user->pack) {       ierr = DMDestroy(&user->pack);CHKERRQ(ierr); }
+  if (user->litho_p_ctx){ ierr = PhysCompDestroy_LithoP(&user->litho_p_ctx); }
 
   /*
    if (user->Q) { ierr = QuadratureStokesDestroy(&user->Q);CHKERRQ(ierr); }

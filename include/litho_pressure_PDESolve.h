@@ -34,6 +34,7 @@
 #include "ptatin3d.h"
 #include "quadrature.h"
 #include "dmda_bcs.h"
+#include <surface_constraint.h>
 
 struct _p_PDESolveLithoP {
   PetscInt                mesh_type; /* 0-std dmda, 1-overlap, 2-nested */
@@ -46,6 +47,14 @@ struct _p_PDESolveLithoP {
   Vec                     F; /* residual vector */
   Vec                     X; /* solution vector */
 };
+
+typedef struct {
+  PetscInt          nen,m[3];
+  const PetscInt    *elnidx;
+  const PetscInt    *elnidx_q2;
+  PetscReal         *pressure;
+  PetscScalar       *coor;
+} PressureTractionCtx;
 
 PetscErrorCode PhysCompCreate_LithoP(PDESolveLithoP *LP);
 PetscErrorCode PhysCompDestroy_LithoP(PDESolveLithoP *LP);
