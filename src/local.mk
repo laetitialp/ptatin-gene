@@ -92,6 +92,8 @@ libptatin3d-y.c += $(call thisdir, \
   sc_generic.c sc_demo.c sc_nitsche_dirichlet.c sc_nitsche_navierslip.c \
   sc_nitsche_generalslip.c \
   litho_pressure_PDESolve.c \
+  parse.c \
+  point_in_tetra.c \
 )
 
 libptatin3d-$(CONFIG_CUDA).cu += $(call thisdir, \
