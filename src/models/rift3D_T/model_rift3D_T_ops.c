@@ -61,8 +61,8 @@
 #define REMOVE_FACE_INJECTION
 #define MPPC_LOG_LEVEL 1
 
-PetscLogEvent PTATIN_MaterialPointPopulationControlInsert;
-PetscLogEvent PTATIN_MaterialPointPopulationControlRemove;
+static PetscLogEvent PTATIN_MaterialPointPopulationControlInsert;
+static PetscLogEvent PTATIN_MaterialPointPopulationControlRemove;
 
 PetscErrorCode GeometryObjectSetFromOptions_Box(GeometryObject go);
 PetscErrorCode GeometryObjectSetFromOptions_InfLayer(GeometryObject go);
