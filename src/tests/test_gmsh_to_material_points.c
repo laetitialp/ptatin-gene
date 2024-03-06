@@ -92,6 +92,7 @@ static PetscErrorCode SetRegionIndexFromGMSH(pTatinCtx ptatin, GMSHCtx *data)
   }
   DataFieldRestoreAccess(PField_std);
   free(region_idx);
+  MeshDestroy(&mesh);
   PetscFunctionReturn(0);
 }
 
