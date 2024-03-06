@@ -75,5 +75,5 @@ PetscErrorCode DMDAComputeQ2LocalBoundingBox(DM dm,PetscReal gmin[],PetscReal gm
 PetscErrorCode MPntStdCoordinateMinIdentifyPointIndex(DataBucket materialpoint_db,int region_idx,int pmin_x[],int pmin_y[],int pmin_z[]);
 PetscErrorCode MPntStdCoordinateMaxIdentifyPointIndex(DataBucket materialpoint_db,int region_idx,int pmax_x[],int pmax_y[],int pmax_z[]);
 PetscErrorCode StokesComputeVdotN(PhysCompStokes stokes,Vec u,PetscReal int_u_dot_n[]);
-
+PetscErrorCode MPntStdSetRegionIndexFromGmsh(pTatinCtx ptatin, const char mesh_file[], const char region_file[]);
 #endif

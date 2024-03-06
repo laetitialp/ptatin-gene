@@ -56,6 +56,9 @@
 #include "MPntPEnergy_def.h"
 #include "ptatin_std_dirichlet_boundary_conditions.h"
 
+#include "parse.h"
+#include "point_in_tetra.h"
+
 #include "model_utils.h"
 
 PetscErrorCode MPntGetField_global_element_nInJnKindex(DM da, MPntStd *material_point, PetscInt *nI, PetscInt *nJ, PetscInt *nK)
@@ -1699,5 +1702,53 @@ PetscErrorCode StokesComputeVdotN(PhysCompStokes stokes,Vec u,PetscReal int_u_do
   int_u_dot_n[ FRONT_FACE -1 ] = _int_u_dot_n[ HEX_FACE_Pzeta ];
   int_u_dot_n[ BACK_FACE  -1 ] = _int_u_dot_n[ HEX_FACE_Nzeta ];
 
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode MPntStdSetRegionIndexFromGmsh(pTatinCtx ptatin, const char mesh_file[], const char region_file[])
+{
+  Mesh           mesh;
+  DataBucket     db;
+  DataField      PField_std;
+  long int       *region_idx = NULL;
+  int            p,n_mp_points;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  ierr = pTatinGetMaterialPoints(ptatin,&db,NULL);CHKERRQ(ierr);
+  /* MPntStd */
+  DataBucketGetDataFieldByName(db,MPntStd_classname,&PField_std);
+  DataFieldGetAccess(PField_std);
+  /* Number of markers */
+  DataBucketGetSizes(db,&n_mp_points,0,0);
+
+  /* Get user mesh from file */
+  parse_mesh(mesh_file,&mesh);
+  if (!mesh) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"mesh = NULL. Aborting.\n"); }
+  /* Get region index from file */
+  parse_field(mesh,region_file,'c',(void**)&region_idx);
+  
+  /* Loop over markers */
+  for (p=0; p<n_mp_points; p++) {
+    MPntStd  *marker_std;
+    long int np = 1,found;
+    long int ep[] = {-1}; // element index in which the point is located (after the location function)
+    double   xip[] = {0.0,0.0,0.0}; // local coords of the point in the element (after the location function)
+
+    /* Get marker */
+    DataFieldAccessPoint(PField_std,p,(void**)&marker_std);
+
+    /* Locate point in gmsh mesh */
+    PointLocation_BruteForce(mesh,np,(const double*)marker_std->coor,ep,xip,&found);
+    if (found == 0) {
+      PetscPrintf(PETSC_COMM_SELF,"[[WARNING]] Point[%d], coords = (%1.4e, %1.4e, %1.4e) not found in tetra mesh.\n",p,marker_std->coor[0],marker_std->coor[1],marker_std->coor[2]);
+      //SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Point not found in tetra mesh. Aborting.\n");
+    }
+    /* assign marker phase */
+    marker_std->phase = region_idx[ep[0]];
+  }
+  DataFieldRestoreAccess(PField_std);
+  free(region_idx);
+  MeshDestroy(&mesh);
   PetscFunctionReturn(0);
 }
