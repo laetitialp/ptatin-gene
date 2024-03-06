@@ -28,7 +28,7 @@
  ** ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ @*/
 
 /*
-   Developed by Laetitia Le Pourhiet [laetitia.le_pourhiet@upmc.fr]
+   Developed by Anthony Jourdon [anthony.jourdon@sorbonne-universite.fr]
  */
 
 #include "petsc.h"
@@ -40,29 +40,319 @@
 #include "data_bucket.h"
 #include "MPntStd_def.h"
 #include "MPntPStokes_def.h"
+#include "MPntPEnergy_def.h"
 #include "cartgrid.h"
 #include "material_point_popcontrol.h"
+
+#include "ptatin3d_energy.h"
+#include <ptatin3d_energyfv.h>
+#include <ptatin3d_energyfv_impl.h>
+#include <material_constants_energy.h>
 
 #include "model_gene3d_ctx.h"
 
 const char MODEL_NAME[] = "model_GENE3D_";
 
-PetscErrorCode ModelInitialize_Gene3D(pTatinCtx c,void *ctx)
+static PetscErrorCode ModelSetInitialGeometryFromOptions(ModelGENE3DCtx *data)
+{
+  PetscBool      found;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+
+  /* Origin */
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-Ox",&data->O[0], &found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_USER,"Expected user to provide model origin -%sOx \n",MODEL_NAME); }
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-Oy",&data->O[1], &found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_USER,"Expected user to provide model origin -%sOy \n",MODEL_NAME); }
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-Oz",&data->O[2], &found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_USER,"Expected user to provide model origin -%sOz \n",MODEL_NAME); }
+
+  /* Length */
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-Lx",&data->L[0], &found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_USER,"Expected user to provide model origin -%sLx \n",MODEL_NAME); }
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-Ly",&data->L[1], &found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_USER,"Expected user to provide model origin -%sLy \n",MODEL_NAME); }
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-Lz",&data->L[2], &found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_USER,"Expected user to provide model origin -%sLz \n",MODEL_NAME); }
+
+  /* reports before scaling */
+  PetscPrintf(PETSC_COMM_WORLD,"************* Box Geometry *************\n");
+  PetscPrintf(PETSC_COMM_WORLD,"( Ox , Lx ) = ( %+1.4e [m], %+1.4e [m] )\n", data->O[0] ,data->L[0] );
+  PetscPrintf(PETSC_COMM_WORLD,"( Oy , Ly ) = ( %+1.4e [m], %+1.4e [m] )\n", data->O[1] ,data->L[1] );
+  PetscPrintf(PETSC_COMM_WORLD,"( Oz , Lz ) = ( %+1.4e [m], %+1.4e [m] )\n", data->O[2] ,data->L[2] );
+  
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelSetRegionParametersFromOptions_Energy(DataBucket materialconstants, const int region_idx)
+{
+  DataField                 PField,PField_k,PField_Q;
+  EnergyConductivityConst   *data_k;
+  EnergySourceConst         *data_Q;
+  EnergyMaterialConstants   *matconstants_e;
+  int                       source_type[7] = {0, 0, 0, 0, 0, 0, 0};
+  PetscReal                 alpha,beta,rho,heat_source,conductivity,Cp;
+  char                      *option_name;
+  PetscErrorCode            ierr;
+  PetscFunctionBegin;
+
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+
+  /* Energy material constants */
+  DataBucketGetDataFieldByName(materialconstants,EnergyMaterialConstants_classname,&PField);
+  DataFieldGetEntries(PField,(void**)&matconstants_e);
+  
+  /* Conductivity */
+  DataBucketGetDataFieldByName(materialconstants,EnergyConductivityConst_classname,&PField_k);
+  DataFieldGetEntries(PField_k,(void**)&data_k);
+  
+  /* Heat source */
+  DataBucketGetDataFieldByName(materialconstants,EnergySourceConst_classname,&PField_Q);
+  DataFieldGetEntries(PField_Q,(void**)&data_Q);
+
+  /* Set default values for parameters */
+  source_type[0] = ENERGYSOURCE_CONSTANT;
+  source_type[1] = ENERGYSOURCE_SHEAR_HEATING;
+
+  /* Set material energy parameters from options file */
+  Cp = 800.0;
+  if (asprintf (&option_name, "-heatcapacity_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&Cp,NULL);CHKERRQ(ierr);
+  free (option_name);
+
+  alpha = 0.0;
+  if (asprintf (&option_name, "-thermalexpension_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&alpha,NULL);CHKERRQ(ierr);
+  free (option_name);
+
+  beta = 0.0;
+  if (asprintf (&option_name, "-compressibility_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&beta,NULL);CHKERRQ(ierr);
+  free (option_name);
+
+  rho = 1.0;
+  if (asprintf (&option_name, "-density_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&rho,NULL);CHKERRQ(ierr);
+  free (option_name);
+  
+  heat_source = 0.0;
+  if (asprintf (&option_name, "-heat_source_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&heat_source,NULL);CHKERRQ(ierr);
+  free (option_name);
+
+  conductivity = 1.0;
+  if (asprintf (&option_name, "-conductivity_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&conductivity,NULL);CHKERRQ(ierr);
+  free (option_name);
+
+  /* Set energy params for region_idx */
+  MaterialConstantsSetValues_EnergyMaterialConstants(region_idx,matconstants_e,alpha,beta,rho,Cp,ENERGYDENSITY_CONSTANT,ENERGYCONDUCTIVITY_CONSTANT,source_type);
+  EnergySourceConstSetField_HeatSource(&data_Q[region_idx],heat_source);
+  EnergyConductivityConstSetField_k0(&data_k[region_idx],conductivity);
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelSetMaterialParametersFromOptions(pTatinCtx ptatin, DataBucket materialconstants, ModelGENE3DCtx *data)
+{
+  PetscInt       region_idx;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+
+  for (region_idx = 0; region_idx < data->nmaterials; region_idx++) {
+    PetscPrintf(PETSC_COMM_WORLD,"SETTING REGION: %d\n",region_idx);
+    ierr = MaterialConstantsSetFromOptions_MaterialType(materialconstants,MODEL_NAME,region_idx,PETSC_TRUE);CHKERRQ(ierr);
+    ierr = MaterialConstantsSetFromOptions(materialconstants,MODEL_NAME,region_idx,PETSC_TRUE);CHKERRQ(ierr);
+    ierr = ModelSetRegionParametersFromOptions_Energy(materialconstants,region_idx);CHKERRQ(ierr);
+  }
+  /* Report all material parameters values */
+  for (region_idx=0; region_idx<data->nmaterials; region_idx++) {
+    ierr = MaterialConstantsPrintAll(materialconstants,region_idx);CHKERRQ(ierr);
+    ierr = MaterialConstantsEnergyPrintAll(materialconstants,region_idx);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelSetViscosityCutoffFromOptions(ModelGENE3DCtx *data)
+{
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  data->eta_cutoff = PETSC_TRUE;
+  data->eta_max = 1.0e+25;
+  data->eta_min = 1.0e+19;
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-apply_viscosity_cutoff",&data->eta_cutoff,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-eta_lower_cutoff",      &data->eta_min,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-eta_upper_cutoff",      &data->eta_max,NULL);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelSetSPMParametersFromOptions(ModelGENE3DCtx *data)
+{
+  PetscBool      found,flg;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  data->surface_diffusion = PETSC_FALSE;
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-apply_surface_diffusion",&data->surface_diffusion,&found);CHKERRQ(ierr);
+  if (found) {
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-diffusivity_spm",&data->diffusivity_spm,&flg);CHKERRQ(ierr);
+    if (!flg) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface diffusion activated but no diffusivity provided. Use -%sdiffusivity_spm to set it.\n",MODEL_NAME); }
+  }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelSetPassiveMarkersSwarmParametersFromOptions(pTatinCtx ptatin, ModelGENE3DCtx *data)
+{
+  PSwarm         pswarm;
+  PetscBool      found;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  data->passive_markers = PETSC_FALSE;
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-apply_passive_markers",&data->passive_markers,&found);CHKERRQ(ierr);
+  if (!found) { PetscFunctionReturn(0); }
+
+  ierr = PSwarmCreate(PETSC_COMM_WORLD,&pswarm);CHKERRQ(ierr);
+  ierr = PSwarmSetOptionsPrefix(pswarm,"passive_");CHKERRQ(ierr);
+  ierr = PSwarmSetPtatinCtx(pswarm,ptatin);CHKERRQ(ierr);
+  ierr = PSwarmSetTransportModeType(pswarm,PSWARM_TM_LAGRANGIAN);CHKERRQ(ierr);
+
+  ierr = PSwarmSetFromOptions(pswarm);CHKERRQ(ierr);
+
+  /* Copy reference into model data for later use in different functions */
+  data->pswarm = pswarm;
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelSetScalingParametersFromOptions(ModelGENE3DCtx *data)
+{
+  PetscBool      found;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  /* Assume scaling factors based on typical length, viscosity and velocity of long-term geodynamic systems */
+  data->length_bar     = 1.0e+5;
+  data->viscosity_bar  = 1.0e+22;
+  data->velocity_bar   = 1.0e-10;
+
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-length_scale",&data->length_bar,&found);CHKERRQ(ierr);
+  if (!found) { PetscPrintf(PETSC_COMM_WORLD,"[[WARNING]] No scaling factor for length provided, assuming %1.4e. You can change it with the option -%slength_scale\n",data->length_bar,MODEL_NAME); }
+
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-viscosity_scale",&data->viscosity_bar,&found);CHKERRQ(ierr);
+  if (!found) { PetscPrintf(PETSC_COMM_WORLD,"[[WARNING]] No scaling factor for viscosity provided, assuming %1.4e. You can change it with the option -%sviscosity_scale\n",data->viscosity_bar,MODEL_NAME); }
+
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-velocity_scale",&data->velocity_bar,&found);CHKERRQ(ierr);
+  if (!found) { PetscPrintf(PETSC_COMM_WORLD,"[[WARNING]] No scaling factor for velocity provided, assuming %1.4e. You can change it with the option -%svelocity_scale\n",data->velocity_bar,MODEL_NAME); }
+
+  /* Compute additional scaling parameters */
+  data->time_bar         = data->length_bar / data->velocity_bar;
+  data->pressure_bar     = data->viscosity_bar/data->time_bar;
+  data->density_bar      = data->pressure_bar * (data->time_bar*data->time_bar)/(data->length_bar*data->length_bar); // kg.m^-3
+  data->acceleration_bar = data->length_bar / (data->time_bar*data->time_bar);
+
+  PetscFunctionReturn(0);
+}
+#if 0
+static PetscErrorCode ModelScaleParameters(DataBucket materialconstants, ModelGENE3DCtx *data)
+{
+  PetscInt  region_idx,i;
+  PetscReal cm_per_year2m_per_sec,Myr2sec;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  /* scaling values */
+  cm_per_year2m_per_sec = 1.0e-2 / ( 365.0 * 24.0 * 60.0 * 60.0 );
+  Myr2sec               = 1.0e6 * ( 365.0 * 24.0 * 3600.0 );
+  
+  
+  /* Scale viscosity cutoff */
+  data->eta_max /= data->viscosity_bar;
+  data->eta_min /= data->viscosity_bar;
+  /* Scale length */
+  for (i=0; i<3; i++) { 
+    data->L[i] /= data->length_bar;
+    data->O[i] /= data->length_bar;
+  }
+
+  data->wz_origin /= data->length_bar;
+  data->wz_offset /= data->length_bar;
+
+  data->wz_width /= data->length_bar;
+  for (i=0; i<2; i++) { data->wz_sigma[i] /= data->length_bar; }
+  
+  for (i=0; i<2; i++) { 
+    data->split_face_max[i] /= data->length_bar;
+    data->split_face_min[i] /= data->length_bar; 
+  }
+
+  data->time_full_velocity = data->time_full_velocity*Myr2sec / data->time_bar;
+
+  /* Scale velocity */
+  data->norm_u = data->norm_u*cm_per_year2m_per_sec / data->velocity_bar;
+  for (i=0; i<3; i++) { data->u_bc[i] = data->u_bc[i]*cm_per_year2m_per_sec / data->velocity_bar; }
+
+  data->diffusivity_spm /= (data->length_bar*data->length_bar/data->time_bar);
+
+  /* scale material properties */
+  for (region_idx=0; region_idx<data->n_phases; region_idx++) {
+    ierr = MaterialConstantsScaleAll(materialconstants,region_idx,data->length_bar,data->velocity_bar,data->time_bar,data->viscosity_bar,data->density_bar,data->pressure_bar);CHKERRQ(ierr);
+    ierr = MaterialConstantsEnergyScaleAll(materialconstants,region_idx,data->length_bar,data->time_bar,data->pressure_bar);CHKERRQ(ierr);
+  }
+
+  PetscPrintf(PETSC_COMM_WORLD,"[Rift Nitsche Model]:  during the solve scaling is done using \n");
+  PetscPrintf(PETSC_COMM_WORLD,"  L*    : %1.4e [m]\n",       data->length_bar );
+  PetscPrintf(PETSC_COMM_WORLD,"  U*    : %1.4e [m.s^-1]\n",  data->velocity_bar );
+  PetscPrintf(PETSC_COMM_WORLD,"  t*    : %1.4e [s]\n",       data->time_bar );
+  PetscPrintf(PETSC_COMM_WORLD,"  eta*  : %1.4e [Pa.s]\n",    data->viscosity_bar );
+  PetscPrintf(PETSC_COMM_WORLD,"  rho*  : %1.4e [kg.m^-3]\n", data->density_bar );
+  PetscPrintf(PETSC_COMM_WORLD,"  P*    : %1.4e [Pa]\n",      data->pressure_bar );
+  PetscPrintf(PETSC_COMM_WORLD,"  a*    : %1.4e [m.s^-2]\n",  data->acceleration_bar );
+
+  PetscFunctionReturn(0);
+}
+#endif
+static PetscErrorCode ModelSetBottomFlowFromOptions(ModelGENE3DCtx *data)
+{
+  PetscBool      found,flg;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  data->u_dot_n_flow = PETSC_FALSE;
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-u_dot_n_bottomflow",&data->u_dot_n_flow,&found);CHKERRQ(ierr);
+  if (!found) {
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-uy_bot",&data->u_bc[6*HEX_FACE_Neta + 1],&flg);CHKERRQ(ierr);
+    if (!flg) {
+      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"-uy_bot not found. You can provide either -%su_dot_n_bottomflow to automatically set the base velocity or -%suy_bot to set it directly.\n",MODEL_NAME,MODEL_NAME);
+    }
+  }
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ModelInitialize_Gene3D(pTatinCtx ptatin, void *ctx)
 {
   ModelGENE3DCtx    *data = (ModelGENE3DCtx*)ctx;
   RheologyConstants *rheology;
+  DataBucket        materialconstants;
   PetscBool         flg, found;
   char              *option_name;
   PetscInt          i,nphase;
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
-
-
   PetscPrintf(PETSC_COMM_WORLD, "[[%s]]\n", PETSC_FUNCTION_NAME);
 
-  rheology = &c->rheology_constants;
-
+  ierr = pTatinGetRheology(ptatin,&rheology);CHKERRQ(ierr);
+  ierr = pTatinGetMaterialConstants(ptatin,&materialconstants);CHKERRQ(ierr);
 
   /* model geometry */
   PetscPrintf(PETSC_COMM_WORLD,"reading model initial geometry from options\n");
@@ -71,195 +361,15 @@ PetscErrorCode ModelInitialize_Gene3D(pTatinCtx c,void *ctx)
     SETERRQ(PETSC_COMM_SELF, PETSC_ERR_USER,"Expected user to provide a type of material index initialisation \n");
   }
 
-  /* box geometry */
-  PetscPrintf(PETSC_COMM_WORLD, "reading box geometry from options\n");
-
-  ierr = PetscOptionsGetReal(NULL,NULL, "-Lx", &data->Lx, &flg);CHKERRQ(ierr);
-  if (found == PETSC_FALSE) {
-    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Expected user to provide model length Lx \n");
-  }
-
-  ierr = PetscOptionsGetReal(NULL,NULL, "-Ly", &data->Ly, &flg);CHKERRQ(ierr);
-  if (found == PETSC_FALSE) {
-    SETERRQ(PETSC_COMM_SELF, PETSC_ERR_USER, "Expected user to provide model length Ly \n");
-  }
-
-  ierr = PetscOptionsGetReal(NULL,NULL, "-Lz", &data->Lz, &flg);CHKERRQ(ierr);
-  if (found == PETSC_FALSE) {
-    SETERRQ(PETSC_COMM_SELF, PETSC_ERR_USER,"Expected user to provide model length Lz \n");
-  }
-
-
-  ierr = PetscOptionsGetReal(NULL,NULL, "-Ox", &data->Ox, &flg);CHKERRQ(ierr);
-  if (found == PETSC_FALSE) {
-    SETERRQ(PETSC_COMM_SELF, PETSC_ERR_USER,"Expected user to provide model Origin Ox \n");
-  }
-
-  ierr = PetscOptionsGetReal(NULL,NULL, "-Oy", &data->Oy, &flg);CHKERRQ(ierr);
-  if (found == PETSC_FALSE) {
-    SETERRQ(PETSC_COMM_SELF, PETSC_ERR_USER,"Expected user to provide model Origin Oy \n");
-  }
-
-  ierr = PetscOptionsGetReal(NULL,NULL, "-Oz", &data->Oz, &flg);CHKERRQ(ierr);
-  if (found == PETSC_FALSE) {
-    SETERRQ(PETSC_COMM_SELF, PETSC_ERR_USER,"Expected user to provide model Origin Oz \n");
-  }
-
-
-
-  /* rheology type */
-  PetscPrintf(PETSC_COMM_WORLD, "reading rheology type from options\n");
-  ierr = PetscOptionsGetInt(NULL,MODEL_NAME, "-rheol",(PetscInt*) & rheology->rheology_type, &found);CHKERRQ(ierr);
-  if (found == PETSC_FALSE) {
-    SETERRQ(PETSC_COMM_SELF, PETSC_ERR_USER, "Expected user to provide value for rheology type \n");
-  }
-
-  /* material properties */
-  PetscPrintf(PETSC_COMM_WORLD,"reading material properties from options\n");
-  ierr = PetscOptionsGetInt(NULL,MODEL_NAME, "-nphase", &nphase, &found);CHKERRQ(ierr);
-
-  /* set the active phases on the rheo structure */
-  rheology->nphases_active = nphase;
-
-  if (found == PETSC_FALSE) {
-    SETERRQ(PETSC_COMM_SELF, PETSC_ERR_USER, "Expected user to provide value for number of materials \n");
-  }
-  for (i = 0; i < nphase; i++){
-
-    switch (rheology->rheology_type){
-      case 0:
-        {
-          if (asprintf(&option_name, "-eta0_%d", i) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-          ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&(rheology->const_eta0[i]), &found);CHKERRQ(ierr);
-          if (found == PETSC_FALSE) {
-            SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_USER,"Expected user to provide value to option %s \n",option_name);
-            free (option_name);
-          }
-          if (asprintf (&option_name, "-rho_%d", i) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-          ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&(rheology->const_rho0[i]), &found);CHKERRQ(ierr);
-          if (found == PETSC_FALSE) {
-            SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_USER,"Expected user to provide value to option %s \n",option_name);
-          }
-          free (option_name);
-        }
-        break;
-
-      case 1:
-        {
-          if (asprintf(&option_name, "-eta0_%d", i) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-          ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&(rheology->const_eta0[i]), &found);CHKERRQ(ierr);
-          if (found == PETSC_FALSE) {
-            SETERRQ1 (PETSC_COMM_SELF, PETSC_ERR_USER,"Expected user to provide value to option %s \n", option_name);
-          }
-          free(option_name);
-
-          if (asprintf(&option_name, "-rho_%d", i) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-          ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&(rheology->const_rho0[i]), &found);CHKERRQ(ierr);
-          if (found == PETSC_FALSE) {
-            SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_USER,"Expected user to provide value to option %s \n",option_name);
-          }
-          free (option_name);
-
-          if (asprintf(&option_name, "-Co_%d", i) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-          ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&(rheology->mises_tau_yield[i]), &found);CHKERRQ(ierr);
-          if (found == PETSC_FALSE) {
-            SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_USER,"Expected user to provide value to option %s \n",option_name);
-          }
-          free (option_name);
-
-          if (asprintf (&option_name, "-Phi_%d", i) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-          ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&(rheology->dp_pressure_dependance[i]),&found);CHKERRQ(ierr);
-          if (found == PETSC_FALSE) {
-            SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_USER,"Expected user to provide value to option %s \n",option_name);
-          }
-          free (option_name);
-
-          if (asprintf (&option_name, "-Tens_%d", i) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-          ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&(rheology->tens_cutoff[i]), &found);CHKERRQ(ierr);
-          if (found == PETSC_FALSE) {
-            SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_USER,"Expected user to provide value to option %s \n",option_name);
-          }
-          free (option_name);
-
-          if (asprintf (&option_name, "-Hs_%d", i) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-          ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&(rheology->Hst_cutoff[i]), &found);CHKERRQ(ierr);
-          if (found == PETSC_FALSE) {
-            SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_USER,"Expected user to provide value to option %s \n",option_name);
-          }
-          free (option_name);
-        }
-        break;
-      case 2:
-        {
-          if (asprintf (&option_name, "-eta0_%d", i) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-          ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&(rheology->const_eta0[i]), &found);CHKERRQ(ierr);
-          if (found == PETSC_FALSE) {
-            SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_USER,"Expected user to provide value to option %s \n",option_name);
-          }
-          free (option_name);
-
-          if (asprintf (&option_name, "-rho_%d", i) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-          ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&(rheology->const_rho0[i]), &found);CHKERRQ(ierr);
-          if (asprintf (&option_name, "-Co_%d", i) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-          ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&(rheology->mises_tau_yield[i]), &found);CHKERRQ(ierr);
-          if (found == PETSC_FALSE) {
-            SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_USER,"Expected user to provide value to option %s \n",option_name);
-          }
-          free (option_name);
-
-          if (asprintf (&option_name, "-Phi_%d", i) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-          ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&(rheology->dp_pressure_dependance[i]),&found);CHKERRQ(ierr);
-          if (found == PETSC_FALSE) {
-            SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_SUP,"Expected user to provide value to option %s \n",option_name);
-          }
-          free (option_name);
-
-          if (asprintf (&option_name, "-Tens_%d", i) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-          ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&(rheology->tens_cutoff[i]), &found);CHKERRQ(ierr);
-          if (found == PETSC_FALSE) {
-            SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_SUP,"Expected user to provide value to option %s \n",option_name);
-          }
-          free (option_name);
-
-          if (asprintf (&option_name, "-Hs_%d", i) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-          ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&(rheology->Hst_cutoff[i]), &found);CHKERRQ(ierr);
-          if (found == PETSC_FALSE) {
-            SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_SUP,"Expected user to provide value to option %s \n",option_name);
-          }
-          free (option_name);
-
-          if (asprintf (&option_name, "-Co_inf_%d", i) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-          ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&(rheology->soft_Co_inf[i]), &found);CHKERRQ(ierr);
-          if (found == PETSC_FALSE) {
-            SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_SUP,"Expected user to provide value to option %s \n",option_name);
-          }
-          free (option_name);
-
-          if (asprintf (&option_name, "-Phi_inf_%d", i) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-          ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&(rheology->soft_phi_inf[i]), &found);CHKERRQ(ierr);
-          if (found == PETSC_FALSE) {
-            SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_SUP,"Expected user to provide value to option %s \n",option_name);
-          }
-          free (option_name);
-
-          if (asprintf (&option_name, "-eps_min_%d", i) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-          ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&(rheology->soft_min_strain_cutoff[i]),&found);CHKERRQ(ierr);
-          if (found == PETSC_FALSE) {
-            SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_SUP,"Expected user to provide value to option %s \n",option_name);
-          }
-          free (option_name);
-
-          if (asprintf (&option_name, "-eps_max_%d", i) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-          ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&(rheology->soft_max_strain_cutoff[i]),&found);CHKERRQ(ierr);
-          if (found == PETSC_FALSE) {
-            SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_SUP,"Expected user to provide value to option %s \n",option_name);
-          }
-          free (option_name);
-        }
-        break;
-    }
-  }
-
+  /* Box geometry */
+  ierr = ModelSetInitialGeometryFromOptions(data);CHKERRQ(ierr);
+  /* Material type */
+  ierr = ModelSetMaterialParametersFromOptions(ptatin,materialconstants,data);CHKERRQ(ierr);
+  ierr = ModelSetViscosityCutoffFromOptions(data);CHKERRQ(ierr);
+  /* Surface processes */
+  ierr = ModelSetSPMParametersFromOptions(data);CHKERRQ(ierr);
+  /* Passive markers */
+  ierr = ModelSetPassiveMarkersSwarmParametersFromOptions(ptatin,data);CHKERRQ(ierr);
   /* bc type */
   data->boundary_conditon_type = GENEBC_FreeSlip;
 
@@ -379,7 +489,7 @@ PetscErrorCode ModelApplyInitialMeshGeometry_Gene3D(pTatinCtx c,void *ctx)
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD, "[[%s]]\n", PETSC_FUNCTION_NAME);
 
-  ierr =  DMDASetUniformCoordinates(c->stokes_ctx->dav, data->Ox, data->Lx, data->Oy, data->Ly, data->Oz, data->Lz); CHKERRQ(ierr);
+  ierr =  DMDASetUniformCoordinates(c->stokes_ctx->dav, data->O[0], data->L[0], data->O[1], data->L[1], data->O[2], data->L[2]); CHKERRQ(ierr);
 
   PetscFunctionReturn (0);
 }
@@ -414,7 +524,7 @@ PetscErrorCode ModelSetMarkerIndexLayeredCake_Gene3D (pTatinCtx c,void *ctx)
   /* read layers from options */
   nLayer = 1;
   ierr = PetscOptionsGetInt(NULL,MODEL_NAME, "-nlayer", &nLayer, &flg);CHKERRQ(ierr);
-  YLayer[0] = data->Oy;
+  YLayer[0] = data->O[1];
   for (i=1; i<=nLayer; i++) {
 
     if (asprintf (&option_name, "-layer_y_%d", i) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");

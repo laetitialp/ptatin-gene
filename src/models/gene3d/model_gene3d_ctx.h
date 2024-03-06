@@ -31,14 +31,30 @@
 #ifndef __ptatinmodel_GENE3D_ctx_h__
 #define __ptatinmodel_GENE3D_ctx_h__
 
+#include "pswarm.h"
+
 typedef enum { GENEBC_FreeSlip=0, GENEBC_NoSlip, GENEBC_FreeSlipFreeSurface, GENEBC_NoSlipFreeSurface } GENE3DBC;
 typedef enum { GENE_LayeredCake=0, GENE_ExtrudeFromMap, GENE_ReadFromCAD} GENE3DINIGEOM;
 enum {LAYER_MAX = 100};
 
 typedef struct {
   PetscInt  nmaterials;
-  PetscReal Lx,Ly,Lz;
-  PetscReal Ox,Oy,Oz;
+  PetscReal L[3],O[3];
+  /* viscosity cutoff */
+  PetscReal eta_max,eta_min;
+  PetscBool eta_cutoff;
+  /* surface processes */
+  PetscBool surface_diffusion;
+  PetscReal diffusivity_spm;
+  /* passive markers */
+  PetscBool passive_markers;
+  PSwarm    pswarm;
+  /* Scaling values */
+  PetscReal length_bar,viscosity_bar,velocity_bar;
+  PetscReal time_bar,pressure_bar,density_bar,acceleration_bar;
+  /* bcs */
+  PetscBool u_dot_n_flow;
+  PetscReal u_bc[6*3];
   GENE3DBC  boundary_conditon_type; /* [ 0 free slip | 1 no slip | 2 free surface + free slip | 3 free surface + no slip ] */
   GENE3DINIGEOM  initial_geom;
 } ModelGENE3DCtx;
