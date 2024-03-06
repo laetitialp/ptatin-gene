@@ -360,6 +360,13 @@ PetscErrorCode BCListGetGlobalValues(BCList list,PetscInt *n,PetscScalar **vals)
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode BCListGetLocalValues(BCList list,PetscInt *n,PetscScalar **vals)
+{
+  if (n)    {   *n  = list->L_local; }
+  if (vals) { *vals = list->vals_local; }
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode BCListGetDofIdx(BCList list,PetscInt *Lg,PetscInt **dofidx_global,PetscInt *Ll,PetscInt **dofidx_local)
 {
   if (Lg)            { *Lg   = list->L; }

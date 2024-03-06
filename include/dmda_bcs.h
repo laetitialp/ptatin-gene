@@ -72,6 +72,7 @@ PetscErrorCode DMDABCListCreate(DM da,BCList *list);
 PetscErrorCode BCListResidualDirichlet(BCList list,Vec X,Vec F);
 
 PetscErrorCode BCListGetGlobalValues(BCList list,PetscInt *n,PetscScalar **vals);
+PetscErrorCode BCListGetLocalValues(BCList list,PetscInt *n,PetscScalar **vals);
 PetscErrorCode BCListRestoreGlobalIndices(BCList list,PetscInt *n,PetscInt **idx);
 PetscErrorCode BCListGetGlobalIndices(BCList list,PetscInt *n,PetscInt **idx);
 PetscErrorCode BCListGetDofIdx(BCList list,PetscInt *Lg,PetscInt **dofidx_global,PetscInt *Ll,PetscInt **dofidx_local);
