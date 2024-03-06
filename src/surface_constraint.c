@@ -1524,8 +1524,8 @@ PetscErrorCode DMDABCListTraverseFacets3d(BCList list,DM da,SurfaceConstraint sc
   ierr = FacetCreate(&cell_facet);CHKERRQ(ierr);
   ierr = DMDAGetElements_pTatinQ2P1(sc->fi->dm,&nel,&nen,&elnidx);CHKERRQ(ierr);
 
-  ierr = BCListGetGlobalIndices(list,&L,&idx);
-  ierr = BCListGetGlobalValues(list,&L,&vals);
+  ierr = BCListGetLocalIndices(list,&L,&idx);
+  ierr = BCListGetLocalValues(list,&L,&vals);
 
   for (e=0; e<sc->facets->n_entities; e++) {
     int      *face_local_indices = NULL;
@@ -1548,7 +1548,7 @@ PetscErrorCode DMDABCListTraverseFacets3d(BCList list,DM da,SurfaceConstraint sc
 
       nidx3d   = face_local_indices[k];
       blockloc = elnidx[nen*cell_index + nidx3d]; 
-      loc      = vel_el_lidx[ ndof*nidx3d + dof_idx ];  //blockloc*ndof+dof_idx;
+      loc      = blockloc*ndof+dof_idx; //vel_el_lidx[ ndof*nidx3d + dof_idx ]; 
       PetscPrintf(PETSC_COMM_SELF,"rank[%d]: facet_index = %d, cell_side = %d, cell_index = %d, nidx3d = %d, blockloc = %d, loc = %d\n",rank,facet_index,cell_side,cell_index,nidx3d,blockloc,loc);
       for (d=0; d<3; d++) {
         pos[d] = elcoords[3*nidx3d + d];
@@ -1562,9 +1562,9 @@ PetscErrorCode DMDABCListTraverseFacets3d(BCList list,DM da,SurfaceConstraint sc
   }
 
   ierr = FacetDestroy(&cell_facet);CHKERRQ(ierr);
-  ierr = MeshFacetInfoRestoreCoords(sc->fi);CHKERRQ(ierr);
+  //ierr = MeshFacetInfoRestoreCoords(sc->fi);CHKERRQ(ierr);
 
-  ierr = BCListRestoreGlobalIndices(list,&L,&idx);
+  //ierr = BCListRestoreGlobalIndices(list,&L,&idx);
   ierr = BCListGlobalToLocal(list);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
