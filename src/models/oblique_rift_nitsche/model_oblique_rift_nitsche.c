@@ -728,7 +728,7 @@ static PetscErrorCode ModelScaleParameters_RiftNitsche(DataBucket materialconsta
 static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
 {
   PetscBool      bc_nitsche,bc_dirichlet,bc_freeslip_nitsche,found,mark_face;
-  PetscBool      bc_strikeslip,bc_strike_analogue;
+  PetscBool      bc_strikeslip,bc_strike_analogue,bc_diri_neumann;
   PetscBool      bc_strike_analogue_nitsche,bc_strikeslip_neumann,bc_neumann_z;
   PetscInt       nn;
   PetscErrorCode ierr;
@@ -745,6 +745,7 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
   bc_strikeslip_neumann      = PETSC_FALSE;
   bc_neumann_z               = PETSC_FALSE;
   mark_face                  = PETSC_FALSE;
+  bc_diri_neumann            = PETSC_FALSE;
 
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_nitsche",                &bc_nitsche,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_dirichlet",              &bc_dirichlet,&found);CHKERRQ(ierr);
@@ -755,6 +756,7 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_strikeslip_neumann",     &bc_strikeslip_neumann,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_neumann_z",              &bc_neumann_z,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_mark_face",              &mark_face,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_diri_neumann",           &bc_diri_neumann,&found);CHKERRQ(ierr);
 
   /* Split face location for the analogue BCs */
   data->split_face_min[0] = 290.0e3;
@@ -804,6 +806,9 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
   } else if (bc_neumann_z) {
     data->bc_type = 7;
     PetscPrintf(PETSC_COMM_WORLD,"[[ BC TYPE %d: Dirichlet X, Neumann Z ACTIVATED ]]\n",data->bc_type);
+  } else if (bc_diri_neumann) {
+    data->bc_type = 8;
+    PetscPrintf(PETSC_COMM_WORLD,"[[ BC TYPE %d: Dirichlet Facets + Neumann ACTIVATED ]]\n",data->bc_type);
   }
 
   data->mark_type = 0;
@@ -869,7 +874,6 @@ PetscErrorCode ModelInitialize_RiftNitsche(pTatinCtx ptatin,void *ctx)
   
   PetscFunctionReturn(0);
 }
-
 
 static PetscErrorCode ModelCreatePoissonPressure(pTatinCtx ptatin, ModelRiftNitscheCtx *data)
 {
@@ -1024,8 +1028,7 @@ PetscErrorCode ModelApplyInitialMeshGeometry_RiftNitsche(pTatinCtx ptatin, void 
   ierr = DMCompositeGetEntries(stokes_pack,&dav,&dap);CHKERRQ(ierr);
   ierr = DMDASetUniformCoordinates(dav,data->O[0],data->L[0],data->O[1],data->L[1],data->O[2],data->L[2]);CHKERRQ(ierr);
   /* Mesh Refinement */
-  //ierr = ModelSetMeshRefinement_RiftNitsche(dav,data);CHKERRQ(ierr);
-  //ierr = DMDABilinearizeQ2Elements(dav);CHKERRQ(ierr);
+  ierr = ModelSetMeshRefinement_RiftNitsche(dav,data);CHKERRQ(ierr);
   /* Gravity */
   PetscReal gvec[] = { 0.0, -9.8, 0.0 };
   ierr = PhysCompStokesSetGravityVector(ptatin->stokes_ctx,gvec);CHKERRQ(ierr);
@@ -1673,7 +1676,7 @@ static PetscErrorCode ModelApplyInitialVelocityField_RiftNitsche(DM dau, Vec vel
       break;
 
     case 8:
-      ierr = ModelApplyInitialVelocityField_RotatedVelocityField(dau,velocity,data);CHKERRQ(ierr);
+      ierr = VecZeroEntries(velocity);CHKERRQ(ierr);
       break;
 
     default:
@@ -1847,6 +1850,86 @@ static PetscErrorCode ModelMarkFacetsNavierSlip(SurfaceConstraint sc, ModelRiftN
   face_ctx.user_data = (void*)&mark_data;
   /* Mark facets */
   ierr = MeshFacetMarkByBoundary(mesh_entity,sc->fi,NULL,(void*)&face_ctx);
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode MarkDirichletSubdomain(
+  SurfBCList surflist,
+  const char subdomain_name[],
+  PetscInt n_domain_faces, 
+  HexElementFace *domain_face, 
+  PetscBool insert_if_not_found, 
+  PetscBool (*mark)(Facet,void*), 
+  void *ctx)
+{
+  MarkDomainFaceContext face_ctx;
+  SurfaceConstraint     sc;
+  MeshEntity            mesh_entity;
+  PetscInt              f;
+  PetscErrorCode        ierr;
+
+  PetscFunctionBegin;
+  ierr = SurfBCListGetConstraint(surflist,subdomain_name,&sc);CHKERRQ(ierr);
+  if (!sc) {
+    if (insert_if_not_found) {
+      ierr = SurfBCListAddConstraint(surflist,subdomain_name,&sc);CHKERRQ(ierr);
+      ierr = SurfaceConstraintSetType(sc,SC_DIRICHLET);CHKERRQ(ierr);
+    } else { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint not found"); }
+  }
+  ierr = SurfaceConstraintGetFacets(sc,&mesh_entity);CHKERRQ(ierr);
+
+  ierr = MarkDomainFaceContextInit(&face_ctx);
+
+  /* Faces to mark */
+  face_ctx.n_domain_faces = n_domain_faces;
+  for (f=0; f<n_domain_faces; f++) {
+    face_ctx.domain_face[f] = domain_face[f];
+  }
+  
+  face_ctx.mark = mark;
+  face_ctx.user_data = ctx;
+  /* Mark facets */
+  ierr = MeshFacetMarkByBoundary(mesh_entity,sc->fi,NULL,(void*)&face_ctx);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelMarkDirichlet(SurfBCList surflist, PetscBool insert_if_not_found, ModelRiftNitscheCtx *data)
+{
+  MarkFromPointCtx mark_data;
+  HexElementFace   face;
+  PetscErrorCode   ierr;
+  PetscFunctionBegin;
+
+  /* lithosphere */
+  mark_data.greater = PETSC_TRUE;
+  mark_data.dim     = 1;
+  mark_data.x       = data->y_continent[2];
+
+  face = HEX_FACE_Nxi;
+  ierr = MarkDirichletSubdomain(surflist,"Nxi_litho",1,&face,insert_if_not_found,MarkFacetsFromPoint,(void*)&mark_data);CHKERRQ(ierr);
+  face = HEX_FACE_Pxi;
+  ierr = MarkDirichletSubdomain(surflist,"Pxi_litho",1,&face,insert_if_not_found,MarkFacetsFromPoint,(void*)&mark_data);CHKERRQ(ierr);
+  face = HEX_FACE_Nzeta;
+  ierr = MarkDirichletSubdomain(surflist,"Nzeta_litho",1,&face,insert_if_not_found,MarkFacetsFromPoint,(void*)&mark_data);CHKERRQ(ierr);
+  face = HEX_FACE_Pzeta;
+  ierr = MarkDirichletSubdomain(surflist,"Pzeta_litho",1,&face,insert_if_not_found,MarkFacetsFromPoint,(void*)&mark_data);CHKERRQ(ierr);
+
+  /* asthenosphere */
+  mark_data.greater = PETSC_FALSE;
+
+  face = HEX_FACE_Nxi;
+  ierr = MarkDirichletSubdomain(surflist,"Nxi_asth",1,&face,insert_if_not_found,MarkFacetsFromPoint,(void*)&mark_data);CHKERRQ(ierr);
+  face = HEX_FACE_Pxi;
+  ierr = MarkDirichletSubdomain(surflist,"Pxi_asth",1,&face,insert_if_not_found,MarkFacetsFromPoint,(void*)&mark_data);CHKERRQ(ierr);
+  face = HEX_FACE_Nzeta;
+  ierr = MarkDirichletSubdomain(surflist,"Nzeta_asth",1,&face,insert_if_not_found,MarkFacetsFromPoint,(void*)&mark_data);CHKERRQ(ierr);
+  face = HEX_FACE_Pzeta;
+  ierr = MarkDirichletSubdomain(surflist,"Pzeta_asth",1,&face,insert_if_not_found,MarkFacetsFromPoint,(void*)&mark_data);CHKERRQ(ierr);
+
+  /* bottom face */
+  face = HEX_FACE_Neta;
+  ierr = MarkDirichletSubdomain(surflist,"Neta",1,&face,insert_if_not_found,NULL,(void*)data);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -2325,7 +2408,7 @@ static PetscErrorCode ModelApplyDirichletX_NeumannZ(
 
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMAX_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
-
+  
   PetscFunctionReturn(0);
 }
 
@@ -2358,6 +2441,63 @@ static PetscErrorCode ModelApplyRotatedStrikeSlipNavierNeumann_RiftNitsche(
   /* Apply base velocity from u.n */
   u_bot = data->u_bc[1];
   ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelApplyDirichlet_Neumann(pTatinCtx ptatin, DM dav, BCList bclist,SurfBCList surflist,PetscBool insert_if_not_found,ModelRiftNitscheCtx *data)
+{
+  SurfaceConstraint Nxi_litho,Pxi_litho,Neta,Nzeta_litho,Pzeta_litho;
+  SurfaceConstraint Nxi_asth,Pxi_asth,Nzeta_asth,Pzeta_asth;
+  PetscReal         ux;
+  PetscErrorCode    ierr;
+  PetscFunctionBegin;
+
+  /* Mark facets */
+  ierr = ModelMarkDirichlet(surflist,insert_if_not_found,data);CHKERRQ(ierr);
+
+  /* Impose */
+  /* XMIN LITHOSPHERE */
+  ierr = SurfBCListGetConstraint(surflist,"Nxi_litho",&Nxi_litho);CHKERRQ(ierr);
+  ux   = -data->u_bc[0];
+  ierr = DMDABCListTraverseFacets3d(bclist,dav,Nxi_litho,0,BCListEvaluator_constant,(void*)&ux);CHKERRQ(ierr);
+  /* XMAX LITHOSPHERE */
+  ierr = SurfBCListGetConstraint(surflist,"Pxi_litho",&Pxi_litho);CHKERRQ(ierr);
+  ux   = data->u_bc[0];
+  ierr = DMDABCListTraverseFacets3d(bclist,dav,Pxi_litho,0,BCListEvaluator_constant,(void*)&ux);CHKERRQ(ierr);
+  
+  /* XMIN ASTHENOSPHERE */
+  ierr = SurfBCListGetConstraint(surflist,"Nxi_asth",&Nxi_asth);CHKERRQ(ierr);
+  ux   = data->u_bc[0];
+  ierr = DMDABCListTraverseFacets3d(bclist,dav,Nxi_asth,0,BCListEvaluator_constant,(void*)&ux);CHKERRQ(ierr);
+  /* XMAX ASTHENOSPHERE */
+  ierr = SurfBCListGetConstraint(surflist,"Pxi_asth",&Pxi_asth);CHKERRQ(ierr);
+  ux   = -data->u_bc[0];
+  ierr = DMDABCListTraverseFacets3d(bclist,dav,Pxi_asth,0,BCListEvaluator_constant,(void*)&ux);CHKERRQ(ierr);
+
+  /* ZMIN LITHOSPHERE */
+  ierr = SurfBCListGetConstraint(surflist,"Nzeta_litho",&Nzeta_litho);CHKERRQ(ierr);
+  ux   = -data->u_bc[2];
+  ierr = DMDABCListTraverseFacets3d(bclist,dav,Nzeta_litho,2,BCListEvaluator_constant,(void*)&ux);CHKERRQ(ierr);
+  /* ZMAX LITHOSPHERE */
+  ierr = SurfBCListGetConstraint(surflist,"Pzeta_litho",&Pzeta_litho);CHKERRQ(ierr);
+  ux   = data->u_bc[2];
+  ierr = DMDABCListTraverseFacets3d(bclist,dav,Pzeta_litho,2,BCListEvaluator_constant,(void*)&ux);CHKERRQ(ierr);
+  
+  /* ZMIN ASTHENOSPHERE */
+  ierr = SurfBCListGetConstraint(surflist,"Nzeta_asth",&Nzeta_asth);CHKERRQ(ierr);
+  ux   = data->u_bc[2];
+  ierr = DMDABCListTraverseFacets3d(bclist,dav,Nzeta_asth,2,BCListEvaluator_constant,(void*)&ux);CHKERRQ(ierr);
+  /* ZMAX ASTHENOSPHERE */
+  ierr = SurfBCListGetConstraint(surflist,"Pzeta_asth",&Pzeta_asth);CHKERRQ(ierr);
+  ux   = -data->u_bc[2];
+  ierr = DMDABCListTraverseFacets3d(bclist,dav,Pzeta_asth,2,BCListEvaluator_constant,(void*)&ux);CHKERRQ(ierr);
+
+  /* YMIN */
+  ierr = SurfBCListGetConstraint(surflist,"Neta",&Neta);CHKERRQ(ierr);
+  ux   = data->u_bc[1];
+  ierr = DMDABCListTraverseFacets3d(bclist,dav,Neta,1,BCListEvaluator_constant,(void*)&ux);CHKERRQ(ierr);
+
   PetscFunctionReturn(0);
 }
 
@@ -2401,6 +2541,10 @@ static PetscErrorCode ModelApplyBoundaryConditionsVelocity_RiftNitsche(pTatinCtx
 
     case 7:
       ierr = ModelApplyDirichletX_NeumannZ(ptatin,dav,bclist,surflist,insert_if_not_found,data);CHKERRQ(ierr);
+      break;
+
+    case 8:
+      ierr = ModelApplyDirichlet_Neumann(ptatin,dav,bclist,surflist,PETSC_TRUE,data);CHKERRQ(ierr);
       break;
 
     default:
