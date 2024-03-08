@@ -76,6 +76,7 @@ PetscErrorCode BCListGetGlobalValues(BCList list,PetscInt *n,PetscScalar **vals)
 PetscErrorCode BCListGetLocalValues(BCList list,PetscInt *n,PetscScalar **vals);
 PetscErrorCode BCListRestoreGlobalIndices(BCList list,PetscInt *n,PetscInt **idx);
 PetscErrorCode BCListGetGlobalIndices(BCList list,PetscInt *n,PetscInt **idx);
+PetscErrorCode BCListGetLocalIndices(BCList list,PetscInt *n,PetscInt **idx);
 PetscErrorCode BCListGetDofIdx(BCList list,PetscInt *Lg,PetscInt **dofidx_global,PetscInt *Ll,PetscInt **dofidx_local);
 
 PetscErrorCode BCListInsert(BCList list,Vec y);
