@@ -68,6 +68,7 @@ PetscErrorCode BCListSetSizes(BCList list,PetscInt bs,PetscInt N,PetscInt N_loca
 PetscErrorCode BCListUpdateCache(BCList list);
 PetscErrorCode BCListInitGlobal(BCList list);
 PetscErrorCode BCListGlobalToLocal(BCList list);
+PetscErrorCode BCListLocalToGlobal(BCList list);
 PetscErrorCode DMDABCListCreate(DM da,BCList *list);
 PetscErrorCode BCListResidualDirichlet(BCList list,Vec X,Vec F);
 
