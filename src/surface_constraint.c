@@ -1486,7 +1486,6 @@ PetscErrorCode compute_global_penalty_nitsche(SurfaceConstraint sc,PetscInt type
   PetscFunctionReturn(0);
 }
 
-#if 1
 PetscErrorCode DMDABCListTraverseFacets3d(BCList list,DM da,SurfaceConstraint sc,PetscInt dof_idx,PetscBool (*eval)(PetscScalar*,PetscScalar*,void*),void *ctx)
 {
   ConformingElementFamily element = NULL;
@@ -1529,7 +1528,6 @@ PetscErrorCode DMDABCListTraverseFacets3d(BCList list,DM da,SurfaceConstraint sc
 
   for (e=0; e<sc->facets->n_entities; e++) {
     int      *face_local_indices = NULL;
-    PetscInt vel_el_lidx[3*U_BASIS_FUNCTIONS];
 
     facet_index = sc->facets->local_index[e];            /* facet local index */
     cell_side   = sc->fi->facet_label[facet_index];      /* side label */
@@ -1539,34 +1537,30 @@ PetscErrorCode DMDABCListTraverseFacets3d(BCList list,DM da,SurfaceConstraint sc
 
     face_local_indices = element->face_node_list[cell_side];
 
-    ierr = StokesVelocity_GetElementLocalIndices(vel_el_lidx,(PetscInt*)&elnidx[nen*cell_index]);CHKERRQ(ierr);
     ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx[nen*cell_index],(PetscReal*)sc->fi->_mesh_coor);CHKERRQ(ierr);
 
     for (k=0; k<Q2_NODES_PER_EL_2D; k++) {
       PetscInt    blockloc,loc,nidx3d;   
       PetscScalar pos[3];
 
+      /* maps nodes 0-8 (surface) -> 0-27 (volume) */
       nidx3d   = face_local_indices[k];
+      /* get node idx */
       blockloc = elnidx[nen*cell_index + nidx3d]; 
-      loc      = blockloc*ndof+dof_idx; //vel_el_lidx[ ndof*nidx3d + dof_idx ]; 
-      PetscPrintf(PETSC_COMM_SELF,"rank[%d]: facet_index = %d, cell_side = %d, cell_index = %d, nidx3d = %d, blockloc = %d, loc = %d\n",rank,facet_index,cell_side,cell_index,nidx3d,blockloc,loc);
+      /* get dof idx */
+      loc      = blockloc*ndof+dof_idx; 
       for (d=0; d<3; d++) {
         pos[d] = elcoords[3*nidx3d + d];
       }
-
+      /* get user defined function */
       impose_dirichlet = eval(pos,&bc_val,ctx);
 
-      idx[loc] = BCList_DIRICHLET;
+      idx[loc]  = BCList_DIRICHLET;
       vals[loc] = bc_val;
     }
   }
 
   ierr = FacetDestroy(&cell_facet);CHKERRQ(ierr);
-  //ierr = MeshFacetInfoRestoreCoords(sc->fi);CHKERRQ(ierr);
-
-  //ierr = BCListRestoreGlobalIndices(list,&L,&idx);
-  ierr = BCListGlobalToLocal(list);CHKERRQ(ierr);
-
+  ierr = BCListLocalToGlobal(list);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
-#endif
