@@ -43,7 +43,7 @@
 #include <pswarm.h>
 
 
-PSwarm pswarm;
+static PSwarm pswarm;
 
 PetscErrorCode ModelInitialize_StaticBox(pTatinCtx c,void *ctx)
 {
