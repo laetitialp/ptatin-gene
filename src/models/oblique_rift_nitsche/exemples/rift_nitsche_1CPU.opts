@@ -48,11 +48,12 @@
 -model_rift_nitsche_wz_angle 22.0
 ########### Boundary conditions ##########
 #-model_rift_nitsche_bc_nitsche
--model_rift_nitsche_bc_strike_slip
+#-model_rift_nitsche_bc_strike_slip
 #-model_rift_nitsche_bc_freeslip_nitsche
 #-model_rift_nitsche_bc_dirichlet
 #-model_rift_nitsche_bc_u_func_atan
--model_rift_nitsche_bc_u_func_mixte
+#-model_rift_nitsche_bc_u_func_mixte
+-model_rift_nitsche_bc_diri_neumann
 -model_rift_nitsche_bc_atan_sharpness 8.0e-5
 -model_rift_nitsche_bc_atan_offset 300.0e3
 -model_rift_nitsche_norm_u 1.0 # cm/yr

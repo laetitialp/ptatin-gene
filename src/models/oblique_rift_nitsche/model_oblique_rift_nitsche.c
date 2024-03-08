@@ -46,7 +46,7 @@
 #include "oblique_rift_nitsche_ctx.h"
 
 static const char MODEL_NAME_R[] = "model_rift_nitsche_";
-PetscLogEvent   PTATIN_MaterialPointPopulationControlRemove;
+static PetscLogEvent   PTATIN_MaterialPointPopulationControlRemove;
 
 static PetscErrorCode ModelInitialGeometry_RiftNitsche(ModelRiftNitscheCtx *data)
 {
@@ -427,6 +427,10 @@ static PetscErrorCode ModelSetGeneralSlipBoundaryValues_RiftNitsche(ModelRiftNit
       break;
 
     case 5:
+      ierr = ModelSetGeneralSlipBoundaryValues_RotatedVelocityField(data);CHKERRQ(ierr);
+      break;
+
+    case 6:
       ierr = ModelSetGeneralSlipBoundaryValues_RotatedVelocityField(data);CHKERRQ(ierr);
       break;
 
@@ -1038,7 +1042,7 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
 {
   PetscBool      bc_nitsche,bc_dirichlet,bc_freeslip_nitsche,found;
   PetscBool      bc_strikeslip,bc_u_func_atan,bc_strike_analogue;
-  PetscBool      bc_strike_analogue_nitsche,bc_u_func_mixte;
+  PetscBool      bc_strike_analogue_nitsche,bc_u_func_mixte,bc_diri_neumann;
   PetscInt       nn;
   PetscErrorCode ierr;
 
@@ -1053,6 +1057,7 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
   bc_strike_analogue_nitsche = PETSC_FALSE;
   bc_u_func_atan             = PETSC_FALSE;
   bc_u_func_mixte            = PETSC_FALSE;
+  bc_diri_neumann            = PETSC_FALSE;
 
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_nitsche",                &bc_nitsche,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_dirichlet",              &bc_dirichlet,&found);CHKERRQ(ierr);
@@ -1062,6 +1067,7 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_strike_analogue_nitsche",&bc_strike_analogue_nitsche,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_u_func_atan",            &bc_u_func_atan,&found);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_u_func_mixte",           &bc_u_func_mixte,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME_R,"-bc_diri_neumann",           &bc_diri_neumann,&found);CHKERRQ(ierr);
 
   /* Split face location for the analogue BCs */
   data->split_face_min[0] = 290.0e3;
@@ -1105,6 +1111,9 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
   } else if (bc_strike_analogue_nitsche) {
     data->bc_type = 5;
     PetscPrintf(PETSC_COMM_WORLD,"[[ BC TYPE %d: Analogue model BCs (base driven) + Nitsche on vertical sides ACTIVATED ]]\n",data->bc_type);
+  } else if (bc_diri_neumann) {
+    data->bc_type = 6;
+    PetscPrintf(PETSC_COMM_WORLD,"[[ BC TYPE %d: Dirichlet Facets + Neumann ACTIVATED ]]\n",data->bc_type);
   }
 
   data->u_func_type = 0;
@@ -1935,6 +1944,10 @@ static PetscErrorCode ModelApplyInitialVelocityField_RiftNitsche(DM dau, Vec vel
       ierr = ModelApplyInitialVelocityField_RotatedVelocityField(dau,velocity,data);CHKERRQ(ierr);
       break;
 
+    case 6:
+      ierr = VecZeroEntries(velocity);CHKERRQ(ierr);
+      break;
+
     default:
       SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"No velocity boundary conditions type was given. Use one of the bc options\n");
       break;
@@ -1986,8 +1999,7 @@ PetscErrorCode ModelApplyInitialSolution_RiftNitsche(pTatinCtx c,Vec X,void *ctx
   ierr = DMCompositeGetEntries(stokes_pack,&dau,&dap);CHKERRQ(ierr);
   ierr = DMCompositeGetAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
   /* Velocity IC */
-  //ierr = ModelApplyInitialVelocityField_RiftNitsche(dau,velocity,data);CHKERRQ(ierr);
-  ierr = VecZeroEntries(velocity);CHKERRQ(ierr);
+  ierr = ModelApplyInitialVelocityField_RiftNitsche(dau,velocity,data);CHKERRQ(ierr);
   /* Pressure IC */
   ierr = ModelApplyInitialHydrostaticPressureField_RiftNitsche(c,dau,dap,pressure,data);CHKERRQ(ierr);
   /* Attach solution vector (u, p) to passive markers */
@@ -2603,7 +2615,6 @@ static PetscErrorCode ModelApplyDirichlet_Neumann(pTatinCtx ptatin, DM dav, BCLi
   ierr = ModelMarkDirichlet(surflist,insert_if_not_found,data);CHKERRQ(ierr);
 
   /* Impose */
-#if 0
   /* XMIN LITHOSPHERE */
   ierr = SurfBCListGetConstraint(surflist,"Nxi_litho",&Nxi_litho);CHKERRQ(ierr);
   ux   = -data->u_bc[0];
@@ -2639,13 +2650,11 @@ static PetscErrorCode ModelApplyDirichlet_Neumann(pTatinCtx ptatin, DM dav, BCLi
   ierr = SurfBCListGetConstraint(surflist,"Pzeta_asth",&Pzeta_asth);CHKERRQ(ierr);
   ux   = -data->u_bc[2];
   ierr = DMDABCListTraverseFacets3d(bclist,dav,Pzeta_asth,2,BCListEvaluator_constant,(void*)&ux);CHKERRQ(ierr);
-#endif
+
   /* YMIN */
   ierr = SurfBCListGetConstraint(surflist,"Neta",&Neta);CHKERRQ(ierr);
   ux   = data->u_bc[1];
   ierr = DMDABCListTraverseFacets3d(bclist,dav,Neta,1,BCListEvaluator_constant,(void*)&ux);CHKERRQ(ierr);
-
-  ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&ux);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -2655,9 +2664,6 @@ static PetscErrorCode ModelApplyBoundaryConditionsVelocity_RiftNitsche(pTatinCtx
   PetscErrorCode ierr;
   PetscFunctionBegin;
 
-  ierr = ModelApplyDirichlet_Neumann(ptatin,dav,bclist,surflist,PETSC_TRUE,data);CHKERRQ(ierr);
-
-#if 0
   /* See ModelSetBCType_RiftNitsche() for the bc case number */
   switch(data->bc_type) {
     case 0:
@@ -2687,11 +2693,14 @@ static PetscErrorCode ModelApplyBoundaryConditionsVelocity_RiftNitsche(pTatinCtx
       ierr = ModelApplyBaseDrivenRotatedStrikeSlipNavierSlip_RiftNitsche(ptatin,dav,bclist,surflist,insert_if_not_found,data);CHKERRQ(ierr);
       break;
 
+    case 6:
+      ierr = ModelApplyDirichlet_Neumann(ptatin,dav,bclist,surflist,PETSC_TRUE,data);CHKERRQ(ierr);
+      break;
+
     default:
       SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"No velocity boundary conditions type was given. Use -bc_nitsche or -bc_dirichlet\n");
       break;
   }
-#endif
   PetscFunctionReturn(0);
 }
 
