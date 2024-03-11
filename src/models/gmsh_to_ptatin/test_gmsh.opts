@@ -1,0 +1,38 @@
+# run with ./$PETSC_ARCH/bin/test_gmsh_to_material_points.app -options_file src/models/gmsh_to_ptatin/test_gmsh.opts
+-O 0.0,-250.0e3,0.0
+-L 600.0e3,0.0,300.0e3
+-mesh_file src/models/gmsh_to_ptatin/md.bin
+-region_file src/models/gmsh_to_ptatin/region_cell.bin
+-n_bc_subfaces 6
+-bc_tag_list 1,2,3,4,5,6
+-method 1
+-lattice_layout_Nx 4
+-lattice_layout_Ny 4
+-lattice_layout_Nz 4
+-mp_popctrl_np_lower 0
+-mp_popctrl_np_upper 1024
+############################
+#### Surface Constraint ####
+############################
+# 0: SC_NONE                 , 1: SC_TRACTION
+# 2: SC_DEMO                 , 3: SC_FSSA
+# 4: SC_NITSCHE_DIRICHLET    , 5: SC_NITSCHE_NAVIER_SLIP
+# 6: SC_NITSCHE_GENERAL_SLIP 
+-sc_name_1 Nxi_litho
+-sc_type_1 2
+-facet_mesh_file_1 src/models/gmsh_to_ptatin/facet_1_mesh.bin
+-sc_name_2 Pxi_litho
+-sc_type_2 2
+-facet_mesh_file_2 src/models/gmsh_to_ptatin/facet_2_mesh.bin
+-sc_name_3 Asthensophere
+-sc_type_3 2
+-facet_mesh_file_3 src/models/gmsh_to_ptatin/facet_3_mesh.bin
+-sc_name_4 Bottom
+-sc_type_4 2
+-facet_mesh_file_4 src/models/gmsh_to_ptatin/facet_4_mesh.bin
+-sc_name_5 Nzeta_litho
+-sc_type_5 2
+-facet_mesh_file_5 src/models/gmsh_to_ptatin/facet_5_mesh.bin
+-sc_name_6 Pzeta_litho
+-sc_type_6 2
+-facet_mesh_file_6 src/models/gmsh_to_ptatin/facet_6_mesh.bin
