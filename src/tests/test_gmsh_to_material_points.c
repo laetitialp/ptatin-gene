@@ -128,13 +128,11 @@ static PetscErrorCode MarkBoundaryFacetFromMesh(
   MeshEntity e, 
   MeshFacetInfo fi,
   Mesh mesh,
-  PetscInt method, 
-  SurfaceConstraint sc)
+  PetscInt method)
 {
   PetscErrorCode ierr;
   PetscInt *facet_to_keep,nmarked=0,f;
   Facet cell_facet;
-  PetscBool found_name;
 
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
@@ -146,11 +144,8 @@ static PetscErrorCode MarkBoundaryFacetFromMesh(
   ierr = MeshFacetInfoGetCoords(fi);CHKERRQ(ierr);
   ierr = FacetCreate(&cell_facet);CHKERRQ(ierr);
 
-  ierr = PetscStrcmp(sc->name,"Pzeta_litho",&found_name);
-  
   ierr = PetscMalloc1(fi->n_facets,&facet_to_keep);CHKERRQ(ierr);
   for (f=0; f<fi->n_facets; f++) {
-    PetscInt gf;
     long int np = 1,found;
     long int ep[] = {-1};
     double   xip[] = {0.0,0.0,0.0};
@@ -175,10 +170,6 @@ static PetscErrorCode MarkBoundaryFacetFromMesh(
       PetscPrintf(PETSC_COMM_WORLD,"Point[%d]: ( %1.4e, %1.4e, %1.4e ) not found!\n",f,cell_facet->centroid[0],cell_facet->centroid[1],cell_facet->centroid[2]);
     }
     */
-    if (found == 0 && found_name && f == 1214) {
-      PetscPrintf(PETSC_COMM_WORLD,"Point[%d]: coor = ( %1.8e, %1.8e, %1.8e ), xi = ( %1.8e, %1.8e, %1.8e ) not found!\n",f,cell_facet->centroid[0],cell_facet->centroid[1],cell_facet->centroid[2],xip[0],xip[1],xip[2]);
-    }
-
     if (found == 0) continue;
     /* select if the point is found */
     facet_to_keep[nmarked] = f;
@@ -217,7 +208,7 @@ static PetscErrorCode MarkFacetsFromGMSH(GMSHCtx *data)
     parse_mesh(meshfile,&mesh);
 
     ierr = SurfaceConstraintGetFacets(data->sc[sf],&mesh_entity);CHKERRQ(ierr);
-    ierr = MarkBoundaryFacetFromMesh(mesh_entity,data->sc[sf]->fi,mesh,1,data->sc[sf]);CHKERRQ(ierr);
+    ierr = MarkBoundaryFacetFromMesh(mesh_entity,data->sc[sf]->fi,mesh,1);CHKERRQ(ierr);
 
     MeshDestroy(&mesh);;
   }
