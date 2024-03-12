@@ -31,7 +31,6 @@ typedef struct
   PetscInt  n_bcfaces;
   PetscInt  *tag_table;
   SurfaceConstraint *sc;
-  long int  *f2c,*tag_facets;
 } GMSHCtx;
 
 static PetscErrorCode CreateGMSHCtx(GMSHCtx **data)
