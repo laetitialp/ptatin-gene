@@ -28,8 +28,8 @@ typedef struct
   char      region_file[PETSC_MAX_PATH_LEN],mesh_file[PETSC_MAX_PATH_LEN];
   PetscReal O[3],L[3];
   int       method;
-  PetscInt  n_bcfaces;
-  PetscInt  *tag_table;
+  PetscInt  n_bcfaces,n_regions;
+  PetscInt  *tag_table,*region_table;
   SurfaceConstraint *sc;
 } GMSHCtx;
 
@@ -54,6 +54,7 @@ static PetscErrorCode DestroyGMSHCtx(GMSHCtx *data)
 
   if (!data) { PetscFunctionReturn(0); }
   ierr = PetscFree(data->tag_table);CHKERRQ(ierr);
+  ierr = PetscFree(data->region_table);CHKERRQ(ierr);
   ierr = PetscFree(data->sc);CHKERRQ(ierr);
   ierr = PetscFree(data);CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -120,6 +121,80 @@ static PetscErrorCode SetRegionIndexFromGMSH(pTatinCtx ptatin, GMSHCtx *data)
 
   free(region_idx);
   MeshDestroy(&mesh);
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode TestLocationPointAlg_PointIdx(
+  MeshEntity e, 
+  MeshFacetInfo fi,
+  Mesh mesh,
+  PetscInt method,
+  PetscInt pidx_to_test)
+{
+  long int       np = 1,found;
+  long int       ep[] = {-1};
+  double         xip[] = {0.0,0.0,0.0};
+  Facet          cell_facet;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = MeshFacetInfoGetCoords(fi);CHKERRQ(ierr);
+  ierr = FacetCreate(&cell_facet);CHKERRQ(ierr);
+
+  /* pack data */
+  ierr = FacetPack(cell_facet, pidx_to_test, fi);CHKERRQ(ierr);
+
+  switch (method) {
+    case 0:
+      PointLocation_BruteForce(mesh,np,(const double*)cell_facet->centroid,ep,xip,&found);
+      break;
+    case 1:
+      PointLocation_PartitionedBoundingBox(mesh,np,(const double*)cell_facet->centroid,ep,xip,&found);
+      break;
+    default:
+      PointLocation_PartitionedBoundingBox(mesh,np,(const double*)cell_facet->centroid,ep,xip,&found);
+      break;
+  }
+
+  ierr = FacetDestroy(&cell_facet);CHKERRQ(ierr);
+  ierr = MeshFacetInfoRestoreCoords(fi);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode TestLocationPointAlg(pTatinCtx ptatin)
+{
+  SurfaceConstraint sc;
+  PhysCompStokes    stokes;
+  Mesh              mesh;
+  PetscInt          tag,pidx_to_test;
+  char              opt_name[PETSC_MAX_PATH_LEN],meshfile[PETSC_MAX_PATH_LEN],sc_name[PETSC_MAX_PATH_LEN];
+  PetscErrorCode    ierr;
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+
+  ierr = pTatinGetStokesContext(ptatin,&stokes);CHKERRQ(ierr);
+
+  tag = 6;
+  pidx_to_test = 1214;
+
+  /* get surface constraint name */
+  ierr = PetscSNPrintf(sc_name,PETSC_MAX_PATH_LEN-1,"Pzeta_litho");CHKERRQ(ierr);
+  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-sc_name_%d",tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL,NULL,opt_name,sc_name,PETSC_MAX_PATH_LEN-1,NULL);CHKERRQ(ierr);
+
+  /* get facet mesh */
+  ierr = PetscSNPrintf(meshfile,PETSC_MAX_PATH_LEN-1,"facet_%d_mesh.bin",tag);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-facet_mesh_file_%d",tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL,NULL,opt_name,meshfile,PETSC_MAX_PATH_LEN-1,NULL);CHKERRQ(ierr);
+
+  parse_mesh(meshfile,&mesh);
+
+  ierr = SurfBCListGetConstraint(stokes->surf_bclist,sc_name,&sc);CHKERRQ(ierr);
+  ierr = TestLocationPointAlg_PointIdx(sc->facets,sc->fi,mesh,0,pidx_to_test);CHKERRQ(ierr);
+
+  MeshDestroy(&mesh);
+
   PetscFunctionReturn(0);
 }
 
@@ -207,9 +282,9 @@ static PetscErrorCode MarkFacetsFromGMSH(GMSHCtx *data)
     parse_mesh(meshfile,&mesh);
 
     ierr = SurfaceConstraintGetFacets(data->sc[sf],&mesh_entity);CHKERRQ(ierr);
-    ierr = MarkBoundaryFacetFromMesh(mesh_entity,data->sc[sf]->fi,mesh,1);CHKERRQ(ierr);
+    ierr = MarkBoundaryFacetFromMesh(mesh_entity,data->sc[sf]->fi,mesh,data->method);CHKERRQ(ierr);
 
-    MeshDestroy(&mesh);;
+    MeshDestroy(&mesh);
   }
 
   PetscFunctionReturn(0);
@@ -285,6 +360,18 @@ static PetscErrorCode ModelInitialize(pTatinCtx ptatin, GMSHCtx *data)
   ierr = PetscOptionsGetString(NULL,NULL,"-mesh_file",data->mesh_file,PETSC_MAX_PATH_LEN-1,NULL);CHKERRQ(ierr);
   ierr = PetscSNPrintf(data->region_file,PETSC_MAX_PATH_LEN-1,"region_cell.bin");CHKERRQ(ierr);
   ierr = PetscOptionsGetString(NULL,NULL,"-region_file",data->region_file,PETSC_MAX_PATH_LEN-1,NULL);CHKERRQ(ierr);
+
+  ierr = PetscOptionsGetInt(NULL,NULL,"-n_regions",&data->n_regions,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -n_regions not found!\n"); }
+  ierr = PetscCalloc1(data->n_regions,&data->region_table);CHKERRQ(ierr);
+
+  nn = data->n_regions;
+  ierr = PetscOptionsGetIntArray(NULL,NULL,"-regions_list",data->region_table,&nn,&found);CHKERRQ(ierr);
+  if (found) {
+    if (nn != data->n_regions) {
+      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"n_regions (%d) and the number of entries in regions_list (%d) mismatch!\n",data->n_regions,nn);
+    }
+  }
 
   /* Create boundaries data */
   ierr = PetscOptionsGetInt(NULL,NULL,"-n_bc_subfaces",&data->n_bcfaces,&found);CHKERRQ(ierr);
@@ -398,6 +485,8 @@ static PetscErrorCode pTatin3d_ICFromGMSH(int argc,char **argv)
   and it would also be better for memory management to only do the process once and clean up everything related 
   to external data;
   */
+  //ierr = TestLocationPointAlg(ptatin);CHKERRQ(ierr);
+
   ierr = MarkFacetsFromGMSH(data);CHKERRQ(ierr);
 
   /* output */
