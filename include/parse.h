@@ -25,7 +25,7 @@ void MeshCreate(Mesh *_m);
 void MeshDestroy(Mesh *_m);
 void MeshView(Mesh m);
 void parse_mesh(const char filename[],Mesh *m);
-void parse_field(Mesh m,const char filename[],char ftypevoid,void **_data);
+void parse_field(Mesh m,const char filename[],char ftypevoid,void **_data,int *ne);
 
 
 #endif

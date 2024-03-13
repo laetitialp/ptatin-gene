@@ -177,7 +177,7 @@ void parse_mesh(const char filename[],Mesh *m)
   *m = mesh;
 }
 
-void parse_field(Mesh m,const char filename[],char ftypevoid,void **_data)
+void parse_field(Mesh m,const char filename[],char ftypevoid,void **_data, int *ne)
 {
   FILE   *fp=NULL;
   int    len,dtype;
@@ -190,6 +190,7 @@ void parse_field(Mesh m,const char filename[],char ftypevoid,void **_data)
   if (!fp) { printf("parse_field(): File %s was not found or read\n",filename); return; }
 
   bytes_read = fread(&len,sizeof(int),1,fp);
+  if (ne) *ne = len;
   switch (ftypevoid) {
     case 'c':
       if (len != m->ncell) { valid = false; }

@@ -1726,7 +1726,7 @@ PetscErrorCode MPntStdSetRegionIndexFromGmsh(pTatinCtx ptatin, const char mesh_f
   parse_mesh(mesh_file,&mesh);
   if (!mesh) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"mesh = NULL. Aborting.\n"); }
   /* Get region index from file */
-  parse_field(mesh,region_file,'c',(void**)&region_idx);
+  parse_field(mesh,region_file,'c',(void**)&region_idx,NULL);
   
   /* Loop over markers */
   for (p=0; p<n_mp_points; p++) {
