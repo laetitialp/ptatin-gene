@@ -157,20 +157,50 @@ static PetscErrorCode ModelSetRegionParametersFromOptions_Energy(DataBucket mate
 
 static PetscErrorCode ModelSetMaterialParametersFromOptions(pTatinCtx ptatin, DataBucket materialconstants, ModelGENE3DCtx *data)
 {
-  PetscInt       region_idx;
+  PetscInt       n,region_idx;
+  PetscBool      found;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
 
-  for (region_idx = 0; region_idx < data->nmaterials; region_idx++) {
-    PetscPrintf(PETSC_COMM_WORLD,"SETTING REGION: %d\n",region_idx);
-    ierr = MaterialConstantsSetFromOptions_MaterialType(materialconstants,MODEL_NAME,region_idx,PETSC_TRUE);CHKERRQ(ierr);
+  /* Get user mesh file */
+  ierr = PetscSNPrintf(data->mesh_file,PETSC_MAX_PATH_LEN-1,"md.bin");CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL,MODEL_NAME,"-mesh_file",data->mesh_file,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%smesh_file not found!\n",MODEL_NAME); }
+
+  /* Get user regions file */
+  ierr = PetscSNPrintf(data->region_file,PETSC_MAX_PATH_LEN-1,"region_cell.bin");CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL,MODEL_NAME,"-regions_file",data->region_file,PETSC_MAX_PATH_LEN-1,NULL);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%sregions_file not found!\n",MODEL_NAME); }
+
+  /* Get the number of regions */
+  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,"-n_regions",&data->n_regions,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%sn_regions not found!\n",MODEL_NAME); }
+
+  /* Allocate an array to hold the regions indices */
+  ierr = PetscCalloc1(data->n_regions,&data->regions_table);CHKERRQ(ierr);
+  /* Get user regions indices */
+  nn = data->n_regions;
+  ierr = PetscOptionsGetIntArray(NULL,MODEL_NAME,"-regions_list",data->regions_table,&nn,&found);CHKERRQ(ierr);
+  if (found) {
+    if (nn != data->n_regions) {
+      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"n_regions (%d) and the number of entries in regions_list (%d) mismatch!\n",data->n_regions,nn);
+    }
+  }
+
+  /* Set regions parameters */
+  for (n = 0; n < data->nmaterials; n++) {
+    /* get regions index */
+    region_idx = data->regions_table[n];
+    PetscPrintf(PETSC_COMM_WORLD,"[[ SETTING REGION ]]: %d\n",region_idx);
     ierr = MaterialConstantsSetFromOptions(materialconstants,MODEL_NAME,region_idx,PETSC_TRUE);CHKERRQ(ierr);
     ierr = ModelSetRegionParametersFromOptions_Energy(materialconstants,region_idx);CHKERRQ(ierr);
   }
   /* Report all material parameters values */
-  for (region_idx=0; region_idx<data->nmaterials; region_idx++) {
+  for (n=0; n<data->nmaterials; n++) {
+    /* get regions index */
+    region_idx = data->regions_table[n];
     ierr = MaterialConstantsPrintAll(materialconstants,region_idx);CHKERRQ(ierr);
     ierr = MaterialConstantsEnergyPrintAll(materialconstants,region_idx);CHKERRQ(ierr);
   }
@@ -244,13 +274,13 @@ static PetscErrorCode ModelSetScalingParametersFromOptions(ModelGENE3DCtx *data)
   data->velocity_bar   = 1.0e-10;
 
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-length_scale",&data->length_bar,&found);CHKERRQ(ierr);
-  if (!found) { PetscPrintf(PETSC_COMM_WORLD,"[[WARNING]] No scaling factor for length provided, assuming %1.4e. You can change it with the option -%slength_scale\n",data->length_bar,MODEL_NAME); }
+  if (!found) { PetscPrintf(PETSC_COMM_WORLD,"[[ WARNING ]] No scaling factor for length provided, assuming %1.4e. You can change it with the option -%slength_scale\n",data->length_bar,MODEL_NAME); }
 
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-viscosity_scale",&data->viscosity_bar,&found);CHKERRQ(ierr);
-  if (!found) { PetscPrintf(PETSC_COMM_WORLD,"[[WARNING]] No scaling factor for viscosity provided, assuming %1.4e. You can change it with the option -%sviscosity_scale\n",data->viscosity_bar,MODEL_NAME); }
+  if (!found) { PetscPrintf(PETSC_COMM_WORLD,"[[ WARNING ]] No scaling factor for viscosity provided, assuming %1.4e. You can change it with the option -%sviscosity_scale\n",data->viscosity_bar,MODEL_NAME); }
 
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-velocity_scale",&data->velocity_bar,&found);CHKERRQ(ierr);
-  if (!found) { PetscPrintf(PETSC_COMM_WORLD,"[[WARNING]] No scaling factor for velocity provided, assuming %1.4e. You can change it with the option -%svelocity_scale\n",data->velocity_bar,MODEL_NAME); }
+  if (!found) { PetscPrintf(PETSC_COMM_WORLD,"[[ WARNING ]] No scaling factor for velocity provided, assuming %1.4e. You can change it with the option -%svelocity_scale\n",data->velocity_bar,MODEL_NAME); }
 
   /* Compute additional scaling parameters */
   data->time_bar         = data->length_bar / data->velocity_bar;
@@ -260,7 +290,7 @@ static PetscErrorCode ModelSetScalingParametersFromOptions(ModelGENE3DCtx *data)
 
   PetscFunctionReturn(0);
 }
-#if 0
+
 static PetscErrorCode ModelScaleParameters(DataBucket materialconstants, ModelGENE3DCtx *data)
 {
   PetscInt  region_idx,i;
@@ -273,7 +303,6 @@ static PetscErrorCode ModelScaleParameters(DataBucket materialconstants, ModelGE
   cm_per_year2m_per_sec = 1.0e-2 / ( 365.0 * 24.0 * 60.0 * 60.0 );
   Myr2sec               = 1.0e6 * ( 365.0 * 24.0 * 3600.0 );
   
-  
   /* Scale viscosity cutoff */
   data->eta_max /= data->viscosity_bar;
   data->eta_min /= data->viscosity_bar;
@@ -282,23 +311,6 @@ static PetscErrorCode ModelScaleParameters(DataBucket materialconstants, ModelGE
     data->L[i] /= data->length_bar;
     data->O[i] /= data->length_bar;
   }
-
-  data->wz_origin /= data->length_bar;
-  data->wz_offset /= data->length_bar;
-
-  data->wz_width /= data->length_bar;
-  for (i=0; i<2; i++) { data->wz_sigma[i] /= data->length_bar; }
-  
-  for (i=0; i<2; i++) { 
-    data->split_face_max[i] /= data->length_bar;
-    data->split_face_min[i] /= data->length_bar; 
-  }
-
-  data->time_full_velocity = data->time_full_velocity*Myr2sec / data->time_bar;
-
-  /* Scale velocity */
-  data->norm_u = data->norm_u*cm_per_year2m_per_sec / data->velocity_bar;
-  for (i=0; i<3; i++) { data->u_bc[i] = data->u_bc[i]*cm_per_year2m_per_sec / data->velocity_bar; }
 
   data->diffusivity_spm /= (data->length_bar*data->length_bar/data->time_bar);
 
@@ -319,7 +331,7 @@ static PetscErrorCode ModelScaleParameters(DataBucket materialconstants, ModelGE
 
   PetscFunctionReturn(0);
 }
-#endif
+#if 0
 static PetscErrorCode ModelSetBottomFlowFromOptions(ModelGENE3DCtx *data)
 {
   PetscBool      found,flg;
@@ -337,7 +349,7 @@ static PetscErrorCode ModelSetBottomFlowFromOptions(ModelGENE3DCtx *data)
 
   PetscFunctionReturn(0);
 }
-
+#endif
 PetscErrorCode ModelInitialize_Gene3D(pTatinCtx ptatin, void *ctx)
 {
   ModelGENE3DCtx    *data = (ModelGENE3DCtx*)ctx;
@@ -354,13 +366,6 @@ PetscErrorCode ModelInitialize_Gene3D(pTatinCtx ptatin, void *ctx)
   ierr = pTatinGetRheology(ptatin,&rheology);CHKERRQ(ierr);
   ierr = pTatinGetMaterialConstants(ptatin,&materialconstants);CHKERRQ(ierr);
 
-  /* model geometry */
-  PetscPrintf(PETSC_COMM_WORLD,"reading model initial geometry from options\n");
-  ierr = PetscOptionsGetInt(NULL,NULL, "-initial_geom",(PetscInt *) & data->initial_geom, &found);CHKERRQ(ierr);
-  if (found == PETSC_FALSE) {
-    SETERRQ(PETSC_COMM_SELF, PETSC_ERR_USER,"Expected user to provide a type of material index initialisation \n");
-  }
-
   /* Box geometry */
   ierr = ModelSetInitialGeometryFromOptions(data);CHKERRQ(ierr);
   /* Material type */
@@ -370,15 +375,201 @@ PetscErrorCode ModelInitialize_Gene3D(pTatinCtx ptatin, void *ctx)
   ierr = ModelSetSPMParametersFromOptions(data);CHKERRQ(ierr);
   /* Passive markers */
   ierr = ModelSetPassiveMarkersSwarmParametersFromOptions(ptatin,data);CHKERRQ(ierr);
-  /* bc type */
-  data->boundary_conditon_type = GENEBC_FreeSlip;
-
-
-  /* set initial values for model parameters */
-
+  /* Scaling */
+  ierr = ModelSetScalingParametersFromOptions(data);CHKERRQ(ierr);
+  ierr = ModelScaleParameters(materialconstants,data);CHKERRQ(ierr);
 
   PetscFunctionReturn (0);
 }
+
+static PetscErrorCode ModelApplyMeshRefinement(DM dav)
+{
+  PetscInt  d,ndir;
+  PetscInt  *dir;
+  PetscBool refine,found;
+  PetscFunctionBegin;
+
+  refine = PETSC_FALSE;
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-apply_mesh_refinement",&refine,NULL);CHKERRQ(ierr);
+  if (!refine) { PetscFunctionReturn(0); }
+
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+
+  ndir = 0;
+  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,"-n_refinement_dir",&ndir,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"-%sn_refinement_dir not found!",MODEL_NAME); }
+  if (ndir <= 0 || ndir > 3) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"n_refinement_dir cannot be 0 or more than 3. -%sn_refinement_dir = %d.",MODEL_NAME,ndir); }
+
+  PetscPrintf(PETSC_COMM_WORLD,"Mesh is refined in %d directions.\n")
+
+  ierr = PetscCalloc1(ndir,dir);CHKERRQ(ierr);
+  nn = ndir;
+  ierr = PetscOptionsGetIntArray(NULL,MODEL_NAME,"-refinement_dir",dir,&nn,&found);CHKERRQ(ierr);
+  if (found) {
+    if (nn != ndir) {
+      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"n_refinement_dir (%d) and the number of entries in refinement_dir (%d) mismatch!\n",ndir,nn);
+    }
+  } else {
+    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"-%srefinement_dir not found!",MODEL_NAME);
+  }
+
+  for (d=0; d<ndir; d++) {
+    PetscInt  dim,npoints;
+    PetscReal *xref,*xnat;
+    char      option_name[PETSC_MAX_PATH_LEN];
+
+    dim = dir[d];
+
+    ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-refinement_npoints_%d",dim);CHKERRQ(ierr);
+    ierr = PetscOptionsGetInt(NULL,MODEL_NAME,option_name,&npoints,&found);CHKERRQ(ierr);
+    if (!found) { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"%s not found!",option_name); }
+
+    /* Allocate arrays for xref and xnat */
+    ierr = PetscCalloc1(npoints,&xref);CHKERRQ(ierr); 
+    ierr = PetscCalloc1(npoints,&xnat);CHKERRQ(ierr); 
+
+    /* Get xref */
+    nn = npoints;
+    ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-refinement_xref_%d",dim);CHKERRQ(ierr);
+    ierr = PetscOptionsGetIntArray(NULL,MODEL_NAME,option_name,xref,&nn,&found);CHKERRQ(ierr);
+    if (found) {
+      if (nn != npoints) {
+        SETERRQ4(PETSC_COMM_SELF,PETSC_ERR_USER,"-refinement_npoints_%d (%d) and the number of entries in refinement_xref_%d (%d) mismatch!\n",dim,npoints,dim,nn);
+      }
+    } else {
+      SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"%s not found!",option_name);
+    }
+
+    /* Get xnat */
+    nn = npoints;
+    ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-refinement_xnat_%d",dim);CHKERRQ(ierr);
+    ierr = PetscOptionsGetIntArray(NULL,MODEL_NAME,option_name,xnat,&nn,&found);CHKERRQ(ierr);
+    if (found) {
+      if (nn != npoints) {
+        SETERRQ4(PETSC_COMM_SELF,PETSC_ERR_USER,"-refinement_npoints_%d (%d) and the number of entries in refinement_xnat_%d (%d) mismatch!\n",dim,npoints,dim,nn);
+      }
+    } else {
+      SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"%s not found!",option_name);
+    }
+
+    /* Apply mesh refinement */
+    ierr = DMDACoordinateRefinementTransferFunction(dav,dim,PETSC_TRUE,npoints,xref,xnat);CHKERRQ(ierr);
+
+    ierr = PetscFree(xref);CHKERRQ(ierr);
+    ierr = PetscFree(xnat);CHKERRQ(ierr);
+  }
+
+  ierr = PetscFree(dir);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ModelApplyInitialMeshGeometry_Gene3D(pTatinCtx ptatin,void *ctx)
+{
+  ModelGENE3DCtx *data = (ModelGENE3DCtx*)ctx;
+  PetscReal      gvec[] = { 0.0, -9.8, 0.0 };
+  PetscInt       nn;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD, "[[%s]]\n", PETSC_FUNCTION_NAME);
+
+  ierr = DMDASetUniformCoordinates(ptatin->stokes_ctx->dav, data->O[0], data->L[0], data->O[1], data->L[1], data->O[2], data->L[2]); CHKERRQ(ierr);
+  ierr = ModelApplyMeshRefinement(ptatin->stokes_ctx->dav);CHKERRQ(ierr);
+  
+  /* Gravity */
+  nn = 3;
+  ierr = PetscOptionsGetRealArray(NULL, MODEL_NAME,"-gravity_vec",gvec,&nn,&found);CHKERRQ(ierr);
+  if (found) {
+    if (nn != 3) {
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%sgravity_vec requires 3 arguments.",MODEL_NAME);
+    }
+  } else {
+    PetscPrintf(PETSC_COMM_WORLD,"[[ WARNING ]]: Option -%sgravity_vec not provided, assuming gravity = ( %1.4e, %1.4e, %1.4e )\n",MODEL_NAME,gvec[0],gvec[1],gvec[2]);
+  }
+
+  ierr = PhysCompStokesSetGravityVector(ptatin->stokes_ctx,gvec);CHKERRQ(ierr);
+  ierr = PhysCompStokesScaleGravityVector(ptatin->stokes_ctx,1.0/data->acceleration_bar);CHKERRQ(ierr);
+
+  PetscFunctionReturn (0);
+}
+
+static PetscErrorCode ModelApplySurfaceRemeshing(DM dav, PetscReal dt, ModelGENE3DCtx *data)
+{
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  dirichlet_xmin = PETSC_FALSE;
+  dirichlet_xmax = PETSC_FALSE;
+  dirichlet_zmin = PETSC_FALSE;
+  dirichlet_zmax = PETSC_FALSE;
+
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-spm_diffusion_dirichlet_xmin",dirichlet_xmin,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-spm_diffusion_dirichlet_xmax",dirichlet_xmax,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-spm_diffusion_dirichlet_zmin",dirichlet_zmin,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-spm_diffusion_dirichlet_zmax",dirichlet_zmax,NULL);CHKERRQ(ierr);
+
+  /* Dirichlet velocity imposed on z normal faces so we do the same here */
+  ierr = UpdateMeshGeometry_ApplyDiffusionJMAX(dav,data->diffusivity_spm,dt,dirichlet_xmin,dirichlet_xmax,dirichlet_zmin,dirichlet_zmax,PETSC_FALSE);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ModelApplyUpdateMeshGeometry_Gene3D(pTatinCtx ptatin,Vec X,void *ctx)
+{
+  ModelRiftNitscheCtx *data;
+  PhysCompStokes      stokes;
+  DM                  stokes_pack,dav,dap;
+  Vec                 velocity,pressure;
+  PetscReal           dt;
+  PetscErrorCode      ierr;
+  
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+  data = (ModelRiftNitscheCtx*)ctx;
+  
+  /* fully lagrangian update */
+  ierr = pTatinGetTimestep(ptatin,&dt);CHKERRQ(ierr);
+  ierr = pTatinGetStokesContext(ptatin,&stokes);CHKERRQ(ierr);
+
+  stokes_pack = stokes->stokes_pack;
+  ierr = DMCompositeGetEntries(stokes_pack,&dav,&dap);CHKERRQ(ierr);
+  ierr = DMCompositeGetAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
+
+  /* SURFACE REMESHING */
+  if (data->surface_diffusion) {
+
+  }
+
+  ierr = UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX(dav,velocity,NULL,dt);CHKERRQ(ierr);
+  ierr = DMCompositeRestoreAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
+ 
+  /* Update Mesh Refinement */
+  ierr = ModelSetMeshRefinement_RiftNitsche(dav,data);CHKERRQ(ierr);
+  ierr = DMDABilinearizeQ2Elements(dav);CHKERRQ(ierr);
+
+  /* Passive markers update */
+  if (data->passive_markers) { ierr = PSwarmFieldUpdateAll(data->pswarm);CHKERRQ(ierr); }
+
+  PetscFunctionReturn(0);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 PetscErrorCode ModelApplyBoundaryCondition_Gene3D(pTatinCtx user,void *ctx)
 {
@@ -481,18 +672,7 @@ PetscErrorCode ModelAdaptMaterialPointResolution_Gene3D(pTatinCtx c,void *ctx)
   PetscFunctionReturn (0);
 }
 
-PetscErrorCode ModelApplyInitialMeshGeometry_Gene3D(pTatinCtx c,void *ctx)
-{
-  ModelGENE3DCtx *data = (ModelGENE3DCtx*)ctx;
-  PetscErrorCode ierr;
 
-  PetscFunctionBegin;
-  PetscPrintf(PETSC_COMM_WORLD, "[[%s]]\n", PETSC_FUNCTION_NAME);
-
-  ierr =  DMDASetUniformCoordinates(c->stokes_ctx->dav, data->O[0], data->L[0], data->O[1], data->L[1], data->O[2], data->L[2]); CHKERRQ(ierr);
-
-  PetscFunctionReturn (0);
-}
 
 //=====================================================================================================================================
 
@@ -835,14 +1015,7 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_Gene3D(pTatinCtx c,void *ctx)
 
 
 //======================================================================================================================================
-PetscErrorCode ModelApplyUpdateMeshGeometry_Gene3D(pTatinCtx c,Vec X,void *ctx)
-{
-  PetscFunctionBegin;
-  PetscPrintf(PETSC_COMM_WORLD, "[[%s]]\n", PETSC_FUNCTION_NAME);
-  PetscPrintf(PETSC_COMM_WORLD, "  NOT IMPLEMENTED \n", PETSC_FUNCTION_NAME);
 
-  PetscFunctionReturn (0);
-}
 
 PetscErrorCode ModelOutput_Gene3D(pTatinCtx c,Vec X,const char prefix[],void *ctx)
 {
@@ -867,7 +1040,7 @@ PetscErrorCode ModelDestroy_Gene3D(pTatinCtx c,void *ctx)
   data = (ModelGENE3DCtx*)ctx;
 
   /* Free contents of structure */
-
+  ierr = PetscFree(data->regions_table);
   /* Free structure */
   ierr = PetscFree(data);CHKERRQ(ierr);
 

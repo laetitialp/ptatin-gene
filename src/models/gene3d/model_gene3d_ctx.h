@@ -38,8 +38,12 @@ typedef enum { GENE_LayeredCake=0, GENE_ExtrudeFromMap, GENE_ReadFromCAD} GENE3D
 enum {LAYER_MAX = 100};
 
 typedef struct {
-  PetscInt  nmaterials;
+  /* bounding box */
   PetscReal L[3],O[3];
+  /* regions */
+  PetscInt  n_regions;
+  PetscInt  *regions_table;
+  char      mesh_file[PETSC_MAX_PATH_LEN],region_file[PETSC_MAX_PATH_LEN];
   /* viscosity cutoff */
   PetscReal eta_max,eta_min;
   PetscBool eta_cutoff;
