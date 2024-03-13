@@ -297,6 +297,72 @@ PetscErrorCode BCListGlobalToLocal(BCList list)
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode BCListLocalToGlobal(BCList list)
+{
+  PetscInt       i,lsize;
+  Vec            dindices,dindices_g;
+  PetscScalar    *_dindices;
+  PetscBool      is_dirich;
+  PetscErrorCode ierr;
+
+  ierr = DMGetGlobalVector(list->dm,&dindices_g);CHKERRQ(ierr);
+  ierr = DMGetLocalVector(list->dm,&dindices);CHKERRQ(ierr);
+
+  /* clean up indices (global -> local) */
+  ierr = VecGetLocalSize(dindices,&lsize);CHKERRQ(ierr);
+  if (lsize != list->L_local) { SETERRQ(PetscObjectComm((PetscObject)list->dm),PETSC_ERR_USER,"Local sizes don't match 1"); }
+  ierr = VecGetArray(dindices,&_dindices);CHKERRQ(ierr);
+  /* convert to scalar and copy values */
+  for (i=0; i<lsize; i++) {
+    BCListIsDirichlet(list->dofidx_local[i],&is_dirich);
+    if (is_dirich) {
+      _dindices[i] = (PetscScalar)list->dofidx_local[i] - 1.0e-3;
+    } else {
+      _dindices[i] = (PetscScalar)list->dofidx_local[i] + 1.0e-3;
+    }
+  }
+  ierr = VecRestoreArray(dindices,&_dindices);CHKERRQ(ierr);
+
+  /* scatter (ignore ghosts) */
+  ierr = DMLocalToGlobalBegin(list->dm,dindices,INSERT_VALUES,dindices_g);CHKERRQ(ierr);
+  ierr = DMLocalToGlobalEnd(  list->dm,dindices,INSERT_VALUES,dindices_g);CHKERRQ(ierr);
+
+  /* convert to int */
+  ierr = VecGetLocalSize(dindices_g,&lsize);CHKERRQ(ierr);
+  if (list->L != lsize) { SETERRQ(PetscObjectComm((PetscObject)list->dm),PETSC_ERR_USER,"Global sizes don't match 2"); }
+  ierr = VecGetArray(dindices_g,&_dindices);CHKERRQ(ierr);
+  for (i=0; i<lsize; i++) {
+    list->dofidx_global[i] = (PetscInt)_dindices[i];
+  }
+  ierr = VecRestoreArray(dindices_g,&_dindices);CHKERRQ(ierr);
+
+  /* setup values (global -> local) */
+  ierr = VecGetLocalSize(dindices,&lsize);CHKERRQ(ierr);
+  ierr = VecGetArray(dindices,&_dindices);CHKERRQ(ierr);
+  /* copy global values into a vector */
+  for (i=0; i<lsize; i++) {
+    _dindices[i] = list->vals_local[i];
+  }
+  ierr = VecRestoreArray(dindices,&_dindices);CHKERRQ(ierr);
+
+  /* scatter (ignore ghosts) */
+  ierr = DMLocalToGlobalBegin(list->dm,dindices,INSERT_VALUES,dindices_g);CHKERRQ(ierr);
+  ierr = DMLocalToGlobalEnd(  list->dm,dindices,INSERT_VALUES,dindices_g);CHKERRQ(ierr);
+
+  /* retrieve entries */
+  ierr = VecGetLocalSize(dindices_g,&lsize);CHKERRQ(ierr);
+  ierr = VecGetArray(dindices_g,&_dindices);CHKERRQ(ierr);
+  for (i=0; i<lsize; i++) {
+    list->vals_global[i] = _dindices[i];
+  }
+  ierr = VecRestoreArray(dindices_g,&_dindices);CHKERRQ(ierr);
+
+  ierr = DMRestoreGlobalVector(list->dm,&dindices_g);CHKERRQ(ierr);
+  ierr = DMRestoreLocalVector(list->dm,&dindices);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode DMDABCListCreate(DM da,BCList *list)
 {
   BCList         ll;
@@ -357,6 +423,13 @@ PetscErrorCode BCListGetGlobalValues(BCList list,PetscInt *n,PetscScalar **vals)
 {
   if (n)    {   *n  = list->L; }
   if (vals) { *vals = list->vals_global; }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode BCListGetLocalValues(BCList list,PetscInt *n,PetscScalar **vals)
+{
+  if (n)    {   *n  = list->L_local; }
+  if (vals) { *vals = list->vals_local; }
   PetscFunctionReturn(0);
 }
 
@@ -642,6 +715,10 @@ PetscErrorCode DMDABCListTraverse3d(BCList list,DM da,DMDABCListConstraintLoc do
   PetscScalar    pos[3];
   PetscScalar    *vals,bc_val;
   PetscBool      impose_dirichlet;
+
+  MPI_Comm       comm;
+  PetscMPIInt    rank;
+
   PetscErrorCode ierr;
 
   ierr = DMDAGetInfo(da,NULL, &M,&N,&P, NULL,NULL,NULL, &ndof,NULL, NULL,NULL,NULL, NULL);CHKERRQ(ierr);
@@ -655,6 +732,9 @@ PetscErrorCode DMDABCListTraverse3d(BCList list,DM da,DMDABCListConstraintLoc do
 
   ierr = BCListGetGlobalIndices(list,&L,&idx);
   ierr = BCListGetGlobalValues(list,&L,&vals);
+
+  comm = PetscObjectComm((PetscObject)da);
+  ierr = MPI_Comm_rank(comm,&rank);CHKERRQ(ierr);
 
   switch (doflocation) {
     /* volume */
