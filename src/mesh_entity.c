@@ -90,8 +90,8 @@ PetscErrorCode MeshEntityReset(MeshEntity e)
 {
   PetscErrorCode ierr;
   ierr = PetscFree(e->local_index);CHKERRQ(ierr);
-  ierr = PetscMalloc1(1,&e);CHKERRQ(ierr);
-  e->local_index = 0;
+  e->local_index = NULL;
+  e->n_entities = 0;
   e->empty = PETSC_TRUE;
   e->set_values_called = PETSC_FALSE;
   PetscFunctionReturn(0);
