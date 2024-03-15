@@ -222,11 +222,11 @@ static PetscErrorCode MarkBoundaryFacetFromMesh(
   for (f=0; f<fi->n_facets; f++) {
     long int np = 1,found;
     long int ep[] = {-1};
-    double   xip[] = {0.0,0.0,0.0};
+    double   xip[] = {0.0,0.0};
     
     /* pack data */
     ierr = FacetPack(cell_facet, f, fi);CHKERRQ(ierr);
-    
+#if 0
     switch (method) {
       case 0:
         PointLocation_BruteForce(mesh,np,(const double*)cell_facet->centroid,ep,xip,&found);
@@ -238,7 +238,8 @@ static PetscErrorCode MarkBoundaryFacetFromMesh(
         PointLocation_PartitionedBoundingBox(mesh,np,(const double*)cell_facet->centroid,ep,xip,&found);
         break;
     }
-
+#endif
+    PointLocation_BruteForce_Triangles(mesh,np,(const double*)cell_facet->centroid,ep,xip,&found);
     /*
     if (found == 0) {
       PetscPrintf(PETSC_COMM_WORLD,"Point[%d]: ( %1.4e, %1.4e, %1.4e ) not found!\n",f,cell_facet->centroid[0],cell_facet->centroid[1],cell_facet->centroid[2]);
@@ -266,6 +267,7 @@ static PetscErrorCode MarkFacetsFromGMSH(GMSHCtx *data)
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
 
+#if 1
   for (sf=0; sf<data->n_bcfaces; sf++) {
     Mesh       mesh;
     MeshEntity mesh_entity;
@@ -286,7 +288,26 @@ static PetscErrorCode MarkFacetsFromGMSH(GMSHCtx *data)
 
     MeshDestroy(&mesh);
   }
-
+#endif
+#if 0
+  {
+    Mesh       mesh;
+    MeshEntity mesh_entity;
+    char       meshfile[PETSC_MAX_PATH_LEN],opt_name[PETSC_MAX_PATH_LEN];
+    // sc[4] -> continent dirichlet
+    /* read the facets mesh corresponding to tag */
+    ierr = PetscSNPrintf(meshfile,PETSC_MAX_PATH_LEN-1,"facet_%d_mesh.bin",data->tag_table[1]);CHKERRQ(ierr);
+    ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-facet_mesh_file_%d",data->tag_table[1]);CHKERRQ(ierr);
+    ierr = PetscOptionsGetString(NULL,NULL,opt_name,meshfile,PETSC_MAX_PATH_LEN-1,NULL);CHKERRQ(ierr);
+    /* get facet mesh */
+    parse_mesh(meshfile,&mesh);
+  
+    ierr = SurfaceConstraintGetFacets(data->sc[1],&mesh_entity);CHKERRQ(ierr);
+    ierr = MarkBoundaryFacetFromMesh(mesh_entity,data->sc[1]->fi,mesh,0);CHKERRQ(ierr);
+  
+    MeshDestroy(&mesh);
+  }
+#endif
   PetscFunctionReturn(0);
 }
 

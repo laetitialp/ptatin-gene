@@ -3,12 +3,14 @@
 -L 600.0e3,0.0,300.0e3
 -mesh_file src/models/gmsh_to_ptatin/md.bin
 -region_file src/models/gmsh_to_ptatin/region_cell.bin
+-n_regions 4
+-regions_list 1,2,3,4
 -n_bc_subfaces 6
 -bc_tag_list 1,2,3,4,5,6
 -method 1
--lattice_layout_Nx 4
--lattice_layout_Ny 4
--lattice_layout_Nz 4
+-lattice_layout_Nx 1
+-lattice_layout_Ny 1
+-lattice_layout_Nz 1
 -mp_popctrl_np_lower 0
 -mp_popctrl_np_upper 1024
 ############################
