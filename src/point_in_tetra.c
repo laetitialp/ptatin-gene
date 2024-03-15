@@ -503,3 +503,232 @@ void PointLocation_PartitionedBoundingBox(
   printf("  npoints not located: %ld\n",npoints-npoints_located);
 #endif
 }
+
+double dot(double u[],double v[],int nsd)
+{
+  int d;
+  double u_dot_v;
+
+  u_dot_v = 0.0;
+  for (d=0; d<nsd; d++) {
+    u_dot_v += u[d]*v[d];
+  }
+  return u_dot_v;
+}
+
+void cross(double u[], double v[], double w[]) 
+{
+  w[0] = u[1]*v[2] - u[2]*v[1];
+  w[1] = u[2]*v[0] - u[0]*v[2];
+  w[2] = u[0]*v[1] - u[1]*v[0];
+}
+
+double norm(double u[],int nsd) 
+{
+  double norm_u;
+  norm_u = dot(u,u,nsd);
+  norm_u = sqrt(norm_u);
+  return norm_u;
+}
+
+bool point_in_triangle(double elcoords[],double xp[],double xi[],double tolerance)
+{
+  const int nsd=3;
+  int       d;
+  bool      diff_failed = false;
+  double    AB[3],AC[3],AP[3],normal[3];
+  double    e0[3],e1[3],n[3],v1[3],v2[3],point_n[3];
+  double    A[3][3],b[3],param[3],intersection_point[3],basis[3];
+  double    AB_norm,normal_norm,det_A;
+  /* 
+  In 3-space, given a triangle A,B,C 
+  and a point P living on a line with direction = normal vector to the triangle
+  The line is defined by:
+    L(t) = P + t * normal
+  The triangle is defined by:
+    T(u,v) = A + u*AB + v*AC
+  with AB = B - A, AC = C - A and u,v >= 0 and u + v <= 1
+  The intersection between L and T is:
+    L(t)  = T(u,v)
+    P - A = u*AB + v*AC - t*normal,
+  collecting [u,v,t] in a vector named param we have the following 3x3 system in matrix form:
+    [ AB  AC  -normal ][ param ] = [ P - A ]
+  Inverting it gives us u,v,t.
+  If the line intersects the triangle:
+    u,v,t >= 0 and u+v <= 1
+  The intersection points is given by:
+    I = P + t * normal
+  Finally if the distance between I and P is zero, P is in the triangle
+  */
+
+  /* get the vectors defining 2 edges: AB & AC */
+  for (d=0; d<nsd; d++) {
+    int ii;
+    ii = 1; AB[d] = elcoords[nsd*ii + d] - elcoords[d];
+    ii = 2; AC[d] = elcoords[nsd*ii + d] - elcoords[d];
+    /* vector between point and the first vertex: AP = P - A */
+    AP[d] = xp[d] - elcoords[d];
+  }
+  /* compute the normal of the triangle: normal = AB x AC */
+  cross(AB,AC,normal);
+
+  /* construct the matrix for inversion */
+  A[0][0] = AB[0]; A[0][1] = AC[0]; A[0][2] = -normal[0];
+  A[1][0] = AB[1]; A[1][1] = AC[1]; A[1][2] = -normal[1];
+  A[2][0] = AB[2]; A[2][1] = AC[2]; A[2][2] = -normal[2];
+  
+  /* Solve [ AB  AC  -normal ][ param ] = [ AP ] */
+  solve3x3(A,AP,param);
+  /* check that u,v,t >= 0 and u+v <= 1 */
+  if (param[0] < 0.0-tolerance || 
+      param[1] < 0.0-tolerance || 
+      param[2] < 0.0-tolerance || 
+      (param[0]+param[1] > 1.0+tolerance)) { return(false); }
+
+  /* Get the intersection point */
+  for (d=0; d<nsd; d++) {
+    double diff;
+    intersection_point[d] = xp[d] + param[2] * normal[d];
+    /* Check the distance between P and I */
+    diff = fabs( xp[d] - intersection_point[d] );
+    if (diff > tolerance) { diff_failed = true; }
+  }
+  /* If failed it's not in the element */
+  if (diff_failed) { return(false); }
+
+  /* 
+  If the point is in the element we perform an isoparametric inversion for xi 
+  First we need to transform from 3-space to 2-space
+  */
+
+  /* normalize AB and normal vectors to form a new basis */
+  AB_norm     = norm(AB,nsd);
+  normal_norm = norm(normal,nsd);
+
+  for (d=0; d<nsd; d++) {
+    e0[d] = AB[d] / AB_norm;
+    n[d]  = normal[d] / normal_norm;
+  }
+  /* e0 and n form the basis of a plane orthogonal to the triangle,
+     we cross them to get the 2nd vector tangent to the plane formed by the triangle
+     and obtain a 3-space orthonormal basis e0, e1, n
+     e1 = e0 x n
+  */
+  cross(e0,n,e1);
+
+  /* 
+  now that we have the orthonormal basis we express the points in that basis.
+  To do so we need to solve for each point:
+    [ e0 e1 n ][ p_new ] = [ p_original ]
+  */
+  A[0][0] = e0[0]; A[0][1] = e1[0]; A[0][2] = n[0];
+  A[1][0] = e0[1]; A[1][1] = e1[1]; A[1][2] = n[1];
+  A[2][0] = e0[2]; A[2][1] = e1[2]; A[2][2] = n[2];
+
+  /* Solve [ e0  e1  n ][ v1 ] = [ AB ] */
+  solve3x3(A,AB,v1);
+  /* Solve [ e0  e1  n ][ v2 ] = [ AC ] */
+  solve3x3(A,AC,v2);
+  /* Solve [ e0  e1  n ][ point_n ] = [ point ] */
+  solve3x3(A,AP,point_n);
+
+  /* 
+  Because n is normal to the plane defined by the triangle, the points expressed
+  in the [ e0 e1 n ] basis all have their 3rd component to 0 (because they are all contained in the plane).
+  These new points are now 2d (ignore the 3rd component) so we can perform the isoparametric inversion i.e., solve:
+    0.5*[ v1-v0 v2-v0 ][ xi ] = [ p - 0.5*(v1 + v2) ]
+  but v0 is our new origin so we can drop it
+  */
+  det_A = 0.5*(v1[0]*v2[1] - v2[0]*v1[1]);
+  for (d=0; d<2; d++) {
+    b[d] = point_n[d] - 0.5*(v1[d] + v2[d]); 
+  }
+  xi[0] = 1.0/det_A * ( v2[1]*b[0] - v2[0]*b[1]);
+  xi[1] = 1.0/det_A * (-v1[1]*b[0] + v1[0]*b[1]);      
+
+  /* check xi, eta are valid */
+  basis[0] = 1.0 - 0.5*(1.0+xi[0]) - 0.5*(1.0+xi[1]);
+  basis[1] = 0.5*(1+xi[0]);
+  basis[2] = 0.5*(1+xi[1]);
+
+  if ((basis[0] < (0.0-PLOCATION_EPS)) || (basis[0] > (1.0+PLOCATION_EPS))) { return(false); }
+  if ((basis[1] < (0.0-PLOCATION_EPS)) || (basis[1] > (1.0+PLOCATION_EPS))) { return(false); }
+  if ((basis[2] < (0.0-PLOCATION_EPS)) || (basis[2] > (1.0+PLOCATION_EPS))) { return(false); }
+
+  return(true);
+}
+
+void PointLocation_BruteForce_Triangles(
+  Mesh dm,
+  long int npoints,const double xp[],long int econtaining[],double xip[],long int *found)
+{
+  const int nsd = 3;
+  int       e,nelements_g=0,*element_g=NULL,npe_g=0;
+  double    *coords_g=NULL,elcoords_g[nsd*3];
+  long int  p,i,d;
+  bool      point_located;
+  double    tolerance;
+
+  long int points_located = 0;
+
+  tolerance = 1.0e-8;
+
+  *found      = 0;
+  nelements_g = dm->ncell;
+  npe_g       = dm->points_per_cell;
+  element_g   = dm->cell;
+  coords_g    = dm->vert;
+
+  for (p=0; p<npoints; p++) {
+    double point_coor[3],xi[2];
+    
+    /* initialise points */
+    point_located = false;
+    xip[2*p + 0] = NAN;
+    xip[2*p + 1] = NAN;
+    econtaining[p] = -1;
+    for (d=0; d<nsd; d++) {
+      point_coor[d] = xp[nsd*p + d];
+    }
+
+    for (d=0; d<2; d++) {
+      xi[d] = xip[2*p + d];
+    }
+
+    for (e=0; e<nelements_g; e++) {
+      int    *elnidx_g = NULL;
+
+      /* get element -> node map for the triangle geometry */
+      elnidx_g = &element_g[npe_g*e];
+      /* get element coordinates */
+      for (i=0; i<npe_g; i++) {
+        int nidx = elnidx_g[i];
+
+        elcoords_g[nsd*i+0] = coords_g[nsd*nidx  ];
+        elcoords_g[nsd*i+1] = coords_g[nsd*nidx+1];
+        elcoords_g[nsd*i+2] = coords_g[nsd*nidx+2];
+      }
+
+      point_located = point_in_triangle(elcoords_g,point_coor,xi,tolerance);
+      
+      if (point_located) {
+        /* copy element index */
+        econtaining[p] = e;
+        points_located++;
+        break;
+      }
+    }
+    if (point_located) {
+      for (d=0; d<2; d++) {
+        xip[2*p + d] = xi[d];
+      }
+    }
+  }
+  *found = points_located;
+#if PTAT3D_DBG_PointLocation
+  printf("PointLocation_BruteForce:\n");
+  printf("  npoints queried    : %ld\n",npoints);
+  printf("  npoints located    : %ld\n",points_located);
+  printf("  npoints not located: %ld\n",npoints-points_located);
+#endif
+}

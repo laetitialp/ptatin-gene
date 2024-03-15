@@ -14,4 +14,8 @@ void PointLocation_PartitionedBoundingBox(
   long int npoints,const double xp[],long int econtaining[],double xip[],
   long int *npoints_located);
 
+void PointLocation_BruteForce_Triangles(
+  Mesh dm,
+  long int npoints,const double xp[],long int econtaining[],double xip[],long int *found);
+
 #endif
