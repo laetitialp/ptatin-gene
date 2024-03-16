@@ -105,5 +105,5 @@ typedef struct {
 } MarkFromPointCtx;
 
 PetscBool MarkFacetsFromPoint(Facet facets, void *ctx);
-PetscErrorCode MeshFacetMarkFromMesh(MeshEntity e, MeshFacetInfo fi, Mesh mesh, PetscInt method);
+PetscErrorCode MeshFacetMarkFromMesh(MeshEntity e, MeshFacetInfo fi, Mesh mesh, PetscInt method, PetscReal length_scale);
 #endif

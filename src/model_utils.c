@@ -1705,7 +1705,7 @@ PetscErrorCode StokesComputeVdotN(PhysCompStokes stokes,Vec u,PetscReal int_u_do
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MPntStdSetRegionIndexFromMesh(DataBucket material_points, Mesh mesh, long int *region_idx, PetscInt method)
+PetscErrorCode MPntStdSetRegionIndexFromMesh(DataBucket material_points, Mesh mesh, long int *region_idx, PetscInt method, PetscReal length_scale)
 { 
   DataField      PField_std;
   int            p,n_mp_points;
@@ -1718,22 +1718,28 @@ PetscErrorCode MPntStdSetRegionIndexFromMesh(DataBucket material_points, Mesh me
   /* Loop over material points */
   for (p=0; p<n_mp_points; p++) {
     MPntStd  *marker_std;
+    int      d;
     long int np = 1,found;
     long int ep[] = {-1};
     double   xip[] = {0.0,0.0,0.0};
+    double   point_coor[NSD];
 
     DataFieldAccessPoint(PField_std,p,(void**)&marker_std);
+
+    for (d=0; d<NSD; d++) {
+      point_coor[d] = marker_std->coor[d] * length_scale;
+    }
 
     /* locate point */
     switch (method) {
       case 0:
-        PointLocation_BruteForce(mesh,np,(const double*)marker_std->coor,ep,xip,&found);
+        PointLocation_BruteForce(mesh,np,(const double*)point_coor,ep,xip,&found);
         break;
       case 1:
-        PointLocation_PartitionedBoundingBox(mesh,np,(const double*)marker_std->coor,ep,xip,&found);
+        PointLocation_PartitionedBoundingBox(mesh,np,(const double*)point_coor,ep,xip,&found);
         break;
       default:
-        PointLocation_PartitionedBoundingBox(mesh,np,(const double*)marker_std->coor,ep,xip,&found);
+        PointLocation_PartitionedBoundingBox(mesh,np,(const double*)point_coor,ep,xip,&found);
         break;
     }
     /* assign marker phase */
@@ -1744,7 +1750,7 @@ PetscErrorCode MPntStdSetRegionIndexFromMesh(DataBucket material_points, Mesh me
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode pTatin_MPntStdSetRegionIndexFromMesh(pTatinCtx ptatin, const char mesh_file[], const char region_file[], PetscInt method)
+PetscErrorCode pTatin_MPntStdSetRegionIndexFromMesh(pTatinCtx ptatin, const char mesh_file[], const char region_file[], PetscInt method, PetscReal length_scale)
 {
   Mesh           mesh;
   DataBucket     material_points;
@@ -1760,7 +1766,7 @@ PetscErrorCode pTatin_MPntStdSetRegionIndexFromMesh(pTatinCtx ptatin, const char
   /* Get material points data bucket */
   ierr = pTatinGetMaterialPoints(ptatin,&material_points,NULL);CHKERRQ(ierr);
   /* Assign marker phase */
-  ierr = MPntStdSetRegionIndexFromMesh(material_points,mesh,region_idx,method);CHKERRQ(ierr);
+  ierr = MPntStdSetRegionIndexFromMesh(material_points,mesh,region_idx,method,length_scale);CHKERRQ(ierr);
 
   /* Free region array and mesh from files */
   free(region_idx);
