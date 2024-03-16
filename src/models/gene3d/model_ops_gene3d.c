@@ -386,13 +386,8 @@ static PetscErrorCode ModelApplyMeshRefinement(DM dav)
 {
   PetscInt  d,ndir;
   PetscInt  *dir;
-  PetscBool refine,found;
+  PetscBool found;
   PetscFunctionBegin;
-
-  refine = PETSC_FALSE;
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-apply_mesh_refinement",&refine,NULL);CHKERRQ(ierr);
-  if (!refine) { PetscFunctionReturn(0); }
-
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
 
   ndir = 0;
@@ -468,14 +463,19 @@ PetscErrorCode ModelApplyInitialMeshGeometry_Gene3D(pTatinCtx ptatin,void *ctx)
   ModelGENE3DCtx *data = (ModelGENE3DCtx*)ctx;
   PetscReal      gvec[] = { 0.0, -9.8, 0.0 };
   PetscInt       nn;
+  PetscBool      refine;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD, "[[%s]]\n", PETSC_FUNCTION_NAME);
 
   ierr = DMDASetUniformCoordinates(ptatin->stokes_ctx->dav, data->O[0], data->L[0], data->O[1], data->L[1], data->O[2], data->L[2]); CHKERRQ(ierr);
-  ierr = ModelApplyMeshRefinement(ptatin->stokes_ctx->dav);CHKERRQ(ierr);
   
+  refine = PETSC_FALSE;
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-apply_mesh_refinement",&refine,NULL);CHKERRQ(ierr);
+  if (refine) { 
+    ierr = ModelApplyMeshRefinement(ptatin->stokes_ctx->dav);CHKERRQ(ierr);
+  }
   /* Gravity */
   nn = 3;
   ierr = PetscOptionsGetRealArray(NULL, MODEL_NAME,"-gravity_vec",gvec,&nn,&found);CHKERRQ(ierr);
@@ -525,6 +525,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_Gene3D(pTatinCtx ptatin,Vec X,void *
   DM                  stokes_pack,dav,dap;
   Vec                 velocity,pressure;
   PetscReal           dt;
+  PetscBool           refine;
   PetscErrorCode      ierr;
   
   PetscFunctionBegin;
@@ -548,8 +549,11 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_Gene3D(pTatinCtx ptatin,Vec X,void *
   ierr = DMCompositeRestoreAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
  
   /* Update Mesh Refinement */
-  ierr = ModelSetMeshRefinement_RiftNitsche(dav,data);CHKERRQ(ierr);
-  ierr = DMDABilinearizeQ2Elements(dav);CHKERRQ(ierr);
+  refine = PETSC_FALSE;
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-apply_mesh_refinement",&refine,NULL);CHKERRQ(ierr);
+  if (refine) { 
+    ierr = ModelApplyMeshRefinement(ptatin->stokes_ctx->dav);CHKERRQ(ierr);
+  }
 
   /* Passive markers update */
   if (data->passive_markers) { ierr = PSwarmFieldUpdateAll(data->pswarm);CHKERRQ(ierr); }
