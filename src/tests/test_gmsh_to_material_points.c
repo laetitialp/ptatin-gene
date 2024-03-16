@@ -125,7 +125,7 @@ static PetscErrorCode SetRegionIndexFromGMSH(pTatinCtx ptatin, GMSHCtx *data)
   MeshDestroy(&mesh);
 #endif
 
-  ierr = pTatin_MPntStdSetRegionIndexFromMesh(ptatin,data->mesh_file,data->region_file,data->method);CHKERRQ(ierr);
+  ierr = pTatin_MPntStdSetRegionIndexFromMesh(ptatin,data->mesh_file,data->region_file,data->method,1.0);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -292,7 +292,7 @@ static PetscErrorCode MarkFacetsFromGMSH(GMSHCtx *data)
 
     ierr = SurfaceConstraintGetFacets(data->sc[sf],&mesh_entity);CHKERRQ(ierr);
     //ierr = MarkBoundaryFacetFromMesh(mesh_entity,data->sc[sf]->fi,mesh,data->method);CHKERRQ(ierr);
-    ierr = MeshFacetMarkFromMesh(mesh_entity,data->sc[sf]->fi,mesh,data->method);CHKERRQ(ierr);
+    ierr = MeshFacetMarkFromMesh(mesh_entity,data->sc[sf]->fi,mesh,data->method,1.0);CHKERRQ(ierr);
 
 
     MeshDestroy(&mesh);

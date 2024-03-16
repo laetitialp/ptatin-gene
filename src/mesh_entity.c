@@ -862,7 +862,7 @@ PetscBool MarkFacetsFromPoint(Facet facets, void *ctx)
   PetscFunctionReturn(impose);
 }
 
-PetscErrorCode MeshFacetMarkFromMesh(MeshEntity e, MeshFacetInfo fi, Mesh mesh, PetscInt method)
+PetscErrorCode MeshFacetMarkFromMesh(MeshEntity e, MeshFacetInfo fi, Mesh mesh, PetscInt method, PetscReal length_scale)
 {
   PetscInt       f,nmarked=0;
   PetscInt       *facet_to_keep;
@@ -878,22 +878,29 @@ PetscErrorCode MeshFacetMarkFromMesh(MeshEntity e, MeshFacetInfo fi, Mesh mesh, 
 
   ierr = PetscMalloc1(fi->n_facets,&facet_to_keep);CHKERRQ(ierr);
   for (f=0; f<fi->n_facets; f++) {
+    int      d;
     long int np = 1,found;
     long int ep[] = {-1};
     double   xip[] = {0.0,0.0};
+    double   cell_centroid[3];
     
     /* pack data */
     ierr = FacetPack(cell_facet, f, fi);CHKERRQ(ierr);
 
+    /* scale for user mesh length scale */
+    for (d=0; d<3; d++) {
+      cell_centroid[d] = cell_facet->centroid[d] * length_scale;
+    }
+
     switch (method) {
       case 0:
-        PointLocation_BruteForce_Triangles(mesh,np,(const double*)cell_facet->centroid,ep,xip,&found);
+        PointLocation_BruteForce_Triangles(mesh,np,(const double*)cell_centroid,ep,xip,&found);
         break;
       case 1:
-        PointLocation_PartitionedBoundingBox_Triangles(mesh,np,(const double*)cell_facet->centroid,ep,xip,&found);
+        PointLocation_PartitionedBoundingBox_Triangles(mesh,np,(const double*)cell_centroid,ep,xip,&found);
         break;
       default:
-        PointLocation_PartitionedBoundingBox_Triangles(mesh,np,(const double*)cell_facet->centroid,ep,xip,&found);
+        PointLocation_PartitionedBoundingBox_Triangles(mesh,np,(const double*)cell_centroid,ep,xip,&found);
         break;
     }
     if (found == 0) continue;
