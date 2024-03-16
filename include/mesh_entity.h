@@ -5,6 +5,8 @@
 #include <petsc.h>
 #include <petscdm.h>
 #include <element_type_Q2.h>
+#include <parse.h>
+#include <point_in_tetra.h>
 
 typedef enum { MESH_ENTITY_CELL=0, MESH_ENTITY_FACET, MESH_ENTITY_VERTEX } MeshEntityType;
 
@@ -103,4 +105,5 @@ typedef struct {
 } MarkFromPointCtx;
 
 PetscBool MarkFacetsFromPoint(Facet facets, void *ctx);
+PetscErrorCode MeshFacetMarkFromMesh(MeshEntity e, MeshFacetInfo fi, Mesh mesh, PetscInt method);
 #endif

@@ -18,6 +18,7 @@
 #include "mesh_entity.h"
 #include "surface_constraint.h"
 #include "surfbclist.h"
+#include "model_utils.h"
 
 #include "parse.h"
 #include "point_in_tetra.h"
@@ -109,7 +110,8 @@ static PetscErrorCode SetRegionIndexFromGMSH(pTatinCtx ptatin, GMSHCtx *data)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
+#if 0
   /* get user mesh from file */
   parse_mesh(data->mesh_file,&mesh);
   if (!mesh) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"mesh = NULL. Aborting.\n"); }
@@ -121,6 +123,10 @@ static PetscErrorCode SetRegionIndexFromGMSH(pTatinCtx ptatin, GMSHCtx *data)
 
   free(region_idx);
   MeshDestroy(&mesh);
+#endif
+
+  ierr = pTatin_MPntStdSetRegionIndexFromMesh(ptatin,data->mesh_file,data->region_file,data->method);CHKERRQ(ierr);
+
   PetscFunctionReturn(0);
 }
 
@@ -285,7 +291,9 @@ static PetscErrorCode MarkFacetsFromGMSH(GMSHCtx *data)
     parse_mesh(meshfile,&mesh);
 
     ierr = SurfaceConstraintGetFacets(data->sc[sf],&mesh_entity);CHKERRQ(ierr);
-    ierr = MarkBoundaryFacetFromMesh(mesh_entity,data->sc[sf]->fi,mesh,data->method);CHKERRQ(ierr);
+    //ierr = MarkBoundaryFacetFromMesh(mesh_entity,data->sc[sf]->fi,mesh,data->method);CHKERRQ(ierr);
+    ierr = MeshFacetMarkFromMesh(mesh_entity,data->sc[sf]->fi,mesh,data->method);CHKERRQ(ierr);
+
 
     MeshDestroy(&mesh);
   }
@@ -494,6 +502,8 @@ static PetscErrorCode pTatin3d_ICFromGMSH(int argc,char **argv)
 
   // ASSIGN PHASE FROM MESH
   ierr = SetRegionIndexFromGMSH(ptatin,data);CHKERRQ(ierr);
+
+
 
   ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(ptatin->stokes_ctx);CHKERRQ(ierr);
   ierr = SurfaceQuadratureViewParaview_Stokes(ptatin->stokes_ctx,ptatin->outputpath,"def");CHKERRQ(ierr);
