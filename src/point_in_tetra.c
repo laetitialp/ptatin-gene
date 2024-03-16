@@ -531,7 +531,7 @@ double norm(double u[],int nsd)
   return norm_u;
 }
 
-bool point_in_triangle(double elcoords[],double xp[],double xi[],double tolerance)
+bool point_in_triangle(const double elcoords[],const double xp[],double xi[],double tolerance)
 {
   const int nsd=3;
   int       d;
@@ -709,7 +709,7 @@ void PointLocation_BruteForce_Triangles(
         elcoords_g[nsd*i+2] = coords_g[nsd*nidx+2];
       }
 
-      point_located = point_in_triangle(elcoords_g,point_coor,xi,tolerance);
+      point_located = point_in_triangle((const double*)elcoords_g,point_coor,xi,tolerance);
       
       if (point_located) {
         /* copy element index */
@@ -730,5 +730,116 @@ void PointLocation_BruteForce_Triangles(
   printf("  npoints queried    : %ld\n",npoints);
   printf("  npoints located    : %ld\n",points_located);
   printf("  npoints not located: %ld\n",npoints-points_located);
+#endif
+}
+
+void PointLocation_PartitionedBoundingBox_Triangles(
+  Mesh dm,
+  long int npoints,const double xp[],long int econtaining[],double xip[],
+  long int *_npoints_located)
+{
+  const int nsd = 3;
+  const double tolerance = 1.0e-8;
+
+  int d,e,*element_g=NULL,npe_g=0,pe,nelements_partition=0,part_idx=-1,npartitions;
+  double *coords_g=NULL,elcoords_g[nsd*3];
+  long int p,i;
+  bool point_located;
+  double xi[2];
+  CellPartition part=NULL;
+  long int npoints_located = 0;
+
+  *_npoints_located = 0;
+  npe_g = dm->points_per_cell;
+  element_g = dm->cell;
+  coords_g = dm->vert;
+  npartitions = dm->npartition;
+
+  /* initialise points */
+  for (p=0; p<npoints; p++) {
+    xip[2*p + 0] = NAN;
+    xip[2*p + 1] = NAN;
+    econtaining[p] = -1;
+  }
+  for (p=0; p<npoints; p++) {
+    const double *_point = &xp[nsd*p];
+
+    point_located = false;
+
+    if (p > 0 && econtaining[p-1] >= 0) {
+      int *elnidx_g = NULL;
+
+      e = econtaining[p-1];
+
+      elnidx_g = &element_g[npe_g*e];
+      for (i=0; i<npe_g; i++) {
+        int nidx = elnidx_g[i];
+        for (d=0; d<nsd; d++) {
+          elcoords_g[nsd*i+d] = coords_g[nsd*nidx+d];
+        }
+      }
+      point_located = point_in_triangle((const double*)elcoords_g,_point,xi,tolerance);
+    }
+    if (point_located) {
+      /* copy element index */
+      econtaining[p] = e;
+
+      /* copy xi */
+      xip[2*p+0] = xi[0];
+      xip[2*p+1] = xi[1];
+      npoints_located++;
+      continue;
+    }
+
+    /* if point outside bounding box - check next point */
+    for (part_idx=0; part_idx<npartitions; part_idx++) {
+      part = dm->partition[part_idx];
+      const double *cmin = part->cmin;
+      const double *cmax = part->cmax;
+      bool point_in_bb = false;
+
+      point_in_bb = _point_in_bounding_box(_point,cmin,cmax);
+      if (point_in_bb == false) continue;
+
+      nelements_partition = part->ncell;
+      for (pe=0; pe<nelements_partition; pe++) {
+        int *elnidx_g = NULL;
+
+        /* get element -> node map for the triangle geometry */
+        e = part->cell_list[pe];
+        elnidx_g = &element_g[npe_g*e];
+
+        for (i=0; i<npe_g; i++) {
+          int nidx = elnidx_g[i];
+          for (d=0; d<nsd; d++) {
+            elcoords_g[nsd*i+d] = coords_g[nsd*nidx+d];
+          }
+        }
+        point_located = point_in_triangle((const double*)elcoords_g,_point,xi,tolerance);
+        if (point_located) {
+          break; // break from cell-partition sweep
+        }
+      }
+      if (point_located) {
+        break; // break from partition sweep
+      }
+    }
+    if (point_located) {
+      /* copy element index */
+      econtaining[p] = e;
+
+      /* copy xi */
+      xip[nsd*p+0] = xi[0];
+      xip[nsd*p+1] = xi[1];
+
+      npoints_located++;
+    }
+  }
+  *_npoints_located = npoints_located;
+#ifdef PTAT3D_DBG_PointLocation
+  printf("PointLocation_PartitionedBoundingBox:\n");
+  printf("  npoints queried    : %ld\n",npoints);
+  printf("  npoints located    : %ld\n",npoints_located);
+  printf("  npoints not located: %ld\n",npoints-npoints_located);
 #endif
 }
