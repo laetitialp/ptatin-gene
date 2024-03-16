@@ -90,8 +90,8 @@ PetscErrorCode MeshEntityReset(MeshEntity e)
 {
   PetscErrorCode ierr;
   ierr = PetscFree(e->local_index);CHKERRQ(ierr);
-  ierr = PetscMalloc1(1,&e);CHKERRQ(ierr);
-  e->local_index = 0;
+  e->local_index = NULL;
+  e->n_entities = 0;
   e->empty = PETSC_TRUE;
   e->set_values_called = PETSC_FALSE;
   PetscFunctionReturn(0);
@@ -860,4 +860,52 @@ PetscBool MarkFacetsFromPoint(Facet facets, void *ctx)
   }
 
   PetscFunctionReturn(impose);
+}
+
+PetscErrorCode MeshFacetMarkFromMesh(MeshEntity e, MeshFacetInfo fi, Mesh mesh, PetscInt method)
+{
+  PetscInt       f,nmarked=0;
+  PetscInt       *facet_to_keep;
+  Facet          cell_facet;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  
+  if (e->type != MESH_ENTITY_FACET) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Only valid for MESH_ENTITY_FACET");
+  if (e->dm != fi->dm) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Only valid if DMs refer to the same object");
+
+  ierr = MeshFacetInfoGetCoords(fi);CHKERRQ(ierr);
+  ierr = FacetCreate(&cell_facet);CHKERRQ(ierr);
+
+  ierr = PetscMalloc1(fi->n_facets,&facet_to_keep);CHKERRQ(ierr);
+  for (f=0; f<fi->n_facets; f++) {
+    long int np = 1,found;
+    long int ep[] = {-1};
+    double   xip[] = {0.0,0.0};
+    
+    /* pack data */
+    ierr = FacetPack(cell_facet, f, fi);CHKERRQ(ierr);
+
+    switch (method) {
+      case 0:
+        PointLocation_BruteForce_Triangles(mesh,np,(const double*)cell_facet->centroid,ep,xip,&found);
+        break;
+      case 1:
+        PointLocation_PartitionedBoundingBox_Triangles(mesh,np,(const double*)cell_facet->centroid,ep,xip,&found);
+        break;
+      default:
+        PointLocation_PartitionedBoundingBox_Triangles(mesh,np,(const double*)cell_facet->centroid,ep,xip,&found);
+        break;
+    }
+    if (found == 0) continue;
+    /* select if the point is found */
+    facet_to_keep[nmarked] = f;
+    nmarked++;
+  }
+  ierr = FacetDestroy(&cell_facet);CHKERRQ(ierr);
+  ierr = MeshFacetInfoRestoreCoords(fi);CHKERRQ(ierr);
+  
+  ierr = MeshEntitySetValues(e,nmarked,(const PetscInt*)facet_to_keep);CHKERRQ(ierr);
+  
+  ierr = PetscFree(facet_to_keep);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
 }

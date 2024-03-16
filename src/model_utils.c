@@ -1705,50 +1705,66 @@ PetscErrorCode StokesComputeVdotN(PhysCompStokes stokes,Vec u,PetscReal int_u_do
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MPntStdSetRegionIndexFromGmsh(pTatinCtx ptatin, const char mesh_file[], const char region_file[])
-{
-  Mesh           mesh;
-  DataBucket     db;
+PetscErrorCode MPntStdSetRegionIndexFromMesh(DataBucket material_points, Mesh mesh, long int *region_idx, PetscInt method)
+{ 
   DataField      PField_std;
-  long int       *region_idx = NULL;
   int            p,n_mp_points;
-  PetscErrorCode ierr;
-
   PetscFunctionBegin;
-  ierr = pTatinGetMaterialPoints(ptatin,&db,NULL);CHKERRQ(ierr);
-  /* MPntStd */
-  DataBucketGetDataFieldByName(db,MPntStd_classname,&PField_std);
-  DataFieldGetAccess(PField_std);
-  /* Number of markers */
-  DataBucketGetSizes(db,&n_mp_points,0,0);
 
-  /* Get user mesh from file */
-  parse_mesh(mesh_file,&mesh);
-  if (!mesh) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"mesh = NULL. Aborting.\n"); }
-  /* Get region index from file */
-  parse_field(mesh,region_file,'c',(void**)&region_idx,NULL);
-  
-  /* Loop over markers */
+  DataBucketGetSizes(material_points,&n_mp_points,0,0);
+  DataBucketGetDataFieldByName(material_points,MPntStd_classname,&PField_std);
+  DataFieldGetAccess(PField_std);
+
+  /* Loop over material points */
   for (p=0; p<n_mp_points; p++) {
     MPntStd  *marker_std;
     long int np = 1,found;
-    long int ep[] = {-1}; // element index in which the point is located (after the location function)
-    double   xip[] = {0.0,0.0,0.0}; // local coords of the point in the element (after the location function)
+    long int ep[] = {-1};
+    double   xip[] = {0.0,0.0,0.0};
 
-    /* Get marker */
     DataFieldAccessPoint(PField_std,p,(void**)&marker_std);
 
-    /* Locate point in gmsh mesh */
-    PointLocation_BruteForce(mesh,np,(const double*)marker_std->coor,ep,xip,&found);
-    if (found == 0) {
-      PetscPrintf(PETSC_COMM_SELF,"[[WARNING]] Point[%d], coords = (%1.4e, %1.4e, %1.4e) not found in tetra mesh.\n",p,marker_std->coor[0],marker_std->coor[1],marker_std->coor[2]);
-      //SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Point not found in tetra mesh. Aborting.\n");
+    /* locate point */
+    switch (method) {
+      case 0:
+        PointLocation_BruteForce(mesh,np,(const double*)marker_std->coor,ep,xip,&found);
+        break;
+      case 1:
+        PointLocation_PartitionedBoundingBox(mesh,np,(const double*)marker_std->coor,ep,xip,&found);
+        break;
+      default:
+        PointLocation_PartitionedBoundingBox(mesh,np,(const double*)marker_std->coor,ep,xip,&found);
+        break;
     }
     /* assign marker phase */
     marker_std->phase = region_idx[ep[0]];
   }
   DataFieldRestoreAccess(PField_std);
+  
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode pTatin_MPntStdSetRegionIndexFromMesh(pTatinCtx ptatin, const char mesh_file[], const char region_file[], PetscInt method)
+{
+  Mesh           mesh;
+  DataBucket     material_points;
+  long int       *region_idx = NULL;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  /* Get user mesh from file */
+  parse_mesh(mesh_file,&mesh);
+  if (!mesh) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"mesh from file %s = NULL. Aborting.\n",mesh_file); }
+  /* Get region index from file */
+  parse_field(mesh,region_file,'c',(void**)&region_idx,NULL);
+  /* Get material points data bucket */
+  ierr = pTatinGetMaterialPoints(ptatin,&material_points,NULL);CHKERRQ(ierr);
+  /* Assign marker phase */
+  ierr = MPntStdSetRegionIndexFromMesh(material_points,mesh,region_idx,method);CHKERRQ(ierr);
+
+  /* Free region array and mesh from files */
   free(region_idx);
   MeshDestroy(&mesh);
+
   PetscFunctionReturn(0);
 }
