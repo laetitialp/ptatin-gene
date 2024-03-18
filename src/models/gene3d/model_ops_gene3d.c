@@ -37,12 +37,16 @@
 #include "private/ptatin_impl.h"
 
 #include "dmda_bcs.h"
+#include "mesh_update.h"
+#include "dmda_remesh.h"
+#include "dmda_iterator.h"
 #include "data_bucket.h"
 #include "MPntStd_def.h"
 #include "MPntPStokes_def.h"
 #include "MPntPEnergy_def.h"
 #include "cartgrid.h"
 #include "material_point_popcontrol.h"
+#include "model_utils.h"
 
 #include "ptatin3d_energy.h"
 #include <ptatin3d_energyfv.h>
@@ -157,7 +161,7 @@ static PetscErrorCode ModelSetRegionParametersFromOptions_Energy(DataBucket mate
 
 static PetscErrorCode ModelSetMaterialParametersFromOptions(pTatinCtx ptatin, DataBucket materialconstants, ModelGENE3DCtx *data)
 {
-  PetscInt       n,region_idx;
+  PetscInt       nn,n,region_idx;
   PetscBool      found;
   PetscErrorCode ierr;
 
@@ -190,7 +194,7 @@ static PetscErrorCode ModelSetMaterialParametersFromOptions(pTatinCtx ptatin, Da
   }
 
   /* Set regions parameters */
-  for (n = 0; n < data->nmaterials; n++) {
+  for (n=0; n<data->n_regions; n++) {
     /* get regions index */
     region_idx = data->regions_table[n];
     PetscPrintf(PETSC_COMM_WORLD,"[[ SETTING REGION ]]: %d\n",region_idx);
@@ -198,7 +202,7 @@ static PetscErrorCode ModelSetMaterialParametersFromOptions(pTatinCtx ptatin, Da
     ierr = ModelSetRegionParametersFromOptions_Energy(materialconstants,region_idx);CHKERRQ(ierr);
   }
   /* Report all material parameters values */
-  for (n=0; n<data->nmaterials; n++) {
+  for (n=0; n<data->n_regions; n++) {
     /* get regions index */
     region_idx = data->regions_table[n];
     ierr = MaterialConstantsPrintAll(materialconstants,region_idx);CHKERRQ(ierr);
@@ -279,6 +283,66 @@ static PetscErrorCode ModelSetPassiveMarkersSwarmParametersFromOptions(pTatinCtx
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions(PetscInt tag, ModelGENE3DCtx *data)
+{
+  PetscInt       nn;
+  PetscReal      fac,bc_u[2];
+  PetscBool      found;
+  char           prefix[PETSC_MAX_PATH_LEN],option_name[PETSC_MAX_PATH_LEN];
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"bc_navier_");CHKERRQ(ierr);
+
+  nn = 2;
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"%su_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME,option_name,bc_u,&nn,&found);CHKERRQ(ierr);
+  if (found) {
+    if (nn != 2) {
+      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s requires 2 entries, found %d.",option_name,nn);
+    }
+  } else { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",option_name); }
+
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"%sderivative_dir_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,option_name,&dir,&found);CHKERRQ(ierr);
+  if (found) {
+    if (dir != 0 || dir =! 2) { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"%s can only be 0 or 2, found %d.",option_name,dir); }
+  } else { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s no found.",option_name); }
+
+  /* Set values of the user defined strain rate tensor */
+  fac = 1.0 / (data->L[dir] - data->O[dir]);
+  if (dir == 0) {
+    /* Derivative in the x direction */
+    data->epsilon_s[0] = fac * 2.0 * bc_u[0]; // Exx
+    data->epsilon_s[1] = 0.0;                 // Eyy
+    data->epsilon_s[2] = 0.0;                 // Ezz
+
+    data->epsilon_s[3] = 0.0;                 // Exy
+    data->epsilon_s[4] = fac * bc_u[1];       // Exz
+    data->epsilon_s[5] = 0.0;                 // Eyz
+  } else {
+    /* Derivative in the z direction */
+    data->epsilon_s[0] = 0.0;                 // Exx
+    data->epsilon_s[1] = 0.0;                 // Eyy
+    data->epsilon_s[2] = fac * 2.0 * bc_u[1]; // Ezz
+
+    data->epsilon_s[3] = 0.0;                 // Exy
+    data->epsilon_s[4] = fac * bc_u[0];       // Exz
+    data->epsilon_s[5] = 0.0;                 // Eyz
+  }
+  /* Do not worry if the norm of these vectors is not 1, it is handled internally */
+  /* Tangent vector 1 */
+  data->t1_hat[0] = bc_u[0];
+  data->t1_hat[1] = 0.0;
+  data->t1_hat[2] = bc_u[1];
+  /* Normal vector */
+  data->n_hat[0] = -bc_u[1];
+  data->n_hat[1] = 0.0;
+  data->n_hat[2] = bc_u[0];
+
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode SurfaceConstraintSetFromOptions_Gene3D(pTatinCtx ptatin, ModelGENE3DCtx *data)
 {
   PetscInt       nn;
@@ -299,6 +363,24 @@ static PetscErrorCode SurfaceConstraintSetFromOptions_Gene3D(pTatinCtx ptatin, M
     if (nn != data->bc_nfaces) {
       SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"bc_nsubfaces (%d) and the number of entries in bc_tag_list (%d) mismatch!\n",data->bc_nfaces,nn);
     }
+  }
+
+  for (f=0; f<data->bc_nfaces; f++) {
+    PetscInt tag,sc_type;
+    char     opt_name[PETSC_MAX_PATH_LEN];
+
+    tag = data->bc_tag_table[f];
+    ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-sc_type_%d",tag);CHKERRQ(ierr);
+    ierr = PetscOptionsGetInt(NULL,MODEL_NAME,opt_name,&sc_type,&found);CHKERRQ(ierr);
+    if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Providing a type to %s is mandatory!",opt_name); }
+
+    switch (sc_type)
+    {
+      case SC_NITSCHE_GENERAL_SLIP:
+        ierr = ModelSetGeneralNavierSlipBoundaryValuesFromOptions(tag,data);CHKERRQ(ierr);
+        break;
+    }
+
   }
   PetscFunctionReturn(0);
 }
@@ -359,7 +441,7 @@ static PetscErrorCode ModelScaleParameters(DataBucket materialconstants, ModelGE
   data->surface_pressure /= data->pressure_bar;
 
   /* scale material properties */
-  for (region_idx=0; region_idx<data->n_phases; region_idx++) {
+  for (region_idx=0; region_idx<data->n_regions; region_idx++) {
     ierr = MaterialConstantsScaleAll(materialconstants,region_idx,data->length_bar,data->velocity_bar,data->time_bar,data->viscosity_bar,data->density_bar,data->pressure_bar);CHKERRQ(ierr);
     ierr = MaterialConstantsEnergyScaleAll(materialconstants,region_idx,data->length_bar,data->time_bar,data->pressure_bar);CHKERRQ(ierr);
   }
@@ -381,9 +463,6 @@ PetscErrorCode ModelInitialize_Gene3D(pTatinCtx ptatin, void *ctx)
   ModelGENE3DCtx    *data = (ModelGENE3DCtx*)ctx;
   RheologyConstants *rheology;
   DataBucket        materialconstants;
-  PetscBool         flg, found;
-  char              *option_name;
-  PetscInt          i,nphase;
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
@@ -420,20 +499,21 @@ PetscErrorCode ModelInitialize_Gene3D(pTatinCtx ptatin, void *ctx)
 
 static PetscErrorCode ModelApplyMeshRefinement(DM dav)
 {
-  PetscInt  d,ndir;
-  PetscInt  *dir;
-  PetscBool found;
+  PetscInt       nn,d,ndir;
+  PetscInt       *dir;
+  PetscBool      found;
+  PetscErrorCode ierr;
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
 
   ndir = 0;
   ierr = PetscOptionsGetInt(NULL,MODEL_NAME,"-n_refinement_dir",&ndir,&found);CHKERRQ(ierr);
   if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"-%sn_refinement_dir not found!",MODEL_NAME); }
-  if (ndir <= 0 || ndir > 3) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"n_refinement_dir cannot be 0 or more than 3. -%sn_refinement_dir = %d.",MODEL_NAME,ndir); }
+  if (ndir <= 0 || ndir > 3) { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"n_refinement_dir cannot be 0 or more than 3. -%sn_refinement_dir = %d.",MODEL_NAME,ndir); }
 
-  PetscPrintf(PETSC_COMM_WORLD,"Mesh is refined in %d directions.\n")
+  PetscPrintf(PETSC_COMM_WORLD,"Mesh is refined in %d directions.\n");
 
-  ierr = PetscCalloc1(ndir,dir);CHKERRQ(ierr);
+  ierr = PetscCalloc1(ndir,&dir);CHKERRQ(ierr);
   nn = ndir;
   ierr = PetscOptionsGetIntArray(NULL,MODEL_NAME,"-refinement_dir",dir,&nn,&found);CHKERRQ(ierr);
   if (found) {
@@ -453,7 +533,7 @@ static PetscErrorCode ModelApplyMeshRefinement(DM dav)
 
     ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-refinement_npoints_%d",dim);CHKERRQ(ierr);
     ierr = PetscOptionsGetInt(NULL,MODEL_NAME,option_name,&npoints,&found);CHKERRQ(ierr);
-    if (!found) { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"%s not found!",option_name); }
+    if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"%s not found!",option_name); }
 
     /* Allocate arrays for xref and xnat */
     ierr = PetscCalloc1(npoints,&xref);CHKERRQ(ierr); 
@@ -462,7 +542,7 @@ static PetscErrorCode ModelApplyMeshRefinement(DM dav)
     /* Get xref */
     nn = npoints;
     ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-refinement_xref_%d",dim);CHKERRQ(ierr);
-    ierr = PetscOptionsGetIntArray(NULL,MODEL_NAME,option_name,xref,&nn,&found);CHKERRQ(ierr);
+    ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME,option_name,xref,&nn,&found);CHKERRQ(ierr);
     if (found) {
       if (nn != npoints) {
         SETERRQ4(PETSC_COMM_SELF,PETSC_ERR_USER,"-refinement_npoints_%d (%d) and the number of entries in refinement_xref_%d (%d) mismatch!\n",dim,npoints,dim,nn);
@@ -474,7 +554,7 @@ static PetscErrorCode ModelApplyMeshRefinement(DM dav)
     /* Get xnat */
     nn = npoints;
     ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-refinement_xnat_%d",dim);CHKERRQ(ierr);
-    ierr = PetscOptionsGetIntArray(NULL,MODEL_NAME,option_name,xnat,&nn,&found);CHKERRQ(ierr);
+    ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME,option_name,xnat,&nn,&found);CHKERRQ(ierr);
     if (found) {
       if (nn != npoints) {
         SETERRQ4(PETSC_COMM_SELF,PETSC_ERR_USER,"-refinement_npoints_%d (%d) and the number of entries in refinement_xnat_%d (%d) mismatch!\n",dim,npoints,dim,nn);
@@ -499,7 +579,7 @@ PetscErrorCode ModelApplyInitialMeshGeometry_Gene3D(pTatinCtx ptatin,void *ctx)
   ModelGENE3DCtx *data = (ModelGENE3DCtx*)ctx;
   PetscReal      gvec[] = { 0.0, -9.8, 0.0 };
   PetscInt       nn;
-  PetscBool      refine;
+  PetscBool      refine,found;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -517,7 +597,7 @@ PetscErrorCode ModelApplyInitialMeshGeometry_Gene3D(pTatinCtx ptatin,void *ctx)
   ierr = PetscOptionsGetRealArray(NULL, MODEL_NAME,"-gravity_vec",gvec,&nn,&found);CHKERRQ(ierr);
   if (found) {
     if (nn != 3) {
-      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%sgravity_vec requires 3 arguments.",MODEL_NAME);
+      SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%sgravity_vec requires 3 arguments.",MODEL_NAME);
     }
   } else {
     PetscPrintf(PETSC_COMM_WORLD,"[[ WARNING ]]: Option -%sgravity_vec not provided, assuming gravity = ( %1.4e, %1.4e, %1.4e )\n",MODEL_NAME,gvec[0],gvec[1],gvec[2]);
@@ -540,10 +620,10 @@ static PetscErrorCode ModelApplySurfaceRemeshing(DM dav, PetscReal dt, ModelGENE
   dirichlet_zmin = PETSC_FALSE;
   dirichlet_zmax = PETSC_FALSE;
 
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-spm_diffusion_dirichlet_xmin",dirichlet_xmin,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-spm_diffusion_dirichlet_xmax",dirichlet_xmax,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-spm_diffusion_dirichlet_zmin",dirichlet_zmin,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-spm_diffusion_dirichlet_zmax",dirichlet_zmax,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-spm_diffusion_dirichlet_xmin",&dirichlet_xmin,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-spm_diffusion_dirichlet_xmax",&dirichlet_xmax,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-spm_diffusion_dirichlet_zmin",&dirichlet_zmin,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-spm_diffusion_dirichlet_zmax",&dirichlet_zmax,NULL);CHKERRQ(ierr);
 
   if ( !dirichlet_xmin && !dirichlet_xmax && !dirichlet_zmin && !dirichlet_zmax ) {
     SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"No boundary conditions provided for the surface diffusion (spm)! Use at least one of -%sspm_diffusion_dirichlet_{xmin,xmax,zmin,zmax}",MODEL_NAME);
@@ -807,7 +887,7 @@ static PetscErrorCode ModelMarkBoundaryFacets_Gene3D(ModelGENE3DCtx *data)
     PetscBool     found;
     char          opt_name[PETSC_MAX_PATH_LEN],meshfile[PETSC_MAX_PATH_LEN];
 
-    tag = data->bc_tag_table[f]
+    tag = data->bc_tag_table[f];
     /* Get mesh entity object */
     ierr = SurfaceConstraintGetFacets(data->bc_sc[f],&mesh_entity);CHKERRQ(ierr);
     /* Check if facets for this surface constraint have already been marked */
@@ -831,15 +911,34 @@ static PetscErrorCode ModelMarkBoundaryFacets_Gene3D(ModelGENE3DCtx *data)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ModelSetBoundaryParameters()
+static PetscErrorCode ModelSetNeumannBC(pTatinCtx ptatin, SurfaceConstraint sc)
 {
-  PetscInt       f;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  /*
+  For now only applying pressure is supported for this model
+  TODO: add other options
+  */
+  ierr = ApplyPoissonPressureNeumannConstraint(ptatin,sc);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelSetBoundaryParameters(pTatinCtx ptatin, SurfaceConstraint sc, ModelGENE3DCtx *data)
+{
   PetscErrorCode ierr;
   PetscFunctionBegin;
 
-  for (f=0; f<data->bc_nfaces) {
-    
+  switch (sc->type)
+  {
+    case SC_TRACTION:
+      ierr = ModelSetNeumannBC(ptatin,sc);CHKERRQ(ierr);
+      break;
+
+    case SC_NITSCHE_GENERAL_SLIP:
+      break;
   }
+  
 
   PetscFunctionReturn(0);
 }

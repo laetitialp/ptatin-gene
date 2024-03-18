@@ -65,7 +65,8 @@ typedef struct {
   PetscInt          bc_nfaces;
   PetscInt          *bc_tag_table;
   SurfaceConstraint *bc_sc;
-
+  /* General Navier slip */
+  PetscReal epsilon_s[6],t1_hat[3],n_hat[3];
 
   PetscBool u_dot_n_flow;
   PetscReal u_bc[6*3];
