@@ -76,4 +76,5 @@ PetscErrorCode ComputeIsostaticDisplacementQ1(PDESolveLithoP poisson_pressure, P
 PetscErrorCode ComputeIsostaticDisplacementVectorFromPoissonPressure(pTatinCtx ptatin, PetscReal density_ref, PetscReal depth_compensation);
 PetscErrorCode LagrangianAdvectionFromIsostaticDisplacementVector(pTatinCtx ptatin);
 
+PetscErrorCode PoissonPressureOutput(pTatinCtx ptatin, const char prefix[], PetscBool vts, PetscBool been_here);
 #endif
