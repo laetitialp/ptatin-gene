@@ -2865,6 +2865,7 @@ PetscErrorCode ModelOutput_RiftNitsche(pTatinCtx ptatin,Vec X,const char prefix[
   PetscFunctionReturn(0);
 }
 
+#if 0
 static PetscErrorCode SwarmMPntStd_CoordAssignment_FaceLatticeLayout3d_epsilon(DM da,PetscInt Nxp[],PetscReal perturb, PetscReal epsilon, PetscInt face_idx,DataBucket db)
 {
   DataField      PField;
@@ -3112,7 +3113,7 @@ static PetscErrorCode SwarmMPntStd_CoordAssignment_FaceLatticeLayout3d_epsilon(D
 
   PetscFunctionReturn(0);
 }
-
+#endif
 static PetscErrorCode ModelApplyMaterialBoundaryCondition_RiftNitsche(pTatinCtx c,ModelRiftNitscheCtx *data)
 {
   PhysCompStokes  stokes;
