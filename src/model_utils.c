@@ -55,6 +55,8 @@
 #include "MPntPStokesPl_def.h"
 #include "MPntPEnergy_def.h"
 #include "ptatin_std_dirichlet_boundary_conditions.h"
+#include <ptatin3d_energyfv.h>
+#include <ptatin3d_energyfv_impl.h>
 
 #include "parse.h"
 #include "point_in_tetra.h"
