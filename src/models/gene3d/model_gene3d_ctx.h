@@ -53,6 +53,8 @@ typedef struct {
   /* passive markers */
   PetscBool passive_markers;
   PSwarm    pswarm;
+  /* Output */
+  PetscBool output_markers;
   /* Scaling values */
   PetscReal length_bar,viscosity_bar,velocity_bar;
   PetscReal time_bar,pressure_bar,density_bar,acceleration_bar;

@@ -37,16 +37,22 @@
 #include "private/ptatin_impl.h"
 
 #include "dmda_bcs.h"
-#include "mesh_update.h"
 #include "dmda_remesh.h"
 #include "dmda_iterator.h"
+#include "dmda_element_q2p1.h"
+#include "mesh_update.h"
 #include "data_bucket.h"
 #include "MPntStd_def.h"
 #include "MPntPStokes_def.h"
 #include "MPntPEnergy_def.h"
-#include "cartgrid.h"
+#include "litho_pressure_PDESolve.h"
+#include "material_point_std_utils.h"
 #include "material_point_popcontrol.h"
 #include "model_utils.h"
+#include "output_material_points.h"
+#include "output_material_points_p0.h"
+#include "output_paraview.h"
+#include "surface_constraint.h"
 
 #include "ptatin3d_energy.h"
 #include <ptatin3d_energyfv.h>
@@ -285,7 +291,7 @@ static PetscErrorCode ModelSetPassiveMarkersSwarmParametersFromOptions(pTatinCtx
 
 static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions(PetscInt tag, ModelGENE3DCtx *data)
 {
-  PetscInt       nn;
+  PetscInt       nn,dir;
   PetscReal      fac,bc_u[2];
   PetscBool      found;
   char           prefix[PETSC_MAX_PATH_LEN],option_name[PETSC_MAX_PATH_LEN];
@@ -306,7 +312,7 @@ static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions(PetscIn
   ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"%sderivative_dir_%d",prefix,tag);CHKERRQ(ierr);
   ierr = PetscOptionsGetInt(NULL,MODEL_NAME,option_name,&dir,&found);CHKERRQ(ierr);
   if (found) {
-    if (dir != 0 || dir =! 2) { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"%s can only be 0 or 2, found %d.",option_name,dir); }
+    if (dir != 0 || dir != 2) { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"%s can only be 0 or 2, found %d.",option_name,dir); }
   } else { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s no found.",option_name); }
 
   /* Set values of the user defined strain rate tensor */
@@ -345,7 +351,7 @@ static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions(PetscIn
 
 static PetscErrorCode SurfaceConstraintSetFromOptions_Gene3D(pTatinCtx ptatin, ModelGENE3DCtx *data)
 {
-  PetscInt       nn;
+  PetscInt       f,nn;
   PetscBool      found;
   PetscErrorCode ierr;
   PetscFunctionBegin;
@@ -487,6 +493,8 @@ PetscErrorCode ModelInitialize_Gene3D(pTatinCtx ptatin, void *ctx)
   /* Scaling */
   ierr = ModelSetScalingParametersFromOptions(data);CHKERRQ(ierr);
   ierr = ModelScaleParameters(materialconstants,data);CHKERRQ(ierr);
+
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-output_markers",&data->output_markers,NULL);CHKERRQ(ierr);CHKERRQ(ierr);
 
   PetscFunctionReturn (0);
 }
@@ -945,6 +953,7 @@ static PetscErrorCode ModelSetBoundaryParameters(pTatinCtx ptatin, SurfaceConstr
 
 static PetscErrorCode ModelApplyBoundaryCondition_Velocity(pTatinCtx ptatin, PetscBool insert_if_not_found, ModelGENE3DCtx *data)
 {
+  PetscErrorCode ierr;
   PetscFunctionBegin;
 
   ierr = SurfaceConstraintCreateFromOptions_Gene3D(ptatin,insert_if_not_found,data);CHKERRQ(ierr);
@@ -966,8 +975,337 @@ PetscErrorCode ModelApplyBoundaryCondition_Gene3D(pTatinCtx ptatin, void *ctx)
   PetscFunctionReturn (0);
 }
 
+/*
+======================================================
+=               Material Point Resolution            =
+======================================================
+*/
 
+static PetscErrorCode ModelApplyMaterialBoundaryCondition_Gene3D(pTatinCtx ptatin, ModelGENE3DCtx *data)
+{
+  PhysCompStokes  stokes;
+  DM              stokes_pack,dav,dap;
+  PetscInt        Nxp[2];
+  PetscInt        *face_list;
+  PetscReal       perturb, epsilon;
+  DataBucket      material_point_db,material_point_face_db;
+  PetscInt        f, n_face_list;
+  int             p,n_mp_points;
+  MPAccess        mpX;
+  PetscErrorCode  ierr;
 
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+  
+  ierr = pTatinGetStokesContext(ptatin,&stokes);CHKERRQ(ierr);
+  stokes_pack = stokes->stokes_pack;
+  ierr = DMCompositeGetEntries(stokes_pack,&dav,&dap);CHKERRQ(ierr);
+
+  ierr = pTatinGetMaterialPoints(ptatin,&material_point_db,NULL);CHKERRQ(ierr);
+
+  /* create face storage for markers */
+  DataBucketDuplicateFields(material_point_db,&material_point_face_db);
+  
+  n_face_list = 4;
+  ierr = PetscMalloc1(n_face_list,&face_list);CHKERRQ(ierr);
+  face_list[0] = 0;
+  face_list[1] = 1;
+  face_list[2] = 4;
+  face_list[3] = 5;
+  
+  for (f=0; f<n_face_list; f++) {
+
+    /* traverse */
+    /* [0,1/east,west] ; [2,3/north,south] ; [4,5/front,back] */
+    Nxp[0]  = 4;
+    Nxp[1]  = 4;
+    perturb = 0.1;
+
+    /* reset size */
+    DataBucketSetSizes(material_point_face_db,0,-1);
+
+    /* assign coords */
+    epsilon = 1.0e-6;
+    ierr = SwarmMPntStd_CoordAssignment_FaceLatticeLayout3d_epsilon(dav,Nxp,perturb,epsilon,face_list[f],material_point_face_db);CHKERRQ(ierr);
+
+    /* assign values */
+    DataBucketGetSizes(material_point_face_db,&n_mp_points,0,0);
+    ierr = MaterialPointGetAccess(material_point_face_db,&mpX);CHKERRQ(ierr);
+    for (p=0; p<n_mp_points; p++) {
+      ierr = MaterialPointSet_phase_index(mpX,p,MATERIAL_POINT_PHASE_UNASSIGNED);CHKERRQ(ierr);
+    }
+    ierr = MaterialPointRestoreAccess(material_point_face_db,&mpX);CHKERRQ(ierr);
+
+    /* insert into volume bucket */
+    DataBucketInsertValues(material_point_db,material_point_face_db);
+  }
+
+  /* Copy ALL values from nearest markers to newly inserted markers except (xi,xip,pid) */
+  ierr = MaterialPointRegionAssignment_KDTree(material_point_db,PETSC_TRUE);CHKERRQ(ierr);
+
+  /* delete */
+  DataBucketDestroy(&material_point_face_db);
+  
+  ierr = PetscFree(face_list);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode MaterialPointResolutionMask_BoundaryFaces(DM dav, pTatinCtx ctx, PetscBool *popctrl_mask)
+{
+  PetscInt        nel,nen,el;
+  const PetscInt  *elnidx;
+  PetscInt        mx,my,mz;
+  PetscInt        esi,esj,esk,lmx,lmy,lmz,e;
+  PetscInt        iel,kel,jel;
+  PetscErrorCode  ierr;
+  
+  PetscFunctionBegin;
+  /* Get Q2 elements information */ 
+  ierr = DMDAGetElements_pTatinQ2P1(dav,&nel,&nen,&elnidx);CHKERRQ(ierr);
+  ierr = DMDAGetSizeElementQ2(dav,&mx,&my,&mz);CHKERRQ(ierr);
+  ierr = DMDAGetCornersElementQ2(dav,&esi,&esj,&esk,&lmx,&lmy,&lmz);CHKERRQ(ierr);
+
+  /* Set all to TRUE */
+  for (el=0; el<nel; el++) {
+    popctrl_mask[el] = PETSC_TRUE;
+  }
+  
+  esi = esi/2;
+  esj = esj/2;
+  esk = esk/2;
+
+  /* max(x) face */
+  if (esi + lmx == mx) { 
+    iel = lmx-1;
+    for (kel=0; kel<lmz; kel++) {
+      for (jel=0; jel<lmy; jel++) {
+        e = iel + jel*lmx + kel*lmx*lmy;
+        popctrl_mask[e] = PETSC_FALSE;
+      }
+    }
+  }
+  
+  /* min(x) face */
+  if (esi == 0) {
+    iel = 0;
+    for (kel=0; kel<lmz; kel++) {
+      for (jel=0; jel<lmy; jel++) {
+        e = iel + jel*lmx + kel*lmx*lmy;
+        popctrl_mask[e] = PETSC_FALSE;
+      }
+    }
+  }
+
+  /* max(z) face */
+  if (esk + lmz == mz) {
+    kel = lmz-1;
+    for (jel=0; jel<lmy; jel++) {
+      for (iel=0; iel<lmx; iel++) {  
+        e = iel + jel*lmx + kel*lmx*lmy;
+        popctrl_mask[e] = PETSC_FALSE;
+      }
+    }
+  }
+
+  /* min(z) face */
+  if (esk == 0) {
+    kel = 0;
+    for (jel=0; jel<lmy; jel++) {
+      for (iel=0; iel<lmx; iel++) {  
+        e = iel + jel*lmx + kel*lmx*lmy;
+        popctrl_mask[e] = PETSC_FALSE;
+      }
+    }
+  }
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode MPPC_SimpleRemoval_Mask(PetscInt np_upper,DM da,DataBucket db,PetscBool reverse_order_removal, PetscBool *popctrl_mask)
+{
+  PetscLogEvent   PTATIN_MaterialPointPopulationControlRemove;
+  PetscInt        *cell_count,count;
+  int             p32,npoints32;
+  PetscInt        c,nel,nen;
+  const PetscInt  *elnidx;
+  DataField       PField;
+  PetscLogDouble  t0,t1;
+  PetscErrorCode  ierr;
+
+  PetscFunctionBegin;
+  ierr = PetscLogEventBegin(PTATIN_MaterialPointPopulationControlRemove,0,0,0,0);CHKERRQ(ierr);
+
+  ierr = DMDAGetElements_pTatinQ2P1(da,&nel,&nen,&elnidx);CHKERRQ(ierr);
+
+  ierr = PetscMalloc( sizeof(PetscInt)*(nel),&cell_count );CHKERRQ(ierr);
+  ierr = PetscMemzero( cell_count, sizeof(PetscInt)*(nel) );CHKERRQ(ierr);
+
+  DataBucketGetSizes(db,&npoints32,NULL,NULL);
+
+  /* compute number of points per cell */
+  DataBucketGetDataFieldByName(db, MPntStd_classname ,&PField);
+  DataFieldGetAccess(PField);
+  for (p32=0; p32<npoints32; p32++) {
+    MPntStd *marker_p;
+
+    DataFieldAccessPoint(PField,p32,(void**)&marker_p);
+    if (marker_p->wil < 0) { continue; }
+
+    cell_count[ marker_p->wil ]++;
+  }
+  DataFieldRestoreAccess(PField);
+
+  count = 0;
+  for (c=0; c<nel; c++) {
+    if (cell_count[c] > np_upper) {
+      count++;
+    }
+  }
+
+  if (count == 0) {
+    ierr = PetscFree(cell_count);CHKERRQ(ierr);
+    ierr = PetscLogEventEnd(PTATIN_MaterialPointPopulationControlRemove,0,0,0,0);CHKERRQ(ierr);
+    PetscFunctionReturn(0);
+  }
+
+  PetscTime(&t0);
+
+  if (!reverse_order_removal) {
+    /* remove points from cells with excessive number */
+    DataFieldGetAccess(PField);
+    for (p32=0; p32<npoints32; p32++) {
+      MPntStd *marker_p;
+      int wil;
+
+      DataFieldAccessPoint(PField,p32,(void**)&marker_p);
+      wil = marker_p->wil;
+      if (popctrl_mask[wil] == PETSC_TRUE) {
+        if (cell_count[wil] > np_upper) {
+          DataBucketRemovePointAtIndex(db,p32);
+
+          DataBucketGetSizes(db,&npoints32,0,0); /* you need to update npoints as the list size decreases! */
+          p32--; /* check replacement point */
+          cell_count[wil]--;
+        }
+      }
+    }
+    DataFieldRestoreAccess(PField);
+  }
+
+  if (reverse_order_removal) {
+    MPntStd *mp_std;
+    int     wil;
+
+    DataBucketGetDataFieldByName(db,MPntStd_classname,&PField);
+    mp_std = PField->data;
+
+    for (p32=npoints32-1; p32>=0; p32--) {
+
+      wil = mp_std[p32].wil;
+      if (wil < 0) { continue; }
+  
+      if (popctrl_mask[wil] == PETSC_TRUE) {
+        if (cell_count[wil] > np_upper) {
+          mp_std[p32].wil = -2;
+          cell_count[wil]--;
+        }
+      }
+    }
+
+    for (p32=0; p32<npoints32; p32++) {
+      wil = mp_std[p32].wil;
+      if (wil == -2) {
+
+        DataBucketRemovePointAtIndex(db,p32);
+        DataBucketGetSizes(db,&npoints32,0,0); /* you need to update npoints as the list size decreases! */
+        p32--; /* check replacement point */
+        mp_std = PField->data;
+      }
+    }
+  }
+
+  PetscTime(&t1);
+
+  ierr = PetscFree(cell_count);CHKERRQ(ierr);
+  ierr = PetscLogEventEnd(PTATIN_MaterialPointPopulationControlRemove,0,0,0,0);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode AdaptMaterialPointResolution_Mask(pTatinCtx ctx)
+{
+  PetscErrorCode ierr;
+  PetscInt       np_lower,np_upper,patch_extent,nxp,nyp,nzp;
+  PetscReal      perturb;
+  PetscBool      flg;
+  PetscBool      *popctrl_mask; 
+  DataBucket     db;
+  PetscBool      reverse_order_removal;
+  PetscInt       nel,nen;
+  const PetscInt *elnidx;
+  MPI_Comm       comm;
+
+  PetscFunctionBegin;
+
+  /* options for control number of points per cell */
+  np_lower = 0;
+  np_upper = 60;
+  ierr = PetscOptionsGetInt(NULL,NULL,"-mp_popctrl_np_lower",&np_lower,&flg);CHKERRQ(ierr);
+  ierr = PetscOptionsGetInt(NULL,NULL,"-mp_popctrl_np_upper",&np_upper,&flg);CHKERRQ(ierr);
+
+  /* options for injection of markers */
+  nxp = 2;
+  nyp = 2;
+  nzp = 2;
+  ierr = PetscOptionsGetInt(NULL,NULL,"-mp_popctrl_nxp",&nxp,&flg);CHKERRQ(ierr);
+  ierr = PetscOptionsGetInt(NULL,NULL,"-mp_popctrl_nyp",&nyp,&flg);CHKERRQ(ierr);
+  ierr = PetscOptionsGetInt(NULL,NULL,"-mp_popctrl_nzp",&nzp,&flg);CHKERRQ(ierr);
+
+  perturb = 0.1;
+  ierr = PetscOptionsGetReal(NULL,NULL,"-mp_popctrl_perturb",&perturb,&flg);CHKERRQ(ierr);
+  patch_extent = 1;
+  ierr = PetscOptionsGetInt(NULL,NULL,"-mp_popctrl_patch_extent",&patch_extent,&flg);CHKERRQ(ierr);
+
+  ierr = pTatinGetMaterialPoints(ctx,&db,NULL);CHKERRQ(ierr);
+  ierr = PetscObjectGetComm((PetscObject)ctx->stokes_ctx->dav,&comm);CHKERRQ(ierr);
+
+  /* Get element number (nel)*/
+  ierr = DMDAGetElements_pTatinQ2P1(ctx->stokes_ctx->dav,&nel,&nen,&elnidx);CHKERRQ(ierr);
+  /* Allocate memory for the array */
+  ierr = PetscMalloc1(nel,&popctrl_mask);CHKERRQ(ierr);
+  
+  ierr = MaterialPointResolutionMask_BoundaryFaces(ctx->stokes_ctx->dav,ctx,popctrl_mask);CHKERRQ(ierr);
+  
+  /* insertion */
+  ierr = MPPC_NearestNeighbourPatch(np_lower,np_upper,patch_extent,nxp,nyp,nzp,perturb,ctx->stokes_ctx->dav,db);CHKERRQ(ierr);
+
+  /* removal */
+  if (np_upper != -1) {
+    reverse_order_removal = PETSC_TRUE;
+  ierr = MPPC_SimpleRemoval_Mask(np_upper,ctx->stokes_ctx->dav,db,reverse_order_removal,popctrl_mask);CHKERRQ(ierr);
+  }
+
+  ierr = PetscFree(popctrl_mask);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ModelAdaptMaterialPointResolution_Gene3D(pTatinCtx ptatin,void *ctx)
+{
+  ModelGENE3DCtx *data = (ModelGENE3DCtx*)ctx;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD, "[[%s]]\n", PETSC_FUNCTION_NAME);
+  PetscPrintf(PETSC_COMM_WORLD, "  NO MARKER INJECTION ON FACES \n", PETSC_FUNCTION_NAME);
+
+  /* Particles injection on faces */
+  ierr = ModelApplyMaterialBoundaryCondition_Gene3D(ptatin,data);CHKERRQ(ierr);
+  /* Population control */
+  ierr = AdaptMaterialPointResolution_Mask(ptatin);CHKERRQ(ierr);
+
+  PetscFunctionReturn (0);
+}
 
 /*
 ======================================================
@@ -998,6 +1336,7 @@ static PetscErrorCode ModelViewSurfaceConstraint_Gene3D(pTatinCtx ptatin, ModelG
 {
   PhysCompStokes stokes;
   PetscInt       f;
+  char           root[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
   PetscFunctionBegin;
 
@@ -1065,6 +1404,7 @@ static PetscErrorCode ModelOutputEnergyFV_Gene3D(pTatinCtx ptatin, const char pr
 
 PetscErrorCode ModelOutput_Gene3D(pTatinCtx ptatin,Vec X,const char prefix[],void *ctx)
 {
+  ModelGENE3DCtx              *data = (ModelGENE3DCtx*)ctx;
   const MaterialPointVariable mp_prop_list[] = { MPV_region, MPV_viscosity, MPV_density, MPV_plastic_strain };
   static PetscBool            been_here = PETSC_FALSE;
   PetscBool                   active_energy;
@@ -1144,234 +1484,11 @@ PetscErrorCode ModelOutput_Gene3D(pTatinCtx ptatin,Vec X,const char prefix[],voi
 
 
 
-PetscErrorCode ModelAdaptMaterialPointResolution_Gene3D(pTatinCtx c,void *ctx)
-{
-  PetscErrorCode ierr;
-  PetscFunctionBegin;
-  PetscPrintf(PETSC_COMM_WORLD, "[[%s]]\n", PETSC_FUNCTION_NAME);
-  PetscPrintf(PETSC_COMM_WORLD, "  NO MARKER INJECTION ON FACES \n", PETSC_FUNCTION_NAME);
-  /* Perform injection and cleanup of markers */
-  ierr = MaterialPointPopulationControl_v1(c);CHKERRQ(ierr);
-
-  PetscFunctionReturn (0);
-}
-
-
-
-//=====================================================================================================================================
-
-PetscErrorCode ModelSetMarkerIndexLayeredCake_Gene3D (pTatinCtx c,void *ctx)
-  /* define phase index on material points from a map file extruded in z direction */
-{
-  ModelGENE3DCtx *data = (ModelGENE3DCtx*)ctx;
-  PetscInt i, nLayer;
-  int p,n_mp_points;
-  DataBucket db;
-  DataField PField_std;
-  int phase;
-  PetscInt phaseLayer[LAYER_MAX];
-  PetscScalar YLayer[LAYER_MAX + 1];
-  char *option_name;
-  PetscErrorCode ierr;
-  PetscBool flg;
-
-  PetscFunctionBegin;
-  PetscPrintf(PETSC_COMM_WORLD, "[[%s]]\n", PETSC_FUNCTION_NAME);
-
-  /* define properties on material points */
-  db = c->materialpoint_db;
-  DataBucketGetDataFieldByName(db, MPntStd_classname, &PField_std);
-  DataFieldGetAccess(PField_std);
-  DataFieldVerifyAccess(PField_std, sizeof (MPntStd));
-  DataBucketGetSizes(db, &n_mp_points, 0, 0);
-
-  /* read layers from options */
-  nLayer = 1;
-  ierr = PetscOptionsGetInt(NULL,MODEL_NAME, "-nlayer", &nLayer, &flg);CHKERRQ(ierr);
-  YLayer[0] = data->O[1];
-  for (i=1; i<=nLayer; i++) {
-
-    if (asprintf (&option_name, "-layer_y_%d", i) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name, &YLayer[i], &flg);CHKERRQ(ierr);
-    if (flg == PETSC_FALSE) {
-      /* NOTE - these error messages are useless if you don't include "model_Gene3D_" in the statement. I added &name[1] so that the "-" is skipped */
-      SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_USER,"Expected user to provide value to option -model_Gene3D_%s \n",&option_name[1]);
-    }
-    free (option_name);
-
-    if (YLayer[i] > YLayer[i-1]) {
-      if (asprintf (&option_name, "-layer_phase_%d", i-1) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-      ierr = PetscOptionsGetInt(NULL,MODEL_NAME, option_name, &phaseLayer[i-1],&flg);CHKERRQ(ierr);
-
-      if (flg == PETSC_FALSE) {
-        SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_SUP,"Expected user to provide value to option -model_Gene3D_%s \n",&option_name[1]);
-      }
-      free (option_name);
-    } else {
-      SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP,"Layers must be entered so that layer_y[i] is larger than layer_y[i-1]\n");
-    }
-  }
-
-  for (i=0; i<nLayer; i++) {
-    PetscPrintf(PETSC_COMM_WORLD,"layer [%D] :  y coord range [%1.2e -- %1.2e] : phase index [%D] \n", i,YLayer[i],YLayer[i+1],phaseLayer[i]);
-  }
-
-  for (p = 0; p < n_mp_points; p++) {
-    MPntStd *material_point;
-    double *pos;
-
-    DataFieldAccessPoint(PField_std, p, (void **) &material_point);
-    MPntStdGetField_global_coord(material_point,&pos);
-
-    phase = -1;
-    for (i=0; i<nLayer; i++) {
-      if ( (pos[1] >= YLayer[i]) && (pos[1] <= YLayer[i+1]) ) {
-        phase = phaseLayer[i];
-        break;
-      }
-    }
-    /* check if the break was never executed */
-    if (i==nLayer) {
-      SETERRQ3(PETSC_COMM_SELF,PETSC_ERR_USER,"Unable to detect layer containing the marker with coordinates (%1.4e,%1.4e,%1.4e)",pos[0],pos[1],pos[2]);
-    }
-
-    /* user the setters provided for you */
-    MPntStdSetField_phase_index(material_point, phase);
-  }
-
-  DataFieldRestoreAccess(PField_std);
-  PetscFunctionReturn (0);
-}
-
-//===============================================================================================================================
-PetscErrorCode ModelSetMarkerIndexFromMap_Gene3D(pTatinCtx c,void *ctx)
-  /* define phase index on material points from a map file extruded in z direction */
-{
-  PetscErrorCode ierr;
-  CartGrid phasemap;
-  PetscInt dir_0,dir_1,direction;
-  DataBucket db;
-  int p,n_mp_points;
-  DataField PField_std;
-  int phase_init, phase, phase_index;
-  char map_file[PETSC_MAX_PATH_LEN], *name;
-  PetscBool flg,phasefound;
-
-
-  PetscFunctionBegin;
-  PetscPrintf (PETSC_COMM_WORLD, "[[%s]]\n", PETSC_FUNCTION_NAME);
-
-  ierr = PetscOptionsGetString(NULL,MODEL_NAME,"-map_file",map_file,PETSC_MAX_PATH_LEN-1,&flg);CHKERRQ(ierr);
-  if (flg == PETSC_FALSE) {
-    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Expected user to provide a map file \n");
-  }
-  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,"-extrude_dir",&direction,&flg);CHKERRQ(ierr);
-  if (flg == PETSC_FALSE) {
-    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Expected user to provide an extrusion direction \n");
-  }
-
-  switch (direction){
-    case 0:{
-             dir_0 = 2;
-             dir_1 = 1;
-           }
-           break;
-
-    case 1:{
-             dir_0 = 0;
-             dir_1 = 2;
-           }
-           break;
-
-    case 2:{
-             dir_0 = 0;
-             dir_1 = 1;
-           }
-           break;
-    default :
-           SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"-extrude_dir %d not valid",direction);
-  }
-
-  if (asprintf(&name,"./inputdata/%s.pmap",map_file) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-  ierr = CartGridCreate(&phasemap);CHKERRQ(ierr);
-  ierr = CartGridSetFilename(phasemap,map_file);CHKERRQ(ierr);
-  ierr = CartGridSetUp(phasemap);CHKERRQ(ierr);
-  free(name);
-
-  if (asprintf(&name,"./inputdata/%s_phase_map.gp",map_file) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-  ierr = CartGridViewPV(phasemap,name);CHKERRQ(ierr);
-  free(name);
-
-
-  /* define properties on material points */
-  db = c->materialpoint_db;
-  DataBucketGetDataFieldByName(db,MPntStd_classname,&PField_std);
-  DataFieldGetAccess(PField_std);
-  DataFieldVerifyAccess(PField_std,sizeof (MPntStd));
-
-  DataBucketGetSizes(db,&n_mp_points,0,0);
-
-  for (p=0; p<n_mp_points; p++)
-  {
-    MPntStd *material_point;
-    double position2D[2],*pos;
-
-
-    DataFieldAccessPoint(PField_std, p, (void **) &material_point);
-    MPntStdGetField_global_coord(material_point,&pos);
-
-    position2D[0] = pos[dir_0];
-    position2D[1] = pos[dir_1];
-
-    MPntStdGetField_phase_index(material_point, &phase_init);
-
-    ierr = CartGridGetValue(phasemap, position2D, (int*)&phase_index, &phasefound);CHKERRQ(ierr);
-
-    if (phasefound) {     /* point located in the phase map */
-      phase = phase_index;
-    } else {
-      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"marker outside the domain\n your phasemap is smaller than the domain \n please check your parameters and retry");
-    }
-    /* user the setters provided for you */
-    MPntStdSetField_phase_index(material_point, phase);
-
-  }
-  ierr = CartGridDestroy(&phasemap);CHKERRQ(ierr);
-  DataFieldRestoreAccess(PField_std);
-
-  PetscFunctionReturn (0);
-}
 
 
 //======================================================================================================================================
 
-PetscErrorCode ModelGene3DInit(DataBucket db)
-{
-  int                p,n_mp_points;
-  DataField          PField_std;
 
-  PetscFunctionBegin;
-
-  DataBucketGetDataFieldByName(db,MPntStd_classname,&PField_std);
-  DataFieldGetAccess(PField_std);
-  DataFieldVerifyAccess(PField_std,sizeof(MPntStd));
-
-  DataBucketGetSizes(db,&n_mp_points,0,0);
-
-  for (p=0; p<n_mp_points; p++) {
-    int phase_index;
-    MPntStd *material_point;
-
-    DataFieldAccessPoint(PField_std,p,(void**)&material_point);
-
-    MPntStdGetField_phase_index(material_point,&phase_index);
-    phase_index = -1;
-    MPntStdSetField_phase_index(material_point,phase_index);
-  }
-  DataFieldRestoreAccess(PField_std);
-
-  PetscFunctionReturn(0);
-}
 
 PetscErrorCode ModelGene3DCheckPhase(DataBucket db,RheologyConstants *rheology)
 {
