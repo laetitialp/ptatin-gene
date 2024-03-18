@@ -46,7 +46,7 @@
 #include <models/analytics_vv/SolKxSolution.h>
 #include <models/analytics_vv/SolCxSolution.h>
 
-PSwarm pswarm;
+static PSwarm pswarm;
 
 PetscErrorCode ModelInitialize_AnlVV(pTatinCtx c,void *ctx)
 {

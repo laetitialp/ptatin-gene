@@ -43,7 +43,7 @@
 #include <energy_output.h>
 #include <material_constants_energy.h>
 
-PSwarm pswarm;
+static PSwarm pswarm;
 
 /*
    Coefficients for the energy uses a combination of region-wise (rho,Cp) and material-point-wised defined properties (kappa,H)
