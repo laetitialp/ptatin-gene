@@ -56,7 +56,17 @@ typedef struct {
   /* Scaling values */
   PetscReal length_bar,viscosity_bar,velocity_bar;
   PetscReal time_bar,pressure_bar,density_bar,acceleration_bar;
+  /* poisson pressure */
+  PetscInt  prev_step;
+  Mat       poisson_Jacobian;
+  PetscReal surface_pressure;
+  PetscBool poisson_pressure_active;
   /* bcs */
+  PetscInt          bc_nfaces;
+  PetscInt          *bc_tag_table;
+  SurfaceConstraint *bc_sc;
+
+
   PetscBool u_dot_n_flow;
   PetscReal u_bc[6*3];
   GENE3DBC  boundary_conditon_type; /* [ 0 free slip | 1 no slip | 2 free surface + free slip | 3 free surface + no slip ] */

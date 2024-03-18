@@ -237,6 +237,24 @@ static PetscErrorCode ModelSetSPMParametersFromOptions(ModelGENE3DCtx *data)
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ModelSetPoissonPressureParametersFromOptions_Gene3D(ModelGENE3DCtx *data)
+{
+  PetscBool      found;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  data->poisson_pressure_active = PETSC_FALSE;
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-poisson_pressure_active",&data->poisson_pressure_active,NULL);CHKERRQ(ierr);
+  if (!data->poisson_pressure_active) { PetscFunctionReturn(0); }
+
+  data->surface_pressure = 0.0;
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-poisson_pressure_surface_p",&data->surface_pressure,&found);CHKERRQ(ierr);
+  if (!found) {
+    PetscPrintf(PETSC_COMM_WORLD,"[[ WARNING ]]: No value provided for surface pressure to solve the poisson pressure. Assuming %1.6e [Pa]\n",data->surface_pressure);
+  }
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode ModelSetPassiveMarkersSwarmParametersFromOptions(pTatinCtx ptatin, ModelGENE3DCtx *data)
 {
   PSwarm         pswarm;
@@ -258,6 +276,30 @@ static PetscErrorCode ModelSetPassiveMarkersSwarmParametersFromOptions(pTatinCtx
   /* Copy reference into model data for later use in different functions */
   data->pswarm = pswarm;
 
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode SurfaceConstraintSetFromOptions_Gene3D(pTatinCtx ptatin, ModelGENE3DCtx *data)
+{
+  PetscInt       nn;
+  PetscBool      found;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  /* Create boundaries data */
+  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,"-bc_nsubfaces",&data->bc_nfaces,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -bc_nsubfaces not found!\n"); }
+  ierr = PetscCalloc1(data->bc_nfaces,&data->bc_tag_table);CHKERRQ(ierr);
+  ierr = PetscCalloc1(data->bc_nfaces,&data->bc_sc);
+
+  /* get the number of subfaces and their tag correspondance */
+  nn = data->bc_nfaces;
+  ierr = PetscOptionsGetIntArray(NULL,MODEL_NAME,"-bc_tag_list",data->bc_tag_table,&nn,&found);CHKERRQ(ierr);
+  if (found) {
+    if (nn != data->bc_nfaces) {
+      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"bc_nsubfaces (%d) and the number of entries in bc_tag_list (%d) mismatch!\n",data->bc_nfaces,nn);
+    }
+  }
   PetscFunctionReturn(0);
 }
 
@@ -314,6 +356,8 @@ static PetscErrorCode ModelScaleParameters(DataBucket materialconstants, ModelGE
 
   data->diffusivity_spm /= (data->length_bar*data->length_bar/data->time_bar);
 
+  data->surface_pressure /= data->pressure_bar;
+
   /* scale material properties */
   for (region_idx=0; region_idx<data->n_phases; region_idx++) {
     ierr = MaterialConstantsScaleAll(materialconstants,region_idx,data->length_bar,data->velocity_bar,data->time_bar,data->viscosity_bar,data->density_bar,data->pressure_bar);CHKERRQ(ierr);
@@ -331,25 +375,7 @@ static PetscErrorCode ModelScaleParameters(DataBucket materialconstants, ModelGE
 
   PetscFunctionReturn(0);
 }
-#if 0
-static PetscErrorCode ModelSetBottomFlowFromOptions(ModelGENE3DCtx *data)
-{
-  PetscBool      found,flg;
-  PetscErrorCode ierr;
-  PetscFunctionBegin;
 
-  data->u_dot_n_flow = PETSC_FALSE;
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-u_dot_n_bottomflow",&data->u_dot_n_flow,&found);CHKERRQ(ierr);
-  if (!found) {
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-uy_bot",&data->u_bc[6*HEX_FACE_Neta + 1],&flg);CHKERRQ(ierr);
-    if (!flg) {
-      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"-uy_bot not found. You can provide either -%su_dot_n_bottomflow to automatically set the base velocity or -%suy_bot to set it directly.\n",MODEL_NAME,MODEL_NAME);
-    }
-  }
-
-  PetscFunctionReturn(0);
-}
-#endif
 PetscErrorCode ModelInitialize_Gene3D(pTatinCtx ptatin, void *ctx)
 {
   ModelGENE3DCtx    *data = (ModelGENE3DCtx*)ctx;
@@ -375,12 +401,22 @@ PetscErrorCode ModelInitialize_Gene3D(pTatinCtx ptatin, void *ctx)
   ierr = ModelSetSPMParametersFromOptions(data);CHKERRQ(ierr);
   /* Passive markers */
   ierr = ModelSetPassiveMarkersSwarmParametersFromOptions(ptatin,data);CHKERRQ(ierr);
+  /* Poisson pressure */
+  ierr = ModelSetPoissonPressureParametersFromOptions_Gene3D(data);CHKERRQ(ierr);
+  /* Surface constraint */
+  ierr = SurfaceConstraintSetFromOptions_Gene3D(ptatin,data);CHKERRQ(ierr);
   /* Scaling */
   ierr = ModelSetScalingParametersFromOptions(data);CHKERRQ(ierr);
   ierr = ModelScaleParameters(materialconstants,data);CHKERRQ(ierr);
 
   PetscFunctionReturn (0);
 }
+
+/*
+======================================================
+=       Initial Mesh and Mesh Update functions       =
+======================================================
+*/
 
 static PetscErrorCode ModelApplyMeshRefinement(DM dav)
 {
@@ -495,6 +531,7 @@ PetscErrorCode ModelApplyInitialMeshGeometry_Gene3D(pTatinCtx ptatin,void *ctx)
 
 static PetscErrorCode ModelApplySurfaceRemeshing(DM dav, PetscReal dt, ModelGENE3DCtx *data)
 {
+  PetscBool      dirichlet_xmin,dirichlet_xmax,dirichlet_zmin,dirichlet_zmax;
   PetscErrorCode ierr;
   PetscFunctionBegin;
 
@@ -520,7 +557,7 @@ static PetscErrorCode ModelApplySurfaceRemeshing(DM dav, PetscReal dt, ModelGENE
 
 PetscErrorCode ModelApplyUpdateMeshGeometry_Gene3D(pTatinCtx ptatin,Vec X,void *ctx)
 {
-  ModelRiftNitscheCtx *data;
+  ModelGENE3DCtx      *data;
   PhysCompStokes      stokes;
   DM                  stokes_pack,dav,dap;
   Vec                 velocity,pressure;
@@ -530,7 +567,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_Gene3D(pTatinCtx ptatin,Vec X,void *
   
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
-  data = (ModelRiftNitscheCtx*)ctx;
+  data = (ModelGENE3DCtx*)ctx;
   
   /* fully lagrangian update */
   ierr = pTatinGetTimestep(ptatin,&dt);CHKERRQ(ierr);
@@ -561,112 +598,452 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_Gene3D(pTatinCtx ptatin,Vec X,void *
   PetscFunctionReturn(0);
 }
 
+/*
+======================================================
+=              Initial Material geometry             =
+======================================================
+*/
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-PetscErrorCode ModelApplyBoundaryCondition_Gene3D(pTatinCtx user,void *ctx)
+PetscErrorCode ModelApplyInitialMaterialGeometry_Gene3D(pTatinCtx ptatin, void *ctx)
 {
   ModelGENE3DCtx *data = (ModelGENE3DCtx*)ctx;
-  PetscScalar zero = 0.0;
+  PetscInt       method;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+  /* 
+  Point location method: 
+    0: brute force
+    1: partitionned bounding box
+  */
+  method = 1;
+  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,"-mesh_point_location_method",&method,NULL);CHKERRQ(ierr);
+  ierr = pTatin_MPntStdSetRegionIndexFromMesh(ptatin,data->mesh_file,data->region_file,method,data->length_bar);CHKERRQ(ierr);
+  PetscFunctionReturn (0);
+}
+
+/*
+======================================================
+=              Initial Marker variables              =
+======================================================
+*/
+
+PetscErrorCode ModelSetInitialStokesVariableOnMarker_Gene3D(pTatinCtx ptatin,Vec X,void *ctx)
+{
+  DM                         stokes_pack,dau,dap;
+  PhysCompStokes             stokes;
+  Vec                        Uloc,Ploc;
+  PetscScalar                *LA_Uloc,*LA_Ploc;
+  DataField                  PField;
+  PetscErrorCode             ierr;
+
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
+  
+  DataBucketGetDataFieldByName(ptatin->material_constants,MaterialConst_MaterialType_classname,&PField);
+  ierr = pTatinGetStokesContext(ptatin,&stokes);CHKERRQ(ierr);
+  stokes_pack = stokes->stokes_pack;
+
+  ierr = DMCompositeGetEntries(stokes_pack,&dau,&dap);CHKERRQ(ierr);
+  ierr = DMCompositeGetLocalVectors(stokes_pack,&Uloc,&Ploc);CHKERRQ(ierr);
+
+  ierr = DMCompositeScatter(stokes_pack,X,Uloc,Ploc);CHKERRQ(ierr);
+  ierr = VecGetArray(Uloc,&LA_Uloc);CHKERRQ(ierr);
+  ierr = VecGetArray(Ploc,&LA_Ploc);CHKERRQ(ierr);
+  ierr = pTatin_EvaluateRheologyNonlinearities(ptatin,dau,LA_Uloc,dap,LA_Ploc);CHKERRQ(ierr);
+  ierr = VecRestoreArray(Uloc,&LA_Uloc);CHKERRQ(ierr);
+  ierr = VecRestoreArray(Ploc,&LA_Ploc);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
+/*
+======================================================
+=                  Initial Solution                  =
+======================================================
+*/
+static PetscErrorCode ModelApplyInitialHydrostaticPressureField_Gene3D(pTatinCtx ptatin, DM dau, DM dap, Vec pressure, ModelGENE3DCtx *data)
+{
+  PetscReal                                    MeshMin[3],MeshMax[3],domain_height;
+  DMDAVecTraverse3d_HydrostaticPressureCalcCtx HPctx;
+  PetscErrorCode                               ierr;
+
+  PetscFunctionBegin;
+
+  /* Initialize pressure vector to zero */
+  ierr = VecZeroEntries(pressure);CHKERRQ(ierr);
+  ierr = DMGetBoundingBox(dau,MeshMin,MeshMax);CHKERRQ(ierr);
+  domain_height = MeshMax[1] - MeshMin[1];
+
+  /* Values for hydrostatic pressure computing */
+  HPctx.surface_pressure = 0.0;
+  HPctx.ref_height = domain_height;
+  HPctx.ref_N      = ptatin->stokes_ctx->my-1;
+  HPctx.grav       = 9.8 / data->acceleration_bar;
+  HPctx.rho        = 3300.0 / data->density_bar;
+
+  ierr = DMDAVecTraverseIJK(dap,pressure,0,DMDAVecTraverseIJK_HydroStaticPressure_v2,     (void*)&HPctx);CHKERRQ(ierr);
+  ierr = DMDAVecTraverseIJK(dap,pressure,2,DMDAVecTraverseIJK_HydroStaticPressure_dpdy_v2,(void*)&HPctx);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelCreatePoissonPressure_Gene3D(pTatinCtx ptatin, ModelGENE3DCtx *data)
+{
+  PDESolveLithoP poisson_pressure;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  /* Create poisson pressure data struct and mesh */
+  ierr = pTatinPhysCompActivate_LithoP(ptatin,PETSC_TRUE);CHKERRQ(ierr);
+  ierr = pTatinGetContext_LithoP(ptatin,&poisson_pressure);CHKERRQ(ierr);
+  /* Create the matrix to store the jacobian matrix */
+  data->poisson_Jacobian = NULL;
+  ierr = DMSetMatType(poisson_pressure->da,MATAIJ);CHKERRQ(ierr);
+  ierr = DMCreateMatrix(poisson_pressure->da,&data->poisson_Jacobian);CHKERRQ(ierr);
+  ierr = MatSetFromOptions(data->poisson_Jacobian);CHKERRQ(ierr);
+
+  /* Initialize prev_step to step - 1 in case of restart */
+  data->prev_step = -1;
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ModelApplyInitialSolution_Gene3D(pTatinCtx ptatin, Vec X, void *ctx)
+{
+  ModelGENE3DCtx *data = (ModelGENE3DCtx*)ctx;
+  DM             stokes_pack,dau,dap;
+  Vec            velocity,pressure;
+  PetscBool      active_energy;
+  PetscErrorCode ierr;
+  
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+  
+  /* Access velocity and pressure vectors */
+  stokes_pack = ptatin->stokes_ctx->stokes_pack;
+  ierr = DMCompositeGetEntries(stokes_pack,&dau,&dap);CHKERRQ(ierr);
+  ierr = DMCompositeGetAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
+
+  ierr = ModelApplyInitialHydrostaticPressureField_Gene3D(ptatin,dau,dap,pressure,data);CHKERRQ(ierr);
+  /* Initialize to zero the velocity vector */
+  ierr = VecZeroEntries(velocity);CHKERRQ(ierr);
+
+  if (data->passive_markers) {
+    /* Attach solution vector (u, p) to passive markers */
+    ierr = PSwarmAttachStateVecVelocityPressure(data->pswarm,X);CHKERRQ(ierr);
+  }
+  /* Restore velocity and pressure vectors */
+  ierr = DMCompositeRestoreAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
+
+  /* Temperature IC */
+  ierr = pTatinContextValid_EnergyFV(ptatin,&active_energy);CHKERRQ(ierr);
+  if (active_energy) {
+    ierr = pTatin_ModelLoadTemperatureInitialSolution_FromFile(ptatin,MODEL_NAME);CHKERRQ(ierr);
+  }
+  /* Create poisson pressure ctx and mesh */
+  if (data->poisson_pressure_active) {
+    ierr = ModelCreatePoissonPressure_Gene3D(ptatin,data);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
+/*
+======================================================
+=                Boundary conditions                 =
+======================================================
+*/
+
+static PetscErrorCode SurfaceConstraintCreateFromOptions_Gene3D(pTatinCtx ptatin, PetscBool insert_if_not_found, ModelGENE3DCtx *data)
+{
+  PhysCompStokes stokes;
+  PetscInt       f;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
+
+  ierr = pTatinGetStokesContext(ptatin,&stokes);CHKERRQ(ierr);
+  for (f=0; f<data->bc_nfaces; f++) {
+    PetscInt  tag,sc_type;
+    PetscBool found;
+    char      opt_name[PETSC_MAX_PATH_LEN],sc_name[PETSC_MAX_PATH_LEN];
+    
+    tag = data->bc_tag_table[f];
+
+    ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-sc_name_%d",tag);CHKERRQ(ierr);
+    ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,sc_name,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+    if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Providing a name to -sc_name_%d is mandatory!",tag); }
+
+    ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-sc_type_%d",tag);CHKERRQ(ierr);
+    ierr = PetscOptionsGetInt(NULL,MODEL_NAME,opt_name,&sc_type,&found);CHKERRQ(ierr);
+    if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Providing a type to -sc_type_%d is mandatory!",tag); }
+
+    ierr = SurfBCListGetConstraint(stokes->surf_bclist,sc_name,&data->bc_sc[f]);CHKERRQ(ierr);
+    if (!data->bc_sc[f]) {
+      if (insert_if_not_found) {
+        ierr = SurfBCListAddConstraint(stokes->surf_bclist,sc_name,&data->bc_sc[f]);CHKERRQ(ierr);
+        ierr = SurfaceConstraintSetType(data->bc_sc[f],sc_type);CHKERRQ(ierr);
+      } else { 
+        SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint %d: %s not found",tag,sc_name); 
+      }
+    }
+  }
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelMarkBoundaryFacets_Gene3D(ModelGENE3DCtx *data)
+{
+  PetscInt       f;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  for (f=0; f<data->bc_nfaces; f++) {
+    Mesh          mesh;
+    MeshFacetInfo facet_info;
+    MeshEntity    mesh_entity;
+    PetscInt      tag,method=1;
+    PetscBool     found;
+    char          opt_name[PETSC_MAX_PATH_LEN],meshfile[PETSC_MAX_PATH_LEN];
+
+    tag = data->bc_tag_table[f]
+    /* Get mesh entity object */
+    ierr = SurfaceConstraintGetFacets(data->bc_sc[f],&mesh_entity);CHKERRQ(ierr);
+    /* Check if facets for this surface constraint have already been marked */
+    if (mesh_entity->empty == PETSC_FALSE) { continue; }
+    PetscPrintf(PETSC_COMM_WORLD,"Marking facets for tag %d: %s\n",tag,data->bc_sc[f]->name);
+
+    /* read the facets mesh corresponding to tag */
+    ierr = PetscSNPrintf(meshfile,PETSC_MAX_PATH_LEN-1,"facet_%d_mesh.bin",tag);CHKERRQ(ierr);
+    ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-facet_mesh_file_%d",tag);CHKERRQ(ierr);
+    ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,meshfile,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+    if (!found) { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Options parsing the facet mesh for tag %d not found; Use %s",tag,opt_name); }
+
+    /* get facet mesh */
+    parse_mesh(meshfile,&mesh);
+    /* mark facets */
+    ierr = SurfaceConstraintGetMeshFacetInfo(data->bc_sc[f],&facet_info);CHKERRQ(ierr);
+    ierr = MeshFacetMarkFromMesh(mesh_entity,facet_info,mesh,method,data->length_bar);CHKERRQ(ierr);
+    /* clean up */
+    MeshDestroy(&mesh);
+  }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelSetBoundaryParameters()
+{
+  PetscInt       f;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  for (f=0; f<data->bc_nfaces) {
+    
+  }
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelApplyBoundaryCondition_Velocity(pTatinCtx ptatin, PetscBool insert_if_not_found, ModelGENE3DCtx *data)
+{
+  PetscFunctionBegin;
+
+  ierr = SurfaceConstraintCreateFromOptions_Gene3D(ptatin,insert_if_not_found,data);CHKERRQ(ierr);
+  ierr = ModelMarkBoundaryFacets_Gene3D(data);CHKERRQ(ierr);
+
+
+  
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ModelApplyBoundaryCondition_Gene3D(pTatinCtx ptatin, void *ctx)
+{
+  ModelGENE3DCtx *data = (ModelGENE3DCtx*)ctx;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD, "[[%s]]\n", PETSC_FUNCTION_NAME);
 
-  switch (data->boundary_conditon_type)
-  {
-    case GENEBC_FreeSlip:
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_IMIN_LOC, 0,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_IMAX_LOC, 0,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_JMIN_LOC, 1,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_JMAX_LOC, 1,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_KMIN_LOC, 2,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_KMAX_LOC, 2,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      break;
-
-    case GENEBC_NoSlip:
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_IMIN_LOC, 0,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_IMIN_LOC, 1,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_IMIN_LOC, 2,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_IMAX_LOC, 0,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_IMAX_LOC, 1,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_IMAX_LOC, 2,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_JMIN_LOC, 0,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_JMIN_LOC, 1,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_JMIN_LOC, 2,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_JMAX_LOC, 0,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_JMAX_LOC, 1,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_JMAX_LOC, 2,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_KMIN_LOC, 0,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_KMIN_LOC, 1,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_KMIN_LOC, 2,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_KMAX_LOC, 0,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_KMAX_LOC, 1,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_KMAX_LOC, 2,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      break;
-
-    case GENEBC_FreeSlipFreeSurface:
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_IMIN_LOC, 0,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_IMAX_LOC, 0,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_JMIN_LOC, 1,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_JMAX_LOC, 1,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      break;
-
-    case GENEBC_NoSlipFreeSurface:
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_IMIN_LOC, 0,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_IMIN_LOC, 1,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_IMIN_LOC, 2,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_IMAX_LOC, 0,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_IMAX_LOC, 1,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_IMAX_LOC, 2,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_JMIN_LOC, 0,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_JMIN_LOC, 1,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_JMIN_LOC, 2,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_JMAX_LOC, 0,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_JMAX_LOC, 1,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav, DMDABCList_JMAX_LOC, 2,BCListEvaluator_constant, (void *) &zero);CHKERRQ(ierr);
-      break;
-    default:
-      break;
-  }
-
-  /*
-     {
-     BCList flat;
-
-     ierr = BCListFlattenedCreate(user->stokes_ctx->u_bclist,&flat);CHKERRQ(ierr);
-     ierr = BCListDestroy(&user->stokes_ctx->u_bclist);CHKERRQ(ierr);
-     user->stokes_ctx->u_bclist = flat;
-     }
-     */
   PetscFunctionReturn (0);
 }
+
+
+
+
+/*
+======================================================
+=                       Output                       =
+======================================================
+*/
+
+static PetscErrorCode ModelOutputMarkerFields_Gene3D(pTatinCtx ptatin,const char prefix[])
+{
+  DataBucket               materialpoint_db;
+  int                      nf;
+  const MaterialPointField mp_prop_list[] = { MPField_Std, MPField_Stokes, MPField_StokesPl};
+  char                     mp_file_prefix[256];
+  PetscErrorCode           ierr;
+
+  PetscFunctionBegin;
+
+  nf = sizeof(mp_prop_list)/sizeof(mp_prop_list[0]);
+
+  ierr = pTatinGetMaterialPoints(ptatin,&materialpoint_db,NULL);CHKERRQ(ierr);
+  sprintf(mp_file_prefix,"%s_mpoints",prefix);
+  ierr = SwarmViewGeneric_ParaView(materialpoint_db,nf,mp_prop_list,ptatin->outputpath,mp_file_prefix);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelViewSurfaceConstraint_Gene3D(pTatinCtx ptatin, ModelGENE3DCtx *data)
+{
+  PhysCompStokes stokes;
+  PetscInt       f;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = pTatinGetStokesContext(ptatin,&stokes);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s/",ptatin->outputpath);CHKERRQ(ierr);
+  for (f=0; f<data->bc_nfaces; f++) {
+    ierr = SurfaceConstraintViewParaview(data->bc_sc[f],root,data->bc_sc[f]->name);CHKERRQ(ierr);
+  }
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelOutputPassiveMarkers_Gene3D(ModelGENE3DCtx *data)
+{
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = PSwarmView(data->pswarm,PSW_VT_SINGLETON);CHKERRQ(ierr);
+  ierr = PSwarmViewInfo(data->pswarm);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelOutputEnergyFV_Gene3D(pTatinCtx ptatin, const char prefix[], PetscBool been_here, ModelGENE3DCtx *data)
+{
+  PhysCompEnergyFV energy;
+  char             root[PETSC_MAX_PATH_LEN],pvoutputdir[PETSC_MAX_PATH_LEN],fname[PETSC_MAX_PATH_LEN];
+  char             pvdfilename[PETSC_MAX_PATH_LEN],vtkfilename[PETSC_MAX_PATH_LEN];
+  char             stepprefix[PETSC_MAX_PATH_LEN];
+  PetscErrorCode   ierr;
+
+  PetscFunctionBegin;
+
+  ierr = pTatinGetContext_EnergyFV(ptatin,&energy);CHKERRQ(ierr);
+  /* PVD file */
+  PetscSNPrintf(pvdfilename,PETSC_MAX_PATH_LEN-1,"%s/timeseries_T_fv.pvd",ptatin->outputpath);
+  if (prefix) { PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "%s_T_fv.pvts",prefix);
+  } else {      PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "T_fv.pvts");           }
+  
+  PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%D",ptatin->step);
+  if (!been_here) { /* new file */
+    ierr = ParaviewPVDOpen(pvdfilename);CHKERRQ(ierr);
+    ierr = ParaviewPVDAppend(pvdfilename,ptatin->time,vtkfilename,stepprefix);CHKERRQ(ierr);
+  } else {
+    ierr = ParaviewPVDAppend(pvdfilename,ptatin->time,vtkfilename,stepprefix);CHKERRQ(ierr);
+  }
+  
+  ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s",ptatin->outputpath);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%D",root,ptatin->step);CHKERRQ(ierr);
+  
+  /* PetscVec */
+  ierr = PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s_energy",prefix);CHKERRQ(ierr);
+  ierr = FVDAView_JSON(energy->fv,pvoutputdir,fname);CHKERRQ(ierr); /* write meta data abour fv mesh, its DMDA and the coords */
+  ierr = FVDAView_Heavy(energy->fv,pvoutputdir,fname);CHKERRQ(ierr);  /* write cell fields */
+  ierr = PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/%s_energy_T",pvoutputdir,prefix);CHKERRQ(ierr);
+  ierr = PetscVecWriteJSON(energy->T,0,fname);CHKERRQ(ierr); /* write cell temperature */
+  
+  if (data->output_markers) {
+    PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/%s-Tfv",pvoutputdir,prefix);
+    ierr = FVDAView_CellData(energy->fv,energy->T,PETSC_TRUE,fname);CHKERRQ(ierr);
+  }
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ModelOutput_Gene3D(pTatinCtx ptatin,Vec X,const char prefix[],void *ctx)
+{
+  const MaterialPointVariable mp_prop_list[] = { MPV_region, MPV_viscosity, MPV_density, MPV_plastic_strain };
+  static PetscBool            been_here = PETSC_FALSE;
+  PetscBool                   active_energy;
+  PetscErrorCode              ierr;
+
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD, "[[%s]]\n", PETSC_FUNCTION_NAME);
+
+  /* Output Velocity and pressure */
+  ierr = pTatin3d_ModelOutputPetscVec_VelocityPressure_Stokes(ptatin,X,prefix);CHKERRQ(ierr);
+  /* Output markers cell fields (for production runs) */
+  ierr = pTatin3dModelOutput_MarkerCellFieldsP0_PetscVec(ptatin,PETSC_FALSE,sizeof(mp_prop_list)/sizeof(MaterialPointVariable),mp_prop_list,prefix);CHKERRQ(ierr);
+  
+  /* Output raw markers and vtu velocity and pressure (for testing and debugging) */
+  if (data->output_markers) {
+    ierr = pTatin3d_ModelOutput_VelocityPressure_Stokes(ptatin,X,prefix);CHKERRQ(ierr);
+    ierr = ModelOutputMarkerFields_Gene3D(ptatin,prefix);CHKERRQ(ierr);
+    ierr = ModelViewSurfaceConstraint_Gene3D(ptatin,data);CHKERRQ(ierr);
+  }
+  /* Output passive markers */
+  if (data->passive_markers) { ierr = ModelOutputPassiveMarkers_Gene3D(data);CHKERRQ(ierr); }
+
+  /* Output temperature (FV) */
+  ierr = pTatinContextValid_EnergyFV(ptatin,&active_energy);CHKERRQ(ierr);
+  if (active_energy) {
+    ierr = ModelOutputEnergyFV_Gene3D(ptatin,prefix,been_here,data);CHKERRQ(ierr);
+  }
+
+  /* Output poisson pressure */
+  if (data->poisson_pressure_active) {
+    PetscBool vts = PETSC_FALSE;
+    if (data->output_markers) { vts = PETSC_TRUE; }
+    ierr = PoissonPressureOutput(ptatin,prefix,vts,been_here);CHKERRQ(ierr);
+  }
+  been_here = PETSC_TRUE;
+
+  PetscFunctionReturn (0);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 PetscErrorCode ModelAdaptMaterialPointResolution_Gene3D(pTatinCtx c,void *ctx)
 {
@@ -869,50 +1246,6 @@ PetscErrorCode ModelSetMarkerIndexFromMap_Gene3D(pTatinCtx c,void *ctx)
 
 //======================================================================================================================================
 
-PetscErrorCode ModelSetInitialStokesVariableOnMarker_Gene3D(pTatinCtx c,void *ctx)
-  /* define properties on material points */
-{
-  int p, n_mp_points;
-  DataBucket db;
-  DataField PField_std, PField_stokes;
-  int phase_index;
-  RheologyConstants *rheology;
-
-  PetscFunctionBegin;
-  PetscPrintf(PETSC_COMM_WORLD, "[[%s]]\n", PETSC_FUNCTION_NAME);
-
-  rheology = &c->rheology_constants;
-  db = c->materialpoint_db;
-
-  DataBucketGetDataFieldByName(db, MPntStd_classname, &PField_std);
-  DataFieldGetAccess(PField_std);
-  DataFieldVerifyAccess(PField_std, sizeof (MPntStd));
-  DataBucketGetDataFieldByName (db, MPntPStokes_classname, &PField_stokes);
-  DataFieldGetAccess(PField_stokes);
-  DataFieldVerifyAccess(PField_stokes, sizeof (MPntPStokes));
-
-  DataBucketGetSizes(db, &n_mp_points, 0, 0);
-
-  for (p = 0; p < n_mp_points; p++)
-  {
-    MPntStd *material_point;
-    MPntPStokes *mpprop_stokes;
-
-    DataFieldAccessPoint(PField_std, p, (void **) &material_point);
-    DataFieldAccessPoint(PField_stokes, p, (void **) &mpprop_stokes);
-    MPntStdGetField_phase_index (material_point, &phase_index);
-    MPntPStokesSetField_eta_effective(mpprop_stokes,rheology->const_eta0[phase_index]);
-    MPntPStokesSetField_density(mpprop_stokes,rheology->const_rho0[phase_index]);
-  }
-
-  DataFieldRestoreAccess(PField_std);
-  DataFieldRestoreAccess(PField_stokes);
-
-  PetscFunctionReturn (0);
-}
-
-//======================================================================================================================================
-
 PetscErrorCode ModelGene3DInit(DataBucket db)
 {
   int                p,n_mp_points;
@@ -983,60 +1316,29 @@ PetscErrorCode ModelGene3DCheckPhase(DataBucket db,RheologyConstants *rheology)
    2) all markers are assigned a phase index between [0 -- nphases_active-1]
 
 */
-PetscErrorCode ModelApplyInitialMaterialGeometry_Gene3D(pTatinCtx c,void *ctx)
-{
-  PetscErrorCode ierr;
-  ModelGENE3DCtx *data = (ModelGENE3DCtx *)ctx;
-
-  PetscFunctionBegin;
-
-  /* initalize all phase indices to -1 */
-  ierr = ModelGene3DInit(c->materialpoint_db);CHKERRQ(ierr);
-  switch (data->initial_geom)
-  {
-    /*Layered cake */
-    case 0:
-      {
-        ierr = ModelSetMarkerIndexLayeredCake_Gene3D(c,ctx);CHKERRQ(ierr);
-      }
-      break;
-      /*Extrude from Map along Z */
-    case 1:
-      {
-        ierr = ModelSetMarkerIndexFromMap_Gene3D(c,ctx);CHKERRQ(ierr);
-      }
-      break;
-      /*Read from CAD file */
-    case 2:
-      {
-        SETERRQ(PETSC_COMM_SELF, PETSC_ERR_USER, "Reading from CAD is not implemented yet \n");
-      }
-      break;
-  }
-  /* check all phase indices are between [0---rheo->max_phases-1] */
-  ierr = ModelGene3DCheckPhase(c->materialpoint_db,&c->rheology_constants);CHKERRQ(ierr);
-
-  ierr = ModelSetInitialStokesVariableOnMarker_Gene3D(c, ctx);CHKERRQ(ierr);
-
-  PetscFunctionReturn (0);
-}
-
-
 //======================================================================================================================================
 
 
-PetscErrorCode ModelOutput_Gene3D(pTatinCtx c,Vec X,const char prefix[],void *ctx)
-{
-  PetscErrorCode ierr;
 
-  PetscFunctionBegin;
-  PetscPrintf(PETSC_COMM_WORLD, "[[%s]]\n", PETSC_FUNCTION_NAME);
 
-  ierr = pTatin3d_ModelOutput_VelocityPressure_Stokes(c,X,prefix);CHKERRQ(ierr);
-  ierr = pTatin3d_ModelOutput_MPntStd(c,prefix); CHKERRQ(ierr);
 
-  PetscFunctionReturn (0);
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 PetscErrorCode ModelDestroy_Gene3D(pTatinCtx c,void *ctx)
 {
@@ -1049,6 +1351,12 @@ PetscErrorCode ModelDestroy_Gene3D(pTatinCtx c,void *ctx)
 
   /* Free contents of structure */
   ierr = PetscFree(data->regions_table);
+  ierr = PetscFree(data->bc_tag_table);CHKERRQ(ierr);
+  ierr = PetscFree(data->bc_sc);CHKERRQ(ierr);
+
+  if (data->poisson_pressure_active) {
+    ierr = MatDestroy(&data->poisson_Jacobian);
+  }
   /* Free structure */
   ierr = PetscFree(data);CHKERRQ(ierr);
 
@@ -1077,11 +1385,17 @@ PetscErrorCode pTatinModelRegister_Gene3D(void)
   ierr = pTatinModelSetUserData(m,data);CHKERRQ(ierr);
 
   /* Set function pointers */
-  ierr =  pTatinModelSetFunctionPointer(m, PTATIN_MODEL_INIT,                  (void (*)(void)) ModelInitialize_Gene3D); CHKERRQ(ierr);
+  ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_INIT,                  (void (*)(void)) ModelInitialize_Gene3D); CHKERRQ(ierr);
+  ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_APPLY_INIT_MESH_GEOM,  (void (*)(void)) ModelApplyInitialMeshGeometry_Gene3D);CHKERRQ(ierr);
+  ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_APPLY_INIT_MAT_GEOM,   (void (*)(void)) ModelApplyInitialMaterialGeometry_Gene3D);CHKERRQ(ierr);
+  ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_INIT_STOKES_VARIABLE_MARKERS,(void (*)(void))ModelSetInitialStokesVariableOnMarker_Gene3D);CHKERRQ(ierr);
+  ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_INIT_SOLUTION,   (void (*)(void))ModelApplyInitialSolution_Gene3D);CHKERRQ(ierr);
   ierr =  pTatinModelSetFunctionPointer(m, PTATIN_MODEL_APPLY_BC,              (void (*)(void)) ModelApplyBoundaryCondition_Gene3D); CHKERRQ(ierr);
+  
+
+
   ierr =  pTatinModelSetFunctionPointer(m, PTATIN_MODEL_ADAPT_MP_RESOLUTION,   (void (*)(void)) ModelAdaptMaterialPointResolution_Gene3D);CHKERRQ(ierr);
-  ierr =  pTatinModelSetFunctionPointer(m, PTATIN_MODEL_APPLY_INIT_MESH_GEOM,  (void (*)(void)) ModelApplyInitialMeshGeometry_Gene3D);CHKERRQ(ierr);
-  ierr =  pTatinModelSetFunctionPointer(m, PTATIN_MODEL_APPLY_INIT_MAT_GEOM,   (void (*)(void)) ModelApplyInitialMaterialGeometry_Gene3D);CHKERRQ(ierr);
+
   ierr =  pTatinModelSetFunctionPointer(m, PTATIN_MODEL_APPLY_UPDATE_MESH_GEOM,(void (*)(void)) ModelApplyUpdateMeshGeometry_Gene3D);CHKERRQ(ierr);
   ierr =  pTatinModelSetFunctionPointer(m, PTATIN_MODEL_OUTPUT,                (void (*)(void)) ModelOutput_Gene3D);CHKERRQ(ierr);
   ierr =  pTatinModelSetFunctionPointer(m, PTATIN_MODEL_DESTROY,               (void (*)(void)) ModelDestroy_Gene3D); CHKERRQ(ierr);
