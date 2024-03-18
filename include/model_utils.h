@@ -77,5 +77,5 @@ PetscErrorCode MPntStdCoordinateMaxIdentifyPointIndex(DataBucket materialpoint_d
 PetscErrorCode StokesComputeVdotN(PhysCompStokes stokes,Vec u,PetscReal int_u_dot_n[]);
 
 PetscErrorCode pTatin_MPntStdSetRegionIndexFromMesh(pTatinCtx ptatin, const char mesh_file[], const char region_file[], PetscInt method, PetscReal length_scale);
-//PetscErrorCode MPntStdSetRegionIndexFromGmsh(pTatinCtx ptatin, const char mesh_file[], const char region_file[]);
+PetscErrorCode pTatin_ModelLoadTemperatureInitialSolution_FromFile(pTatinCtx ptatin, const char model_name[]);
 #endif

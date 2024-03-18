@@ -1774,3 +1774,36 @@ PetscErrorCode pTatin_MPntStdSetRegionIndexFromMesh(pTatinCtx ptatin, const char
 
   PetscFunctionReturn(0);
 }
+
+
+PetscErrorCode pTatin_ModelLoadTemperatureInitialSolution_FromFile(pTatinCtx ptatin, const char model_name[])
+{
+  PhysCompEnergyFV energy;
+  PetscBool        flg = PETSC_FALSE,temperature_ic_from_file = PETSC_FALSE;
+  char             fname[PETSC_MAX_PATH_LEN],temperature_file[PETSC_MAX_PATH_LEN];
+  PetscViewer      viewer;
+  PetscErrorCode   ierr;
+
+  PetscFunctionBegin;
+
+  ierr = pTatinGetContext_EnergyFV(ptatin,&energy);CHKERRQ(ierr);
+  /* If job is restarted skip that part (Temperature is loaded from checkpointed file) */
+  if (!ptatin->restart_from_file) {
+    ierr = PetscOptionsGetBool(NULL,model_name,"-temperature_ic_from_file",&temperature_ic_from_file,NULL);CHKERRQ(ierr);
+    if (temperature_ic_from_file) {
+      /* Check if a file is provided */
+      ierr = PetscOptionsGetString(NULL,model_name,"-temperature_file",temperature_file,PETSC_MAX_PATH_LEN-1,&flg);CHKERRQ(ierr);
+      if (flg) {
+        ierr = PetscViewerBinaryOpen(PETSC_COMM_WORLD,temperature_file,FILE_MODE_READ,&viewer);CHKERRQ(ierr);
+      } else {
+        PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/temperature_steady.pbvec",ptatin->outputpath);
+        ierr = PetscViewerBinaryOpen(PETSC_COMM_WORLD,fname,FILE_MODE_READ,&viewer);CHKERRQ(ierr);
+      }
+      ierr = VecLoad(energy->T,viewer);CHKERRQ(ierr);
+      ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
+    } else {
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Providing a temperature file for initial state is required\n");
+    }
+  }
+  PetscFunctionReturn(0);
+}
