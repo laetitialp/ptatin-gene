@@ -67,6 +67,8 @@ PetscErrorCode pTatinContextValid_LithoP(pTatinCtx ctx,PetscBool *exists);
 PetscErrorCode pTatinPhysCompCreate_LithoP(pTatinCtx user);
 PetscErrorCode pTatinPhysCompActivate_LithoP(pTatinCtx user,PetscBool load);
 PetscErrorCode SNESSolve_LithoPressure(PDESolveLithoP LP,Mat J,Vec X, Vec F, pTatinCtx user);
+PetscErrorCode ApplyPoissonPressureNeumannConstraint(pTatinCtx ptatin, SurfaceConstraint sc);
+
 PetscErrorCode ApplyLithostaticPressure_SurfQuadratureStokes_FullFace(PhysCompStokes stokes,DM da,Vec X,HexElementFace face_location[],PetscInt face_list_n);
 PetscErrorCode ModelApplyTractionFromLithoPressure(pTatinCtx pctx, Vec X_stokes);
 PetscErrorCode AverageVolumeQuadraturePointsToSurfaceQuadraturePointsStokes(pTatinCtx user);
