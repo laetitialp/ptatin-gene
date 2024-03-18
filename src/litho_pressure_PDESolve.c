@@ -755,6 +755,92 @@ PetscErrorCode SNESSolve_LithoPressure(PDESolveLithoP LP,Mat J,Vec X, Vec F, pTa
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode PoissonPressureOutput_PVD(pTatinCtx ptatin, const char prefix[], PetscBool been_here)
+{
+  char           pvdfilename[PETSC_MAX_PATH_LEN],vtkfilename[PETSC_MAX_PATH_LEN],stepprefix[PETSC_MAX_PATH_LEN];
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  
+  ierr = PetscSNPrintf(pvdfilename,PETSC_MAX_PATH_LEN-1,"%s/timeseries_poisson_P.pvd",ptatin->outputpath);CHKERRQ(ierr);
+  if (prefix) { PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "%s_poisson_P.pvts",prefix);
+  } else {      PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "poisson_P.pvts");           }
+
+  ierr = PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%D",ptatin->step);CHKERRQ(ierr);
+  if (!been_here) { /* new file */
+    ierr = ParaviewPVDOpen(pvdfilename);CHKERRQ(ierr);
+    ierr = ParaviewPVDAppend(pvdfilename,ptatin->time,vtkfilename,stepprefix);CHKERRQ(ierr);
+  } else {
+    ierr = ParaviewPVDAppend(pvdfilename,ptatin->time,vtkfilename,stepprefix);CHKERRQ(ierr);
+  }
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode PoissonPressureOutput_PetscVec(PDESolveLithoP poisson_pressure, const char prefix[])
+{
+  PetscViewer    viewer;
+  char           fname[PETSC_MAX_PATH_LEN];
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s.pbvec",prefix);CHKERRQ(ierr);
+  ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
+  ierr = PetscViewerSetType(viewer,PETSCVIEWERBINARY);CHKERRQ(ierr);
+  ierr = PetscViewerFileSetMode(viewer,FILE_MODE_WRITE);CHKERRQ(ierr);
+  ierr = PetscViewerFileSetName(viewer,fname);CHKERRQ(ierr);
+  ierr = VecView(poisson_pressure->X,viewer);CHKERRQ(ierr);
+  ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode PoissonPressureOutput_VTS(PDESolveLithoP poisson_pressure, const char prefix[])
+{
+  PetscViewer    viewer;
+  char           fname[PETSC_MAX_PATH_LEN];
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s.vts",prefix);CHKERRQ(ierr);
+  ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
+  ierr = PetscViewerSetType(viewer,PETSCVIEWERVTK);CHKERRQ(ierr);
+  ierr = PetscViewerFileSetMode(viewer,FILE_MODE_WRITE);CHKERRQ(ierr);
+  ierr = PetscViewerFileSetName(viewer,fname);CHKERRQ(ierr);
+  ierr = VecView(poisson_pressure->X,viewer);CHKERRQ(ierr);
+  ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode PoissonPressureOutput(pTatinCtx ptatin, const char prefix[], PetscBool vts, PetscBool been_here)
+{
+  PDESolveLithoP poisson_pressure;
+  PetscBool      active_poisson;
+  char           fname[PETSC_MAX_PATH_LEN],root[PETSC_MAX_PATH_LEN],pvoutputdir[PETSC_MAX_PATH_LEN];
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = pTatinContextValid_LithoP(ptatin,&active_poisson);CHKERRQ(ierr);
+  if (!active_poisson) { PetscFunctionReturn(0); }
+
+  ierr = pTatinGetContext_LithoP(ptatin,&poisson_pressure);CHKERRQ(ierr);
+
+  ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s",ptatin->outputpath);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%D",root,ptatin->step);CHKERRQ(ierr);
+
+  ierr = PoissonPressureOutput_PVD(ptatin,prefix,been_here);CHKERRQ(ierr);
+
+  if (prefix) { ierr = PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s_poisson_P",pvoutputdir,prefix);CHKERRQ(ierr);
+  } else {      ierr = PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"_poisson_P",pvoutputdir,prefix);CHKERRQ(ierr); }
+  
+  if (vts) { 
+    ierr = PoissonPressureOutput_VTS(poisson_pressure,fname);CHKERRQ(ierr);
+  } else {
+    ierr = PoissonPressureOutput_PetscVec(poisson_pressure,fname);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode SetPoissonPressureTraction(Facet facets, const PetscReal qp_coor[], PetscReal traction[], void *ctx)
 {
   PressureTractionCtx *data = (PressureTractionCtx*)ctx;
