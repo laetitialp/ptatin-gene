@@ -58,6 +58,7 @@ typedef struct {
   /* Scaling values */
   PetscReal length_bar,viscosity_bar,velocity_bar;
   PetscReal time_bar,pressure_bar,density_bar,acceleration_bar;
+  PetscReal cm_per_year2m_per_sec,Myr2sec;
   /* poisson pressure */
   PetscInt  prev_step;
   Mat       poisson_Jacobian;
@@ -75,6 +76,13 @@ typedef struct {
   GENE3DBC  boundary_conditon_type; /* [ 0 free slip | 1 no slip | 2 free surface + free slip | 3 free surface + no slip ] */
   GENE3DINIGEOM  initial_geom;
 } ModelGENE3DCtx;
+
+typedef struct {
+  PetscReal epsilon_s[6];
+  PetscReal mcal_H[6];
+  PetscReal n_hat[3];
+  PetscReal t1_hat[3];
+} GenNavierSlipCtx;
 
 PetscErrorCode ModelSetMarkerIndexLayeredCake_GENE3D(pTatinCtx c,void *ctx);
 PetscErrorCode ModelSetMarkerIndexFromMap_GENE3D(pTatinCtx c,void *ctx);
