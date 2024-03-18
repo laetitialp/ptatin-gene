@@ -291,11 +291,25 @@ PetscErrorCode SurfaceConstraintSetFacets(SurfaceConstraint sc, MeshEntity facet
 
 PetscErrorCode SurfaceConstraintGetFacets(SurfaceConstraint sc, MeshEntity *f)
 {
+  PetscFunctionBegin;
   if (f) {
     if (sc) {
       *f = sc->facets;
     } else {
       *f = NULL;
+    }
+  }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode SurfaceConstraintGetMeshFacetInfo(SurfaceConstraint sc, MeshFacetInfo *fi)
+{
+  PetscFunctionBegin;
+  if (fi) {
+    if (sc) {
+      *fi = sc->fi;
+    } else {
+      *fi = NULL;
     }
   }
   PetscFunctionReturn(0);
