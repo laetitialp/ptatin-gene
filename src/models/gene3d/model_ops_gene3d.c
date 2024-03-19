@@ -1025,10 +1025,19 @@ static PetscErrorCode ModelSetBoundaryValues_VelocityBC(
       break;
 
     case SC_FSSA:
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"SC_FSSA not implemented for Gene3D.");
       break;
 
     case SC_TRACTION:
       ierr = ModelSetNeumann_VelocityBC(ptatin,sc);CHKERRQ(ierr);
+      break;
+
+    case SC_NITSCHE_DIRICHLET:
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"SC_NITSCHE_DIRICHLET not implemented for Gene3D.");
+      break;
+
+    case SC_NITSCHE_NAVIER_SLIP:
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"SC_NITSCHE_NAVIER_SLIP not implemented for Gene3D.");
       break;
 
     case SC_NITSCHE_GENERAL_SLIP:
@@ -1038,11 +1047,31 @@ static PetscErrorCode ModelSetBoundaryValues_VelocityBC(
     case SC_DIRICHLET:
       ierr = ModelSetDirichlet_VelocityBC(dav,bclist,sc,tag,data);CHKERRQ(ierr);
       break;
+
+    default:
+      break;
   }
   
 
   PetscFunctionReturn(0);
 }
+
+/*
+NOTES for time dependant BCs
+  Possible approach:
+  [1] get an option for the number of time values at which a change must occur e.g., 
+      -ntime_changes 4
+  [2] get time values of that interval e.g.,
+      -time_bc_change t1,t2,t3,t4  
+      with this t0 will always be 0.0 and t4 the last time value at which the bc change
+  [3] provide an array containing the values to apply at each time change e.g.,
+      -time_bc_val_%d u0,u1,u2,u3,u4
+      expect 1 more value than ntime_changes for the interval t0->t1
+
+      Problem ==> cannot change the type of the bc i.e., navier stays navier and dirichlet stays dirichlet
+      need to find a way to interface with the option file the possibility to change the bc type
+      but keep the marking of the facet and the tag (if mesh was deformed we do not want to mark again the facets)
+*/
 
 static PetscErrorCode ModelApplyBoundaryCondition_Velocity(pTatinCtx ptatin, DM dav, BCList bclist, PetscBool insert_if_not_found, ModelGENE3DCtx *data)
 {
