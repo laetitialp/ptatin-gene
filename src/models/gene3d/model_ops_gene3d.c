@@ -765,22 +765,48 @@ PetscErrorCode ModelApplyInitialSolution_Gene3D(pTatinCtx ptatin, Vec X, void *c
 ======================================================
 */
 
+static PetscErrorCode ModelApplyBoundaryCondition_PoissonPressure(BCList bclist, DM da, ModelGENE3DCtx *data)
+{
+  PetscReal      val_P;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  val_P = data->surface_pressure;
+  ierr = DMDABCListTraverse3d(bclist,da,DMDABCList_JMAX_LOC,0,BCListEvaluator_constant,(void*)&val_P);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelSolvePoissonPressure(pTatinCtx ptatin, ModelGENE3DCtx *data)
+{
+  PDESolveLithoP poisson_pressure;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = pTatinGetContext_LithoP(ptatin,&poisson_pressure);CHKERRQ(ierr);
+  /* Update mesh coordinates from the velocity mesh */
+  ierr = DMDAProjectCoordinatesQ2toOverlappingQ1_3d(ptatin->stokes_ctx->dav,poisson_pressure->da);CHKERRQ(ierr);
+  ierr = ModelApplyBoundaryCondition_PoissonPressure(poisson_pressure->bclist,poisson_pressure->da,data);CHKERRQ(ierr);
+  /* solve */
+  ierr = SNESSolve_LithoPressure(poisson_pressure,data->poisson_Jacobian,poisson_pressure->X,poisson_pressure->F,ptatin);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode SurfaceConstraintCreateFromOptions_Gene3D(
-  pTatinCtx ptatin, 
+  SurfBCList surf_bclist, 
   PetscInt tag, 
   SurfaceConstraint sc, 
   PetscBool insert_if_not_found, 
   ModelGENE3DCtx *data)
 {
-  PhysCompStokes stokes;
   PetscInt       sc_type;
   PetscBool      found;
   char           opt_name[PETSC_MAX_PATH_LEN],sc_name[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
-
-  ierr = pTatinGetStokesContext(ptatin,&stokes);CHKERRQ(ierr);
 
   ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-sc_name_%d",tag);CHKERRQ(ierr);
   ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,sc_name,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
@@ -790,10 +816,17 @@ static PetscErrorCode SurfaceConstraintCreateFromOptions_Gene3D(
   ierr = PetscOptionsGetInt(NULL,MODEL_NAME,opt_name,&sc_type,&found);CHKERRQ(ierr);
   if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Providing a type to -sc_type_%d is mandatory!",tag); }
 
-  ierr = SurfBCListGetConstraint(stokes->surf_bclist,sc_name,&sc);CHKERRQ(ierr);
+  /* force insertion if not a type of constraint that requires changing A11 */
+  if (sc_type != SC_NITSCHE_GENERAL_SLIP || 
+      sc_type != SC_NITSCHE_DIRICHLET    ||
+      sc_type != SC_NITSCHE_NAVIER_SLIP ) { 
+    insert_if_not_found = PETSC_TRUE; 
+  }
+
+  ierr = SurfBCListGetConstraint(surf_bclist,sc_name,&sc);CHKERRQ(ierr);
   if (!sc) {
     if (insert_if_not_found) {
-      ierr = SurfBCListAddConstraint(stokes->surf_bclist,sc_name,&sc);CHKERRQ(ierr);
+      ierr = SurfBCListAddConstraint(surf_bclist,sc_name,&sc);CHKERRQ(ierr);
       ierr = SurfaceConstraintSetType(sc,sc_type);CHKERRQ(ierr);
     } else { 
       SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint %d: %s not found",tag,sc_name); 
@@ -838,14 +871,21 @@ static PetscErrorCode ModelMarkBoundaryFacets_Gene3D(SurfaceConstraint sc, Petsc
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ModelSetNeumann_VelocityBC(pTatinCtx ptatin, SurfaceConstraint sc)
+static PetscErrorCode ModelSetNeumann_VelocityBC(pTatinCtx ptatin, SurfaceConstraint sc, ModelGENE3DCtx *data)
 {
+  PetscBool      active_poisson;
   PetscErrorCode ierr;
   PetscFunctionBegin;
   /*
   For now only applying pressure is supported for this model
   TODO: add other options
   */
+
+  ierr = pTatinContextValid_LithoP(ptatin,&active_poisson);CHKERRQ(ierr);
+  if (!active_poisson) { ierr = ModelCreatePoissonPressure_Gene3D(ptatin,data);CHKERRQ(ierr); }
+
+  // TODO: check if we restrain the solve to once per time step or not
+  ierr = ModelSolvePoissonPressure(ptatin,data);CHKERRQ(ierr);
   ierr = ApplyPoissonPressureNeumannConstraint(ptatin,sc);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
@@ -1029,7 +1069,7 @@ static PetscErrorCode ModelSetBoundaryValues_VelocityBC(
       break;
 
     case SC_TRACTION:
-      ierr = ModelSetNeumann_VelocityBC(ptatin,sc);CHKERRQ(ierr);
+      ierr = ModelSetNeumann_VelocityBC(ptatin,sc,data);CHKERRQ(ierr);
       break;
 
     case SC_NITSCHE_DIRICHLET:
@@ -1073,7 +1113,7 @@ NOTES for time dependant BCs
       but keep the marking of the facet and the tag (if mesh was deformed we do not want to mark again the facets)
 */
 
-static PetscErrorCode ModelApplyBoundaryCondition_Velocity(pTatinCtx ptatin, DM dav, BCList bclist, PetscBool insert_if_not_found, ModelGENE3DCtx *data)
+static PetscErrorCode ModelApplyBoundaryCondition_Velocity(pTatinCtx ptatin, DM dav, BCList bclist, SurfBCList surf_bclist, PetscBool insert_if_not_found, ModelGENE3DCtx *data)
 {
   PetscInt       f;
   PetscErrorCode ierr;
@@ -1083,22 +1123,63 @@ static PetscErrorCode ModelApplyBoundaryCondition_Velocity(pTatinCtx ptatin, DM 
     PetscInt tag;
 
     tag = data->bc_tag_table[f];
-    ierr = SurfaceConstraintCreateFromOptions_Gene3D(ptatin,tag,data->bc_sc[f],insert_if_not_found,data);CHKERRQ(ierr);
+    ierr = SurfaceConstraintCreateFromOptions_Gene3D(surf_bclist,tag,data->bc_sc[f],insert_if_not_found,data);CHKERRQ(ierr);
     ierr = ModelMarkBoundaryFacets_Gene3D(data->bc_sc[f],tag,data);CHKERRQ(ierr);
-    ierr = ModelSetBoundaryValues_VelocityBC(ptatin,dav,bclist,data->bc_sc[f],tag,data);CHKERRQ(ierr);
+    ierr = ModelSetBoundaryValues_VelocityBC(ptatin,dav,u_bclist,data->bc_sc[f],tag,data);CHKERRQ(ierr);
   }
   
   PetscFunctionReturn(0);
 }
 
+#if 0
+static PetscErrorCode ModelApplyBoundaryCondition_Energy(FVDA fv, ModelGENE3DCtx *data)
+{
+  PetscReal        val_T;
+  PetscErrorCode   ierr;
+  PetscFunctionBegin;
+
+  
+
+  val_T = data->Tbottom;
+  ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_S,PETSC_FALSE,0.0,FVDABCMethod_SetDirichlet,(void*)&val_T);CHKERRQ(ierr);
+  
+  val_T = data->Ttop;
+  ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_N,PETSC_FALSE,0.0,FVDABCMethod_SetDirichlet,(void*)&val_T);CHKERRQ(ierr);
+
+  ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_E,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
+  ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_W,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
+  ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_F,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
+  ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_B,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+#endif
 PetscErrorCode ModelApplyBoundaryCondition_Gene3D(pTatinCtx ptatin, void *ctx)
 {
-  ModelGENE3DCtx *data = (ModelGENE3DCtx*)ctx;
-  PetscErrorCode ierr;
+  ModelGENE3DCtx   *data = (ModelGENE3DCtx*)ctx;
+  PhysCompStokes   stokes;
+  PDESolveLithoP   poisson_pressure;
+  PhysCompEnergyFV energy;
+  PetscBool        active_poisson,active_energy;
+  PetscErrorCode   ierr;
 
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD, "[[%s]]\n", PETSC_FUNCTION_NAME);
 
+  ierr = pTatinGetStokesContext(ptatin,&stokes);CHKERRQ(ierr);
+  ierr = ModelApplyBoundaryCondition_Velocity(pTatinCtx ptatin,stokes->dav,stokes->u_bclist,stokes->surf_bclist,PETSC_TRUE,data);CHKERRQ(ierr);
+
+  ierr = pTatinContextValid_EnergyFV(ptatin,&active_energy);CHKERRQ(ierr);
+  if (active_energy) {
+    ierr = pTatinGetContext_EnergyFV(ptatin,&energy);CHKERRQ(ierr);
+    //energy->fv
+  }
+
+  ierr = pTatinContextValid_LithoP(ptatin,&active_poisson);CHKERRQ(ierr);
+  if (active_poisson) {
+    ierr = pTatinGetContext_LithoP(ptatin,&poisson_pressure);CHKERRQ(ierr);
+    ierr = ModelApplyBoundaryCondition_PoissonPressure(poisson_pressure->bclist,poisson_pressure->da,data);CHKERRQ(ierr);
+  }
   PetscFunctionReturn (0);
 }
 
@@ -1429,7 +1510,6 @@ PetscErrorCode ModelAdaptMaterialPointResolution_Gene3D(pTatinCtx ptatin,void *c
   PetscErrorCode ierr;
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD, "[[%s]]\n", PETSC_FUNCTION_NAME);
-  PetscPrintf(PETSC_COMM_WORLD, "  NO MARKER INJECTION ON FACES \n", PETSC_FUNCTION_NAME);
 
   /* Particles injection on faces */
   ierr = ModelApplyMaterialBoundaryCondition_Gene3D(ptatin,data);CHKERRQ(ierr);
