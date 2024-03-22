@@ -573,6 +573,8 @@ bool point_in_triangle(const double elcoords[],const double xp[],double toleranc
 
   /* normalize the normal vector */
   normal_norm = norm(normal,nsd);
+  /* If the norm is 0 the triangle is degenerated ==> exit */
+  if (normal_norm < 1.0e-12) { return(false); }
   for (d=0; d<nsd; d++) {
     normal[d] = normal[d] / normal_norm;
   }
