@@ -1125,35 +1125,38 @@ static PetscErrorCode ModelApplyBoundaryCondition_Velocity(pTatinCtx ptatin, DM 
     tag = data->bc_tag_table[f];
     ierr = SurfaceConstraintCreateFromOptions_Gene3D(surf_bclist,tag,data->bc_sc[f],insert_if_not_found,data);CHKERRQ(ierr);
     ierr = ModelMarkBoundaryFacets_Gene3D(data->bc_sc[f],tag,data);CHKERRQ(ierr);
-    ierr = ModelSetBoundaryValues_VelocityBC(ptatin,dav,u_bclist,data->bc_sc[f],tag,data);CHKERRQ(ierr);
+    ierr = ModelSetBoundaryValues_VelocityBC(ptatin,dav,bclist,data->bc_sc[f],tag,data);CHKERRQ(ierr);
   }
   
   PetscFunctionReturn(0);
 }
 
-#if 0
-static PetscErrorCode ModelApplyBoundaryCondition_Energy(FVDA fv, ModelGENE3DCtx *data)
+static PetscErrorCode ModelApplyBoundaryCondition_EnergyFV(FVDA fv, ModelGENE3DCtx *data)
 {
-  PetscReal        val_T;
-  PetscErrorCode   ierr;
+  DACellFace     face[] = { DACELL_FACE_W, DACELL_FACE_E, DACELL_FACE_S, DACELL_FACE_N, DACELL_FACE_F, DACELL_FACE_B };
+  PetscInt       f;
+  PetscReal      bc_T[] = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+  PetscBool      found[6];
+  PetscErrorCode ierr;  
   PetscFunctionBegin;
 
-  
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-energy_bc_xmin",&bc_T[0],&found[0]);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-energy_bc_xmax",&bc_T[1],&found[1]);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-energy_bc_ymin",&bc_T[2],&found[2]);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-energy_bc_ymax",&bc_T[3],&found[3]);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-energy_bc_zmin",&bc_T[4],&found[4]);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-energy_bc_zmax",&bc_T[5],&found[5]);
 
-  val_T = data->Tbottom;
-  ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_S,PETSC_FALSE,0.0,FVDABCMethod_SetDirichlet,(void*)&val_T);CHKERRQ(ierr);
-  
-  val_T = data->Ttop;
-  ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_N,PETSC_FALSE,0.0,FVDABCMethod_SetDirichlet,(void*)&val_T);CHKERRQ(ierr);
-
-  ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_E,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
-  ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_W,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
-  ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_F,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
-  ierr = FVDAFaceIterator(energy->fv,DACELL_FACE_B,PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
-
+  for (f=0; f<6; f++) {
+    if (found[f]) {
+      ierr = FVDAFaceIterator(fv,face[f],PETSC_FALSE,0.0,FVDABCMethod_SetDirichlet,(void*)&bc_T[f]);CHKERRQ(ierr);
+    } else {
+      ierr = FVDAFaceIterator(fv,face[f],PETSC_FALSE,0.0,FVDABCMethod_SetNatural,NULL);CHKERRQ(ierr);
+    }
+  }
   PetscFunctionReturn(0);
 }
-#endif
+
 PetscErrorCode ModelApplyBoundaryCondition_Gene3D(pTatinCtx ptatin, void *ctx)
 {
   ModelGENE3DCtx   *data = (ModelGENE3DCtx*)ctx;
@@ -1167,12 +1170,12 @@ PetscErrorCode ModelApplyBoundaryCondition_Gene3D(pTatinCtx ptatin, void *ctx)
   PetscPrintf(PETSC_COMM_WORLD, "[[%s]]\n", PETSC_FUNCTION_NAME);
 
   ierr = pTatinGetStokesContext(ptatin,&stokes);CHKERRQ(ierr);
-  ierr = ModelApplyBoundaryCondition_Velocity(pTatinCtx ptatin,stokes->dav,stokes->u_bclist,stokes->surf_bclist,PETSC_TRUE,data);CHKERRQ(ierr);
+  ierr = ModelApplyBoundaryCondition_Velocity(ptatin,stokes->dav,stokes->u_bclist,stokes->surf_bclist,PETSC_TRUE,data);CHKERRQ(ierr);
 
   ierr = pTatinContextValid_EnergyFV(ptatin,&active_energy);CHKERRQ(ierr);
   if (active_energy) {
     ierr = pTatinGetContext_EnergyFV(ptatin,&energy);CHKERRQ(ierr);
-    //energy->fv
+    ierr = ModelApplyBoundaryCondition_EnergyFV(energy->fv,data);CHKERRQ(ierr);
   }
 
   ierr = pTatinContextValid_LithoP(ptatin,&active_poisson);CHKERRQ(ierr);
