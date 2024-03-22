@@ -531,15 +531,14 @@ double norm(double u[],int nsd)
   return norm_u;
 }
 
-bool point_in_triangle(const double elcoords[],const double xp[],double xi[],double tolerance)
+bool point_in_triangle(const double elcoords[],const double xp[],double tolerance)
 {
   const int nsd=3;
   int       d;
   bool      diff_failed = false;
   double    AB[3],AC[3],AP[3],normal[3];
-  double    e0[3],e1[3],n[3],v1[3],v2[3],point_n[3];
-  double    A[3][3],b[3],param[3],intersection_point[3],basis[3];
-  double    AB_norm,normal_norm,det_A;
+  double    A[3][3],param[3],intersection_point[3];
+  double    normal_norm;
   /* 
   In 3-space, given a triangle A,B,C 
   and a point P living on a line with direction = normal vector to the triangle
@@ -572,6 +571,12 @@ bool point_in_triangle(const double elcoords[],const double xp[],double xi[],dou
   /* compute the normal of the triangle: normal = AB x AC */
   cross(AB,AC,normal);
 
+  /* normalize the normal vector */
+  normal_norm = norm(normal,nsd);
+  for (d=0; d<nsd; d++) {
+    normal[d] = normal[d] / normal_norm;
+  }
+
   /* construct the matrix for inversion */
   A[0][0] = AB[0]; A[0][1] = AC[0]; A[0][2] = -normal[0];
   A[1][0] = AB[1]; A[1][1] = AC[1]; A[1][2] = -normal[1];
@@ -596,71 +601,15 @@ bool point_in_triangle(const double elcoords[],const double xp[],double xi[],dou
   /* If failed it's not in the element */
   if (diff_failed) { return(false); }
 
-  /* 
-  If the point is in the element we perform an isoparametric inversion for xi 
-  First we need to transform from 3-space to 2-space
-  */
-
-  /* normalize AB and normal vectors to form a new basis */
-  AB_norm     = norm(AB,nsd);
-  normal_norm = norm(normal,nsd);
-
-  for (d=0; d<nsd; d++) {
-    e0[d] = AB[d] / AB_norm;
-    n[d]  = normal[d] / normal_norm;
-  }
-  /* e0 and n form the basis of a plane orthogonal to the triangle,
-     we cross them to get the 2nd vector tangent to the plane formed by the triangle
-     and obtain a 3-space orthonormal basis e0, e1, n
-     e1 = e0 x n
-  */
-  cross(e0,n,e1);
-
-  /* 
-  now that we have the orthonormal basis we express the points in that basis.
-  To do so we need to solve for each point:
-    [ e0 e1 n ][ p_new ] = [ p_original ]
-  */
-  A[0][0] = e0[0]; A[0][1] = e1[0]; A[0][2] = n[0];
-  A[1][0] = e0[1]; A[1][1] = e1[1]; A[1][2] = n[1];
-  A[2][0] = e0[2]; A[2][1] = e1[2]; A[2][2] = n[2];
-
-  /* Solve [ e0  e1  n ][ v1 ] = [ AB ] */
-  solve3x3(A,AB,v1);
-  /* Solve [ e0  e1  n ][ v2 ] = [ AC ] */
-  solve3x3(A,AC,v2);
-  /* Solve [ e0  e1  n ][ point_n ] = [ point ] */
-  solve3x3(A,AP,point_n);
-
-  /* 
-  Because n is normal to the plane defined by the triangle, the points expressed
-  in the [ e0 e1 n ] basis all have their 3rd component to 0 (because they are all contained in the plane).
-  These new points are now 2d (ignore the 3rd component) so we can perform the isoparametric inversion i.e., solve:
-    0.5*[ v1-v0 v2-v0 ][ xi ] = [ p - 0.5*(v1 + v2) ]
-  but v0 is our new origin so we can drop it
-  */
-  det_A = 0.5*(v1[0]*v2[1] - v2[0]*v1[1]);
-  for (d=0; d<2; d++) {
-    b[d] = point_n[d] - 0.5*(v1[d] + v2[d]); 
-  }
-  xi[0] = 1.0/det_A * ( v2[1]*b[0] - v2[0]*b[1]);
-  xi[1] = 1.0/det_A * (-v1[1]*b[0] + v1[0]*b[1]);      
-
-  /* check xi, eta are valid */
-  basis[0] = 1.0 - 0.5*(1.0+xi[0]) - 0.5*(1.0+xi[1]);
-  basis[1] = 0.5*(1+xi[0]);
-  basis[2] = 0.5*(1+xi[1]);
-
-  if ((basis[0] < (0.0-PLOCATION_EPS)) || (basis[0] > (1.0+PLOCATION_EPS))) { return(false); }
-  if ((basis[1] < (0.0-PLOCATION_EPS)) || (basis[1] > (1.0+PLOCATION_EPS))) { return(false); }
-  if ((basis[2] < (0.0-PLOCATION_EPS)) || (basis[2] > (1.0+PLOCATION_EPS))) { return(false); }
-
   return(true);
 }
 
 void PointLocation_BruteForce_Triangles(
   Mesh dm,
-  long int npoints,const double xp[],long int econtaining[],double xip[],long int *found)
+  long int npoints,
+  const double xp[],
+  long int econtaining[],
+  long int *found)
 {
   const int nsd = 3;
   int       e,nelements_g=0,*element_g=NULL,npe_g=0;
@@ -680,19 +629,13 @@ void PointLocation_BruteForce_Triangles(
   coords_g    = dm->vert;
 
   for (p=0; p<npoints; p++) {
-    double point_coor[3],xi[2];
+    double point_coor[3];
     
     /* initialise points */
     point_located = false;
-    xip[2*p + 0] = NAN;
-    xip[2*p + 1] = NAN;
     econtaining[p] = -1;
     for (d=0; d<nsd; d++) {
       point_coor[d] = xp[nsd*p + d];
-    }
-
-    for (d=0; d<2; d++) {
-      xi[d] = xip[2*p + d];
     }
 
     for (e=0; e<nelements_g; e++) {
@@ -709,18 +652,12 @@ void PointLocation_BruteForce_Triangles(
         elcoords_g[nsd*i+2] = coords_g[nsd*nidx+2];
       }
 
-      point_located = point_in_triangle((const double*)elcoords_g,point_coor,xi,tolerance);
-      
+      point_located = point_in_triangle((const double*)elcoords_g,point_coor,tolerance);
       if (point_located) {
         /* copy element index */
         econtaining[p] = e;
         points_located++;
         break;
-      }
-    }
-    if (point_located) {
-      for (d=0; d<2; d++) {
-        xip[2*p + d] = xi[d];
       }
     }
   }
@@ -735,7 +672,9 @@ void PointLocation_BruteForce_Triangles(
 
 void PointLocation_PartitionedBoundingBox_Triangles(
   Mesh dm,
-  long int npoints,const double xp[],long int econtaining[],double xip[],
+  long int npoints,
+  const double xp[],
+  long int econtaining[],
   long int *_npoints_located)
 {
   const int nsd = 3;
@@ -745,7 +684,6 @@ void PointLocation_PartitionedBoundingBox_Triangles(
   double *coords_g=NULL,elcoords_g[nsd*3];
   long int p,i;
   bool point_located;
-  double xi[2];
   CellPartition part=NULL;
   long int npoints_located = 0;
 
@@ -757,8 +695,6 @@ void PointLocation_PartitionedBoundingBox_Triangles(
 
   /* initialise points */
   for (p=0; p<npoints; p++) {
-    xip[2*p + 0] = NAN;
-    xip[2*p + 1] = NAN;
     econtaining[p] = -1;
   }
   for (p=0; p<npoints; p++) {
@@ -778,15 +714,11 @@ void PointLocation_PartitionedBoundingBox_Triangles(
           elcoords_g[nsd*i+d] = coords_g[nsd*nidx+d];
         }
       }
-      point_located = point_in_triangle((const double*)elcoords_g,_point,xi,tolerance);
+      point_located = point_in_triangle((const double*)elcoords_g,_point,tolerance);
     }
     if (point_located) {
       /* copy element index */
       econtaining[p] = e;
-
-      /* copy xi */
-      xip[2*p+0] = xi[0];
-      xip[2*p+1] = xi[1];
       npoints_located++;
       continue;
     }
@@ -815,7 +747,7 @@ void PointLocation_PartitionedBoundingBox_Triangles(
             elcoords_g[nsd*i+d] = coords_g[nsd*nidx+d];
           }
         }
-        point_located = point_in_triangle((const double*)elcoords_g,_point,xi,tolerance);
+        point_located = point_in_triangle((const double*)elcoords_g,_point,tolerance);
         if (point_located) {
           break; // break from cell-partition sweep
         }
@@ -827,11 +759,6 @@ void PointLocation_PartitionedBoundingBox_Triangles(
     if (point_located) {
       /* copy element index */
       econtaining[p] = e;
-
-      /* copy xi */
-      xip[nsd*p+0] = xi[0];
-      xip[nsd*p+1] = xi[1];
-
       npoints_located++;
     }
   }

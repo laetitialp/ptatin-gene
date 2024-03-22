@@ -246,7 +246,7 @@ static PetscErrorCode MarkBoundaryFacetFromMesh(
     }
 #endif
     //PointLocation_BruteForce_Triangles(mesh,np,(const double*)cell_facet->centroid,ep,xip,&found);
-    PointLocation_PartitionedBoundingBox_Triangles(mesh,np,(const double*)cell_facet->centroid,ep,xip,&found);
+    PointLocation_PartitionedBoundingBox_Triangles(mesh,np,(const double*)cell_facet->centroid,ep,&found);
     /*
     if (found == 0) {
       PetscPrintf(PETSC_COMM_WORLD,"Point[%d]: ( %1.4e, %1.4e, %1.4e ) not found!\n",f,cell_facet->centroid[0],cell_facet->centroid[1],cell_facet->centroid[2]);

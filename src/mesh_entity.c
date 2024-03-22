@@ -881,7 +881,6 @@ PetscErrorCode MeshFacetMarkFromMesh(MeshEntity e, MeshFacetInfo fi, Mesh mesh, 
     int      d;
     long int np = 1,found;
     long int ep[] = {-1};
-    double   xip[] = {0.0,0.0};
     double   cell_centroid[3];
     
     /* pack data */
@@ -894,13 +893,13 @@ PetscErrorCode MeshFacetMarkFromMesh(MeshEntity e, MeshFacetInfo fi, Mesh mesh, 
 
     switch (method) {
       case 0:
-        PointLocation_BruteForce_Triangles(mesh,np,(const double*)cell_centroid,ep,xip,&found);
+        PointLocation_BruteForce_Triangles(mesh,np,(const double*)cell_centroid,ep,&found);
         break;
       case 1:
-        PointLocation_PartitionedBoundingBox_Triangles(mesh,np,(const double*)cell_centroid,ep,xip,&found);
+        PointLocation_PartitionedBoundingBox_Triangles(mesh,np,(const double*)cell_centroid,ep,&found);
         break;
       default:
-        PointLocation_PartitionedBoundingBox_Triangles(mesh,np,(const double*)cell_centroid,ep,xip,&found);
+        PointLocation_PartitionedBoundingBox_Triangles(mesh,np,(const double*)cell_centroid,ep,&found);
         break;
     }
     if (found == 0) continue;
