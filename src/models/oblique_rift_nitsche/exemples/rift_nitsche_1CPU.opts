@@ -52,6 +52,7 @@
 #-model_rift_nitsche_bc_neumann_z
 #-model_rift_nitsche_bc_mark_face
 -model_rift_nitsche_bc_diri_neumann
+-model_rift_nitsche_bc_expression 2.0*z
 -model_rift_nitsche_norm_u 1.0 # cm/yr
 -model_rift_nitsche_alpha_u 45.0 # Degree
 -model_rift_nitsche_alpha_r 0.0 #-15.0 # Degree

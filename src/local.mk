@@ -94,6 +94,7 @@ libptatin3d-y.c += $(call thisdir, \
   litho_pressure_PDESolve.c \
   parse.c \
   point_in_tetra.c \
+  tinyexpr.c \
 )
 
 libptatin3d-$(CONFIG_CUDA).cu += $(call thisdir, \

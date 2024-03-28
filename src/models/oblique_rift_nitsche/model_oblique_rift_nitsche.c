@@ -46,6 +46,8 @@
 
 #include "pswarm.h"
 
+#include "tinyexpr.h"
+
 #include "oblique_rift_nitsche_ctx.h"
 
 static const char MODEL_NAME_R[] = "model_rift_nitsche_";
@@ -2445,11 +2447,42 @@ static PetscErrorCode ModelApplyRotatedStrikeSlipNavierNeumann_RiftNitsche(
   PetscFunctionReturn(0);
 }
 
+typedef struct 
+{
+  te_variable *vars;
+  te_expr     *expression;
+  PetscScalar *x,*y,*z;
+} BCTinyExprCtx;
+
+static PetscBool BCListEvaluator_TinyExpr(PetscScalar position[], PetscScalar *value, void *ctx)
+{
+  BCTinyExprCtx *data  = (BCTinyExprCtx*)ctx;
+  PetscBool     impose = PETSC_TRUE;
+  PetscFunctionBegin;
+
+  *data->x = position[0];
+  *data->y = position[1];
+  *data->z = position[2];
+
+  *value = te_eval(data->expression);
+
+  PetscFunctionReturn(impose);
+}
+
 static PetscErrorCode ModelApplyDirichlet_Neumann(pTatinCtx ptatin, DM dav, BCList bclist,SurfBCList surflist,PetscBool insert_if_not_found,ModelRiftNitscheCtx *data)
 {
   SurfaceConstraint Nxi_litho,Pxi_litho,Neta,Nzeta_litho,Pzeta_litho;
   SurfaceConstraint Nxi_asth,Pxi_asth,Nzeta_asth,Pzeta_asth;
   PetscReal         ux;
+
+  BCTinyExprCtx     bc_data;
+  PetscScalar       x,y,z;
+  te_variable       vars[] = { {"x", &x}, 
+                               {"y", &y}, 
+                               {"z", &z} };
+  te_expr           *expression;
+  char              bc_expr[PETSC_MAX_PATH_LEN];
+  int               err;
   PetscErrorCode    ierr;
   PetscFunctionBegin;
 
@@ -2460,7 +2493,24 @@ static PetscErrorCode ModelApplyDirichlet_Neumann(pTatinCtx ptatin, DM dav, BCLi
   /* XMIN LITHOSPHERE */
   ierr = SurfBCListGetConstraint(surflist,"Nxi_litho",&Nxi_litho);CHKERRQ(ierr);
   ux   = -data->u_bc[0];
-  ierr = DMDABCListTraverseFacets3d(bclist,dav,Nxi_litho,0,BCListEvaluator_constant,(void*)&ux);CHKERRQ(ierr);
+
+  ierr = PetscOptionsGetString(NULL,MODEL_NAME_R,"-bc_expression",bc_expr,PETSC_MAX_PATH_LEN-1,NULL);CHKERRQ(ierr);
+  PetscPrintf(PETSC_COMM_WORLD,"Evaluating Expression:\n\t%s\n",bc_expr);
+
+  expression = te_compile(bc_expr, vars, 3, &err);
+  if (expression) {
+    bc_data.expression = expression;
+    bc_data.x          = &x;
+    bc_data.y          = &y;
+    bc_data.z          = &z;
+    bc_data.vars       = vars;
+  } else {
+    PetscPrintf(PETSC_COMM_WORLD,"\t%*s^\nError near here", err-1, "");
+  }
+  ierr = DMDABCListTraverseFacets3d(bclist,dav,Nxi_litho,0,BCListEvaluator_TinyExpr,(void*)&bc_data);CHKERRQ(ierr);
+  //ierr = DMDABCListTraverseFacets3d(bclist,dav,Nxi_litho,0,BCListEvaluator_constant,(void*)&ux);CHKERRQ(ierr);
+  te_free(expression);
+
   /* XMAX LITHOSPHERE */
   ierr = SurfBCListGetConstraint(surflist,"Pxi_litho",&Pxi_litho);CHKERRQ(ierr);
   ux   = data->u_bc[0];
