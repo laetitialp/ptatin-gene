@@ -2509,7 +2509,7 @@ static PetscErrorCode ModelApplyDirichlet_Neumann(pTatinCtx ptatin, DM dav, BCLi
   }
   ierr = DMDABCListTraverseFacets3d(bclist,dav,Nxi_litho,0,BCListEvaluator_TinyExpr,(void*)&bc_data);CHKERRQ(ierr);
   //ierr = DMDABCListTraverseFacets3d(bclist,dav,Nxi_litho,0,BCListEvaluator_constant,(void*)&ux);CHKERRQ(ierr);
-  
+  te_free(expression);
 
   /* XMAX LITHOSPHERE */
   ierr = SurfBCListGetConstraint(surflist,"Pxi_litho",&Pxi_litho);CHKERRQ(ierr);
