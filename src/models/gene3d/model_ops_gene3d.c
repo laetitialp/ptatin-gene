@@ -299,7 +299,7 @@ static PetscErrorCode SurfaceConstraintSetFromOptions_Gene3D(pTatinCtx ptatin, M
 
   /* Create boundaries data */
   ierr = PetscOptionsGetInt(NULL,MODEL_NAME,"-bc_nsubfaces",&data->bc_nfaces,&found);CHKERRQ(ierr);
-  if (!found) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -bc_nsubfaces not found!\n"); }
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%sbc_nsubfaces not found!\n",MODEL_NAME); }
   ierr = PetscCalloc1(data->bc_nfaces,&data->bc_tag_table);CHKERRQ(ierr);
   ierr = PetscCalloc1(data->bc_nfaces,&data->bc_sc);
 
@@ -1817,6 +1817,7 @@ PetscErrorCode pTatinModelRegister_Gene3D(void)
 
   /* Set function pointers */
   ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_INIT,                  (void (*)(void)) ModelInitialize_Gene3D); CHKERRQ(ierr);
+/*  
   ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_APPLY_INIT_MESH_GEOM,  (void (*)(void)) ModelApplyInitialMeshGeometry_Gene3D);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_APPLY_INIT_MAT_GEOM,   (void (*)(void)) ModelApplyInitialMaterialGeometry_Gene3D);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_APPLY_INIT_STOKES_VARIABLE_MARKERS,(void (*)(void)) ModelSetInitialStokesVariableOnMarker_Gene3D);CHKERRQ(ierr);
@@ -1827,7 +1828,7 @@ PetscErrorCode pTatinModelRegister_Gene3D(void)
   ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_APPLY_UPDATE_MESH_GEOM,(void (*)(void)) ModelApplyUpdateMeshGeometry_Gene3D);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_OUTPUT,                (void (*)(void)) ModelOutput_Gene3D);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_DESTROY,               (void (*)(void)) ModelDestroy_Gene3D); CHKERRQ(ierr);
-
+*/
   /* Insert model into list */
   ierr = pTatinModelRegister(m); CHKERRQ(ierr);
 
