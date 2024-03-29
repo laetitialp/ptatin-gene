@@ -84,6 +84,12 @@ typedef struct {
   PetscReal t1_hat[3];
 } GenNavierSlipCtx;
 
+typedef struct {
+  te_expr     *expression;
+  PetscScalar *x,*y,*z,*t;
+  PetscReal   length_scale;
+} ExpressionCtx;
+
 PetscErrorCode ModelSetMarkerIndexLayeredCake_GENE3D(pTatinCtx c,void *ctx);
 PetscErrorCode ModelSetMarkerIndexFromMap_GENE3D(pTatinCtx c,void *ctx);
 PetscErrorCode ModelSetInitialStokesVariableOnMarker_GENE3D(pTatinCtx c,void *ctx);

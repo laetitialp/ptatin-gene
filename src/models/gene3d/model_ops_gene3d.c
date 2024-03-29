@@ -40,10 +40,12 @@
 #include "dmda_remesh.h"
 #include "dmda_iterator.h"
 #include "dmda_element_q2p1.h"
+#include "dmda_element_q1.h"
 #include "mesh_update.h"
 #include "data_bucket.h"
 #include "MPntStd_def.h"
 #include "MPntPStokes_def.h"
+#include "MPntPStokesPl_def.h"
 #include "MPntPEnergy_def.h"
 #include "litho_pressure_PDESolve.h"
 #include "material_point_std_utils.h"
@@ -53,12 +55,14 @@
 #include "output_material_points_p0.h"
 #include "output_paraview.h"
 #include "surface_constraint.h"
+#include "ptatin_utils.h"
 
 #include "ptatin3d_energy.h"
 #include <ptatin3d_energyfv.h>
 #include <ptatin3d_energyfv_impl.h>
 #include <material_constants_energy.h>
 
+#include "tinyexpr.h"
 #include "model_gene3d_ctx.h"
 
 const char MODEL_NAME[] = "model_GENE3D_";
@@ -441,7 +445,7 @@ static PetscErrorCode ModelApplyMeshRefinement(DM dav)
   if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"-%sn_refinement_dir not found!",MODEL_NAME); }
   if (ndir <= 0 || ndir > 3) { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"n_refinement_dir cannot be 0 or more than 3. -%sn_refinement_dir = %d.",MODEL_NAME,ndir); }
 
-  PetscPrintf(PETSC_COMM_WORLD,"Mesh is refined in %d directions.\n");
+  PetscPrintf(PETSC_COMM_WORLD,"Mesh is refined in %d directions.\n",ndir);
 
   ierr = PetscCalloc1(ndir,&dir);CHKERRQ(ierr);
   nn = ndir;
@@ -614,6 +618,97 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_Gene3D(pTatinCtx ptatin,Vec X,void *
 ======================================================
 */
 
+static PetscErrorCode ModelApplyInitialPlasticStrain_FromExpr(pTatinCtx ptatin, ModelGENE3DCtx *data)
+{
+  DataBucket     material_points;
+  DataField      PField_std,PField_pls;
+  te_variable    *vars; 
+  te_expr        **expression;
+  PetscInt       n,n_wz,n_var;
+  PetscScalar    coor[3];
+  PetscBool      found;
+  int            p,n_mp_points,err;
+  char           opt_name[PETSC_MAX_PATH_LEN],wz_expr[PETSC_MAX_PATH_LEN];
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+
+  /* Get the number of weak zones to set */
+  n_wz = 0;
+  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,"-n_weak_zones",&n_wz,&found);CHKERRQ(ierr);
+  if (!found || !n_wz) {
+    PetscFunctionReturn(0);
+  }
+  /* Allocate an array of expression (1 for each weak zone) */
+  ierr = PetscMalloc1(n_wz,&expression);CHKERRQ(ierr);
+  /* Register variables for expression */
+  n_var = 3; // 3 variables: x,y,z
+  ierr = PetscCalloc1(n_var,&vars);CHKERRQ(ierr);
+  vars[0].name = "x"; vars[0].address = &coor[0];
+  vars[1].name = "y"; vars[1].address = &coor[1];
+  vars[2].name = "z"; vars[2].address = &coor[2];
+
+  for (n=0; n<n_wz; n++) {
+    /* Evaluate expression of each weak zone */
+    ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-wz_expression_%d",n);CHKERRQ(ierr);
+    ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,wz_expr,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+    if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
+    PetscPrintf(PETSC_COMM_WORLD,"Weak zone %d, evaluating expression:\n\t%s\n",n,wz_expr);
+
+    expression[n] = te_compile(wz_expr, vars, 3, &err);
+    if (!expression[n]) {
+      PetscPrintf(PETSC_COMM_WORLD,"\t%*s^\nError near here", err-1, "");
+      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Weak zone %d, expression %s did not compile.",n,wz_expr);
+    }
+  }
+
+  ierr = pTatinGetMaterialPoints(ptatin,&material_points,NULL);CHKERRQ(ierr);
+  /* std variables */
+  DataBucketGetDataFieldByName(material_points,MPntStd_classname,&PField_std);
+  DataFieldGetAccess(PField_std);
+  DataFieldVerifyAccess(PField_std,sizeof(MPntStd));
+  /* Plastic strain variables */
+  DataBucketGetDataFieldByName(material_points,MPntPStokesPl_classname,&PField_pls);
+  DataFieldGetAccess(PField_pls);
+  DataFieldVerifyAccess(PField_pls,sizeof(MPntPStokesPl));
+  
+  DataBucketGetSizes(material_points,&n_mp_points,0,0);
+  for (p=0; p<n_mp_points; p++) {
+    MPntStd       *material_point;
+    MPntPStokesPl *mpprop_pls;
+    double        *position;
+    float         pls;
+
+    DataFieldAccessPoint(PField_std,p,(void**)&material_point);
+    DataFieldAccessPoint(PField_pls,p,(void**)&mpprop_pls);
+
+    /* Access coordinates of the marker */
+    MPntStdGetField_global_coord(material_point,&position);
+
+    /* Scale for user expression (expression is expected to use SI) */
+    coor[0] = position[0] * data->length_bar;
+    coor[1] = position[1] * data->length_bar;
+    coor[2] = position[2] * data->length_bar;
+
+    /* Background plastic strain */
+    pls = ptatin_RandomNumberGetDouble(0.0,0.03);
+    /* Evaluate expression of each weak zone */
+    for (n=0; n<n_wz; n++) {
+      pls += te_eval(expression[n]) * ptatin_RandomNumberGetDouble(0.0,1.0);
+    }
+    MPntPStokesPlSetField_yield_indicator(mpprop_pls,0);
+    MPntPStokesPlSetField_plastic_strain(mpprop_pls,pls);
+  }
+  DataFieldRestoreAccess(PField_std);
+  DataFieldRestoreAccess(PField_pls);
+
+  /* Free expressions and variables */
+  for (n=0; n<n_wz; n++) { te_free(expression[n]); }
+  ierr = PetscFree(expression);CHKERRQ(ierr);
+  ierr = PetscFree(vars);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode ModelApplyInitialMaterialGeometry_Gene3D(pTatinCtx ptatin, void *ctx)
 {
   ModelGENE3DCtx *data = (ModelGENE3DCtx*)ctx;
@@ -630,6 +725,8 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_Gene3D(pTatinCtx ptatin, void *
   method = 1;
   ierr = PetscOptionsGetInt(NULL,MODEL_NAME,"-mesh_point_location_method",&method,NULL);CHKERRQ(ierr);
   ierr = pTatin_MPntStdSetRegionIndexFromMesh(ptatin,data->mesh_file,data->region_file,method,data->length_bar);CHKERRQ(ierr);
+  /* Initial plastic strain */
+  ierr = ModelApplyInitialPlasticStrain_FromExpr(ptatin,data);CHKERRQ(ierr);
   PetscFunctionReturn (0);
 }
 
@@ -673,6 +770,92 @@ PetscErrorCode ModelSetInitialStokesVariableOnMarker_Gene3D(pTatinCtx ptatin,Vec
 =                  Initial Solution                  =
 ======================================================
 */
+PetscBool EvaluateFromExpression(PetscScalar position[], PetscScalar *value, void *ctx)
+{
+  ExpressionCtx *data = (ExpressionCtx*)ctx;
+  PetscBool     impose = PETSC_TRUE;
+  PetscFunctionBegin;
+
+  /* Update expression variables values */
+  *data->x = position[0] * data->length_scale;
+  *data->y = position[1] * data->length_scale;
+  *data->z = position[2] * data->length_scale;
+  /* Evaluate expression */
+  *value = te_eval(data->expression);
+
+  PetscFunctionReturn(impose);
+}
+
+static PetscErrorCode ModelSetInitialVelocityFromExpr(DM dav, Vec velocity, ModelGENE3DCtx *data)
+{
+  ExpressionCtx  ctx;
+  te_variable    *vars;
+  te_expr        *expression;
+  PetscScalar    x,y,z,time;
+  PetscInt       n,n_vars,ndir,nn;
+  PetscInt       *dir;
+  PetscBool      found;
+  int            err;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  /* Get the number of directions for which a function is passed */
+  ndir = 0;
+  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,"-v_init_n_dir",&ndir,&found);CHKERRQ(ierr);
+  if (!found || !ndir) {
+    PetscFunctionReturn(0);
+  }
+  /* Get the directions for which an expression is passed */
+  ierr = PetscCalloc1(ndir,&dir);CHKERRQ(ierr);
+  nn = ndir;
+  ierr = PetscOptionsGetIntArray(NULL,MODEL_NAME,"-v_init_dir",dir,&nn,&found);CHKERRQ(ierr);
+  if (found) {
+    if (nn != ndir) {
+      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"v_init_n_dir (%d) and the number of entries in v_init_dir (%d) mismatch!\n",ndir,nn);
+    }
+  } else {
+    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"-%sv_init_dir not found!",MODEL_NAME);
+  }
+
+  /* Allocate and zero the expression variables data structure */
+  n_vars = 4; // 4 variables x,y,z,t
+  ierr = PetscCalloc1(n_vars,&vars);CHKERRQ(ierr);
+  /* Attach variables */
+  vars[0].name = "x"; vars[0].address = &x;
+  vars[1].name = "y"; vars[1].address = &y;
+  vars[2].name = "z"; vars[2].address = &z;
+  vars[3].name = "t"; vars[3].address = &time;
+
+  time = 0.0;
+  for (n=0; n<ndir; n++) {
+    char     opt_name[PETSC_MAX_PATH_LEN],v_expr[PETSC_MAX_PATH_LEN];
+    PetscInt dim = dir[n];
+
+    ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-v_init_expression_%d",dim);CHKERRQ(ierr);
+    ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,v_expr,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+    if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
+    PetscPrintf(PETSC_COMM_WORLD,"Velocity component %d, evaluating expression:\n\t%s\n",dim,v_expr);
+
+    expression = te_compile(v_expr, vars, n_vars, &err);
+    if (!expression) {
+      PetscPrintf(PETSC_COMM_WORLD,"\t%*s^\nError near here", err-1, "");
+      SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Expression %s did not compile.",v_expr);
+    }
+    /* Attach variables to struct for the evaluating function */
+    ctx.x = &x; ctx.y = &y; ctx.z = &z; ctx.t = &time;
+    /* Attach expression */
+    ctx.expression   = expression;
+    ctx.length_scale = data->length_bar;
+    /* Set velocity */
+    ierr = DMDAVecTraverse3d(dav,velocity,dim,EvaluateFromExpression,(void*)&ctx);CHKERRQ(ierr);
+    te_free(expression);
+  }
+
+  ierr = PetscFree(vars);CHKERRQ(ierr);
+  ierr = PetscFree(dir);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode ModelApplyInitialHydrostaticPressureField_Gene3D(pTatinCtx ptatin, DM dau, DM dap, Vec pressure, ModelGENE3DCtx *data)
 {
   PetscReal                                    MeshMin[3],MeshMax[3],domain_height;
@@ -739,6 +922,7 @@ PetscErrorCode ModelApplyInitialSolution_Gene3D(pTatinCtx ptatin, Vec X, void *c
   ierr = ModelApplyInitialHydrostaticPressureField_Gene3D(ptatin,dau,dap,pressure,data);CHKERRQ(ierr);
   /* Initialize to zero the velocity vector */
   ierr = VecZeroEntries(velocity);CHKERRQ(ierr);
+  ierr = ModelSetInitialVelocityFromExpr(dau,velocity,data);CHKERRQ(ierr);
 
   if (data->passive_markers) {
     /* Attach solution vector (u, p) to passive markers */
@@ -1558,7 +1742,7 @@ static PetscErrorCode ModelViewSurfaceConstraint_Gene3D(pTatinCtx ptatin, ModelG
   ierr = pTatinGetStokesContext(ptatin,&stokes);CHKERRQ(ierr);
   ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s/",ptatin->outputpath);CHKERRQ(ierr);
   for (f=0; f<data->bc_nfaces; f++) {
-    ierr = SurfaceConstraintViewParaview(data->bc_sc[f],root,data->bc_sc[f]->name);CHKERRQ(ierr);
+    if (data->bc_sc[f]) { ierr = SurfaceConstraintViewParaview(data->bc_sc[f],root,data->bc_sc[f]->name);CHKERRQ(ierr); }
   }
 
   PetscFunctionReturn(0);
@@ -1816,17 +2000,18 @@ PetscErrorCode pTatinModelRegister_Gene3D(void)
   ierr = pTatinModelSetUserData(m,data);CHKERRQ(ierr);
 
   /* Set function pointers */
-  ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_INIT,                  (void (*)(void)) ModelInitialize_Gene3D); CHKERRQ(ierr);
-/*  
+  ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_INIT,                  (void (*)(void)) ModelInitialize_Gene3D); CHKERRQ(ierr); 
   ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_APPLY_INIT_MESH_GEOM,  (void (*)(void)) ModelApplyInitialMeshGeometry_Gene3D);CHKERRQ(ierr);
+  ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_OUTPUT,                (void (*)(void)) ModelOutput_Gene3D);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_APPLY_INIT_MAT_GEOM,   (void (*)(void)) ModelApplyInitialMaterialGeometry_Gene3D);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_APPLY_INIT_STOKES_VARIABLE_MARKERS,(void (*)(void)) ModelSetInitialStokesVariableOnMarker_Gene3D);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_APPLY_INIT_SOLUTION,   (void (*)(void)) ModelApplyInitialSolution_Gene3D);CHKERRQ(ierr);
+  
+/* 
   ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_APPLY_BC,              (void (*)(void)) ModelApplyBoundaryCondition_Gene3D); CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_APPLY_BCMG,            (void (*)(void)) ModelApplyBoundaryConditionMG_Gene3D);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_ADAPT_MP_RESOLUTION,   (void (*)(void)) ModelAdaptMaterialPointResolution_Gene3D);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_APPLY_UPDATE_MESH_GEOM,(void (*)(void)) ModelApplyUpdateMeshGeometry_Gene3D);CHKERRQ(ierr);
-  ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_OUTPUT,                (void (*)(void)) ModelOutput_Gene3D);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_DESTROY,               (void (*)(void)) ModelDestroy_Gene3D); CHKERRQ(ierr);
 */
   /* Insert model into list */
