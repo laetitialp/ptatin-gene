@@ -37,6 +37,20 @@ typedef enum { GENEBC_FreeSlip=0, GENEBC_NoSlip, GENEBC_FreeSlipFreeSurface, GEN
 typedef enum { GENE_LayeredCake=0, GENE_ExtrudeFromMap, GENE_ReadFromCAD} GENE3DINIGEOM;
 enum {LAYER_MAX = 100};
 
+struct _p_ScalingCtx {
+  /* Scaling values */
+  PetscReal length_bar;
+  PetscReal viscosity_bar;
+  PetscReal velocity_bar;
+  PetscReal time_bar;
+  PetscReal pressure_bar;
+  PetscReal density_bar;
+  PetscReal acceleration_bar;
+  PetscReal cm_per_year2m_per_sec;
+  PetscReal Myr2sec;
+};
+typedef struct _p_ScalingCtx *ScalingCtx;
+
 typedef struct {
   /* bounding box */
   PetscReal L[3],O[3];
@@ -56,9 +70,7 @@ typedef struct {
   /* Output */
   PetscBool output_markers;
   /* Scaling values */
-  PetscReal length_bar,viscosity_bar,velocity_bar;
-  PetscReal time_bar,pressure_bar,density_bar,acceleration_bar;
-  PetscReal cm_per_year2m_per_sec,Myr2sec;
+  ScalingCtx scale;
   /* poisson pressure */
   PetscInt  prev_step;
   Mat       poisson_Jacobian;
@@ -86,8 +98,8 @@ typedef struct {
 
 typedef struct {
   te_expr     *expression;
-  PetscScalar *x,*y,*z,*t;
-  PetscReal   length_scale;
+  PetscScalar *x,*y,*z,*t,*p;
+  ScalingCtx  scale;
 } ExpressionCtx;
 
 PetscErrorCode ModelSetMarkerIndexLayeredCake_GENE3D(pTatinCtx c,void *ctx);
