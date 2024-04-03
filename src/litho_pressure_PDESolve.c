@@ -1228,9 +1228,11 @@ PetscErrorCode ComputeIsostaticDisplacementQ1(PDESolveLithoP poisson_pressure, P
   /* Restore arrays */
   ierr = DMDAVecRestoreArray(poisson_pressure->da,u_iso_q1,&LA_u_iso_q1);CHKERRQ(ierr);
   ierr = VecRestoreArray(P_2D,&LA_deltaP);CHKERRQ(ierr);
+  ierr = VecRestoreArray(P_ref,&LA_P_ref);CHKERRQ(ierr);
   /* Destroy the temporary Vecs */
   ierr = VecDestroy(&P_natural);CHKERRQ(ierr);
   ierr = VecDestroy(&P_2D);CHKERRQ(ierr);
+  ierr = VecDestroy(&P_ref);CHKERRQ(ierr);
   /* Free the arrays containing the indices */
   ierr = PetscFree(idx_from_3D);CHKERRQ(ierr);
   ierr = PetscFree(idx_to_2D);CHKERRQ(ierr);
