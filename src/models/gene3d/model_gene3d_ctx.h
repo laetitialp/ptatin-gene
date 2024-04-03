@@ -33,10 +33,6 @@
 
 #include "pswarm.h"
 
-typedef enum { GENEBC_FreeSlip=0, GENEBC_NoSlip, GENEBC_FreeSlipFreeSurface, GENEBC_NoSlipFreeSurface } GENE3DBC;
-typedef enum { GENE_LayeredCake=0, GENE_ExtrudeFromMap, GENE_ReadFromCAD} GENE3DINIGEOM;
-enum {LAYER_MAX = 100};
-
 struct _p_ScalingCtx {
   /* Scaling values */
   PetscReal length_bar;
@@ -82,11 +78,6 @@ typedef struct {
   SurfaceConstraint *bc_sc;
   /* General Navier slip */
   PetscReal epsilon_s[6],t1_hat[3],n_hat[3];
-
-  PetscBool u_dot_n_flow;
-  PetscReal u_bc[6*3];
-  GENE3DBC  boundary_conditon_type; /* [ 0 free slip | 1 no slip | 2 free surface + free slip | 3 free surface + no slip ] */
-  GENE3DINIGEOM  initial_geom;
 } ModelGENE3DCtx;
 
 typedef struct {
@@ -102,8 +93,13 @@ typedef struct {
   ScalingCtx  scale;
 } ExpressionCtx;
 
-PetscErrorCode ModelSetMarkerIndexLayeredCake_GENE3D(pTatinCtx c,void *ctx);
-PetscErrorCode ModelSetMarkerIndexFromMap_GENE3D(pTatinCtx c,void *ctx);
-PetscErrorCode ModelSetInitialStokesVariableOnMarker_GENE3D(pTatinCtx c,void *ctx);
+typedef struct {
+  PetscInt       nen,m[3];
+  const PetscInt *elnidx;
+  const PetscInt *elnidx_q2;
+  PetscReal      *pressure;
+  PetscScalar    *coor;
+  ExpressionCtx  *expr_ctx;
+} NeumannCtx;
 
 #endif

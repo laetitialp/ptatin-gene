@@ -49,6 +49,7 @@
 #include "MPntPEnergy_def.h"
 #include "litho_pressure_PDESolve.h"
 #include "material_point_std_utils.h"
+#include "material_point_point_location.h"
 #include "material_point_popcontrol.h"
 #include "model_utils.h"
 #include "output_material_points.h"
@@ -61,6 +62,7 @@
 #include <ptatin3d_energyfv.h>
 #include <ptatin3d_energyfv_impl.h>
 #include <material_constants_energy.h>
+#include "finite_volume/fvda_private.h"
 
 #include "tinyexpr.h"
 #include "model_gene3d_ctx.h"
@@ -773,6 +775,7 @@ PetscErrorCode ModelSetInitialStokesVariableOnMarker_Gene3D(pTatinCtx ptatin,Vec
 PetscBool EvaluateVelocityFromExpression(PetscScalar position[], PetscScalar *value, void *ctx)
 {
   ExpressionCtx *data = (ExpressionCtx*)ctx;
+  PetscReal     val;
   PetscBool     impose = PETSC_TRUE;
   PetscFunctionBegin;
 
@@ -781,7 +784,8 @@ PetscBool EvaluateVelocityFromExpression(PetscScalar position[], PetscScalar *va
   *data->y = position[1] * data->scale->length_bar;
   *data->z = position[2] * data->scale->length_bar;
   /* Evaluate expression */
-  *value = te_eval(data->expression);
+  val = te_eval(data->expression);
+  *value = val / data->scale->velocity_bar;
 
   PetscFunctionReturn(impose);
 }
@@ -1063,39 +1067,16 @@ static PetscErrorCode ModelMarkBoundaryFacets_Gene3D(SurfaceConstraint sc, Petsc
   /////////////
  // NEUMANN //
 /////////////
-#if 0
-typedef struct {
-  PetscInt       nen,m[3];
-  const PetscInt *elnidx;
-  const PetscInt *elnidx_q2;
-  PetscReal      *pressure;
-  PetscScalar    *coor;
-  PetscErrorCode (*dev_stress)(const PetscReal*,PetscReal,PetscReal*,void*);
-} BCTractionCtx;
-
-static PetscErrorCode SetDeviatoricStressFromExpression(const PetscReal qp_coor[], PetscReal pressure_qp, PetscReal tau[], void*)
+PetscErrorCode UserSetTractionFromExpression(Facet facets, const PetscReal qp_coor[], PetscReal traction[], void *ctx)
 {
-
-  PetscFunctionBegin;
-  /* Update expression variables values */
-  *data->x = position[0] * data->length_scale;
-  *data->y = position[1] * data->length_scale;
-  *data->z = position[2] * data->length_scale;
-  /* Evaluate expression */
-  *value = te_eval(data->expression);
-  PetscFunctionReturn(0);
-}
-
-PetscErrorCode UserSetTraction(Facet facets, const PetscReal qp_coor[], PetscReal traction[], void *ctx)
-{
-  PressureTractionCtx *data = (PressureTractionCtx*)ctx;
-  MPntStd             point;
-  PetscReal           el_pressure[Q1_NODES_PER_EL_3D],NiQ1[Q1_NODES_PER_EL_3D];
-  PetscReal           tau[6],tau_n[3];
-  PetscReal           pressure_qp,tolerance;
-  PetscInt            eidx,k,d,max_it;
-  PetscBool           initial_guess,monitor;
-  PetscErrorCode      ierr;
+  NeumannCtx     *data = (NeumannCtx*)ctx;
+  MPntStd        point;
+  PetscReal      el_pressure[Q1_NODES_PER_EL_3D],NiQ1[Q1_NODES_PER_EL_3D];
+  PetscReal      tau=0.0;
+  PetscReal      pressure_qp,tolerance;
+  PetscInt       eidx,k,d,max_it;
+  PetscBool      initial_guess,monitor;
+  PetscErrorCode ierr;
 
   PetscFunctionBegin;
 
@@ -1129,44 +1110,141 @@ PetscErrorCode UserSetTraction(Facet facets, const PetscReal qp_coor[], PetscRea
   for (k=0;k<Q1_NODES_PER_EL_3D;k++) {
     pressure_qp += el_pressure[k]*NiQ1[k];
   }
-#if 0
-  /* 
-  tau is expected to be ordered as:
-    t_xx, t_yy, t_zz, t_yz, t_xz, t_xy
-  */
-  ierr = PetscMemzero(&tau,6*sizeof(PetscReal));CHKERRQ(ierr);
-  ierr = data->dev_stress(qp_coor,pressure_qp,tau,ctx->user_data);CHKERRQ(ierr);
-  
-  tau_n[0] = tau[0]*facets->centroid_normal[0] + tau[5]*facets->centroid_normal[1] + tau[4]*facets->centroid_normal[2];
-  tau_n[1] = tau[5]*facets->centroid_normal[0] + tau[1]*facets->centroid_normal[1] + tau[3]*facets->centroid_normal[2];
-  tau_n[2] = tau[4]*facets->centroid_normal[0] + tau[3]*facets->centroid_normal[1] + tau[2]*facets->centroid_normal[2];
-#endif
+  /* set variables values for expression and scale to SI */
+  *data->expr_ctx->x = qp_coor[0]  * data->expr_ctx->scale->length_bar;
+  *data->expr_ctx->y = qp_coor[1]  * data->expr_ctx->scale->length_bar;
+  *data->expr_ctx->z = qp_coor[2]  * data->expr_ctx->scale->length_bar;
+  *data->expr_ctx->p = pressure_qp * data->expr_ctx->scale->pressure_bar;
+  /* Evaluate expression */
+  tau = te_eval(data->expr_ctx->expression);
+  tau /= data->expr_ctx->scale->pressure_bar;
+
   /* Set Traction = tau*n - p*n to the quadrature point */
   for (d=0; d<3; d++) {
-    traction[d] = tau_n[d] -pressure_qp * facets->centroid_normal[d];
+    traction[d] = tau * facets->centroid_normal[d] - pressure_qp * facets->centroid_normal[d];
   }
   PetscFunctionReturn(0);
 }
-#endif
 
+PetscErrorCode ModelApplyNeumannConstraint(pTatinCtx ptatin, SurfaceConstraint sc, PetscInt tag, ModelGENE3DCtx *data)
+{
+  PDESolveLithoP      poisson_pressure;
+  NeumannCtx          data_neumann;
+  ExpressionCtx       expression_ctx;
+  te_variable         *vars;
+  te_expr             *expression;
+  DM                  cda;
+  Vec                 P_local,gcoords;
+  PetscInt            nel_p,nen_p,nel_u,nen_u,lmx,lmy,lmz,n_vars;
+  const PetscInt      *elnidx_p,*elnidx_u;
+  PetscReal           *LA_pressure_local;
+  PetscReal           x,y,z,time,pp;
+  PetscScalar         *LA_gcoords;
+  PetscBool           found;
+  int                 err;
+  char                opt_name[PETSC_MAX_PATH_LEN],expr_tau[PETSC_MAX_PATH_LEN];
+  PetscErrorCode      ierr;
 
+  PetscFunctionBegin;
 
-static PetscErrorCode ModelSetNeumann_VelocityBC(pTatinCtx ptatin, SurfaceConstraint sc, ModelGENE3DCtx *data)
+  ierr = pTatinGetContext_LithoP(ptatin,&poisson_pressure);CHKERRQ(ierr);
+
+  /* Get Q1 elements connectivity table */
+  ierr = DMDAGetElements(poisson_pressure->da,&nel_p,&nen_p,&elnidx_p);CHKERRQ(ierr);
+  /* Get elements number on local rank */
+  ierr = DMDAGetLocalSizeElementQ2(sc->fi->dm,&lmx,&lmy,&lmz);CHKERRQ(ierr);
+  /* Get Q2 elements connectivity table */
+  ierr = DMDAGetElements_pTatinQ2P1(sc->fi->dm,&nel_u,&nen_u,&elnidx_u);CHKERRQ(ierr);
+  /* Get coordinates */
+  ierr = DMGetCoordinateDM(sc->fi->dm,&cda);CHKERRQ(ierr);
+  ierr = DMGetCoordinatesLocal(sc->fi->dm,&gcoords);CHKERRQ(ierr);
+  ierr = VecGetArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
+
+  /* Initialize Neumann data structure */
+  ierr = PetscMemzero(&data_neumann,sizeof(NeumannCtx));CHKERRQ(ierr);
+  /* Attach element information to the data structure */
+  data_neumann.nen       = nen_p;
+  data_neumann.elnidx    = elnidx_p;
+  data_neumann.elnidx_q2 = elnidx_u;
+  data_neumann.m[0]      = lmx;
+  data_neumann.m[1]      = lmy;
+  data_neumann.m[2]      = lmz;
+  /* Attach coords array to the data structure */
+  data_neumann.coor = LA_gcoords;
+
+  /* Get the values of the poisson pressure solution vector at local rank */
+  ierr = DMGetLocalVector(poisson_pressure->da,&P_local);CHKERRQ(ierr);
+  ierr = VecZeroEntries(P_local);CHKERRQ(ierr);
+  ierr = DMGlobalToLocalBegin(poisson_pressure->da,poisson_pressure->X,INSERT_VALUES,P_local);CHKERRQ(ierr);
+  ierr = DMGlobalToLocalEnd  (poisson_pressure->da,poisson_pressure->X,INSERT_VALUES,P_local);CHKERRQ(ierr);
+  ierr = VecGetArray(P_local,&LA_pressure_local);CHKERRQ(ierr);
+  /* Attach the pressure array to the data structure */
+  data_neumann.pressure = LA_pressure_local;
+
+  /* Get time for expression */
+  ierr = pTatinGetTime(ptatin,&time);CHKERRQ(ierr);
+  time *= data->scale->time_bar;
+  /* Create variables data structure */
+  n_vars = 5; // 5 variables x,y,z,t,p
+  ierr = PetscCalloc1(n_vars,&vars);CHKERRQ(ierr);
+  /* Attach variables */
+  vars[0].name = "x"; vars[0].address = &x;
+  vars[1].name = "y"; vars[1].address = &y;
+  vars[2].name = "z"; vars[2].address = &z;
+  vars[3].name = "t"; vars[3].address = &time;
+  vars[4].name = "p"; vars[4].address = &pp;
+  /* Initialize Expression data structure */
+  ierr = PetscMemzero(&expression_ctx,sizeof(ExpressionCtx));CHKERRQ(ierr);
+  /* Get user expression */
+  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-dev_stress_%d",tag);
+  ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,expr_tau,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Expression not found! Use %s to set it.",opt_name); }
+  /* Compile expression */
+  expression = te_compile(expr_tau, vars, n_vars, &err);
+  if (!expression) {
+    PetscPrintf(PETSC_COMM_WORLD,"\t%*s^\nError near here", err-1, "");
+    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Expression %s did not compile.",expr_tau);
+  }
+  PetscPrintf(PETSC_COMM_WORLD,"Boundary %s: Evaluating expression \n\t%s\n",sc->name,expr_tau);
+  /* Attach variables to struct for the evaluating function */
+  expression_ctx.x          = &x; 
+  expression_ctx.y          = &y; 
+  expression_ctx.z          = &z; 
+  expression_ctx.t          = &time; 
+  expression_ctx.p          = &pp;
+  expression_ctx.scale      = data->scale;
+  expression_ctx.expression = expression;
+  /* Attach expression ctx to neumann ctx */
+  data_neumann.expr_ctx = &expression_ctx;
+
+  //SURFC_CHKSETVALS(SC_TRACTION,UserSetTractionFromExpression);
+  ierr = SurfaceConstraintSetValues_TRACTION(sc,(SurfCSetValuesTraction)UserSetTractionFromExpression,(void*)&data_neumann);CHKERRQ(ierr);
+
+  /* clean up */
+  te_free(expression);
+  ierr = VecRestoreArray(P_local,&LA_pressure_local);CHKERRQ(ierr);
+  ierr = DMRestoreLocalVector(poisson_pressure->da,&P_local);CHKERRQ(ierr);
+  ierr = DMDARestoreElements(poisson_pressure->da,&nel_p,&nen_p,&elnidx_p);CHKERRQ(ierr);
+  ierr = PetscFree(vars);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelSetNeumann_VelocityBC(pTatinCtx ptatin, SurfaceConstraint sc, PetscInt tag, ModelGENE3DCtx *data)
 {
   PetscBool      active_poisson;
   PetscErrorCode ierr;
   PetscFunctionBegin;
-  /*
-  For now only applying pressure is supported for this model
-  TODO: add other options
-  */
 
   ierr = pTatinContextValid_LithoP(ptatin,&active_poisson);CHKERRQ(ierr);
-  if (!active_poisson) { ierr = ModelCreatePoissonPressure_Gene3D(ptatin,data);CHKERRQ(ierr); }
+  if (!active_poisson) { 
+    ierr = ModelCreatePoissonPressure_Gene3D(ptatin,data);CHKERRQ(ierr);
+    data->poisson_pressure_active = PETSC_TRUE;
+  }
 
   // TODO: check if we restrain the solve to once per time step or not
   ierr = ModelSolvePoissonPressure(ptatin,data);CHKERRQ(ierr);
-  ierr = ApplyPoissonPressureNeumannConstraint(ptatin,sc);CHKERRQ(ierr);
+  //ierr = ApplyPoissonPressureNeumannConstraint(ptatin,sc);CHKERRQ(ierr);
+  ierr = ModelApplyNeumannConstraint(ptatin,sc,tag,data);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -1403,17 +1481,16 @@ static PetscErrorCode ModelSetBoundaryValues_VelocityBC(
   {
     case SC_NONE:
       break;
+    
+    case SC_TRACTION:
+      ierr = ModelSetNeumann_VelocityBC(ptatin,sc,tag,data);CHKERRQ(ierr);
+      break;
 
     case SC_DEMO:
       break;
 
     case SC_FSSA:
       SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"SC_FSSA not implemented for Gene3D.");
-      break;
-
-    case SC_TRACTION:
-      //ierr = ModelSetNeumann_VelocityBC(ptatin,sc,data);CHKERRQ(ierr);
-      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"SC_TRACTION not implemented for Gene3D.");
       break;
 
     case SC_NITSCHE_DIRICHLET:
@@ -2118,7 +2195,7 @@ PetscErrorCode ModelGene3DCheckPhase(DataBucket db,RheologyConstants *rheology)
 
 
 
-PetscErrorCode ModelDestroy_Gene3D(pTatinCtx c,void *ctx)
+PetscErrorCode ModelDestroy_Gene3D(pTatinCtx ptatin,void *ctx)
 {
   ModelGENE3DCtx *data;
   PetscErrorCode ierr;
@@ -2186,12 +2263,11 @@ PetscErrorCode pTatinModelRegister_Gene3D(void)
   ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_APPLY_INIT_STOKES_VARIABLE_MARKERS,(void (*)(void)) ModelSetInitialStokesVariableOnMarker_Gene3D);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_APPLY_INIT_SOLUTION,   (void (*)(void)) ModelApplyInitialSolution_Gene3D);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_APPLY_BC,              (void (*)(void)) ModelApplyBoundaryCondition_Gene3D); CHKERRQ(ierr);
-  
+  ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_DESTROY,               (void (*)(void)) ModelDestroy_Gene3D); CHKERRQ(ierr);
 /* 
   ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_APPLY_BCMG,            (void (*)(void)) ModelApplyBoundaryConditionMG_Gene3D);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_ADAPT_MP_RESOLUTION,   (void (*)(void)) ModelAdaptMaterialPointResolution_Gene3D);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_APPLY_UPDATE_MESH_GEOM,(void (*)(void)) ModelApplyUpdateMeshGeometry_Gene3D);CHKERRQ(ierr);
-  ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_DESTROY,               (void (*)(void)) ModelDestroy_Gene3D); CHKERRQ(ierr);
 */
   /* Insert model into list */
   ierr = pTatinModelRegister(m); CHKERRQ(ierr);
