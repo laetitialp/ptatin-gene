@@ -81,13 +81,6 @@ typedef struct {
 } ModelGENE3DCtx;
 
 typedef struct {
-  PetscReal epsilon_s[6];
-  PetscReal mcal_H[6];
-  PetscReal n_hat[3];
-  PetscReal t1_hat[3];
-} GenNavierSlipCtx;
-
-typedef struct {
   te_expr     *expression;
   PetscScalar *x,*y,*z,*t,*p;
   ScalingCtx  scale;
@@ -101,5 +94,12 @@ typedef struct {
   PetscScalar    *coor;
   ExpressionCtx  *expr_ctx;
 } NeumannCtx;
+
+typedef struct {
+  PetscReal epsilon_s[6];
+  PetscReal mcal_H[6];
+  PetscReal n_hat[3];
+  PetscReal t1_hat[3];
+} GenNavierSlipCtx;
 
 #endif

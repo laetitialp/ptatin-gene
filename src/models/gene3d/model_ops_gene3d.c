@@ -1342,7 +1342,7 @@ static PetscErrorCode ModelSetDirichlet_VelocityBC(pTatinCtx ptatin, DM dav, BCL
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode GeneralNavierSlipBC(
+static PetscErrorCode GeneralNavierSlipBC_Constant(
   Facet F,
   const PetscReal qp_coor[],
   PetscReal n_hat[],
@@ -1368,7 +1368,7 @@ static PetscErrorCode GeneralNavierSlipBC(
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions(PetscInt tag, ModelGENE3DCtx *data, GenNavierSlipCtx *bc_data)
+static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Constant(PetscInt tag, ModelGENE3DCtx *data, GenNavierSlipCtx *bc_data)
 {
   PetscInt       i,nn,dir;
   PetscReal      fac,bc_u[2];
@@ -1446,6 +1446,18 @@ static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions(PetscIn
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Expression(PetscInt tag, ModelGENE3DCtx *data, GenNavierSlipCtx *bc_data)
+{
+  char           prefix[PETSC_MAX_PATH_LEN];
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"bc_navier_");CHKERRQ(ierr);
+  
+
+  PetscFunctionReturn(0);
+} 
+
 static PetscErrorCode ModelSetBoundaryValues_GeneralNavierSlip(SurfaceConstraint sc, PetscInt tag, ModelGENE3DCtx *data)
 {
   GenNavierSlipCtx bc_data;
@@ -1460,8 +1472,9 @@ static PetscErrorCode ModelSetBoundaryValues_GeneralNavierSlip(SurfaceConstraint
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME,opt_name,&penalty,NULL);
   ierr = SurfaceConstraintNitscheGeneralSlip_SetPenalty(sc,penalty);CHKERRQ(ierr);
   /* Set values on boundary from options */
-  ierr = ModelSetGeneralNavierSlipBoundaryValuesFromOptions(tag,data,&bc_data);CHKERRQ(ierr);
-  ierr = SurfaceConstraintSetValuesStrainRate_NITSCHE_GENERAL_SLIP(sc,(SurfCSetValuesNitscheGeneralSlip)GeneralNavierSlipBC,(void*)&bc_data);CHKERRQ(ierr);
+  ierr = PetscMemzero(&bc_data,sizeof(GenNavierSlipCtx));CHKERRQ(ierr);
+  ierr = ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Constant(tag,data,&bc_data);CHKERRQ(ierr);
+  ierr = SurfaceConstraintSetValuesStrainRate_NITSCHE_GENERAL_SLIP(sc,(SurfCSetValuesNitscheGeneralSlip)GeneralNavierSlipBC_Constant,(void*)&bc_data);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
