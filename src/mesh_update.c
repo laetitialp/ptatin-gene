@@ -48,6 +48,7 @@
 #include "material_point_point_location.h"
 #include "dmda_view_petscvtk.h"
 #include "dmda_element_q1.h"
+#include "dmdae.h"
 #include "model_utils.h"
 
 #include "mesh_update.h"
@@ -998,7 +999,7 @@ PetscErrorCode UpdateMeshGeometry_ApplyDiffusionJMAX(DM dav,PetscReal diffusivit
   ierr = VecDestroy(&diagM);CHKERRQ(ierr);
   ierr = VecDestroy(&H);CHKERRQ(ierr);
   ierr = VecDestroy(&Hinit);CHKERRQ(ierr);
-
+  ierr = DMDestroyDMDAE(daH);CHKERRQ(ierr);
   ierr = DMDestroy(&daH);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
