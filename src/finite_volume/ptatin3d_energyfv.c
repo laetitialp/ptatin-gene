@@ -1494,6 +1494,8 @@ PetscErrorCode pTatinPhysCompEnergyFV_MPProjection_FVP0DG(PhysCompEnergyFV efv,p
   DataFieldRestoreEntries(pfield,(void**)&point);
   DataFieldRestoreEntries(pfield_energy,(void**)&point_energy);
   ierr = PetscFree(fvcorners);CHKERRQ(ierr);
+  ierr = PetscFree(order);CHKERRQ(ierr);
+  ierr = PetscFree(offset);CHKERRQ(ierr);
   
   PetscFunctionReturn(0);
 }
