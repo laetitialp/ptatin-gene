@@ -1522,7 +1522,7 @@ PetscErrorCode ModelApplyInitialStokesVariableMarkers_RiftNitsche(pTatinCtx c,Ve
   ierr = pTatin_EvaluateRheologyNonlinearities(c,dau,LA_Uloc,dap,LA_Ploc);CHKERRQ(ierr);
   ierr = VecRestoreArray(Uloc,&LA_Uloc);CHKERRQ(ierr);
   ierr = VecRestoreArray(Ploc,&LA_Ploc);CHKERRQ(ierr);
-  
+  ierr = DMCompositeRestoreLocalVectors(stokes_pack,&Uloc,&Ploc);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
