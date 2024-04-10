@@ -307,7 +307,6 @@ static PetscErrorCode SurfaceConstraintSetFromOptions_Gene3D(pTatinCtx ptatin, M
   ierr = PetscOptionsGetInt(NULL,MODEL_NAME,"-bc_nsubfaces",&data->bc_nfaces,&found);CHKERRQ(ierr);
   if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%sbc_nsubfaces not found!\n",MODEL_NAME); }
   ierr = PetscCalloc1(data->bc_nfaces,&data->bc_tag_table);CHKERRQ(ierr);
-  ierr = PetscCalloc1(data->bc_nfaces,&data->bc_sc);
 
   /* get the number of subfaces and their tag correspondance */
   nn = data->bc_nfaces;
@@ -317,6 +316,10 @@ static PetscErrorCode SurfaceConstraintSetFromOptions_Gene3D(pTatinCtx ptatin, M
       SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"bc_nsubfaces (%d) and the number of entries in bc_tag_list (%d) mismatch!\n",data->bc_nfaces,nn);
     }
   }
+
+  data->bc_debug = PETSC_FALSE;
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-bc_debug",&data->bc_debug,NULL);CHKERRQ(ierr);
+  
   PetscFunctionReturn(0);
 }
 
@@ -352,7 +355,7 @@ static PetscErrorCode ModelSetScalingParametersFromOptions(ModelGENE3DCtx *data)
 
 static PetscErrorCode ModelScaleParameters(DataBucket materialconstants, ModelGENE3DCtx *data)
 {
-  PetscInt  region_idx,i;
+  PetscInt       i;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -375,7 +378,10 @@ static PetscErrorCode ModelScaleParameters(DataBucket materialconstants, ModelGE
   data->surface_pressure /= data->scale->pressure_bar;
 
   /* scale material properties */
-  for (region_idx=0; region_idx<data->n_regions; region_idx++) {
+  for (i=0; i<data->n_regions; i++) {
+    PetscInt region_idx;
+
+    region_idx = data->regions_table[i];
     ierr = MaterialConstantsScaleAll(materialconstants,region_idx,data->scale->length_bar,data->scale->velocity_bar,data->scale->time_bar,data->scale->viscosity_bar,data->scale->density_bar,data->scale->pressure_bar);CHKERRQ(ierr);
     ierr = MaterialConstantsEnergyScaleAll(materialconstants,region_idx,data->scale->length_bar,data->scale->time_bar,data->scale->pressure_bar);CHKERRQ(ierr);
   }
@@ -404,7 +410,8 @@ PetscErrorCode ModelInitialize_Gene3D(pTatinCtx ptatin, void *ctx)
 
   ierr = pTatinGetRheology(ptatin,&rheology);CHKERRQ(ierr);
   ierr = pTatinGetMaterialConstants(ptatin,&materialconstants);CHKERRQ(ierr);
-
+  /* Set the rheology to visco-plastic temperature dependant */
+  rheology->rheology_type = RHEOLOGY_VP_STD;
   /* Box geometry */
   ierr = ModelSetInitialGeometryFromOptions(data);CHKERRQ(ierr);
   /* Material type */
@@ -623,7 +630,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_Gene3D(pTatinCtx ptatin,Vec X,void *
 static PetscErrorCode ModelApplyInitialPlasticStrain_FromExpr(pTatinCtx ptatin, ModelGENE3DCtx *data)
 {
   DataBucket     material_points;
-  DataField      PField_std,PField_pls;
+  DataField      PField_std,PField_pls,PField_stokes;
   te_variable    *vars; 
   te_expr        **expression;
   PetscInt       n,n_wz,n_var;
@@ -669,6 +676,10 @@ static PetscErrorCode ModelApplyInitialPlasticStrain_FromExpr(pTatinCtx ptatin, 
   DataBucketGetDataFieldByName(material_points,MPntStd_classname,&PField_std);
   DataFieldGetAccess(PField_std);
   DataFieldVerifyAccess(PField_std,sizeof(MPntStd));
+  /* stokes variables */
+  DataBucketGetDataFieldByName(material_points,MPntPStokes_classname,&PField_stokes);
+  DataFieldGetAccess(PField_stokes);
+  DataFieldVerifyAccess(PField_stokes,sizeof(MPntPStokes));
   /* Plastic strain variables */
   DataBucketGetDataFieldByName(material_points,MPntPStokesPl_classname,&PField_pls);
   DataFieldGetAccess(PField_pls);
@@ -677,12 +688,18 @@ static PetscErrorCode ModelApplyInitialPlasticStrain_FromExpr(pTatinCtx ptatin, 
   DataBucketGetSizes(material_points,&n_mp_points,0,0);
   for (p=0; p<n_mp_points; p++) {
     MPntStd       *material_point;
+    MPntPStokes   *mpprop_stokes;
     MPntPStokesPl *mpprop_pls;
-    double        *position;
+    double        *position,eta0;
     float         pls;
 
-    DataFieldAccessPoint(PField_std,p,(void**)&material_point);
-    DataFieldAccessPoint(PField_pls,p,(void**)&mpprop_pls);
+    DataFieldAccessPoint(PField_std,   p,(void**)&material_point);
+    DataFieldAccessPoint(PField_pls,   p,(void**)&mpprop_pls);
+    DataFieldAccessPoint(PField_stokes,p,(void**)&mpprop_stokes);
+
+    /* Set an initial non-zero viscosity */
+    eta0 = 1.0e+22 / data->scale->viscosity_bar;
+    MPntPStokesSetField_eta_effective(mpprop_stokes,eta0);
 
     /* Access coordinates of the marker */
     MPntStdGetField_global_coord(material_point,&position);
@@ -703,6 +720,7 @@ static PetscErrorCode ModelApplyInitialPlasticStrain_FromExpr(pTatinCtx ptatin, 
   }
   DataFieldRestoreAccess(PField_std);
   DataFieldRestoreAccess(PField_pls);
+  DataFieldRestoreAccess(PField_stokes);
 
   /* Free expressions and variables */
   for (n=0; n<n_wz; n++) { te_free(expression[n]); }
@@ -763,6 +781,7 @@ PetscErrorCode ModelSetInitialStokesVariableOnMarker_Gene3D(pTatinCtx ptatin,Vec
   ierr = pTatin_EvaluateRheologyNonlinearities(ptatin,dau,LA_Uloc,dap,LA_Ploc);CHKERRQ(ierr);
   ierr = VecRestoreArray(Uloc,&LA_Uloc);CHKERRQ(ierr);
   ierr = VecRestoreArray(Ploc,&LA_Ploc);CHKERRQ(ierr);
+  ierr = DMCompositeRestoreLocalVectors(stokes_pack,&Uloc,&Ploc);CHKERRQ(ierr);
   
   PetscFunctionReturn(0);
 }
@@ -838,7 +857,7 @@ static PetscErrorCode ModelSetInitialVelocityFromExpr(DM dav, Vec velocity, Mode
     ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-v_init_expression_%d",dim);CHKERRQ(ierr);
     ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,v_expr,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
     if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
-    PetscPrintf(PETSC_COMM_WORLD,"Velocity component %d, evaluating expression:\n\t%s\n",dim,v_expr);
+    if (data->bc_debug) { PetscPrintf(PETSC_COMM_WORLD,"Velocity component %d, evaluating expression:\n\t%s\n",dim,v_expr); }
 
     expression = te_compile(v_expr, vars, n_vars, &err);
     if (!expression) {
@@ -985,22 +1004,17 @@ static PetscErrorCode ModelSolvePoissonPressure(pTatinCtx ptatin, ModelGENE3DCtx
 
 static PetscErrorCode SurfaceConstraintCreateFromOptions_Gene3D(
   SurfBCList surf_bclist, 
-  PetscInt tag, 
-  SurfaceConstraint *bc_sc, 
+  PetscInt tag,
+  const char sc_name[],
   PetscBool insert_if_not_found, 
   ModelGENE3DCtx *data)
 {
   SurfaceConstraint sc;
   PetscInt          sc_type;
   PetscBool         found;
-  char              opt_name[PETSC_MAX_PATH_LEN],sc_name[PETSC_MAX_PATH_LEN];
+  char              opt_name[PETSC_MAX_PATH_LEN];
   PetscErrorCode    ierr;
   PetscFunctionBegin;
-  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
-
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-sc_name_%d",tag);CHKERRQ(ierr);
-  ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,sc_name,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
-  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Providing a name to -sc_name_%d is mandatory!",tag); }
 
   ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-sc_type_%d",tag);CHKERRQ(ierr);
   ierr = PetscOptionsGetInt(NULL,MODEL_NAME,opt_name,&sc_type,&found);CHKERRQ(ierr);
@@ -1018,32 +1032,31 @@ static PetscErrorCode SurfaceConstraintCreateFromOptions_Gene3D(
     if (insert_if_not_found) {
       ierr = SurfBCListAddConstraint(surf_bclist,sc_name,&sc);CHKERRQ(ierr);
       ierr = SurfaceConstraintSetType(sc,sc_type);CHKERRQ(ierr);
-    } else { 
-      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint %d: %s not found",tag,sc_name); 
-    }
-  } else {
-    SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint %d: the name %s already given! Names must be unique.",tag,sc_name);
+    } else { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface constraint %d: %s not found",tag,sc_name); }
   }
-  *bc_sc = sc;
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ModelMarkBoundaryFacets_Gene3D(SurfaceConstraint sc, PetscInt tag, ModelGENE3DCtx *data)
+static PetscErrorCode ModelMarkBoundaryFacets_Gene3D(SurfBCList surf_bclist, PetscInt tag, const char sc_name[], ModelGENE3DCtx *data)
 {
-  Mesh          mesh;
-  MeshFacetInfo facet_info;
-  MeshEntity    mesh_entity;
-  PetscInt      method=1;
-  PetscBool     found;
-  char          opt_name[PETSC_MAX_PATH_LEN],meshfile[PETSC_MAX_PATH_LEN];
-  PetscErrorCode ierr;
+  SurfaceConstraint sc;
+  Mesh              mesh;
+  MeshFacetInfo     facet_info;
+  MeshEntity        mesh_entity;
+  PetscInt          method=1;
+  PetscBool         found;
+  char              opt_name[PETSC_MAX_PATH_LEN],meshfile[PETSC_MAX_PATH_LEN];
+  PetscErrorCode    ierr;
   PetscFunctionBegin;
+
+  /* Get SurfaceConstraint object */
+  ierr = SurfBCListGetConstraint(surf_bclist,sc_name,&sc);CHKERRQ(ierr);
+  if (!sc) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraint for %s does not exist!",sc_name); }
 
   /* Get mesh entity object */
   ierr = SurfaceConstraintGetFacets(sc,&mesh_entity);CHKERRQ(ierr);
-  //if (!mesh_entity) { PetscFunctionReturn(0); }
   /* Check if facets for this surface constraint have already been marked */
-  if (mesh_entity->empty == PETSC_FALSE) { PetscFunctionReturn(0); }
+  if (mesh_entity->set_values_called) { PetscFunctionReturn(0); }
   
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]: tag %d\n",PETSC_FUNCTION_NAME,tag);
 
@@ -1064,6 +1077,185 @@ static PetscErrorCode ModelMarkBoundaryFacets_Gene3D(SurfaceConstraint sc, Petsc
   PetscFunctionReturn(0);
 }
 
+  ///////////////
+ // DIRICHLET //
+///////////////
+static PetscErrorCode ModelSetDirichlet_VelocityBC_Constant(pTatinCtx ptatin, DM dav, BCList bclist, SurfaceConstraint sc, PetscInt tag, ModelGENE3DCtx *data)
+{
+  PetscInt       d;
+  PetscReal      u_bc[] = {0.0, 0.0, 0.0};
+  PetscBool      found[3];
+  char           opt_name[PETSC_MAX_PATH_LEN];
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  /* get ux */
+  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-ux_%d",tag);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,opt_name,&u_bc[0],&found[0]);CHKERRQ(ierr);
+  /* get uy */
+  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-uy_%d",tag);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,opt_name,&u_bc[1],&found[1]);CHKERRQ(ierr);
+  /* get uz */
+  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-uz_%d",tag);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,opt_name,&u_bc[2],&found[2]);CHKERRQ(ierr);
+
+  for (d=0; d<3; d++) {
+    /* Set velocity */
+    if (found[d]) { ierr = DMDABCListTraverseFacets3d(bclist,dav,sc,d,BCListEvaluator_constant,(void*)&u_bc[d]);CHKERRQ(ierr); }
+  } 
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelSetDirichlet_VelocityBC_Expression(pTatinCtx ptatin, DM dav, BCList bclist, SurfaceConstraint sc, PetscInt tag, ModelGENE3DCtx *data)
+{
+  ExpressionCtx  ctx;
+  te_variable    *vars;
+  PetscInt       d,n_vars;
+  PetscReal      x,y,z,time;
+  PetscBool      found[3];
+  char           opt_name[PETSC_MAX_PATH_LEN];
+  char           expr_ux[PETSC_MAX_PATH_LEN],expr_uy[PETSC_MAX_PATH_LEN],expr_uz[PETSC_MAX_PATH_LEN];
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  /* get ux */
+  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-ux_%d",tag);
+  ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,expr_ux,PETSC_MAX_PATH_LEN-1,&found[0]);CHKERRQ(ierr);
+  /* get uy */
+  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-uy_%d",tag);
+  ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,expr_uy,PETSC_MAX_PATH_LEN-1,&found[1]);CHKERRQ(ierr);
+  /* get uz */
+  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-uz_%d",tag);
+  ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,expr_uz,PETSC_MAX_PATH_LEN-1,&found[2]);CHKERRQ(ierr);
+  /* get time */
+  ierr = pTatinGetTime(ptatin,&time);CHKERRQ(ierr);
+  /* scale time for expression evaluation */
+  time *= data->scale->time_bar;
+
+  n_vars = 4; // 4 variables x,y,z,t
+  ierr = PetscCalloc1(n_vars,&vars);CHKERRQ(ierr);
+  /* Attach variables */
+  vars[0].name = "x"; vars[0].address = &x;
+  vars[1].name = "y"; vars[1].address = &y;
+  vars[2].name = "z"; vars[2].address = &z;
+  vars[3].name = "t"; vars[3].address = &time;
+
+  /* iterate over the 3 spatial directions */
+  for (d=0; d<3; d++) {
+    te_expr *expression;
+    int     err;
+
+    /* Initialize ExpressionCtx struct to zero */
+    ierr = PetscMemzero(&ctx,sizeof(ExpressionCtx));CHKERRQ(ierr);
+    /* If an expression was found for the dof d */
+    if (found[d]) {
+      if (data->bc_debug) { PetscPrintf(PETSC_COMM_WORLD,"Found expression for component %d for boundary tag %d\n",d,tag); }
+      /* Attach variables to struct for the evaluating function */
+      ctx.x = &x; ctx.y = &y; ctx.z = &z; ctx.t = &time;
+      ctx.scale = data->scale;
+      switch (d) {
+        case 0:
+          if (data->bc_debug) { PetscPrintf(PETSC_COMM_WORLD,"Velocity component 0, evaluating expression:\n\t%s\n",expr_ux); }
+          expression = te_compile(expr_ux, vars, n_vars, &err);
+          if (!expression) {
+            PetscPrintf(PETSC_COMM_WORLD,"\t%*s^\nError near here", err-1, "");
+            SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Expression %s did not compile.",expr_ux);
+          }
+          /* Attach expression */
+          ctx.expression = expression;
+          break;
+        case 1:
+          if (data->bc_debug) { PetscPrintf(PETSC_COMM_WORLD,"Velocity component 1, evaluating expression:\n\t%s\n",expr_uy); }
+          expression = te_compile(expr_uy, vars, n_vars, &err);
+          if (!expression) {
+            PetscPrintf(PETSC_COMM_WORLD,"\t%*s^\nError near here", err-1, "");
+            SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Expression %s did not compile.",expr_uy);
+          }
+          /* Attach expression */
+          ctx.expression = expression;
+          break;
+        case 2:
+          if (data->bc_debug) { PetscPrintf(PETSC_COMM_WORLD,"Velocity component 2, evaluating expression:\n\t%s\n",expr_uz); }
+          expression = te_compile(expr_uz, vars, n_vars, &err);
+          if (!expression) {
+            PetscPrintf(PETSC_COMM_WORLD,"\t%*s^\nError near here", err-1, "");
+            SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Expression %s did not compile.",expr_uz);
+          }
+          /* Attach expression */
+          ctx.expression = expression;
+          break;
+        default:
+          SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"[[ %s ]] d = %d but should only be 0, 1 or 2",PETSC_FUNCTION_NAME,d);
+          break;
+      }
+      /* Set velocity */
+      ierr = DMDABCListTraverseFacets3d(bclist,dav,sc,d,EvaluateVelocityFromExpression,(void*)&ctx);CHKERRQ(ierr);
+      te_free(expression);
+    }
+  }
+  ierr = PetscFree(vars);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelSetDirichlet_VelocityBC_BottomFlowUdotN(pTatinCtx ptatin, DM dav, BCList bclist, SurfaceConstraint sc, PetscInt tag, ModelGENE3DCtx *data)
+{
+  PhysCompStokes stokes;
+  DM             dms;
+  Vec            X,velocity,pressure;
+  PetscReal      int_u_dot_n[HEX_EDGES];
+  PetscReal      uy;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = pTatinGetStokesContext(ptatin,&stokes);CHKERRQ(ierr);
+  ierr = pTatinPhysCompGetData_Stokes(ptatin,&X);CHKERRQ(ierr); 
+  ierr = PhysCompStokesGetDMComposite(stokes,&dms);CHKERRQ(ierr);
+  ierr = DMCompositeGetAccess(dms,X,&velocity,&pressure);CHKERRQ(ierr);  
+  
+  ierr = StokesComputeVdotN(stokes,velocity,int_u_dot_n);CHKERRQ(ierr);
+  PetscPrintf(PETSC_COMM_WORLD,"imin: %+1.4e\n",int_u_dot_n[ WEST_FACE  -1]);
+  PetscPrintf(PETSC_COMM_WORLD,"imax: %+1.4e\n",int_u_dot_n[ EAST_FACE  -1]);
+  PetscPrintf(PETSC_COMM_WORLD,"jmin: %+1.4e\n",int_u_dot_n[ SOUTH_FACE -1]);
+  PetscPrintf(PETSC_COMM_WORLD,"jmax: [free surface] %+1.4e\n",int_u_dot_n[ NORTH_FACE -1]);
+  PetscPrintf(PETSC_COMM_WORLD,"kmin: %+1.4e\n",int_u_dot_n[ BACK_FACE  -1]);
+  PetscPrintf(PETSC_COMM_WORLD,"kmax: %+1.4e\n",int_u_dot_n[ FRONT_FACE -1]);
+
+  ierr = DMCompositeRestoreAccess(dms,X,&velocity,&pressure);CHKERRQ(ierr);
+  
+  /* Compute the uy velocity based on faces inflow/outflow except the top free surface */
+  uy = (int_u_dot_n[WEST_FACE-1]+int_u_dot_n[EAST_FACE-1]+int_u_dot_n[BACK_FACE-1]+int_u_dot_n[FRONT_FACE-1])/((data->L[0] - data->O[0])*(data->L[2] - data->O[2]));
+  PetscPrintf(PETSC_COMM_WORLD,"Computed bottom velocity uy = %+1.4e\n",uy);
+  ierr = DMDABCListTraverseFacets3d(bclist,dav,sc,1,BCListEvaluator_constant,(void*)&uy);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ModelSetDirichlet_VelocityBC(pTatinCtx ptatin, DM dav, BCList bclist, SurfaceConstraint sc, PetscInt tag, ModelGENE3DCtx *data)
+{
+  PetscBool      constant,bot_udotn;
+  char           opt_name[PETSC_MAX_PATH_LEN];
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  constant  = PETSC_FALSE;
+  bot_udotn = PETSC_FALSE;
+
+  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-dirichlet_constant_%d",tag);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,opt_name,&constant,NULL);CHKERRQ(ierr);
+
+  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-dirichlet_bot_u.n_%d",tag);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,opt_name,&bot_udotn,NULL);CHKERRQ(ierr);
+
+  if (constant) {
+    ierr = ModelSetDirichlet_VelocityBC_Constant(ptatin,dav,bclist,sc,tag,data);CHKERRQ(ierr);
+  } else if (bot_udotn) {
+    ierr = ModelSetDirichlet_VelocityBC_BottomFlowUdotN(ptatin,dav,bclist,sc,tag,data);CHKERRQ(ierr);
+  } else {
+    ierr = ModelSetDirichlet_VelocityBC_Expression(ptatin,dav,bclist,sc,tag,data);CHKERRQ(ierr);
+  }
+  
+  PetscFunctionReturn(0);
+}
   /////////////
  // NEUMANN //
 /////////////
@@ -1205,7 +1397,7 @@ PetscErrorCode ModelApplyNeumannConstraint(pTatinCtx ptatin, SurfaceConstraint s
     PetscPrintf(PETSC_COMM_WORLD,"\t%*s^\nError near here", err-1, "");
     SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Expression %s did not compile.",expr_tau);
   }
-  PetscPrintf(PETSC_COMM_WORLD,"Boundary %s: Evaluating expression \n\t%s\n",sc->name,expr_tau);
+  if (data->bc_debug) { PetscPrintf(PETSC_COMM_WORLD,"Boundary %s: Evaluating expression \n\t%s\n",sc->name,expr_tau); }
   /* Attach variables to struct for the evaluating function */
   expression_ctx.x          = &x; 
   expression_ctx.y          = &y; 
@@ -1231,7 +1423,8 @@ PetscErrorCode ModelApplyNeumannConstraint(pTatinCtx ptatin, SurfaceConstraint s
 
 static PetscErrorCode ModelSetNeumann_VelocityBC(pTatinCtx ptatin, SurfaceConstraint sc, PetscInt tag, ModelGENE3DCtx *data)
 {
-  PetscBool      active_poisson;
+  PetscBool      active_poisson,found;
+  char           opt_name[PETSC_MAX_PATH_LEN],expr[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
   PetscFunctionBegin;
 
@@ -1243,105 +1436,17 @@ static PetscErrorCode ModelSetNeumann_VelocityBC(pTatinCtx ptatin, SurfaceConstr
 
   // TODO: check if we restrain the solve to once per time step or not
   ierr = ModelSolvePoissonPressure(ptatin,data);CHKERRQ(ierr);
-  //ierr = ApplyPoissonPressureNeumannConstraint(ptatin,sc);CHKERRQ(ierr);
-  ierr = ModelApplyNeumannConstraint(ptatin,sc,tag,data);CHKERRQ(ierr);
 
+  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-dev_stress_%d",tag);
+  ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,expr,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+  if (found) { ierr = ModelApplyNeumannConstraint(ptatin,sc,tag,data);CHKERRQ(ierr); }
+  else       { ierr = ApplyPoissonPressureNeumannConstraint(ptatin,sc);CHKERRQ(ierr); }
   PetscFunctionReturn(0);
 }
 
-  ///////////////
- // DIRICHLET //
-///////////////
-static PetscErrorCode ModelSetDirichlet_VelocityBC(pTatinCtx ptatin, DM dav, BCList bclist, SurfaceConstraint sc, PetscInt tag, ModelGENE3DCtx *data)
-{
-  ExpressionCtx  ctx;
-  te_variable    *vars;
-  PetscInt       d,n_vars;
-  PetscReal      x,y,z,time;
-  PetscBool      found[3];
-  char           opt_name[PETSC_MAX_PATH_LEN];
-  char           expr_ux[PETSC_MAX_PATH_LEN],expr_uy[PETSC_MAX_PATH_LEN],expr_uz[PETSC_MAX_PATH_LEN];
-  PetscErrorCode ierr;
-  PetscFunctionBegin;
-
-  /* get ux */
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-ux_%d",tag);
-  ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,expr_ux,PETSC_MAX_PATH_LEN-1,&found[0]);CHKERRQ(ierr);
-  /* get uy */
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-uy_%d",tag);
-  ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,expr_uy,PETSC_MAX_PATH_LEN-1,&found[1]);CHKERRQ(ierr);
-  /* get uz */
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-uz_%d",tag);
-  ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,expr_uz,PETSC_MAX_PATH_LEN-1,&found[2]);CHKERRQ(ierr);
-  /* get time */
-  ierr = pTatinGetTime(ptatin,&time);CHKERRQ(ierr);
-  /* scale time for expression evaluation */
-  time *= data->scale->time_bar;
-
-  n_vars = 4; // 4 variables x,y,z,t
-  ierr = PetscCalloc1(n_vars,&vars);CHKERRQ(ierr);
-  /* Attach variables */
-  vars[0].name = "x"; vars[0].address = &x;
-  vars[1].name = "y"; vars[1].address = &y;
-  vars[2].name = "z"; vars[2].address = &z;
-  vars[3].name = "t"; vars[3].address = &time;
-
-  /* iterate over the 3 spatial directions */
-  for (d=0; d<3; d++) {
-    te_expr *expression;
-    int     err;
-
-    /* If an expression was found for the the dof d */
-    if (found[d]) {
-      /* Initialize ExpressionCtx struct to zero */
-      ierr = PetscMemzero(&ctx,sizeof(ExpressionCtx));CHKERRQ(ierr);
-      /* Attach variables to struct for the evaluating function */
-      ctx.x = &x; ctx.y = &y; ctx.z = &z; ctx.t = &time;
-      ctx.scale = data->scale;
-      switch (d) {
-        case 0:
-          PetscPrintf(PETSC_COMM_WORLD,"Velocity component 0, evaluating expression:\n\t%s\n",expr_ux);
-          expression = te_compile(expr_ux, vars, n_vars, &err);
-          if (!expression) {
-            PetscPrintf(PETSC_COMM_WORLD,"\t%*s^\nError near here", err-1, "");
-            SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Expression %s did not compile.",expr_ux);
-          }
-          /* Attach expression */
-          ctx.expression = expression;
-          break;
-        case 1:
-          PetscPrintf(PETSC_COMM_WORLD,"Velocity component 1, evaluating expression:\n\t%s\n",expr_uy);
-          expression = te_compile(expr_uy, vars, n_vars, &err);
-          if (!expression) {
-            PetscPrintf(PETSC_COMM_WORLD,"\t%*s^\nError near here", err-1, "");
-            SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Expression %s did not compile.",expr_uy);
-          }
-          /* Attach expression */
-          ctx.expression = expression;
-          break;
-        case 2:
-          PetscPrintf(PETSC_COMM_WORLD,"Velocity component 2, evaluating expression:\n\t%s\n",expr_uz);
-          expression = te_compile(expr_uz, vars, n_vars, &err);
-          if (!expression) {
-            PetscPrintf(PETSC_COMM_WORLD,"\t%*s^\nError near here", err-1, "");
-            SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Expression %s did not compile.",expr_uz);
-          }
-          /* Attach expression */
-          ctx.expression = expression;
-          break;
-        default:
-          SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"[[ %s ]] d = %d but should only be 0, 1 or 2",PETSC_FUNCTION_NAME,d);
-          break;
-      }
-      /* Set velocity */
-      ierr = DMDABCListTraverseFacets3d(bclist,dav,sc,d,EvaluateVelocityFromExpression,(void*)&ctx);CHKERRQ(ierr);
-      te_free(expression);
-    }
-  }
-  ierr = PetscFree(vars);CHKERRQ(ierr);
-  PetscFunctionReturn(0);
-}
-
+  /////////////////////////
+ // GENERAL NAVIER-SLIP //
+/////////////////////////
 static PetscErrorCode GeneralNavierSlipBC_Constant(
   Facet F,
   const PetscReal qp_coor[],
@@ -1368,32 +1473,117 @@ static PetscErrorCode GeneralNavierSlipBC_Constant(
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Constant(PetscInt tag, ModelGENE3DCtx *data, GenNavierSlipCtx *bc_data)
+static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Rotated(PetscInt tag, ModelGENE3DCtx *data, GenNavierSlipCtx *bc_data)
 {
-  PetscInt       i,nn,dir;
-  PetscReal      fac,bc_u[2];
+  PetscInt       d,nn,dir;
+  PetscReal      a[2],uL[2],uO[2];
+  PetscReal      theta,duxdx,duxdz,duzdx,duzdz;
   PetscBool      found;
   char           prefix[PETSC_MAX_PATH_LEN],option_name[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
   PetscFunctionBegin;
-
+ 
   ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"bc_navier_");CHKERRQ(ierr);
+  /* 
+  Coefficients of the linear velocity function 
+    u(x) = a*x + b
+  where u is a vector function composed of 
+    u[0] = a[0]*x + b[0]
+    u[1] = a[1]*x + b[1]
+  and x can be either x or z e.g., position[0] or position[2]
 
+  L and O are the bounds of the domain and uL and uO are the velocities
+  prescribed on boundaries 
+      x = L and x = O 
+  or  z = L and z = O 
+  depending on the direction in which the velocity should vary
+  */
+
+  /* Get values for uO and uL */
   nn = 2;
-  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%su_%d",prefix,tag);CHKERRQ(ierr);
-  ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME,option_name,bc_u,&nn,&found);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%suO_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME,option_name,uO,&nn,&found);CHKERRQ(ierr);
   if (found) {
     if (nn != 2) {
       SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%s requires 2 entries, found %d.",option_name,nn);
     }
   } else { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%s not found!",option_name); }
 
-  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sderivative_dir_%d",prefix,tag);CHKERRQ(ierr);
-  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,option_name,&dir,&found);CHKERRQ(ierr);
+  nn = 2;
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%suL_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME,option_name,uL,&nn,&found);CHKERRQ(ierr);
   if (found) {
-    if (dir != 0 || dir != 2) { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"-%s can only be 0 or 2, found %d.",option_name,dir); }
-  } else { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%s no found.",option_name); }
+    if (nn != 2) {
+      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%s requires 2 entries, found %d.",option_name,nn);
+    }
+  } else { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%s not found!",option_name); }
 
+  /* Get direction for the variation of u */
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%svariation_dir_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,option_name,&dir,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%s not found!",option_name); }
+
+  /* Get angle of rotation */
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%srotation_angle_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&theta,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%s not found!",option_name); }
+  theta = theta * M_PI/180.0; // deg2rad
+
+ /* For the derivatives we only need coefficient a */
+  for (d=0; d<2; d++) {
+    a[d] = (uL[d] - uO[d]) / (data->L[dir] - data->O[dir]);
+  }
+
+  /* 
+  Derivatives of the rotated vector field resulting from the transformation (in matrix form):
+    uR = R(theta) * u(xR)
+  where:
+    theta    = angle of rotation
+    R(theta) = rotation matrix in 2D
+    xR       = R.T(theta)*x, the rotated coordinate system
+    u(xR)    = the velocity function evaluated in the rotated coordinate system
+  */
+  switch(dir) {
+    case 0:
+      duxdx = PetscCosReal(theta) * ( a[0]*PetscCosReal(theta) - a[1]*PetscSinReal(theta) );
+      duxdz = PetscSinReal(theta) * ( a[0]*PetscCosReal(theta) - a[1]*PetscSinReal(theta) );
+      duzdx = PetscCosReal(theta) * ( a[0]*PetscSinReal(theta) + a[1]*PetscCosReal(theta) );
+      duzdz = PetscSinReal(theta) * ( a[0]*PetscSinReal(theta) + a[1]*PetscCosReal(theta) );
+      break;
+
+    case 2:
+      duxdx = PetscSinReal(theta) * ( a[1]*PetscSinReal(theta) - a[0]*PetscCosReal(theta) );
+      duxdz = PetscCosReal(theta) * ( a[0]*PetscCosReal(theta) - a[1]*PetscSinReal(theta) );
+      duzdx = PetscSinReal(theta) * ( a[1]*PetscCosReal(theta) - a[0]*PetscSinReal(theta) );
+      duzdz = PetscCosReal(theta) * ( a[0]*PetscSinReal(theta) + a[1]*PetscCosReal(theta) );
+      break;
+    
+    default:
+      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"The velocity variation set with %s can only be 0 or 2, found %d.",option_name,dir);
+      break;
+  }
+  /* Imposed strain-rate */
+  bc_data->epsilon_s[0] = duxdx; // Exx
+  bc_data->epsilon_s[1] = 0.0;   // Eyy             
+  bc_data->epsilon_s[2] = duzdz; // Ezz 
+  
+  bc_data->epsilon_s[3] = 0.0;                   // Exy                
+  bc_data->epsilon_s[4] = 0.5*( duxdz + duzdx ); // Exz
+  bc_data->epsilon_s[5] = 0.0;                   // Eyz
+  
+  /* Tangent vector 1 t = R.T*uL */
+  bc_data->t1_hat[0] = PetscCosReal(theta)*uL[0] + PetscSinReal(theta)*uL[1];
+  bc_data->t1_hat[1] = 0.0;
+  bc_data->t1_hat[2] = -PetscSinReal(theta)*uL[0] + PetscCosReal(theta)*uL[1];
+  /* Normal vector */
+  bc_data->n_hat[0] = -bc_data->t1_hat[2];
+  bc_data->n_hat[1] = 0.0;
+  bc_data->n_hat[2] = bc_data->t1_hat[0];
+
+  /* 
+  Set which component of the strain rate tensor in the nhat, that coord system
+  is constrained (1) and which is left unknown (0) 
+  */
   bc_data->mcal_H[0] = 0; //H_00
   bc_data->mcal_H[1] = 1; //H_11
   bc_data->mcal_H[2] = 0; //H_22
@@ -1408,55 +1598,8 @@ static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Constan
       SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"%s requires 6 entries, found %d.",option_name,nn);
     }
   }
-
-  /* Scale values */
-  for (i=0; i<2; i++) { bc_u[i] = bc_u[i]*data->scale->cm_per_year2m_per_sec / data->scale->velocity_bar; } 
-
-  /* Set values of the user defined strain rate tensor */
-  fac = 1.0 / (data->L[dir] - data->O[dir]);
-  if (dir == 0) {
-    /* Derivative in the x direction */
-    bc_data->epsilon_s[0] = fac * 2.0 * bc_u[0]; // Exx
-    bc_data->epsilon_s[1] = 0.0;                 // Eyy
-    bc_data->epsilon_s[2] = 0.0;                 // Ezz
-
-    bc_data->epsilon_s[3] = 0.0;                 // Exy
-    bc_data->epsilon_s[4] = fac * bc_u[1];       // Exz
-    bc_data->epsilon_s[5] = 0.0;                 // Eyz
-  } else {
-    /* Derivative in the z direction */
-    bc_data->epsilon_s[0] = 0.0;                 // Exx
-    bc_data->epsilon_s[1] = 0.0;                 // Eyy
-    bc_data->epsilon_s[2] = fac * 2.0 * bc_u[1]; // Ezz
-
-    bc_data->epsilon_s[3] = 0.0;                 // Exy
-    bc_data->epsilon_s[4] = fac * bc_u[0];       // Exz
-    bc_data->epsilon_s[5] = 0.0;                 // Eyz
-  }
-  /* Do not worry if the norm of these vectors is not 1, it is handled internally */
-  /* Tangent vector 1 */
-  bc_data->t1_hat[0] = bc_u[0];
-  bc_data->t1_hat[1] = 0.0;
-  bc_data->t1_hat[2] = bc_u[1];
-  /* Normal vector */
-  bc_data->n_hat[0] = -bc_u[1];
-  bc_data->n_hat[1] = 0.0;
-  bc_data->n_hat[2] = bc_u[0];
-
   PetscFunctionReturn(0);
 }
-
-static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Expression(PetscInt tag, ModelGENE3DCtx *data, GenNavierSlipCtx *bc_data)
-{
-  char           prefix[PETSC_MAX_PATH_LEN];
-  PetscErrorCode ierr;
-  PetscFunctionBegin;
-
-  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"bc_navier_");CHKERRQ(ierr);
-  
-
-  PetscFunctionReturn(0);
-} 
 
 static PetscErrorCode ModelSetBoundaryValues_GeneralNavierSlip(SurfaceConstraint sc, PetscInt tag, ModelGENE3DCtx *data)
 {
@@ -1473,7 +1616,7 @@ static PetscErrorCode ModelSetBoundaryValues_GeneralNavierSlip(SurfaceConstraint
   ierr = SurfaceConstraintNitscheGeneralSlip_SetPenalty(sc,penalty);CHKERRQ(ierr);
   /* Set values on boundary from options */
   ierr = PetscMemzero(&bc_data,sizeof(GenNavierSlipCtx));CHKERRQ(ierr);
-  ierr = ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Constant(tag,data,&bc_data);CHKERRQ(ierr);
+  ierr = ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Rotated(tag,data,&bc_data);CHKERRQ(ierr);
   ierr = SurfaceConstraintSetValuesStrainRate_NITSCHE_GENERAL_SLIP(sc,(SurfCSetValuesNitscheGeneralSlip)GeneralNavierSlipBC_Constant,(void*)&bc_data);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
@@ -1483,12 +1626,18 @@ static PetscErrorCode ModelSetBoundaryValues_VelocityBC(
   pTatinCtx ptatin, 
   DM dav, 
   BCList bclist, 
-  SurfaceConstraint sc,
+  SurfBCList surf_bclist,
   PetscInt tag, 
+  const char sc_name[],
   ModelGENE3DCtx *data)
 {
-  PetscErrorCode ierr;
+  SurfaceConstraint sc;
+  PetscErrorCode    ierr;
   PetscFunctionBegin;
+
+  /* Get SurfaceConstraint object */
+  ierr = SurfBCListGetConstraint(surf_bclist,sc_name,&sc);CHKERRQ(ierr);
+  if (!sc) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraint %s does not exist!",sc_name); }
 
   switch (sc->type)
   {
@@ -1515,8 +1664,7 @@ static PetscErrorCode ModelSetBoundaryValues_VelocityBC(
       break;
 
     case SC_NITSCHE_GENERAL_SLIP:
-      //ierr = ModelSetBoundaryValues_GeneralNavierSlip(sc,tag,data);CHKERRQ(ierr);
-      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"SC_NITSCHE_GENERAL_SLIP not implemented for Gene3D.");
+      ierr = ModelSetBoundaryValues_GeneralNavierSlip(sc,tag,data);CHKERRQ(ierr);
       break;
 
     case SC_DIRICHLET:
@@ -1526,11 +1674,8 @@ static PetscErrorCode ModelSetBoundaryValues_VelocityBC(
     default:
       break;
   }
-  
-
   PetscFunctionReturn(0);
 }
-
 /*
 NOTES for time dependant BCs
   Possible approach:
@@ -1551,20 +1696,23 @@ NOTES for time dependant BCs
 static PetscErrorCode ModelApplyBoundaryCondition_Velocity(pTatinCtx ptatin, DM dav, BCList bclist, SurfBCList surf_bclist, PetscBool insert_if_not_found, ModelGENE3DCtx *data)
 {
   PetscInt       f;
+  PetscBool      found;
   PetscErrorCode ierr;
   PetscFunctionBegin;
 
   for (f=0; f<data->bc_nfaces; f++) {
     PetscInt tag;
+    char     opt_name[PETSC_MAX_PATH_LEN],sc_name[PETSC_MAX_PATH_LEN];
 
+    /* Get sc name */
     tag = data->bc_tag_table[f];
-    if (!data->bc_sc[f]) {
-      ierr = SurfaceConstraintCreateFromOptions_Gene3D(surf_bclist,tag,&(data->bc_sc[f]),insert_if_not_found,data);CHKERRQ(ierr);
-      ierr = ModelMarkBoundaryFacets_Gene3D(data->bc_sc[f],tag,data);CHKERRQ(ierr);
-    }
-    /* Marking facet from mesh should never be done for another step than the very first one */
-    //if (ptatin->step == 0) { ierr = ModelMarkBoundaryFacets_Gene3D(data->bc_sc[f],tag,data);CHKERRQ(ierr); }
-    ierr = ModelSetBoundaryValues_VelocityBC(ptatin,dav,bclist,data->bc_sc[f],tag,data);CHKERRQ(ierr);
+    ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-sc_name_%d",tag);CHKERRQ(ierr);
+    ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,sc_name,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+    if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Providing a name to -sc_name_%d is mandatory!",tag); }
+
+    ierr = SurfaceConstraintCreateFromOptions_Gene3D(surf_bclist,tag,sc_name,insert_if_not_found,data);CHKERRQ(ierr);
+    ierr = ModelMarkBoundaryFacets_Gene3D(surf_bclist,tag,sc_name,data);CHKERRQ(ierr);
+    ierr = ModelSetBoundaryValues_VelocityBC(ptatin,dav,bclist,surf_bclist,tag,sc_name,data);CHKERRQ(ierr);
   }
   
   PetscFunctionReturn(0);
@@ -1625,9 +1773,17 @@ PetscErrorCode ModelApplyBoundaryCondition_Gene3D(pTatinCtx ptatin, void *ctx)
   PetscFunctionReturn (0);
 }
 
-PetscErrorCode ModelApplyBoundaryConditionMG_Gene3D(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[], pTatinCtx ptatin,void *ctx)
+PetscErrorCode ModelApplyBoundaryConditionMG_Gene3D(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[], pTatinCtx ptatin, void *ctx)
 {
+  ModelGENE3DCtx *data = (ModelGENE3DCtx*)ctx;
+  PetscInt       n;
+  PetscErrorCode ierr;
   PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+  /* Define velocity boundary conditions on each level within the MG hierarchy */
+  for (n=0; n<nl; n++) {
+    ierr = ModelApplyBoundaryCondition_Velocity(ptatin,dav[n],bclist[n],surf_bclist[n],PETSC_FALSE,data);CHKERRQ(ierr);
+  }
   PetscFunctionReturn(0);
 }
 
@@ -1636,22 +1792,23 @@ PetscErrorCode ModelApplyBoundaryConditionMG_Gene3D(PetscInt nl,BCList bclist[],
 =               Material Point Resolution            =
 ======================================================
 */
-
-static PetscErrorCode ModelApplyMaterialBoundaryCondition_Gene3D(pTatinCtx ptatin, ModelGENE3DCtx *data)
+static PetscErrorCode ModelApplyMaterialBoundaryCondition_Gene3D(pTatinCtx ptatin, PetscInt n_face_list, PetscInt face_list[], ModelGENE3DCtx *data)
 {
   PhysCompStokes  stokes;
-  DM              stokes_pack,dav,dap;
-  PetscInt        Nxp[2];
-  PetscInt        *face_list;
-  PetscReal       perturb, epsilon;
-  DataBucket      material_point_db,material_point_face_db;
-  PetscInt        f, n_face_list;
-  int             p,n_mp_points;
   MPAccess        mpX;
+  DataBucket      material_point_db,material_point_face_db;
+  DM              stokes_pack,dav,dap;
+  PetscInt        f,Nxp[2];
+  PetscReal       perturb, epsilon;
+  int             p,n_mp_points;
   PetscErrorCode  ierr;
 
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+  if (n_face_list == 0) { 
+    PetscPrintf(PETSC_COMM_WORLD,"[[ WARNING ]] No markers injection on faces\n");
+    PetscFunctionReturn(0); 
+  }
   
   ierr = pTatinGetStokesContext(ptatin,&stokes);CHKERRQ(ierr);
   stokes_pack = stokes->stokes_pack;
@@ -1662,28 +1819,18 @@ static PetscErrorCode ModelApplyMaterialBoundaryCondition_Gene3D(pTatinCtx ptati
   /* create face storage for markers */
   DataBucketDuplicateFields(material_point_db,&material_point_face_db);
   
-  n_face_list = 4;
-  ierr = PetscMalloc1(n_face_list,&face_list);CHKERRQ(ierr);
-  face_list[0] = 0;
-  face_list[1] = 1;
-  face_list[2] = 4;
-  face_list[3] = 5;
-  
+  /* traverse */
   for (f=0; f<n_face_list; f++) {
-
-    /* traverse */
+    PetscPrintf(PETSC_COMM_WORLD,"Markers injection on face %d\n",face_list[f]);
     /* [0,1/east,west] ; [2,3/north,south] ; [4,5/front,back] */
     Nxp[0]  = 4;
     Nxp[1]  = 4;
     perturb = 0.1;
-
     /* reset size */
     DataBucketSetSizes(material_point_face_db,0,-1);
-
     /* assign coords */
     epsilon = 1.0e-6;
     ierr = SwarmMPntStd_CoordAssignment_FaceLatticeLayout3d_epsilon(dav,Nxp,perturb,epsilon,face_list[f],material_point_face_db);CHKERRQ(ierr);
-
     /* assign values */
     DataBucketGetSizes(material_point_face_db,&n_mp_points,0,0);
     ierr = MaterialPointGetAccess(material_point_face_db,&mpX);CHKERRQ(ierr);
@@ -1691,29 +1838,24 @@ static PetscErrorCode ModelApplyMaterialBoundaryCondition_Gene3D(pTatinCtx ptati
       ierr = MaterialPointSet_phase_index(mpX,p,MATERIAL_POINT_PHASE_UNASSIGNED);CHKERRQ(ierr);
     }
     ierr = MaterialPointRestoreAccess(material_point_face_db,&mpX);CHKERRQ(ierr);
-
     /* insert into volume bucket */
     DataBucketInsertValues(material_point_db,material_point_face_db);
   }
-
   /* Copy ALL values from nearest markers to newly inserted markers except (xi,xip,pid) */
   ierr = MaterialPointRegionAssignment_KDTree(material_point_db,PETSC_TRUE);CHKERRQ(ierr);
-
-  /* delete */
+  /* Clean */
   DataBucketDestroy(&material_point_face_db);
-  
-  ierr = PetscFree(face_list);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MaterialPointResolutionMask_BoundaryFaces(DM dav, pTatinCtx ctx, PetscBool *popctrl_mask)
+static PetscErrorCode MaterialPointResolutionMask_BoundaryFaces(pTatinCtx ptatin, DM dav, PetscInt n_face_list, PetscInt face_list[], PetscBool *popctrl_mask)
 {
   PetscInt        nel,nen,el;
   const PetscInt  *elnidx;
   PetscInt        mx,my,mz;
   PetscInt        esi,esj,esk,lmx,lmy,lmz,e;
-  PetscInt        iel,kel,jel;
+  PetscInt        iel,kel,jel,f;
   PetscErrorCode  ierr;
   
   PetscFunctionBegin;
@@ -1726,55 +1868,93 @@ static PetscErrorCode MaterialPointResolutionMask_BoundaryFaces(DM dav, pTatinCt
   for (el=0; el<nel; el++) {
     popctrl_mask[el] = PETSC_TRUE;
   }
-  
+  /* If no faces are provided apply pop control everywhere */
+  if (n_face_list == 0) { PetscFunctionReturn(0); }
+
   esi = esi/2;
   esj = esj/2;
   esk = esk/2;
 
-  /* max(x) face */
-  if (esi + lmx == mx) { 
-    iel = lmx-1;
-    for (kel=0; kel<lmz; kel++) {
-      for (jel=0; jel<lmy; jel++) {
-        e = iel + jel*lmx + kel*lmx*lmy;
-        popctrl_mask[e] = PETSC_FALSE;
-      }
+  for (f=0; f<n_face_list; f++) {
+    PetscInt face = face_list[f];
+    switch (face) {
+      case 0: // east = xmax = imax = Pxi
+        if (esi + lmx == mx) { 
+          iel = lmx-1;
+          for (kel=0; kel<lmz; kel++) {
+            for (jel=0; jel<lmy; jel++) {
+              e = iel + jel*lmx + kel*lmx*lmy;
+              popctrl_mask[e] = PETSC_FALSE;
+            }
+          }
+        }
+        break;
+      
+      case 1: // west = xmin = imin = Nxi
+        if (esi == 0) {
+          iel = 0;
+          for (kel=0; kel<lmz; kel++) {
+            for (jel=0; jel<lmy; jel++) {
+              e = iel + jel*lmx + kel*lmx*lmy;
+              popctrl_mask[e] = PETSC_FALSE;
+            }
+          }
+        }
+        break;
+      
+      case 2: // north = ymax = jmax = Peta
+        if (esj + lmy == my) { 
+          jel = lmy-1;
+          for (kel=0; kel<lmz; kel++) {
+            for (iel=0; iel<lmx; iel++) {
+              e = iel + jel*lmx + kel*lmx*lmy;
+              popctrl_mask[e] = PETSC_FALSE;
+            }
+          }
+        }
+        break;
+      
+      case 3: // south = ymin = jmin = Neta
+        if (esj == 0) {
+          jel = 0;
+          for (kel=0; kel<lmz; kel++) {
+            for (iel=0; iel<lmx; iel++) {
+              e = iel + jel*lmx + kel*lmx*lmy;
+              popctrl_mask[e] = PETSC_FALSE;
+            }
+          }
+        }
+        break;
+      
+      case 4: // front = zmax = kmax = Pzeta
+        if (esk + lmz == mz) {
+          kel = lmz-1;
+          for (jel=0; jel<lmy; jel++) {
+            for (iel=0; iel<lmx; iel++) {  
+              e = iel + jel*lmx + kel*lmx*lmy;
+              popctrl_mask[e] = PETSC_FALSE;
+            }
+          }
+        }
+        break;
+      
+      case 5: // back = zmin = kmin = Nzeta
+        if (esk == 0) {
+          kel = 0;
+          for (jel=0; jel<lmy; jel++) {
+            for (iel=0; iel<lmx; iel++) {  
+              e = iel + jel*lmx + kel*lmx*lmy;
+              popctrl_mask[e] = PETSC_FALSE;
+            }
+          }
+        }
+        break;
+      
+      default:
+        SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Face %d does not exist can only be in [0,5]",face);
+        break;
     }
   }
-  
-  /* min(x) face */
-  if (esi == 0) {
-    iel = 0;
-    for (kel=0; kel<lmz; kel++) {
-      for (jel=0; jel<lmy; jel++) {
-        e = iel + jel*lmx + kel*lmx*lmy;
-        popctrl_mask[e] = PETSC_FALSE;
-      }
-    }
-  }
-
-  /* max(z) face */
-  if (esk + lmz == mz) {
-    kel = lmz-1;
-    for (jel=0; jel<lmy; jel++) {
-      for (iel=0; iel<lmx; iel++) {  
-        e = iel + jel*lmx + kel*lmx*lmy;
-        popctrl_mask[e] = PETSC_FALSE;
-      }
-    }
-  }
-
-  /* min(z) face */
-  if (esk == 0) {
-    kel = 0;
-    for (jel=0; jel<lmy; jel++) {
-      for (iel=0; iel<lmx; iel++) {  
-        e = iel + jel*lmx + kel*lmx*lmy;
-        popctrl_mask[e] = PETSC_FALSE;
-      }
-    }
-  }
-
   PetscFunctionReturn(0);
 }
 
@@ -1879,7 +2059,6 @@ static PetscErrorCode MPPC_SimpleRemoval_Mask(PetscInt np_upper,DM da,DataBucket
       }
     }
   }
-
   PetscTime(&t1);
 
   ierr = PetscFree(cell_count);CHKERRQ(ierr);
@@ -1888,76 +2067,97 @@ static PetscErrorCode MPPC_SimpleRemoval_Mask(PetscInt np_upper,DM da,DataBucket
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode AdaptMaterialPointResolution_Mask(pTatinCtx ctx)
+static PetscErrorCode AdaptMaterialPointResolution_Mask(pTatinCtx ptatin, PetscInt n_face_list, PetscInt face_list[])
 {
-  PetscErrorCode ierr;
-  PetscInt       np_lower,np_upper,patch_extent,nxp,nyp,nzp;
-  PetscReal      perturb;
-  PetscBool      flg;
-  PetscBool      *popctrl_mask; 
   DataBucket     db;
-  PetscBool      reverse_order_removal;
+  PetscInt       np_lower,np_upper,patch_extent,nxp,nyp,nzp;
   PetscInt       nel,nen;
   const PetscInt *elnidx;
+  PetscReal      perturb;
+  PetscBool      found;
+  PetscBool      *popctrl_mask;
+  PetscBool      reverse_order_removal;
   MPI_Comm       comm;
+  PetscErrorCode ierr;
 
   PetscFunctionBegin;
 
   /* options for control number of points per cell */
   np_lower = 0;
   np_upper = 60;
-  ierr = PetscOptionsGetInt(NULL,NULL,"-mp_popctrl_np_lower",&np_lower,&flg);CHKERRQ(ierr);
-  ierr = PetscOptionsGetInt(NULL,NULL,"-mp_popctrl_np_upper",&np_upper,&flg);CHKERRQ(ierr);
+  ierr = PetscOptionsGetInt(NULL,NULL,"-mp_popctrl_np_lower",&np_lower,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetInt(NULL,NULL,"-mp_popctrl_np_upper",&np_upper,&found);CHKERRQ(ierr);
 
   /* options for injection of markers */
   nxp = 2;
   nyp = 2;
   nzp = 2;
-  ierr = PetscOptionsGetInt(NULL,NULL,"-mp_popctrl_nxp",&nxp,&flg);CHKERRQ(ierr);
-  ierr = PetscOptionsGetInt(NULL,NULL,"-mp_popctrl_nyp",&nyp,&flg);CHKERRQ(ierr);
-  ierr = PetscOptionsGetInt(NULL,NULL,"-mp_popctrl_nzp",&nzp,&flg);CHKERRQ(ierr);
+  ierr = PetscOptionsGetInt(NULL,NULL,"-mp_popctrl_nxp",&nxp,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetInt(NULL,NULL,"-mp_popctrl_nyp",&nyp,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetInt(NULL,NULL,"-mp_popctrl_nzp",&nzp,&found);CHKERRQ(ierr);
 
   perturb = 0.1;
-  ierr = PetscOptionsGetReal(NULL,NULL,"-mp_popctrl_perturb",&perturb,&flg);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,NULL,"-mp_popctrl_perturb",&perturb,&found);CHKERRQ(ierr);
   patch_extent = 1;
-  ierr = PetscOptionsGetInt(NULL,NULL,"-mp_popctrl_patch_extent",&patch_extent,&flg);CHKERRQ(ierr);
+  ierr = PetscOptionsGetInt(NULL,NULL,"-mp_popctrl_patch_extent",&patch_extent,&found);CHKERRQ(ierr);
 
-  ierr = pTatinGetMaterialPoints(ctx,&db,NULL);CHKERRQ(ierr);
-  ierr = PetscObjectGetComm((PetscObject)ctx->stokes_ctx->dav,&comm);CHKERRQ(ierr);
+  ierr = pTatinGetMaterialPoints(ptatin,&db,NULL);CHKERRQ(ierr);
+  ierr = PetscObjectGetComm((PetscObject)ptatin->stokes_ctx->dav,&comm);CHKERRQ(ierr);
 
   /* Get element number (nel)*/
-  ierr = DMDAGetElements_pTatinQ2P1(ctx->stokes_ctx->dav,&nel,&nen,&elnidx);CHKERRQ(ierr);
+  ierr = DMDAGetElements_pTatinQ2P1(ptatin->stokes_ctx->dav,&nel,&nen,&elnidx);CHKERRQ(ierr);
   /* Allocate memory for the array */
   ierr = PetscMalloc1(nel,&popctrl_mask);CHKERRQ(ierr);
-  
-  ierr = MaterialPointResolutionMask_BoundaryFaces(ctx->stokes_ctx->dav,ctx,popctrl_mask);CHKERRQ(ierr);
+  /* Mark faces to remove them from the cleaning */
+  ierr = MaterialPointResolutionMask_BoundaryFaces(ptatin,ptatin->stokes_ctx->dav,n_face_list,face_list,popctrl_mask);CHKERRQ(ierr);
   
   /* insertion */
-  ierr = MPPC_NearestNeighbourPatch(np_lower,np_upper,patch_extent,nxp,nyp,nzp,perturb,ctx->stokes_ctx->dav,db);CHKERRQ(ierr);
+  ierr = MPPC_NearestNeighbourPatch(np_lower,np_upper,patch_extent,nxp,nyp,nzp,perturb,ptatin->stokes_ctx->dav,db);CHKERRQ(ierr);
 
   /* removal */
   if (np_upper != -1) {
     reverse_order_removal = PETSC_TRUE;
-  ierr = MPPC_SimpleRemoval_Mask(np_upper,ctx->stokes_ctx->dav,db,reverse_order_removal,popctrl_mask);CHKERRQ(ierr);
+  ierr = MPPC_SimpleRemoval_Mask(np_upper,ptatin->stokes_ctx->dav,db,reverse_order_removal,popctrl_mask);CHKERRQ(ierr);
   }
-
   ierr = PetscFree(popctrl_mask);CHKERRQ(ierr);
-
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode ModelAdaptMaterialPointResolution_Gene3D(pTatinCtx ptatin,void *ctx)
 {
   ModelGENE3DCtx *data = (ModelGENE3DCtx*)ctx;
+  PetscInt       n_face_list,nn;
+  PetscInt       *face_list;
+  PetscBool      found;
   PetscErrorCode ierr;
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD, "[[%s]]\n", PETSC_FUNCTION_NAME);
 
+  /* TODO: think about what to do by default */
+  n_face_list = 0;
+  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,"-bc_marker_n_faces",&n_face_list,&found);
+  /* Allocate memory for the face_list */
+  ierr = PetscCalloc1(n_face_list,&face_list);CHKERRQ(ierr);
+  /* 
+  Faces numbering:
+    0: east  = xmax = imax = Pxi
+    1: west  = xmin = imin = Nxi
+    2: north = ymax = jmax = Peta
+    3: south = ymin = jmin = Neta
+    4: front = zmax = kmax = Pzeta
+    5: back  = zmin = kmin = Nzeta
+  */
+  nn = n_face_list;
+  ierr = PetscOptionsGetIntArray(NULL,MODEL_NAME,"-bc_marker_faces_list",face_list,&nn,&found);CHKERRQ(ierr);
+  if (found) {
+    if (nn != n_face_list) { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Found %d entries to -faces_list, while expected %d from -bc_marker_n_faces",nn,n_face_list); }
+  }
   /* Particles injection on faces */
-  ierr = ModelApplyMaterialBoundaryCondition_Gene3D(ptatin,data);CHKERRQ(ierr);
+  ierr = ModelApplyMaterialBoundaryCondition_Gene3D(ptatin,n_face_list,face_list,data);CHKERRQ(ierr);
   /* Population control */
-  ierr = AdaptMaterialPointResolution_Mask(ptatin);CHKERRQ(ierr);
+  ierr = AdaptMaterialPointResolution_Mask(ptatin,n_face_list,face_list);CHKERRQ(ierr);
 
+  ierr = PetscFree(face_list);CHKERRQ(ierr);
   PetscFunctionReturn (0);
 }
 
@@ -1966,7 +2166,6 @@ PetscErrorCode ModelAdaptMaterialPointResolution_Gene3D(pTatinCtx ptatin,void *c
 =                       Output                       =
 ======================================================
 */
-
 static PetscErrorCode ModelOutputMarkerFields_Gene3D(pTatinCtx ptatin,const char prefix[])
 {
   DataBucket               materialpoint_db;
@@ -1997,7 +2196,20 @@ static PetscErrorCode ModelViewSurfaceConstraint_Gene3D(pTatinCtx ptatin, ModelG
   ierr = pTatinGetStokesContext(ptatin,&stokes);CHKERRQ(ierr);
   ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s/",ptatin->outputpath);CHKERRQ(ierr);
   for (f=0; f<data->bc_nfaces; f++) {
-    if (data->bc_sc[f]) { ierr = SurfaceConstraintViewParaview(data->bc_sc[f],root,data->bc_sc[f]->name);CHKERRQ(ierr); }
+    SurfaceConstraint sc;
+    PetscInt          tag;
+    PetscBool         found;
+    char              opt_name[PETSC_MAX_PATH_LEN],sc_name[PETSC_MAX_PATH_LEN];
+
+    tag = data->bc_tag_table[f];
+    /* Get sc name */
+    ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-sc_name_%d",tag);CHKERRQ(ierr);
+    ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,sc_name,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+    if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Providing a name to -sc_name_%d is mandatory!",tag); }
+
+    /* Get sc object */
+    ierr = SurfBCListGetConstraint(stokes->surf_bclist,sc_name,&sc);CHKERRQ(ierr);
+    if (sc) { ierr = SurfaceConstraintViewParaview(sc,root,sc->name);CHKERRQ(ierr); }
   }
 
   PetscFunctionReturn(0);
@@ -2098,52 +2310,8 @@ PetscErrorCode ModelOutput_Gene3D(pTatinCtx ptatin,Vec X,const char prefix[],voi
   PetscFunctionReturn (0);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 //======================================================================================================================================
-
-
-
+#if 0
 PetscErrorCode ModelGene3DCheckPhase(DataBucket db,RheologyConstants *rheology)
 {
   int                p,n_mp_points;
@@ -2178,36 +2346,7 @@ PetscErrorCode ModelGene3DCheckPhase(DataBucket db,RheologyConstants *rheology)
 
   PetscFunctionReturn(0);
 }
-
-/*
-
-   These models are required to
-   1) set the value c->rheology_constants->nphases_active => although this seems to be done in ModelInitialize_Gene3D()
-   2) all markers are assigned a phase index between [0 -- nphases_active-1]
-
-*/
-//======================================================================================================================================
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#endif
 PetscErrorCode ModelDestroy_Gene3D(pTatinCtx ptatin,void *ctx)
 {
   ModelGENE3DCtx *data;
@@ -2220,10 +2359,10 @@ PetscErrorCode ModelDestroy_Gene3D(pTatinCtx ptatin,void *ctx)
   /* Free contents of structure */
   ierr = PetscFree(data->regions_table);
   ierr = PetscFree(data->bc_tag_table);CHKERRQ(ierr);
-  ierr = PetscFree(data->bc_sc);CHKERRQ(ierr);
 
   if (data->poisson_pressure_active) {
     ierr = MatDestroy(&data->poisson_Jacobian);
+    data->poisson_Jacobian = NULL;
   }
   if (data->scale) { ierr = PetscFree(data->scale);CHKERRQ(ierr); }
   /* Free structure */
@@ -2277,11 +2416,11 @@ PetscErrorCode pTatinModelRegister_Gene3D(void)
   ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_APPLY_INIT_SOLUTION,   (void (*)(void)) ModelApplyInitialSolution_Gene3D);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_APPLY_BC,              (void (*)(void)) ModelApplyBoundaryCondition_Gene3D); CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_DESTROY,               (void (*)(void)) ModelDestroy_Gene3D); CHKERRQ(ierr);
-/* 
   ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_APPLY_BCMG,            (void (*)(void)) ModelApplyBoundaryConditionMG_Gene3D);CHKERRQ(ierr);
+  
   ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_ADAPT_MP_RESOLUTION,   (void (*)(void)) ModelAdaptMaterialPointResolution_Gene3D);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m, PTATIN_MODEL_APPLY_UPDATE_MESH_GEOM,(void (*)(void)) ModelApplyUpdateMeshGeometry_Gene3D);CHKERRQ(ierr);
-*/
+
   /* Insert model into list */
   ierr = pTatinModelRegister(m); CHKERRQ(ierr);
 

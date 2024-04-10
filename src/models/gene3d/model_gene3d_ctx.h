@@ -75,7 +75,7 @@ typedef struct {
   /* bcs */
   PetscInt          bc_nfaces;
   PetscInt          *bc_tag_table;
-  SurfaceConstraint *bc_sc;
+  PetscBool         bc_debug;
   /* General Navier slip */
   PetscReal epsilon_s[6],t1_hat[3],n_hat[3];
 } ModelGENE3DCtx;
