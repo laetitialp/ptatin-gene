@@ -1761,10 +1761,10 @@ PetscErrorCode pTatin_MPntStdSetRegionIndexFromMesh(pTatinCtx ptatin, const char
   PetscFunctionBegin;
 
   /* Get user mesh from file */
-  parse_mesh(mesh_file,&mesh);
+  parse_mesh(PETSC_COMM_WORLD,mesh_file,&mesh);
   if (!mesh) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"mesh from file %s = NULL. Aborting.\n",mesh_file); }
   /* Get region index from file */
-  parse_field(mesh,region_file,'c',(void**)&region_idx,NULL);
+  parse_field(PETSC_COMM_WORLD,mesh,region_file,'c',(void**)&region_idx);
   /* Get material points data bucket */
   ierr = pTatinGetMaterialPoints(ptatin,&material_points,NULL);CHKERRQ(ierr);
   /* Assign marker phase */

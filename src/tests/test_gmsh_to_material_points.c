@@ -194,7 +194,7 @@ static PetscErrorCode TestLocationPointAlg(pTatinCtx ptatin)
   ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-facet_mesh_file_%d",tag);CHKERRQ(ierr);
   ierr = PetscOptionsGetString(NULL,NULL,opt_name,meshfile,PETSC_MAX_PATH_LEN-1,NULL);CHKERRQ(ierr);
 
-  parse_mesh(meshfile,&mesh);
+  parse_mesh(PETSC_COMM_WORLD,meshfile,&mesh);
 
   ierr = SurfBCListGetConstraint(stokes->surf_bclist,sc_name,&sc);CHKERRQ(ierr);
   ierr = TestLocationPointAlg_PointIdx(sc->facets,sc->fi,mesh,0,pidx_to_test);CHKERRQ(ierr);
@@ -288,12 +288,11 @@ static PetscErrorCode MarkFacetsFromGMSH(GMSHCtx *data)
     ierr = PetscOptionsGetString(NULL,NULL,opt_name,meshfile,PETSC_MAX_PATH_LEN-1,NULL);CHKERRQ(ierr);
 
     /* get facet mesh */
-    parse_mesh(meshfile,&mesh);
+    parse_mesh(PETSC_COMM_WORLD,meshfile,&mesh);
 
     ierr = SurfaceConstraintGetFacets(data->sc[sf],&mesh_entity);CHKERRQ(ierr);
     //ierr = MarkBoundaryFacetFromMesh(mesh_entity,data->sc[sf]->fi,mesh,data->method);CHKERRQ(ierr);
     ierr = MeshFacetMarkFromMesh(mesh_entity,data->sc[sf]->fi,mesh,data->method,1.0);CHKERRQ(ierr);
-
 
     MeshDestroy(&mesh);
   }
