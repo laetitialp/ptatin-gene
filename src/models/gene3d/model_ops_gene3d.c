@@ -181,16 +181,6 @@ static PetscErrorCode ModelSetMaterialParametersFromOptions(pTatinCtx ptatin, Da
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
 
-  /* Get user mesh file */
-  ierr = PetscSNPrintf(data->mesh_file,PETSC_MAX_PATH_LEN-1,"md.bin");CHKERRQ(ierr);
-  ierr = PetscOptionsGetString(NULL,MODEL_NAME,"-mesh_file",data->mesh_file,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
-  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%smesh_file not found!\n",MODEL_NAME); }
-
-  /* Get user regions file */
-  ierr = PetscSNPrintf(data->region_file,PETSC_MAX_PATH_LEN-1,"region_cell.bin");CHKERRQ(ierr);
-  ierr = PetscOptionsGetString(NULL,MODEL_NAME,"-regions_file",data->region_file,PETSC_MAX_PATH_LEN-1,NULL);CHKERRQ(ierr);
-  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%sregions_file not found!\n",MODEL_NAME); }
-
   /* Get the number of regions */
   ierr = PetscOptionsGetInt(NULL,MODEL_NAME,"-n_regions",&data->n_regions,&found);CHKERRQ(ierr);
   if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%sn_regions not found!\n",MODEL_NAME); }
@@ -298,7 +288,7 @@ static PetscErrorCode ModelSetPassiveMarkersSwarmParametersFromOptions(pTatinCtx
 
 static PetscErrorCode SurfaceConstraintSetFromOptions_Gene3D(pTatinCtx ptatin, ModelGENE3DCtx *data)
 {
-  PetscInt       nn;
+  PetscInt       f,nn;
   PetscBool      found;
   PetscErrorCode ierr;
   PetscFunctionBegin;
@@ -307,6 +297,7 @@ static PetscErrorCode SurfaceConstraintSetFromOptions_Gene3D(pTatinCtx ptatin, M
   ierr = PetscOptionsGetInt(NULL,MODEL_NAME,"-bc_nsubfaces",&data->bc_nfaces,&found);CHKERRQ(ierr);
   if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%sbc_nsubfaces not found!\n",MODEL_NAME); }
   ierr = PetscCalloc1(data->bc_nfaces,&data->bc_tag_table);CHKERRQ(ierr);
+  ierr = PetscCalloc1(data->bc_nfaces,&data->mesh_facets);CHKERRQ(ierr);
 
   /* get the number of subfaces and their tag correspondance */
   nn = data->bc_nfaces;
@@ -317,6 +308,20 @@ static PetscErrorCode SurfaceConstraintSetFromOptions_Gene3D(pTatinCtx ptatin, M
     }
   }
 
+  for (f=0; f<data->bc_nfaces; f++) {
+    PetscInt tag = data->bc_tag_table[f];
+    char     meshfile[PETSC_MAX_PATH_LEN],opt_name[PETSC_MAX_PATH_LEN];
+
+    /* read the facets mesh corresponding to tag */
+    ierr = PetscSNPrintf(meshfile,PETSC_MAX_PATH_LEN-1,"facet_%d_mesh.bin",tag);CHKERRQ(ierr);
+    ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-facet_mesh_file_%d",tag);CHKERRQ(ierr);
+    ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,meshfile,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+    if (!found) { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Options parsing the facet mesh for tag %d not found; Use %s",tag,opt_name); }
+
+    /* get facet mesh */
+    parse_mesh(PETSC_COMM_WORLD,meshfile,&(data->mesh_facets[f]));
+  }
+  
   data->bc_debug = PETSC_FALSE;
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-bc_debug",&data->bc_debug,NULL);CHKERRQ(ierr);
   
@@ -733,10 +738,23 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_Gene3D(pTatinCtx ptatin, void *
 {
   ModelGENE3DCtx *data = (ModelGENE3DCtx*)ctx;
   PetscInt       method;
+  PetscBool      found;
+  char           mesh_file[PETSC_MAX_PATH_LEN],region_file[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
   PetscFunctionBegin;
 
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+
+    /* Get user mesh file */
+  ierr = PetscSNPrintf(mesh_file,PETSC_MAX_PATH_LEN-1,"md.bin");CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL,MODEL_NAME,"-mesh_file",mesh_file,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%smesh_file not found!\n",MODEL_NAME); }
+
+  /* Get user regions file */
+  ierr = PetscSNPrintf(region_file,PETSC_MAX_PATH_LEN-1,"region_cell.bin");CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL,MODEL_NAME,"-regions_file",region_file,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%sregions_file not found!\n",MODEL_NAME); }
+
   /* 
   Point location method: 
     0: brute force
@@ -744,7 +762,7 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_Gene3D(pTatinCtx ptatin, void *
   */
   method = 1;
   ierr = PetscOptionsGetInt(NULL,MODEL_NAME,"-mesh_point_location_method",&method,NULL);CHKERRQ(ierr);
-  ierr = pTatin_MPntStdSetRegionIndexFromMesh(ptatin,data->mesh_file,data->region_file,method,data->scale->length_bar);CHKERRQ(ierr);
+  ierr = pTatin_MPntStdSetRegionIndexFromMesh(ptatin,mesh_file,region_file,method,data->scale->length_bar);CHKERRQ(ierr);
   /* Initial plastic strain */
   ierr = ModelApplyInitialPlasticStrain_FromExpr(ptatin,data);CHKERRQ(ierr);
   PetscFunctionReturn (0);
@@ -1037,43 +1055,22 @@ static PetscErrorCode SurfaceConstraintCreateFromOptions_Gene3D(
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ModelMarkBoundaryFacets_Gene3D(SurfBCList surf_bclist, PetscInt tag, const char sc_name[], ModelGENE3DCtx *data)
+static PetscErrorCode ModelMarkBoundaryFacets_Gene3D(Mesh mesh, SurfaceConstraint sc, ModelGENE3DCtx *data)
 {
-  SurfaceConstraint sc;
-  Mesh              mesh;
   MeshFacetInfo     facet_info;
   MeshEntity        mesh_entity;
   PetscInt          method=1;
-  PetscBool         found;
-  char              opt_name[PETSC_MAX_PATH_LEN],meshfile[PETSC_MAX_PATH_LEN];
   PetscErrorCode    ierr;
   PetscFunctionBegin;
-
-  /* Get SurfaceConstraint object */
-  ierr = SurfBCListGetConstraint(surf_bclist,sc_name,&sc);CHKERRQ(ierr);
-  if (!sc) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraint for %s does not exist!",sc_name); }
 
   /* Get mesh entity object */
   ierr = SurfaceConstraintGetFacets(sc,&mesh_entity);CHKERRQ(ierr);
   /* Check if facets for this surface constraint have already been marked */
-  if (mesh_entity->set_values_called) { PetscFunctionReturn(0); }
-  
-  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]: tag %d\n",PETSC_FUNCTION_NAME,tag);
-
-  /* read the facets mesh corresponding to tag */
-  ierr = PetscSNPrintf(meshfile,PETSC_MAX_PATH_LEN-1,"facet_%d_mesh.bin",tag);CHKERRQ(ierr);
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-facet_mesh_file_%d",tag);CHKERRQ(ierr);
-  ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,meshfile,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
-  if (!found) { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Options parsing the facet mesh for tag %d not found; Use %s",tag,opt_name); }
-
-  /* get facet mesh */
-  parse_mesh(meshfile,&mesh);
+  //if (mesh_entity->set_values_called) { PetscFunctionReturn(0); }
   /* mark facets */
   ierr = SurfaceConstraintGetMeshFacetInfo(sc,&facet_info);CHKERRQ(ierr);
   ierr = MeshFacetMarkFromMesh(mesh_entity,facet_info,mesh,method,data->scale->length_bar);CHKERRQ(ierr);
-  /* clean up */
-  MeshDestroy(&mesh);
-  
+
   PetscFunctionReturn(0);
 }
 
@@ -1626,18 +1623,12 @@ static PetscErrorCode ModelSetBoundaryValues_VelocityBC(
   pTatinCtx ptatin, 
   DM dav, 
   BCList bclist, 
-  SurfBCList surf_bclist,
   PetscInt tag, 
-  const char sc_name[],
+  SurfaceConstraint sc,
   ModelGENE3DCtx *data)
 {
-  SurfaceConstraint sc;
   PetscErrorCode    ierr;
   PetscFunctionBegin;
-
-  /* Get SurfaceConstraint object */
-  ierr = SurfBCListGetConstraint(surf_bclist,sc_name,&sc);CHKERRQ(ierr);
-  if (!sc) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraint %s does not exist!",sc_name); }
 
   switch (sc->type)
   {
@@ -1701,20 +1692,28 @@ static PetscErrorCode ModelApplyBoundaryCondition_Velocity(pTatinCtx ptatin, DM 
   PetscFunctionBegin;
 
   for (f=0; f<data->bc_nfaces; f++) {
-    PetscInt tag;
-    char     opt_name[PETSC_MAX_PATH_LEN],sc_name[PETSC_MAX_PATH_LEN];
+    SurfaceConstraint sc;
+    Mesh              mesh;
+    PetscInt          tag;
+    char              opt_name[PETSC_MAX_PATH_LEN],sc_name[PETSC_MAX_PATH_LEN];
 
+    tag  = data->bc_tag_table[f];
+    mesh = data->mesh_facets[f]; 
     /* Get sc name */
-    tag = data->bc_tag_table[f];
     ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-sc_name_%d",tag);CHKERRQ(ierr);
     ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,sc_name,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
     if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Providing a name to -sc_name_%d is mandatory!",tag); }
 
     ierr = SurfaceConstraintCreateFromOptions_Gene3D(surf_bclist,tag,sc_name,insert_if_not_found,data);CHKERRQ(ierr);
-    ierr = ModelMarkBoundaryFacets_Gene3D(surf_bclist,tag,sc_name,data);CHKERRQ(ierr);
-    ierr = ModelSetBoundaryValues_VelocityBC(ptatin,dav,bclist,surf_bclist,tag,sc_name,data);CHKERRQ(ierr);
+
+    /* Querying sc after CreateFromOptions should be safe */
+    ierr = SurfBCListGetConstraint(surf_bclist,sc_name,&sc);CHKERRQ(ierr);
+    if (!sc) { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"sc object for name %s and tag %d does not exist!\n",sc_name,tag); }
+    /* mark facets */
+    ierr = ModelMarkBoundaryFacets_Gene3D(mesh,sc,data);CHKERRQ(ierr);
+    /* Apply BCs */
+    ierr = ModelSetBoundaryValues_VelocityBC(ptatin,dav,bclist,tag,sc,data);CHKERRQ(ierr);
   }
-  
   PetscFunctionReturn(0);
 }
 
@@ -2350,6 +2349,7 @@ PetscErrorCode ModelGene3DCheckPhase(DataBucket db,RheologyConstants *rheology)
 PetscErrorCode ModelDestroy_Gene3D(pTatinCtx ptatin,void *ctx)
 {
   ModelGENE3DCtx *data;
+  PetscInt       f;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -2359,6 +2359,8 @@ PetscErrorCode ModelDestroy_Gene3D(pTatinCtx ptatin,void *ctx)
   /* Free contents of structure */
   ierr = PetscFree(data->regions_table);
   ierr = PetscFree(data->bc_tag_table);CHKERRQ(ierr);
+  for (f=0; f<data->bc_nfaces; f++) { MeshDestroy(&(data->mesh_facets[f])); }
+  ierr = PetscFree(data->mesh_facets);CHKERRQ(ierr);
 
   if (data->poisson_pressure_active) {
     ierr = MatDestroy(&data->poisson_Jacobian);

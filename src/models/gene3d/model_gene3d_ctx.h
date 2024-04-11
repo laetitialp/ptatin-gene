@@ -53,7 +53,6 @@ typedef struct {
   /* regions */
   PetscInt  n_regions;
   PetscInt  *regions_table;
-  char      mesh_file[PETSC_MAX_PATH_LEN],region_file[PETSC_MAX_PATH_LEN];
   /* viscosity cutoff */
   PetscReal eta_max,eta_min;
   PetscBool eta_cutoff;
@@ -73,11 +72,13 @@ typedef struct {
   PetscReal surface_pressure;
   PetscBool poisson_pressure_active;
   /* bcs */
-  PetscInt          bc_nfaces;
-  PetscInt          *bc_tag_table;
-  PetscBool         bc_debug;
+  PetscInt  bc_nfaces;
+  PetscInt  *bc_tag_table;
+  PetscBool bc_debug;
   /* General Navier slip */
   PetscReal epsilon_s[6],t1_hat[3],n_hat[3];
+  /* Meshes */
+  Mesh *mesh_facets;
 } ModelGENE3DCtx;
 
 typedef struct {
