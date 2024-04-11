@@ -94,34 +94,47 @@ void MeshView(Mesh m)
   }
 }
 
-void parse_mesh(const char filename[],Mesh *m)
+void parse_mesh(MPI_Comm comm, const char filename[],Mesh *m)
 {
-  FILE   *fp=NULL;
-  int    nvert,coor_dim,ncell,pp_cell,nparts,p,nc;
-  double *coor=NULL,cmin[3],cmax[3];
-  int    *cell=NULL,*cell_list=NULL;
   Mesh   mesh = NULL;
+  FILE   *fp=NULL;
+  int    nvert,coor_dim,ncell,pp_cell,nparts,p,nc,rank;
+  int    *cell=NULL,*cell_list=NULL;
+  double *coor=NULL,cmin[3],cmax[3];
   size_t bytes_read=0;
 
-  *m = NULL;
-  fp = fopen(filename, "rb");
-  if (!fp) { printf("parse_mesh(): File %s was not found or read\n",filename); return; }
+  MPI_Comm_rank(comm,&rank);
 
-  bytes_read = fread(&nvert,sizeof(int),1,fp);
-  bytes_read = fread(&coor_dim,sizeof(int),1,fp);
-  //printf("nvert %d coor_dim %d\n",nvert,coor_dim);
+  *m = NULL;
+
+  if (rank == 0) {
+    fp = fopen(filename, "rb");
+    if (!fp) { printf("parse_mesh(): File %s was not found or read\n",filename); return; }
+
+    bytes_read = fread(&nvert,sizeof(int),1,fp);
+    bytes_read = fread(&coor_dim,sizeof(int),1,fp);
+    //printf("nvert %d coor_dim %d\n",nvert,coor_dim);
+  }
+  MPI_Bcast(&nvert,   1,MPI_INT,0,comm);
+  MPI_Bcast(&coor_dim,1,MPI_INT,0,comm);
 
   coor = (double*)malloc(sizeof(double)*nvert*coor_dim);
   memset(coor,0,sizeof(double)*nvert*coor_dim);
-  bytes_read = fread(coor,sizeof(double),nvert*coor_dim,fp);
+  if (rank == 0) { bytes_read = fread(coor,sizeof(double),nvert*coor_dim,fp); }
+  MPI_Bcast(coor,nvert*coor_dim,MPI_DOUBLE,0,comm);
 
-  bytes_read = fread(&ncell,sizeof(int),1,fp);
-  bytes_read = fread(&pp_cell,sizeof(int),1,fp);
-  //printf("ncell %d points-per-cell %d\n",ncell,pp_cell);
+  if (rank == 0) {
+    bytes_read = fread(&ncell,sizeof(int),1,fp);
+    bytes_read = fread(&pp_cell,sizeof(int),1,fp);
+    //printf("ncell %d points-per-cell %d\n",ncell,pp_cell);
+  }
+  MPI_Bcast(&ncell,  1,MPI_INT,0,comm);
+  MPI_Bcast(&pp_cell,1,MPI_INT,0,comm);
 
   cell = (int*)malloc(sizeof(int)*ncell*pp_cell);
   memset(cell,0,sizeof(int)*ncell*pp_cell);
-  bytes_read = fread(cell,sizeof(int),ncell*pp_cell,fp);
+  if (rank == 0) { bytes_read = fread(cell,sizeof(int),ncell*pp_cell,fp); }
+  MPI_Bcast(cell,ncell*pp_cell,MPI_INT,0,comm);
 
   switch (pp_cell) {
     case 2:
@@ -131,10 +144,10 @@ void parse_mesh(const char filename[],Mesh *m)
     case 4:
     break;
     default:
-    printf("parse_mesh(): unknown cell type - abort\n");
+    printf("parse_mesh(): point per cell: %d unknown cell type - abort\n",pp_cell);
     free(coor);
     free(cell);
-    fclose(fp);
+    if (fp) { fclose(fp); }
     return;
   }
 
@@ -147,7 +160,8 @@ void parse_mesh(const char filename[],Mesh *m)
   mesh->cell = cell;
 
   nparts = 0;
-  bytes_read = fread(&nparts,sizeof(int),1,fp);
+  if (rank == 0) { bytes_read = fread(&nparts,sizeof(int),1,fp); }
+  MPI_Bcast(&nparts,1,MPI_INT,0,comm);
 
   mesh->npartition = nparts;
   mesh->partition = (CellPartition*)malloc(sizeof(CellPartition)*nparts);
@@ -156,15 +170,20 @@ void parse_mesh(const char filename[],Mesh *m)
   for (p=0; p<nparts; p++) {
     CellPartition cp;
 
-    bytes_read = fread(cmin,sizeof(double),coor_dim,fp);
-    bytes_read = fread(cmax,sizeof(double),coor_dim,fp);
-    bytes_read = fread(&nc,sizeof(int),1,fp);
-
+    if (rank == 0) {
+      bytes_read = fread(cmin,sizeof(double),coor_dim,fp);
+      bytes_read = fread(cmax,sizeof(double),coor_dim,fp);
+      bytes_read = fread(&nc,sizeof(int),1,fp);
+    }
+    MPI_Bcast(cmin,coor_dim,MPI_DOUBLE,0,comm);
+    MPI_Bcast(cmax,coor_dim,MPI_DOUBLE,0,comm);
+    MPI_Bcast(&nc, 1,       MPI_INT,   0,comm);
     //printf("part %d\n\txmin %+1.4e %+1.4e %+1.4e\n\txmax %+1.4e %+1.4e %+1.4e\n\tncells %d\n",p,cmin[0],cmin[1],cmin[2],cmax[0],cmax[1],cmax[2],nc);
 
     cell_list = (int*)malloc(sizeof(int)*nc);
     memset(cell_list,0,sizeof(int)*nc);
-    bytes_read = fread(cell_list,sizeof(int),nc,fp);
+    if (rank == 0) { bytes_read = fread(cell_list,sizeof(int),nc,fp); }
+    MPI_Bcast(cell_list,nc,MPI_INT,0,comm);
 
     CellPartitionCreate(&cp);
     mesh->partition[p] = cp;
@@ -173,24 +192,28 @@ void parse_mesh(const char filename[],Mesh *m)
     memcpy(cp->cmin,cmin,sizeof(double)*coor_dim);
     memcpy(cp->cmax,cmax,sizeof(double)*coor_dim);
   }
-  fclose(fp);
+  if (fp) { fclose(fp); }
   *m = mesh;
 }
 
-void parse_field(Mesh m,const char filename[],char ftypevoid,void **_data, int *ne)
+void parse_field(MPI_Comm comm, Mesh m, const char filename[], char ftypevoid, void **_data) 
 {
   FILE   *fp=NULL;
-  int    len,dtype;
+  int    len,dtype,rank;
   void   *buffer;
   size_t bytes,bytes_item=0,bytes_read=0;
   bool   valid = true;
 
-  *_data = NULL;
-  fp = fopen(filename, "rb");
-  if (!fp) { printf("parse_field(): File %s was not found or read\n",filename); return; }
+  MPI_Comm_rank(comm,&rank);
 
-  bytes_read = fread(&len,sizeof(int),1,fp);
-  if (ne) *ne = len;
+  if (rank == 0) {
+    *_data = NULL;
+    fp = fopen(filename, "rb");
+    if (!fp) { printf("parse_field(): File %s was not found or read\n",filename); return; }
+
+    bytes_read = fread(&len,sizeof(int),1,fp);
+  }
+  MPI_Bcast(&len,1,MPI_INT,0,comm);
   switch (ftypevoid) {
     case 'c':
       if (len != m->ncell) { valid = false; }
@@ -204,11 +227,12 @@ void parse_field(Mesh m,const char filename[],char ftypevoid,void **_data, int *
   }
   if (!valid) {
     printf("parse_field(): From %s -> unable to parse field. Value of ftypevoid is inconsistent with data.\n",filename);
-    fclose(fp);
+    if (fp) { fclose(fp); }
     return;
   }
 
-  bytes_read = fread(&dtype,sizeof(int),1,fp);
+  if (rank == 0) { bytes_read = fread(&dtype,sizeof(int),1,fp); }
+  MPI_Bcast(&dtype,1,MPI_INT,0,comm);
   switch (dtype) {
     case 10:
     bytes_item = sizeof(short);
@@ -234,6 +258,7 @@ void parse_field(Mesh m,const char filename[],char ftypevoid,void **_data, int *
   }
   if (!valid) {
     printf("parse_field(): Unable to parse field data. Data type unrecognized\n");
+    if (fp) { fclose(fp); }
     return;
   }
 
@@ -241,11 +266,12 @@ void parse_field(Mesh m,const char filename[],char ftypevoid,void **_data, int *
 
   buffer = (void*)malloc(bytes);
   memset(buffer,0,bytes);
-  bytes_read = fread(buffer,bytes_item,len,fp);
+  if (rank == 0) { bytes_read = fread(buffer,bytes_item,len,fp); }
+  MPI_Bcast(buffer,bytes,MPI_BYTE,0,comm);
+
   *_data = buffer;
 
-  fclose(fp);
-
+  if (fp) { fclose(fp); }
 }
 
 /*

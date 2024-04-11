@@ -2,6 +2,8 @@
 #ifndef __parse_h__
 #define __parse_h__
 
+#include <mpi.h>
+
 typedef struct _p_CellPartition *CellPartition;
 typedef struct _p_Mesh *Mesh;
 
@@ -24,8 +26,8 @@ void CellPartitionDestroy(CellPartition *_c);
 void MeshCreate(Mesh *_m);
 void MeshDestroy(Mesh *_m);
 void MeshView(Mesh m);
-void parse_mesh(const char filename[],Mesh *m);
-void parse_field(Mesh m,const char filename[],char ftypevoid,void **_data,int *ne);
+void parse_mesh(MPI_Comm comm,const char filename[],Mesh *m);
+void parse_field(MPI_Comm comm,Mesh m,const char filename[],char ftypevoid,void **_data);
 
 
 #endif
