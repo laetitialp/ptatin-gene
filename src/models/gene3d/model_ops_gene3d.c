@@ -1469,7 +1469,7 @@ static PetscErrorCode GeneralNavierSlipBC_Constant(
   }
   PetscFunctionReturn(0);
 }
-
+#if 0
 static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Rotated(PetscInt tag, ModelGENE3DCtx *data, GenNavierSlipCtx *bc_data)
 {
   PetscInt       d,nn,dir;
@@ -1597,8 +1597,123 @@ static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Rotated
   }
   PetscFunctionReturn(0);
 }
+#endif
+static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Constant(PetscInt tag, ModelGENE3DCtx *data, GenNavierSlipCtx *bc_data)
+{
+  PetscInt       nn;
+  PetscReal      duxdx,duxdz,duzdx,duzdz;
+  PetscReal      uL[] = {0.0,0.0};
+  char           opt_name[PETSC_MAX_PATH_LEN],prefix[PETSC_MAX_PATH_LEN];
+  PetscBool      found;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
 
-static PetscErrorCode ModelSetBoundaryValues_GeneralNavierSlip(SurfaceConstraint sc, PetscInt tag, ModelGENE3DCtx *data)
+  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"bc_navier_");CHKERRQ(ierr);
+
+  /* Get velocity vector at (Lx,Lz), magnitude does not matter we only use it for orientation */
+  nn = 2;
+  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%suL_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME,opt_name,uL,&nn,&found);CHKERRQ(ierr);
+  if (found) {
+    if (nn != 2) {
+      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%s requires 2 entries, found %d.",opt_name,nn);
+    }
+  } else { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%s not found!",opt_name); }
+
+  /* Get derivatives */
+  /* dux/dx */
+  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%sduxdx_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,opt_name,&duxdx,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%s not found!",opt_name); }
+  /* dux/dz */
+  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%sduxdz_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,opt_name,&duxdz,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%s not found!",opt_name); }
+  /* duz/dx */
+  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%sduzdx_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,opt_name,&duzdx,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%s not found!",opt_name); }
+  /* duz/dz */
+  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%sduzdz_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,opt_name,&duzdz,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%s not found!",opt_name); }
+
+  /* Scale by 1/u_bar ==> du / (1/u_bar) = du * u_bar */
+  duxdx *= data->scale->velocity_bar;
+  duxdz *= data->scale->velocity_bar;
+  duzdx *= data->scale->velocity_bar;
+  duzdz *= data->scale->velocity_bar;
+
+  /* Imposed strain-rate */
+  bc_data->epsilon_s[0] = duxdx; // Exx
+  bc_data->epsilon_s[1] = 0.0;   // Eyy             
+  bc_data->epsilon_s[2] = duzdz; // Ezz 
+  
+  bc_data->epsilon_s[3] = 0.0;                   // Exy                
+  bc_data->epsilon_s[4] = 0.5*( duxdz + duzdx ); // Exz
+  bc_data->epsilon_s[5] = 0.0;                   // Eyz
+  
+  /* 
+  Tangent vector 1, the scaling is not necessary because it is an orientation 
+  but scaling it permits to keep numbers in an acceptable value range 
+  */
+  bc_data->t1_hat[0] = uL[0] / data->scale->velocity_bar;
+  bc_data->t1_hat[1] = 0.0;
+  bc_data->t1_hat[2] = uL[1] / data->scale->velocity_bar;
+  /* Normal vector */
+  bc_data->n_hat[0] = -bc_data->t1_hat[2];
+  bc_data->n_hat[1] = 0.0;
+  bc_data->n_hat[2] = bc_data->t1_hat[0];
+
+  /* 
+  Set which component of the strain rate tensor in the nhat, that coord system
+  is constrained (1) and which is left unknown (0) 
+  */
+  bc_data->mcal_H[0] = 0; //H_00
+  bc_data->mcal_H[1] = 1; //H_11
+  bc_data->mcal_H[2] = 0; //H_22
+  bc_data->mcal_H[3] = 1; //H_01
+  bc_data->mcal_H[4] = 1; //H_02
+  bc_data->mcal_H[5] = 1; //H_12
+  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%smathcal_H_%d",prefix,tag);CHKERRQ(ierr);
+  nn   = 6;
+  ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME,opt_name,bc_data->mcal_H,&nn,&found);CHKERRQ(ierr);
+  if (found) {
+    if (nn != 6) {
+      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"%s requires 6 entries, found %d.",opt_name,nn);
+    }
+  }
+  PetscFunctionReturn(0);
+}
+#if 0
+static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Expression(pTatinCtx ptatin,PetscInt tag, ModelGENE3DCtx *data, GenNavierSlipCtx *bc_data)
+{
+  ExpressionCtx  expr;
+  PetscReal      time;
+  char           prefix[PETSC_MAX_PATH_LEN];
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"bc_navier_");CHKERRQ(ierr);
+  /* get time */
+  ierr = pTatinGetTime(ptatin,&time);CHKERRQ(ierr);
+  time *= data->scale->time_bar;
+
+  /* 
+  For a time dependant function there is a problem to define the orientation vector
+  t1_hat because this vector should never be the null vector, it is an orientation not a velocity
+  therefore,
+  the user can pass a math expression for the derivative
+  but,
+  if the orientation is described by a math expression that at some point evaluate to 0 it will break the 
+  formulation as t1_hat is normalized (thus divided by its norm, thus divided by 0 in that case).
+  I am not sure what to do about this yet. 
+  */
+
+  PetscFunctionReturn(0);
+}
+#endif
+static PetscErrorCode ModelSetBoundaryValues_GeneralNavierSlip(pTatinCtx ptatin, SurfaceConstraint sc, PetscInt tag, ModelGENE3DCtx *data)
 {
   GenNavierSlipCtx bc_data;
   PetscReal        penalty;
@@ -1613,7 +1728,8 @@ static PetscErrorCode ModelSetBoundaryValues_GeneralNavierSlip(SurfaceConstraint
   ierr = SurfaceConstraintNitscheGeneralSlip_SetPenalty(sc,penalty);CHKERRQ(ierr);
   /* Set values on boundary from options */
   ierr = PetscMemzero(&bc_data,sizeof(GenNavierSlipCtx));CHKERRQ(ierr);
-  ierr = ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Rotated(tag,data,&bc_data);CHKERRQ(ierr);
+  //ierr = ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Rotated(tag,data,&bc_data);CHKERRQ(ierr);
+  ierr = ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Constant(tag,data,&bc_data);CHKERRQ(ierr);
   ierr = SurfaceConstraintSetValuesStrainRate_NITSCHE_GENERAL_SLIP(sc,(SurfCSetValuesNitscheGeneralSlip)GeneralNavierSlipBC_Constant,(void*)&bc_data);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
@@ -1655,7 +1771,7 @@ static PetscErrorCode ModelSetBoundaryValues_VelocityBC(
       break;
 
     case SC_NITSCHE_GENERAL_SLIP:
-      ierr = ModelSetBoundaryValues_GeneralNavierSlip(sc,tag,data);CHKERRQ(ierr);
+      ierr = ModelSetBoundaryValues_GeneralNavierSlip(ptatin,sc,tag,data);CHKERRQ(ierr);
       break;
 
     case SC_DIRICHLET:
