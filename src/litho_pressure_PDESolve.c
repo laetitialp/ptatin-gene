@@ -830,8 +830,8 @@ PetscErrorCode PoissonPressureOutput(pTatinCtx ptatin, const char prefix[], Pets
 
   ierr = PoissonPressureOutput_PVD(ptatin,prefix,been_here);CHKERRQ(ierr);
 
-  if (prefix) { ierr = PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s_poisson_P",pvoutputdir,prefix);CHKERRQ(ierr);
-  } else {      ierr = PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"_poisson_P",pvoutputdir,prefix);CHKERRQ(ierr); }
+  if (prefix) { ierr = PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s_%s_poisson_P",pvoutputdir,prefix);CHKERRQ(ierr);
+  } else {      ierr = PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s_poisson_P",pvoutputdir);CHKERRQ(ierr); }
   
   if (vts) { 
     ierr = PoissonPressureOutput_VTS(poisson_pressure,fname);CHKERRQ(ierr);
