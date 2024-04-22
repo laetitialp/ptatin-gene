@@ -815,7 +815,7 @@ PetscErrorCode PoissonPressureOutput_VTS(PDESolveLithoP poisson_pressure, const 
 PetscErrorCode PoissonPressureOutput(pTatinCtx ptatin, const char prefix[], PetscBool vts, PetscBool been_here)
 {
   PDESolveLithoP poisson_pressure;
-  PetscBool      active_poisson;
+  PetscBool      active_poisson,found;
   char           fname[PETSC_MAX_PATH_LEN],root[PETSC_MAX_PATH_LEN],pvoutputdir[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
   PetscFunctionBegin;
@@ -827,11 +827,13 @@ PetscErrorCode PoissonPressureOutput(pTatinCtx ptatin, const char prefix[], Pets
 
   ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s",ptatin->outputpath);CHKERRQ(ierr);
   ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%D",root,ptatin->step);CHKERRQ(ierr);
+  ierr = pTatinTestDirectory(pvoutputdir,'w',&found);CHKERRQ(ierr);
+  if (!found) { ierr = pTatinCreateDirectory(pvoutputdir);CHKERRQ(ierr); }
 
   ierr = PoissonPressureOutput_PVD(ptatin,prefix,been_here);CHKERRQ(ierr);
 
-  if (prefix) { ierr = PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s_%s_poisson_P",pvoutputdir,prefix);CHKERRQ(ierr);
-  } else {      ierr = PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s_poisson_P",pvoutputdir);CHKERRQ(ierr); }
+  if (prefix) { ierr = PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/%s_poisson_P",pvoutputdir,prefix);CHKERRQ(ierr);
+  } else {      ierr = PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/poisson_P",pvoutputdir);CHKERRQ(ierr); }
   
   if (vts) { 
     ierr = PoissonPressureOutput_VTS(poisson_pressure,fname);CHKERRQ(ierr);
