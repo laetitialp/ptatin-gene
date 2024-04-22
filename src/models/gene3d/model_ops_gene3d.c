@@ -1469,135 +1469,7 @@ static PetscErrorCode GeneralNavierSlipBC_Constant(
   }
   PetscFunctionReturn(0);
 }
-#if 0
-static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Rotated(PetscInt tag, ModelGENE3DCtx *data, GenNavierSlipCtx *bc_data)
-{
-  PetscInt       d,nn,dir;
-  PetscReal      a[2],uL[2],uO[2];
-  PetscReal      theta,duxdx,duxdz,duzdx,duzdz;
-  PetscBool      found;
-  char           prefix[PETSC_MAX_PATH_LEN],option_name[PETSC_MAX_PATH_LEN];
-  PetscErrorCode ierr;
-  PetscFunctionBegin;
- 
-  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"bc_navier_");CHKERRQ(ierr);
-  /* 
-  Coefficients of the linear velocity function 
-    u(x) = a*x + b
-  where u is a vector function composed of 
-    u[0] = a[0]*x + b[0]
-    u[1] = a[1]*x + b[1]
-  and x can be either x or z e.g., position[0] or position[2]
 
-  L and O are the bounds of the domain and uL and uO are the velocities
-  prescribed on boundaries 
-      x = L and x = O 
-  or  z = L and z = O 
-  depending on the direction in which the velocity should vary
-  */
-
-  /* Get values for uO and uL */
-  nn = 2;
-  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%suO_%d",prefix,tag);CHKERRQ(ierr);
-  ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME,option_name,uO,&nn,&found);CHKERRQ(ierr);
-  if (found) {
-    if (nn != 2) {
-      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%s requires 2 entries, found %d.",option_name,nn);
-    }
-  } else { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%s not found!",option_name); }
-
-  nn = 2;
-  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%suL_%d",prefix,tag);CHKERRQ(ierr);
-  ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME,option_name,uL,&nn,&found);CHKERRQ(ierr);
-  if (found) {
-    if (nn != 2) {
-      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%s requires 2 entries, found %d.",option_name,nn);
-    }
-  } else { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%s not found!",option_name); }
-
-  /* Get direction for the variation of u */
-  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%svariation_dir_%d",prefix,tag);CHKERRQ(ierr);
-  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,option_name,&dir,&found);CHKERRQ(ierr);
-  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%s not found!",option_name); }
-
-  /* Get angle of rotation */
-  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%srotation_angle_%d",prefix,tag);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&theta,&found);CHKERRQ(ierr);
-  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%s not found!",option_name); }
-  theta = theta * M_PI/180.0; // deg2rad
-
- /* For the derivatives we only need coefficient a */
-  for (d=0; d<2; d++) {
-    a[d] = (uL[d] - uO[d]) / (data->L[dir] - data->O[dir]);
-  }
-
-  /* 
-  Derivatives of the rotated vector field resulting from the transformation (in matrix form):
-    uR = R(theta) * u(xR)
-  where:
-    theta    = angle of rotation
-    R(theta) = rotation matrix in 2D
-    xR       = R.T(theta)*x, the rotated coordinate system
-    u(xR)    = the velocity function evaluated in the rotated coordinate system
-  */
-  switch(dir) {
-    case 0:
-      duxdx = PetscCosReal(theta) * ( a[0]*PetscCosReal(theta) - a[1]*PetscSinReal(theta) );
-      duxdz = PetscSinReal(theta) * ( a[0]*PetscCosReal(theta) - a[1]*PetscSinReal(theta) );
-      duzdx = PetscCosReal(theta) * ( a[0]*PetscSinReal(theta) + a[1]*PetscCosReal(theta) );
-      duzdz = PetscSinReal(theta) * ( a[0]*PetscSinReal(theta) + a[1]*PetscCosReal(theta) );
-      break;
-
-    case 2:
-      duxdx = PetscSinReal(theta) * ( a[1]*PetscSinReal(theta) - a[0]*PetscCosReal(theta) );
-      duxdz = PetscCosReal(theta) * ( a[0]*PetscCosReal(theta) - a[1]*PetscSinReal(theta) );
-      duzdx = PetscSinReal(theta) * ( a[1]*PetscCosReal(theta) - a[0]*PetscSinReal(theta) );
-      duzdz = PetscCosReal(theta) * ( a[0]*PetscSinReal(theta) + a[1]*PetscCosReal(theta) );
-      break;
-    
-    default:
-      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"The velocity variation set with %s can only be 0 or 2, found %d.",option_name,dir);
-      break;
-  }
-  /* Imposed strain-rate */
-  bc_data->epsilon_s[0] = duxdx; // Exx
-  bc_data->epsilon_s[1] = 0.0;   // Eyy             
-  bc_data->epsilon_s[2] = duzdz; // Ezz 
-  
-  bc_data->epsilon_s[3] = 0.0;                   // Exy                
-  bc_data->epsilon_s[4] = 0.5*( duxdz + duzdx ); // Exz
-  bc_data->epsilon_s[5] = 0.0;                   // Eyz
-  
-  /* Tangent vector 1 t = R.T*uL */
-  bc_data->t1_hat[0] = PetscCosReal(theta)*uL[0] + PetscSinReal(theta)*uL[1];
-  bc_data->t1_hat[1] = 0.0;
-  bc_data->t1_hat[2] = -PetscSinReal(theta)*uL[0] + PetscCosReal(theta)*uL[1];
-  /* Normal vector */
-  bc_data->n_hat[0] = -bc_data->t1_hat[2];
-  bc_data->n_hat[1] = 0.0;
-  bc_data->n_hat[2] = bc_data->t1_hat[0];
-
-  /* 
-  Set which component of the strain rate tensor in the nhat, that coord system
-  is constrained (1) and which is left unknown (0) 
-  */
-  bc_data->mcal_H[0] = 0; //H_00
-  bc_data->mcal_H[1] = 1; //H_11
-  bc_data->mcal_H[2] = 0; //H_22
-  bc_data->mcal_H[3] = 1; //H_01
-  bc_data->mcal_H[4] = 1; //H_02
-  bc_data->mcal_H[5] = 1; //H_12
-  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%smathcal_H_%d",prefix,tag);CHKERRQ(ierr);
-  nn   = 6;
-  ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME,option_name,bc_data->mcal_H,&nn,&found);CHKERRQ(ierr);
-  if (found) {
-    if (nn != 6) {
-      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"%s requires 6 entries, found %d.",option_name,nn);
-    }
-  }
-  PetscFunctionReturn(0);
-}
-#endif
 static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Constant(PetscInt tag, ModelGENE3DCtx *data, GenNavierSlipCtx *bc_data)
 {
   PetscInt       nn;
@@ -1616,7 +1488,7 @@ static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Constan
   ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME,opt_name,uL,&nn,&found);CHKERRQ(ierr);
   if (found) {
     if (nn != 2) {
-      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%s requires 2 entries, found %d.",opt_name,nn);
+      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s requires 2 entries, found %d.",opt_name,nn);
     }
   } else { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
 
