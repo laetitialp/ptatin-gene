@@ -1618,25 +1618,25 @@ static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Constan
     if (nn != 2) {
       SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%s requires 2 entries, found %d.",opt_name,nn);
     }
-  } else { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%s not found!",opt_name); }
+  } else { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
 
   /* Get derivatives */
   /* dux/dx */
   ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%sduxdx_%d",prefix,tag);CHKERRQ(ierr);
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME,opt_name,&duxdx,&found);CHKERRQ(ierr);
-  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%s not found!",opt_name); }
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
   /* dux/dz */
   ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%sduxdz_%d",prefix,tag);CHKERRQ(ierr);
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME,opt_name,&duxdz,&found);CHKERRQ(ierr);
-  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%s not found!",opt_name); }
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
   /* duz/dx */
   ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%sduzdx_%d",prefix,tag);CHKERRQ(ierr);
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME,opt_name,&duzdx,&found);CHKERRQ(ierr);
-  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%s not found!",opt_name); }
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
   /* duz/dz */
   ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%sduzdz_%d",prefix,tag);CHKERRQ(ierr);
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME,opt_name,&duzdz,&found);CHKERRQ(ierr);
-  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%s not found!",opt_name); }
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
 
   /* Scale by 1/u_bar ==> du / (1/u_bar) = du * u_bar */
   duxdx *= data->scale->velocity_bar;
@@ -1685,14 +1685,31 @@ static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Constan
   }
   PetscFunctionReturn(0);
 }
-#if 0
+#if 1
 static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Expression(pTatinCtx ptatin,PetscInt tag, ModelGENE3DCtx *data, GenNavierSlipCtx *bc_data)
 {
-  ExpressionCtx  expr;
-  PetscReal      time;
-  char           prefix[PETSC_MAX_PATH_LEN];
+  te_variable    *vars;
+  te_expr        **expression;
+  PetscReal      time,duxdx,duxdz,duzdx,duzdz,uLx,uLz,uL_norm2;
+  PetscInt       n,n_vars,n_expression,nn;
+  PetscBool      found;
+  char           prefix[PETSC_MAX_PATH_LEN],opt_name[PETSC_MAX_PATH_LEN];
+  char           expr_duxdx[PETSC_MAX_PATH_LEN],expr_duxdz[PETSC_MAX_PATH_LEN];
+  char           expr_duzdx[PETSC_MAX_PATH_LEN],expr_duzdz[PETSC_MAX_PATH_LEN];
+  char           expr_uLx[PETSC_MAX_PATH_LEN],expr_uLz[PETSC_MAX_PATH_LEN];
+  int            err;
   PetscErrorCode ierr;
   PetscFunctionBegin;
+
+  /* 
+  For a time dependant function there is a problem to define the orientation vector t1_hat 
+  because this vector should never be the null vector, it is an orientation not a velocity
+  therefore,
+  the user can pass a math expression for the derivative
+  but,
+  if the orientation is described by a math expression that at some point evaluate to 0 it will break the 
+  formulation as t1_hat is normalized (thus divided by its norm, thus divided by 0 in that case).
+  */
 
   ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"bc_navier_");CHKERRQ(ierr);
   /* get time */
@@ -1700,16 +1717,141 @@ static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Express
   time *= data->scale->time_bar;
 
   /* 
-  For a time dependant function there is a problem to define the orientation vector
-  t1_hat because this vector should never be the null vector, it is an orientation not a velocity
-  therefore,
-  the user can pass a math expression for the derivative
-  but,
-  if the orientation is described by a math expression that at some point evaluate to 0 it will break the 
-  formulation as t1_hat is normalized (thus divided by its norm, thus divided by 0 in that case).
-  I am not sure what to do about this yet. 
+  Create variables data structure 
+  For now only time dependant expression is supported.
+  This choice comes from the fact that if the derivatives contain spatial variables (x,y,z)
+  it means that the choosen velocity is non-linear (bi- and tri-linear count as non-linear)
+  I don't think that chosing a non-linear velocity to prescribe the stress is a good choice, 
+  but it can change in the future.
   */
+  n_vars = 1; // 1 variable -> time
+  ierr = PetscCalloc1(n_vars,&vars);CHKERRQ(ierr);
+  /* Attach variables */
+  vars[0].name = "t"; vars[0].address = &time;
+  /* Get user expression */
+  n_expression = 6; // 6 expression dux/dx, dux/dz, duz/dx, duz/dz, uLx, uLz
+  ierr = PetscCalloc1(n_expression,&expression);CHKERRQ(ierr);
+  /* dux/dx */
+  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%sduxdx_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,expr_duxdx,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
+  /* dux/dz */
+  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%sduxdz_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,expr_duxdz,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
+  /* duz/dx */
+  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%sduzdx_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,expr_duzdx,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
+  /* duz/dz */
+  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%sduzdz_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,expr_duzdz,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
+  /* uLx */
+  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%suLx_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,expr_uLx,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
+  /* uLz */
+  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%suLz_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,expr_uLz,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
 
+  /* Compile expression */
+  expression[0] = te_compile(expr_duxdx, vars, n_vars, &err);
+  if (!expression[0]) {
+    PetscPrintf(PETSC_COMM_WORLD,"\t%*s^\nError near here", err-1, "");
+    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Expression %s did not compile.",expr_duxdx);
+  }
+  expression[1] = te_compile(expr_duxdz, vars, n_vars, &err);
+  if (!expression[1]) {
+    PetscPrintf(PETSC_COMM_WORLD,"\t%*s^\nError near here", err-1, "");
+    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Expression %s did not compile.",expr_duxdz);
+  }
+  expression[2] = te_compile(expr_duzdx, vars, n_vars, &err);
+  if (!expression[2]) {
+    PetscPrintf(PETSC_COMM_WORLD,"\t%*s^\nError near here", err-1, "");
+    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Expression %s did not compile.",expr_duzdx);
+  }
+  expression[3] = te_compile(expr_duzdz, vars, n_vars, &err);
+  if (!expression[3]) {
+    PetscPrintf(PETSC_COMM_WORLD,"\t%*s^\nError near here", err-1, "");
+    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Expression %s did not compile.",expr_duzdz);
+  }
+  expression[4] = te_compile(expr_uLx, vars, n_vars, &err);
+  if (!expression[4]) {
+    PetscPrintf(PETSC_COMM_WORLD,"\t%*s^\nError near here", err-1, "");
+    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Expression %s did not compile.",expr_uLx);
+  }
+  expression[5] = te_compile(expr_uLz, vars, n_vars, &err);
+  if (!expression[5]) {
+    PetscPrintf(PETSC_COMM_WORLD,"\t%*s^\nError near here", err-1, "");
+    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Expression %s did not compile.",expr_uLz);
+  }
+  /* Evaluate expressions */
+  duxdx = te_eval(expression[0]);
+  duxdz = te_eval(expression[1]);
+  duzdx = te_eval(expression[2]);
+  duzdz = te_eval(expression[3]);
+  uLx   = te_eval(expression[4]);
+  uLz   = te_eval(expression[5]);
+
+  /* Imposed strain-rate */
+  bc_data->epsilon_s[0] = duxdx * data->scale->velocity_bar; // Exx
+  bc_data->epsilon_s[1] = 0.0;                               // Eyy             
+  bc_data->epsilon_s[2] = duzdz * data->scale->velocity_bar; // Ezz 
+  
+  bc_data->epsilon_s[3] = 0.0;                                               // Exy                
+  bc_data->epsilon_s[4] = 0.5*( duxdz + duzdx ) * data->scale->velocity_bar; // Exz
+  bc_data->epsilon_s[5] = 0.0;                                               // Eyz
+
+  /* 
+  Tangent vector 1, the scaling is not necessary because it is an orientation 
+  but scaling it permits to keep numbers in an acceptable value range 
+  */
+  uLx /= data->scale->velocity_bar;
+  uLz /= data->scale->velocity_bar;
+  uL_norm2 = uLx*uLx + uLz*uLz;
+  /* 
+  if the norm evaluates to 0 we will assume that it is due to the time in the expression
+  and that the actual velocity in the model is also 0.
+  Thus, we will ensure that t1_hat (which is a direction and not a velocity) is not the null vector
+  and set it an arbitrary value.
+  */
+  if (uL_norm2 < 1.0e-10) {
+    uLx = 0.5;
+    uLz = 0.5;
+  }
+  
+  bc_data->t1_hat[0] = uLx;
+  bc_data->t1_hat[1] = 0.0;
+  bc_data->t1_hat[2] = uLz;
+  /* Normal vector */
+  bc_data->n_hat[0] = -bc_data->t1_hat[2];
+  bc_data->n_hat[1] = 0.0;
+  bc_data->n_hat[2] = bc_data->t1_hat[0];
+
+  /* 
+  Set which component of the strain rate tensor in the nhat, that coord system
+  is constrained (1) and which is left unknown (0) 
+  */
+  bc_data->mcal_H[0] = 0; //H_00
+  bc_data->mcal_H[1] = 1; //H_11
+  bc_data->mcal_H[2] = 0; //H_22
+  bc_data->mcal_H[3] = 1; //H_01
+  bc_data->mcal_H[4] = 1; //H_02
+  bc_data->mcal_H[5] = 1; //H_12
+  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%smathcal_H_%d",prefix,tag);CHKERRQ(ierr);
+  nn   = 6;
+  ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME,opt_name,bc_data->mcal_H,&nn,&found);CHKERRQ(ierr);
+  if (found) {
+    if (nn != 6) {
+      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"%s requires 6 entries, found %d.",opt_name,nn);
+    }
+  }
+
+  for (n=0; n<n_expression; n++) { te_free(expression[n]); }
+  ierr = PetscFree(vars);CHKERRQ(ierr);
+  ierr = PetscFree(expression);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 #endif
@@ -1717,6 +1859,7 @@ static PetscErrorCode ModelSetBoundaryValues_GeneralNavierSlip(pTatinCtx ptatin,
 {
   GenNavierSlipCtx bc_data;
   PetscReal        penalty;
+  PetscBool        expr=PETSC_FALSE;
   char             opt_name[PETSC_MAX_PATH_LEN];
   PetscErrorCode   ierr;
   PetscFunctionBegin;
@@ -1729,7 +1872,9 @@ static PetscErrorCode ModelSetBoundaryValues_GeneralNavierSlip(pTatinCtx ptatin,
   /* Set values on boundary from options */
   ierr = PetscMemzero(&bc_data,sizeof(GenNavierSlipCtx));CHKERRQ(ierr);
   //ierr = ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Rotated(tag,data,&bc_data);CHKERRQ(ierr);
-  ierr = ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Constant(tag,data,&bc_data);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-bc_navier_expression_%d",&expr,NULL);CHKERRQ(ierr);
+  if (expr) { ierr = ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Expression(ptatin,tag,data,&bc_data);CHKERRQ(ierr); }
+  else      { ierr = ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Constant(tag,data,&bc_data);CHKERRQ(ierr); }
   ierr = SurfaceConstraintSetValuesStrainRate_NITSCHE_GENERAL_SLIP(sc,(SurfCSetValuesNitscheGeneralSlip)GeneralNavierSlipBC_Constant,(void*)&bc_data);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
@@ -1783,22 +1928,6 @@ static PetscErrorCode ModelSetBoundaryValues_VelocityBC(
   }
   PetscFunctionReturn(0);
 }
-/*
-NOTES for time dependant BCs
-  Possible approach:
-  [1] get an option for the number of time values at which a change must occur e.g., 
-      -ntime_changes 4
-  [2] get time values of that interval e.g.,
-      -time_bc_change t1,t2,t3,t4  
-      with this t0 will always be 0.0 and t4 the last time value at which the bc change
-  [3] provide an array containing the values to apply at each time change e.g.,
-      -time_bc_val_%d u0,u1,u2,u3,u4
-      expect 1 more value than ntime_changes for the interval t0->t1
-
-      Problem ==> cannot change the type of the bc i.e., navier stays navier and dirichlet stays dirichlet
-      need to find a way to interface with the option file the possibility to change the bc type
-      but keep the marking of the facet and the tag (if mesh was deformed we do not want to mark again the facets)
-*/
 
 static PetscErrorCode ModelApplyBoundaryCondition_Velocity(pTatinCtx ptatin, DM dav, BCList bclist, SurfBCList surf_bclist, PetscBool insert_if_not_found, ModelGENE3DCtx *data)
 {
