@@ -436,6 +436,8 @@ PetscErrorCode ModelInitialize_Gene3D(pTatinCtx ptatin, void *ctx)
 
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-output_markers",&data->output_markers,NULL);CHKERRQ(ierr);CHKERRQ(ierr);
 
+  /* Initialize prev_step to step - 1 in case of restart */
+  data->prev_step = -1;
   PetscFunctionReturn (0);
 }
 
@@ -940,9 +942,6 @@ static PetscErrorCode ModelCreatePoissonPressure_Gene3D(pTatinCtx ptatin, ModelG
   ierr = DMCreateMatrix(poisson_pressure->da,&data->poisson_Jacobian);CHKERRQ(ierr);
   ierr = MatSetFromOptions(data->poisson_Jacobian);CHKERRQ(ierr);
 
-  /* Initialize prev_step to step - 1 in case of restart */
-  data->prev_step = -1;
-
   PetscFunctionReturn(0);
 }
 
@@ -1062,7 +1061,8 @@ static PetscErrorCode ModelMarkBoundaryFacets_Gene3D(Mesh mesh, SurfaceConstrain
   PetscInt          method=1;
   PetscErrorCode    ierr;
   PetscFunctionBegin;
-
+  
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
   /* Get mesh entity object */
   ierr = SurfaceConstraintGetFacets(sc,&mesh_entity);CHKERRQ(ierr);
   /* Check if facets for this surface constraint have already been marked */
@@ -1210,13 +1210,14 @@ static PetscErrorCode ModelSetDirichlet_VelocityBC_BottomFlowUdotN(pTatinCtx pta
   ierr = DMCompositeGetAccess(dms,X,&velocity,&pressure);CHKERRQ(ierr);  
   
   ierr = StokesComputeVdotN(stokes,velocity,int_u_dot_n);CHKERRQ(ierr);
-  PetscPrintf(PETSC_COMM_WORLD,"imin: %+1.4e\n",int_u_dot_n[ WEST_FACE  -1]);
-  PetscPrintf(PETSC_COMM_WORLD,"imax: %+1.4e\n",int_u_dot_n[ EAST_FACE  -1]);
-  PetscPrintf(PETSC_COMM_WORLD,"jmin: %+1.4e\n",int_u_dot_n[ SOUTH_FACE -1]);
-  PetscPrintf(PETSC_COMM_WORLD,"jmax: [free surface] %+1.4e\n",int_u_dot_n[ NORTH_FACE -1]);
-  PetscPrintf(PETSC_COMM_WORLD,"kmin: %+1.4e\n",int_u_dot_n[ BACK_FACE  -1]);
-  PetscPrintf(PETSC_COMM_WORLD,"kmax: %+1.4e\n",int_u_dot_n[ FRONT_FACE -1]);
-
+  if (data->bc_debug) {
+    PetscPrintf(PETSC_COMM_WORLD,"imin: %+1.4e\n",int_u_dot_n[ WEST_FACE  -1]);
+    PetscPrintf(PETSC_COMM_WORLD,"imax: %+1.4e\n",int_u_dot_n[ EAST_FACE  -1]);
+    PetscPrintf(PETSC_COMM_WORLD,"jmin: %+1.4e\n",int_u_dot_n[ SOUTH_FACE -1]);
+    PetscPrintf(PETSC_COMM_WORLD,"jmax: [free surface] %+1.4e\n",int_u_dot_n[ NORTH_FACE -1]);
+    PetscPrintf(PETSC_COMM_WORLD,"kmin: %+1.4e\n",int_u_dot_n[ BACK_FACE  -1]);
+    PetscPrintf(PETSC_COMM_WORLD,"kmax: %+1.4e\n",int_u_dot_n[ FRONT_FACE -1]);
+  }
   ierr = DMCompositeRestoreAccess(dms,X,&velocity,&pressure);CHKERRQ(ierr);
   
   /* Compute the uy velocity based on faces inflow/outflow except the top free surface */
@@ -1432,7 +1433,9 @@ static PetscErrorCode ModelSetNeumann_VelocityBC(pTatinCtx ptatin, SurfaceConstr
   }
 
   // TODO: check if we restrain the solve to once per time step or not
-  ierr = ModelSolvePoissonPressure(ptatin,data);CHKERRQ(ierr);
+  if (data->prev_step != ptatin->step) {
+    ierr = ModelSolvePoissonPressure(ptatin,data);CHKERRQ(ierr);
+  }
 
   ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-dev_stress_%d",tag);
   ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,expr,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
@@ -1827,10 +1830,13 @@ static PetscErrorCode ModelApplyBoundaryCondition_Velocity(pTatinCtx ptatin, DM 
     ierr = SurfBCListGetConstraint(surf_bclist,sc_name,&sc);CHKERRQ(ierr);
     if (!sc) { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"sc object for name %s and tag %d does not exist!\n",sc_name,tag); }
     /* mark facets */
-    ierr = ModelMarkBoundaryFacets_Gene3D(mesh,sc,data);CHKERRQ(ierr);
+    if (data->prev_step != ptatin->step) {
+      ierr = ModelMarkBoundaryFacets_Gene3D(mesh,sc,data);CHKERRQ(ierr);
+    }
     /* Apply BCs */
     ierr = ModelSetBoundaryValues_VelocityBC(ptatin,dav,bclist,tag,sc,data);CHKERRQ(ierr);
   }
+  
   PetscFunctionReturn(0);
 }
 
@@ -1900,6 +1906,8 @@ PetscErrorCode ModelApplyBoundaryConditionMG_Gene3D(PetscInt nl,BCList bclist[],
   for (n=0; n<nl; n++) {
     ierr = ModelApplyBoundaryCondition_Velocity(ptatin,dav[n],bclist[n],surf_bclist[n],PETSC_FALSE,data);CHKERRQ(ierr);
   }
+  /* Every BC function has been called at least once, we can update prev_step */
+  data->prev_step = ptatin->step;
   PetscFunctionReturn(0);
 }
 

@@ -67,11 +67,11 @@ typedef struct {
   /* Scaling values */
   ScalingCtx scale;
   /* poisson pressure */
-  PetscInt  prev_step;
   Mat       poisson_Jacobian;
   PetscReal surface_pressure;
   PetscBool poisson_pressure_active;
   /* bcs */
+  PetscInt  prev_step;
   PetscInt  bc_nfaces;
   PetscInt  *bc_tag_table;
   PetscBool bc_debug;
