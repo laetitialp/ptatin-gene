@@ -620,8 +620,8 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_Gene3D(pTatinCtx ptatin,Vec X,void *
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-apply_mesh_refinement",&refine,NULL);CHKERRQ(ierr);
   if (refine) { 
     ierr = ModelApplyMeshRefinement(ptatin->stokes_ctx->dav);CHKERRQ(ierr);
+    ierr = DMDABilinearizeQ2Elements(dav);CHKERRQ(ierr);
   }
-
   /* Passive markers update */
   if (data->passive_markers) { ierr = PSwarmFieldUpdateAll(data->pswarm);CHKERRQ(ierr); }
 
@@ -1221,8 +1221,12 @@ static PetscErrorCode ModelSetDirichlet_VelocityBC_BottomFlowUdotN(pTatinCtx pta
   ierr = DMCompositeRestoreAccess(dms,X,&velocity,&pressure);CHKERRQ(ierr);
   
   /* Compute the uy velocity based on faces inflow/outflow except the top free surface */
-  uy = (int_u_dot_n[WEST_FACE-1]+int_u_dot_n[EAST_FACE-1]+int_u_dot_n[BACK_FACE-1]+int_u_dot_n[FRONT_FACE-1])/((data->L[0] - data->O[0])*(data->L[2] - data->O[2]));
-  PetscPrintf(PETSC_COMM_WORLD,"Computed bottom velocity uy = %+1.4e\n",uy);
+  if (ptatin->step == 0) {
+    uy = 0.0;
+  } else {
+    uy = (int_u_dot_n[WEST_FACE-1]+int_u_dot_n[EAST_FACE-1]+int_u_dot_n[BACK_FACE-1]+int_u_dot_n[FRONT_FACE-1])/((data->L[0] - data->O[0])*(data->L[2] - data->O[2]));
+    PetscPrintf(PETSC_COMM_WORLD,"Computed bottom velocity uy = %+1.4e\n",uy);
+  }
   ierr = DMDABCListTraverseFacets3d(bclist,dav,sc,1,BCListEvaluator_constant,(void*)&uy);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
@@ -1470,6 +1474,7 @@ static PetscErrorCode GeneralNavierSlipBC_Constant(
     t1_hat[j] = bc_data->t1_hat[j];
     n_hat[j] = bc_data->n_hat[j];
   }
+
   PetscFunctionReturn(0);
 }
 
@@ -1513,11 +1518,11 @@ static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Constan
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME,opt_name,&duzdz,&found);CHKERRQ(ierr);
   if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
 
-  /* Scale by 1/u_bar ==> du / (1/u_bar) = du * u_bar */
-  duxdx *= data->scale->velocity_bar;
-  duxdz *= data->scale->velocity_bar;
-  duzdx *= data->scale->velocity_bar;
-  duzdz *= data->scale->velocity_bar;
+  /* Scale by 1/t_bar ==> du / (1/t_bar) = du * t_bar */
+  duxdx *= data->scale->time_bar;
+  duxdz *= data->scale->time_bar;
+  duzdx *= data->scale->time_bar;
+  duzdz *= data->scale->time_bar;
 
   /* Imposed strain-rate */
   bc_data->epsilon_s[0] = duxdx; // Exx
@@ -1560,7 +1565,7 @@ static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Constan
   }
   PetscFunctionReturn(0);
 }
-#if 1
+
 static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Expression(pTatinCtx ptatin,PetscInt tag, ModelGENE3DCtx *data, GenNavierSlipCtx *bc_data)
 {
   te_variable    *vars;
@@ -1671,12 +1676,12 @@ static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Express
   uLz   = te_eval(expression[5]);
 
   /* Imposed strain-rate */
-  bc_data->epsilon_s[0] = duxdx * data->scale->velocity_bar; // Exx
+  bc_data->epsilon_s[0] = duxdx * data->scale->time_bar; // Exx
   bc_data->epsilon_s[1] = 0.0;                               // Eyy             
-  bc_data->epsilon_s[2] = duzdz * data->scale->velocity_bar; // Ezz 
+  bc_data->epsilon_s[2] = duzdz * data->scale->time_bar; // Ezz 
   
   bc_data->epsilon_s[3] = 0.0;                                               // Exy                
-  bc_data->epsilon_s[4] = 0.5*( duxdz + duzdx ) * data->scale->velocity_bar; // Exz
+  bc_data->epsilon_s[4] = 0.5*( duxdz + duzdx ) * data->scale->time_bar; // Exz
   bc_data->epsilon_s[5] = 0.0;                                               // Eyz
 
   /* 
@@ -1729,7 +1734,7 @@ static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Express
   ierr = PetscFree(expression);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
-#endif
+
 static PetscErrorCode ModelSetBoundaryValues_GeneralNavierSlip(pTatinCtx ptatin, SurfaceConstraint sc, PetscInt tag, ModelGENE3DCtx *data)
 {
   GenNavierSlipCtx bc_data;
@@ -1746,8 +1751,8 @@ static PetscErrorCode ModelSetBoundaryValues_GeneralNavierSlip(pTatinCtx ptatin,
   ierr = SurfaceConstraintNitscheGeneralSlip_SetPenalty(sc,penalty);CHKERRQ(ierr);
   /* Set values on boundary from options */
   ierr = PetscMemzero(&bc_data,sizeof(GenNavierSlipCtx));CHKERRQ(ierr);
-  //ierr = ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Rotated(tag,data,&bc_data);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-bc_navier_expression_%d",&expr,NULL);CHKERRQ(ierr);
+
   if (expr) { ierr = ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Expression(ptatin,tag,data,&bc_data);CHKERRQ(ierr); }
   else      { ierr = ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Constant(tag,data,&bc_data);CHKERRQ(ierr); }
   ierr = SurfaceConstraintSetValuesStrainRate_NITSCHE_GENERAL_SLIP(sc,(SurfCSetValuesNitscheGeneralSlip)GeneralNavierSlipBC_Constant,(void*)&bc_data);CHKERRQ(ierr);
@@ -1880,7 +1885,7 @@ PetscErrorCode ModelApplyBoundaryCondition_Gene3D(pTatinCtx ptatin, void *ctx)
 
   ierr = pTatinGetStokesContext(ptatin,&stokes);CHKERRQ(ierr);
   ierr = ModelApplyBoundaryCondition_Velocity(ptatin,stokes->dav,stokes->u_bclist,stokes->surf_bclist,PETSC_TRUE,data);CHKERRQ(ierr);
-
+  
   ierr = pTatinContextValid_EnergyFV(ptatin,&active_energy);CHKERRQ(ierr);
   if (active_energy) {
     ierr = pTatinGetContext_EnergyFV(ptatin,&energy);CHKERRQ(ierr);
