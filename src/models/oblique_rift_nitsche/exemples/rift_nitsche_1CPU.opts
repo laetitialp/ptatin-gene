@@ -18,12 +18,12 @@
 -model_rift_nitsche_output_pressure
 -model_rift_nitsche_temperature_ic_from_file
 ########## Resolution ##############
--mx 32 # Number of elements along x
--my 32 # Number of elements along y
--mz 32 # Number of elements along z
+-mx 8 # Number of elements along x
+-my 8 # Number of elements along y
+-mz 8 # Number of elements along z
 ########### Box Geometry ##########
 -model_rift_nitsche_O 0.0,-250.0e3,0.0
--model_rift_nitsche_L 1200.0e3,0.0,600.0e3
+-model_rift_nitsche_L 600.0e3,0.0,300.0e3
 -model_rift_nitsche_y_continent -25.0e3,-35.0e3,-120.0e3
 ########### Weak zones ##########
 #-model_rift_nitsche_wz_notch
@@ -36,8 +36,8 @@
 #-model_rift_nitsche_wz_oblique_gauss
 -model_rift_nitsche_wz_sigma 6e+5,6e+5
 -model_rift_nitsche_wz_n_notches 2
--model_rift_nitsche_wz_centre0 496122.8125,174080.84375
--model_rift_nitsche_wz_centre1 103877.203125,125919.1484375
+-model_rift_nitsche_wz_centre0 99999.734375,69194.234375 #251703.7086855466,162940.95225512603
+-model_rift_nitsche_wz_centre1 499999.9375,230805.15625 #348296.2913144534,137059.04774487397
 #-model_rift_nitsche_wz_centre2 1025.19e3,258.639e3
 -model_rift_nitsche_wz_origin 300.0e3 # Centre z
 -model_rift_nitsche_wz_offset -200.0e3
@@ -45,17 +45,17 @@
 -model_rift_nitsche_wz_angle 22.0
 ########### Boundary conditions ##########
 #-model_rift_nitsche_bc_nitsche
-#-model_rift_nitsche_bc_strike_slip
+-model_rift_nitsche_bc_strike_slip
 #-model_rift_nitsche_bc_freeslip_nitsche
 #-model_rift_nitsche_bc_dirichlet
 #-model_rift_nitsche_bc_strikeslip_neumann
 #-model_rift_nitsche_bc_neumann_z
 #-model_rift_nitsche_bc_mark_face
--model_rift_nitsche_bc_diri_neumann
--model_rift_nitsche_bc_expression 2.0*z
+#-model_rift_nitsche_bc_diri_neumann
+#-model_rift_nitsche_bc_expression 2.0*z
 -model_rift_nitsche_norm_u 1.0 # cm/yr
--model_rift_nitsche_alpha_u 45.0 # Degree
--model_rift_nitsche_alpha_r 0.0 #-15.0 # Degree
+-model_rift_nitsche_alpha_u 90.0 # Degree
+-model_rift_nitsche_alpha_r -15.0 # Degree
 -model_rift_nitsche_mathcalH 0,1,0,1,1,1 # default
 -model_rift_nitsche_Ttop 0.0
 -model_rift_nitsche_Tbottom 1450.0
