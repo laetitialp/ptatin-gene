@@ -95,6 +95,7 @@ libptatin3d-y.c += $(call thisdir, \
   parse.c \
   point_in_tetra.c \
   tinyexpr.c \
+  map2d.c \
 )
 
 libptatin3d-$(CONFIG_CUDA).cu += $(call thisdir, \
