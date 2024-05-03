@@ -37,21 +37,20 @@ struct _p_PhaseMap {
   double x0,y0,x1,y1;
   double dx,dy;
   int mx,my;
-  int nphases;
-  int *data;
+  double *data;
 };
+
+
 
 void PhaseMapCreate(PhaseMap *map);
 void PhaseMapDestroy(PhaseMap *map);
 void PhaseMapGetIndex(PhaseMap pm,const int i,const int j, int *index);
 void PhaseMapLoadFromFile(const char filename[],PhaseMap *map);
-void PhaseMapGetPhaseIndex(PhaseMap phasemap,double xp[],int *phase);
-void PhaseMapCheckValidity(PhaseMap phasemap,int phase,int *is_valid);
-void PhaseMapGetMaxPhases(PhaseMap phasemap,int *maxphase);
+void PhaseMapGetDensity(PhaseMap phasemap,double xp[],double *dens);
 void PhaseMapViewGnuplot(const char filename[],PhaseMap phasemap);
-
-PetscErrorCode pTatinCtxAttachPhaseMap(pTatinCtx ctx,PhaseMap map);
-PetscErrorCode pTatinCtxGetPhaseMap(pTatinCtx ctx,PhaseMap *map);
+PetscErrorCode pTatinScalePhaseMap(PhaseMap phasemap,PetscScalar density_bar, PetscScalar pressure_bar,PetscScalar temperature_bar);
+PetscErrorCode pTatinCtxAttachPhaseMap(pTatinCtx ctx,PhaseMap map,char *name);
+PetscErrorCode pTatinCtxGetPhaseMap(pTatinCtx ctx,PhaseMap *map,char *name);
 
 
 #endif

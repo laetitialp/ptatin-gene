@@ -35,6 +35,7 @@
 #include "ptatin3d.h"
 #include "ptatin3d_defs.h"
 #include "phase_map.h"
+#include "private/ptatin_impl.h"
 
 void PhaseMapCreate(PhaseMap *map)
 {
@@ -73,7 +74,7 @@ void PhaseMapLoadFromFile_ASCII(const char filename[],PhaseMap *map)
   FILE *fp = NULL;
   PhaseMap phasemap;
   char dummy[1000];
-  int i,j,phasemap_max;
+  int i,j;
   int index;
 
   /* open file to parse */
@@ -89,44 +90,25 @@ void PhaseMapLoadFromFile_ASCII(const char filename[],PhaseMap *map)
   /* read header information, mx,my,x0,y0,x1,y1 */
   //  fscanf(fp,"%s\n",dummy);
   if (!fgets(dummy,sizeof(dummy),fp)) {printf("fgets() failed. Exiting ungracefully.\n");exit(1);}
-  if (fscanf(fp,"%d\n",&phasemap->mx) < 1) {printf("fscanf() failed. Exiting ungracefully.\n");exit(1);}
-  if (fscanf(fp,"%d\n",&phasemap->my) < 1) {printf("fscanf() failed. Exiting ungracefully.\n");exit(1);}
-  if (fscanf(fp,"%lf %lf %lf %lf\n",&phasemap->x0,&phasemap->y0,&phasemap->x1,&phasemap->y1) < 4) {printf("fscanf() failed. Exiting ungracefully.\n");exit(1);}
+  if (fscanf(fp,"%d\n",&phasemap->mx) < 1) {printf("fscanf() failed. Exiting ungracefully1.\n");exit(1);}
+  if (fscanf(fp,"%d\n",&phasemap->my) < 1) {printf("fscanf() failed. Exiting ungracefully2.\n");exit(1);}
+  if (fscanf(fp,"%lf %lf %lf %lf\n",&phasemap->x0,&phasemap->y0,&phasemap->x1,&phasemap->y1) < 4) {printf("fscanf() failed. Exiting ungracefully3.\n");exit(1);}
   //
   phasemap->dx = (phasemap->x1 - phasemap->x0)/(double)(phasemap->mx);
   phasemap->dy = (phasemap->y1 - phasemap->y0)/(double)(phasemap->my);
 
   /* allocate data */
-  phasemap->data = malloc( sizeof(int)* phasemap->mx * phasemap->my );
+  phasemap->data = malloc( sizeof(double)* phasemap->mx * phasemap->my );
 
   /* parse phase map from file */
   index = 0;
   for (j=0; j<phasemap->my; j++) {
     for (i=0; i<phasemap->mx; i++) {
-      if (fscanf(fp,"%d",&phasemap->data[index]) < 1) {printf("fscanf() failed. Exiting ungracefully.\n");exit(1);}
-      //printf("%d \n", phasemap->data[index]);
+      fscanf(fp,"%lf ",&phasemap->data[index])  ;
+      //printf("%f \n", phasemap->data[index]);
       index++;
     }
   }
-
-  /* compute max number of phases */
-  phasemap_max = -1;
-  for (j=0; j<phasemap->my; j++) {
-    for (i=0; i<phasemap->mx; i++) {
-      int index;
-
-      PhaseMapGetIndex(phasemap,i,j,&index);
-
-      if (phasemap->data[index] > phasemap_max) {
-        phasemap_max = phasemap->data[index];
-      }
-    }
-  }
-  if (phasemap_max==-1) {
-    printf("Error(%s): Zero phases have been detected \n", __func__);
-  }
-  phasemap->nphases = phasemap_max+1;
-
   /* set pointer */
   *map = phasemap;
   fclose(fp);
@@ -170,11 +152,11 @@ void PhaseMapLoadFromFile(const char filename[],PhaseMap *map)
   }
 }
 
-void PhaseMapGetPhaseIndex(PhaseMap phasemap,double xp[],int *phase)
+void PhaseMapGetDensity(PhaseMap phasemap,double xp[],double *dens)
 {
   int i,j,index;
 
-  (*phase) = (int)PHASE_MAP_POINT_OUTSIDE;
+  (*dens) = (double)PHASE_MAP_POINT_OUTSIDE;
 
   if (xp[0] < phasemap->x0) { return; }
   if (xp[0] > phasemap->x1) { return; }
@@ -188,19 +170,10 @@ void PhaseMapGetPhaseIndex(PhaseMap phasemap,double xp[],int *phase)
 
   PhaseMapGetIndex(phasemap,i,j,&index);
 
-  *phase = phasemap->data[index];
+  *dens = phasemap->data[index];
 }
 
-void PhaseMapCheckValidity(PhaseMap phasemap,int phase,int *is_valid)
-{
-  *is_valid = 0;
 
-  if ( (phase>=0) && (phase<phasemap->nphases) ) {
-    *is_valid = 1;
-  } else if ( phase==(int)PHASE_MAP_POINT_OUTSIDE ) {
-    *is_valid = 0;
-  }
-}
 
 /*
 
@@ -224,7 +197,7 @@ void PhaseMapViewGnuplot(const char filename[],PhaseMap phasemap)
   fprintf(fp,"# Phase map : (x1,y1) = (%lf,%lf) \n",phasemap->x1,phasemap->y1);
   fprintf(fp,"# Phase map : (dx,dy) = (%lf,%lf) \n",phasemap->dx,phasemap->dy);
   fprintf(fp,"# Phase map : (mx,my) = (%d,%d) \n",phasemap->mx,phasemap->my);
-  fprintf(fp,"# Phase map : nphases = %d \n",phasemap->nphases);
+ 
 
   for (j=0; j<phasemap->my; j++) {
     for (i=0; i<phasemap->mx; i++) {
@@ -235,62 +208,64 @@ void PhaseMapViewGnuplot(const char filename[],PhaseMap phasemap)
       y = phasemap->y0 + phasemap->dy * 0.5 + j * phasemap->dy;
       PhaseMapGetIndex(phasemap,i,j,&index);
 
-      fprintf(fp,"%lf %lf %lf \n", x,y,(double)phasemap->data[index]);
+      fprintf(fp,"%lf %lf %lf \n", x,y,phasemap->data[index]);
     }fprintf(fp,"\n");
   }
   fclose(fp);
 }
 
-void PhaseMapGetMaxPhases(PhaseMap phasemap,int *maxphase)
-{
-  *maxphase = phasemap->nphases;
-}
 
-PetscErrorCode pTatinCtxAttachPhaseMap(pTatinCtx ctx,PhaseMap map)
+
+PetscErrorCode pTatinCtxAttachPhaseMap(pTatinCtx ctx,PhaseMap map, char *name)
 {
+  PetscContainer container;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  ierr = pTatinCtxAttachModelData(ctx,"phasemap",(void*)map);CHKERRQ(ierr);
+  
+  ierr = PetscContainerCreate(PETSC_COMM_WORLD,&container);CHKERRQ(ierr);
+  ierr = PetscContainerSetPointer(container,(void*)map);CHKERRQ(ierr);
+	ierr = PetscObjectCompose((PetscObject)ctx->model_data,name,(PetscObject)container);CHKERRQ(ierr);
+	
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode pTatinCtxGetPhaseMap(pTatinCtx ctx,PhaseMap *map)
+
+PetscErrorCode pTatinScalePhaseMap(PhaseMap phasemap,PetscScalar density_bar,PetscScalar pressure_bar,PetscScalar temperature_bar)
+{
+  PetscInt i,j,index; 
+  PetscErrorCode ierr;
+
+  phasemap->dy = phasemap->dy/pressure_bar;
+  phasemap->y0 = phasemap->y0/pressure_bar;
+  phasemap->y1 = phasemap->y1/pressure_bar;
+  phasemap->dx = phasemap->dx/temperature_bar; 
+  phasemap->x0 = phasemap->x0/temperature_bar; 
+  phasemap->x1 = phasemap->x1/temperature_bar; 
+  index = 0;
+  for (j=0; j<phasemap->my; j++) {
+    for (i=0; i<phasemap->mx; i++) {
+      phasemap->data[index] = phasemap->data[index] /density_bar  ;
+      index++;
+    }
+  }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode pTatinCtxGetPhaseMap(pTatinCtx ctx,PhaseMap *map, char *name)
 {
   void *mymap;
-  PetscErrorCode ierr;
-
-  PetscFunctionBegin;
-  ierr = pTatinCtxGetModelData(ctx,"phasemap",&mymap);CHKERRQ(ierr);
-  *map = (PhaseMap)mymap;
+  PetscContainer container;
+	PetscErrorCode ierr;
+    
+    PetscFunctionBegin;
+	ierr = PetscObjectQuery((PetscObject)ctx->model_data,name,(PetscObject*)&container);CHKERRQ(ierr);
+	if (!container) SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_ARG_WRONG,"No data with name %s was composed with ctx->model_data",name);
+	ierr = PetscContainerGetPointer(container,&mymap);CHKERRQ(ierr);
+	*map = (PhaseMap)mymap;
   PetscFunctionReturn(0);
 }
 
-/*
-void test_PhaseMap(void)
-{
-  PhaseMap phasemap;
-  double xp[2];
-  int phase;
 
-  //  PhaseMapLoadFromFile("test.bmp",&phasemap);
-  PhaseMapLoadFromFile("model_geometry",&phasemap);
 
-  xp[0] = 0.0;  xp[1] = 1.0;
-  PhaseMapGetPhaseIndex(phasemap,xp,&phase);
-  printf("x = ( %lf , %lf ) ==> phase = %d \n", xp[0],xp[1],phase);
 
-  xp[0] = 5.0;  xp[1] = 3.2;
-  PhaseMapGetPhaseIndex(phasemap,xp,&phase);
-  printf("x = ( %lf , %lf ) ==> phase = %d \n", xp[0],xp[1],phase);
-
-  xp[0] = -1.0; xp[1] = 1.0;
-  PhaseMapGetPhaseIndex(phasemap,xp,&phase);
-  printf("x = ( %lf , %lf ) ==> phase = %d \n", xp[0],xp[1],phase);
-
-  PhaseMapViewGnuplot("test.gp",phasemap);
-
-  PhaseMapDestroy(&phasemap);
-
-}
-*/
