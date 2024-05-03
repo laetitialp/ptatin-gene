@@ -901,6 +901,18 @@ def Generate_pTatin_MaterialConst_DensityBoussinesq():
 
 	PARTICLE_CLASS_GENERATOR( ClassName, ClassNameShort, variable_names, variable_types, variable_extents, variable_textural_names )
 
+def Generate_pTatin_MaterialConst_DensityTable():
+	ClassName      = 'MaterialConst_DensityTable'
+	ClassNameShort = 'DensityTable'
+	variable_names =          [ 'density', 'mapname']
+	variable_types =          [ 'double' ,'char[40]']
+	variable_extents        = [ 1        ,      1   ]
+	variable_textural_names = [ 'density','mapname' ]
+
+	PARTICLE_CLASS_GENERATOR( ClassName, ClassNameShort, variable_names, variable_types, variable_extents, variable_textural_names )
+
+
+
 def Generate_pTatin_MaterialConst_ViscosityArrh():
 	ClassName      = 'MaterialConst_ViscosityArrh'
 	ClassNameShort = 'ViscosityArrh'
@@ -948,41 +960,43 @@ def Generate_pTatin_MaterialConst_SoftExpo():
 	PARTICLE_CLASS_GENERATOR( ClassName, ClassNameShort, variable_names, variable_types, variable_extents, variable_textural_names )
 
 
-# Call all functions to generate all data types
+# # Call all functions to generate all data types
 
-## quadrature point fields ##
-# Stokes
-Generate_pTatin3d_QuadraturePointVolumeCoefficientStokes()
-Generate_pTatin3d_QuadraturePointSurfaceCoefficientStokes()
+# ## quadrature point fields ##
+# # Stokes
+# Generate_pTatin3d_QuadraturePointVolumeCoefficientStokes()
+# Generate_pTatin3d_QuadraturePointSurfaceCoefficientStokes()
 
-# Energy
-Generate_pTatin_QuadraturePointVolumeCoefficientEnergy()
+# # Energy
+# Generate_pTatin_QuadraturePointVolumeCoefficientEnergy()
 
-## material point fields ##
-Generate_pTatin3d_MaterialPointStandard()
-Generate_pTatin_MaterialPointStokesData()
-Generate_pTatin_MaterialPointStokesPlastic()
-Generate_pTatin_MaterialPointEnergy()
-Generate_pTatin_MaterialPointViscoElasticity()
+# ## material point fields ##
+# Generate_pTatin3d_MaterialPointStandard()
+# Generate_pTatin_MaterialPointStokesData()
+# Generate_pTatin_MaterialPointStokesPlastic()
+# Generate_pTatin_MaterialPointEnergy()
+# Generate_pTatin_MaterialPointViscoElasticity()
 
-## material constants ##
-Generate_pTatin_MaterialConst_ViscosityConst()
-Generate_pTatin_MaterialConst_ViscosityZ()
-Generate_pTatin_MaterialConst_ViscosityArrh()
-Generate_pTatin_MaterialConst_ViscosityFK()
-Generate_pTatin_MaterialConst_ViscosityArrh_DislDiff()
+# ## material constants ##
+# Generate_pTatin_MaterialConst_ViscosityConst()
+# Generate_pTatin_MaterialConst_ViscosityZ()
+# Generate_pTatin_MaterialConst_ViscosityArrh()
+# Generate_pTatin_MaterialConst_ViscosityFK()
+# Generate_pTatin_MaterialConst_ViscosityArrh_DislDiff()
 
-Generate_pTatin_MaterialConst_DensityConst()
-Generate_pTatin_MaterialConst_DensityBoussinesq()
-Generate_pTatin_MaterialConst_PlasticMises()
-Generate_pTatin_MaterialConst_PlasticDP()
-Generate_pTatin_MaterialConst_SoftLin()
-Generate_pTatin_MaterialConst_SoftExpo()
-Generate_pTatin_MaterialConst_MaterialType()
+# Generate_pTatin_MaterialConst_DensityConst()
+# Generate_pTatin_MaterialConst_DensityBoussinesq()
+# Generate_pTatin_MaterialConst_PlasticMises()
+# Generate_pTatin_MaterialConst_PlasticDP()
+# Generate_pTatin_MaterialConst_SoftLin()
+# Generate_pTatin_MaterialConst_SoftExpo()
+# Generate_pTatin_MaterialConst_MaterialType()
 
-# quad for surface processes
-Generate_pTatin_QuadraturePointVolumeCoefficientSPM_a()
-Generate_pTatin_QuadraturePointVolumeCoefficientSPM_standard_fields()
-Generate_pTatin_QuadraturePointVolumeCoefficientSPM_nonlinear_diffusivity()
+# # quad for surface processes
+# Generate_pTatin_QuadraturePointVolumeCoefficientSPM_a()
+# Generate_pTatin_QuadraturePointVolumeCoefficientSPM_standard_fields()
+# Generate_pTatin_QuadraturePointVolumeCoefficientSPM_nonlinear_diffusivity()
+
+Generate_pTatin_MaterialConst_DensityTable()
 
 
