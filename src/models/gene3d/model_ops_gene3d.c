@@ -266,6 +266,7 @@ static PetscErrorCode ModelSetPassiveMarkersSwarmParametersFromOptions(pTatinCtx
 {
   PSwarm         pswarm;
   PetscBool      found;
+  char           prefix[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
   PetscFunctionBegin;
 
@@ -274,7 +275,8 @@ static PetscErrorCode ModelSetPassiveMarkersSwarmParametersFromOptions(pTatinCtx
   if (!found) { PetscFunctionReturn(0); }
 
   ierr = PSwarmCreate(PETSC_COMM_WORLD,&pswarm);CHKERRQ(ierr);
-  ierr = PSwarmSetOptionsPrefix(pswarm,"passive_");CHKERRQ(ierr);
+  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"%spassive_",MODEL_NAME);CHKERRQ(ierr);
+  ierr = PSwarmSetOptionsPrefix(pswarm,prefix);CHKERRQ(ierr);
   ierr = PSwarmSetPtatinCtx(pswarm,ptatin);CHKERRQ(ierr);
   ierr = PSwarmSetTransportModeType(pswarm,PSWARM_TM_LAGRANGIAN);CHKERRQ(ierr);
 
