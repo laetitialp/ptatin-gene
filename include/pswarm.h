@@ -40,7 +40,8 @@ typedef enum { PSWARM_FU_NULL=0,
     PSWARM_FU_STRAINRATE,
     PSWARM_FU_FINITESTRAIN,
     PSWARM_FU_PTT,
-    PSWARM_FU_Pressure
+    PSWARM_FU_Pressure,
+    PSWARM_FU_Temperature
 } PSwarmFieldUpdateType;
 
 typedef enum { PSWARM_TM_EULERIAN=0, PSWARM_TM_LAGRANGIAN } PSwarmTransportModeType;
@@ -76,11 +77,10 @@ PetscErrorCode PSwarmGetDataBucket(PSwarm ps,DataBucket *db);
 
 PetscErrorCode _PSwarmFieldUpdate_Advect(PSwarm ps,DM dmv,Vec v);
 PetscErrorCode _PSwarmFieldUpdate_FiniteStrain(PSwarm ps,DM dmv,Vec v);
-PetscErrorCode _PSwarmFieldUpdate_PressTempTime(PSwarm ps,DM dmp,DM dmt,Vec p,Vec t,PetscReal time);
 
 PetscErrorCode PSwarmFieldUpdate_Advect(PSwarm ps);
 PetscErrorCode PSwarmFieldUpdate_FiniteStrain(PSwarm ps);
-PetscErrorCode PSwarmFieldUpdate_PressTempTime(PSwarm ps);
+PetscErrorCode PSwarmFieldUpdate_PressureTemperature(PSwarm ps);
 
 PetscErrorCode pSwarmParaViewMeshDeformationBaseVTS(PetscReal xmin[],PetscReal dx[],PetscInt nx[],const char name[]);
 
