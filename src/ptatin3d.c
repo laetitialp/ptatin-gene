@@ -620,6 +620,8 @@ PetscErrorCode pTatin3dCreateContext(pTatinCtx *ctx)
 //  user->coords_ctx = NULL;
 
   user->pack     = NULL; /* DM composite for velocity and pressure */
+  /* passive tracers */
+  user->pswarm = NULL;
 
   /* set defaults */
   user->restart_from_file         = PETSC_FALSE;
@@ -681,6 +683,7 @@ PetscErrorCode pTatin3dDestroyContext(pTatinCtx *ctx)
   if (user->pack) {       ierr = DMDestroy(&user->pack);CHKERRQ(ierr); }
   if (user->litho_p_ctx){ ierr = PhysCompDestroy_LithoP(&user->litho_p_ctx); }
 
+  if (user->pswarm) { ierr = PSwarmDestroy(&user->pswarm);CHKERRQ(ierr); }
   /*
    if (user->Q) { ierr = QuadratureStokesDestroy(&user->Q);CHKERRQ(ierr); }
    for (e=0; e<QUAD_EDGES; e++) {

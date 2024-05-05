@@ -558,6 +558,8 @@ PetscErrorCode ModelApplyInitialMeshGeometry_Gene3D(pTatinCtx ptatin,void *ctx)
   ierr = PhysCompStokesSetGravityVector(ptatin->stokes_ctx,gvec);CHKERRQ(ierr);
   ierr = PhysCompStokesScaleGravityVector(ptatin->stokes_ctx,1.0/data->scale->acceleration_bar);CHKERRQ(ierr);
 
+  /* Passive markers setup */
+  if (data->passive_markers) { ierr = PSwarmSetUp(data->pswarm);CHKERRQ(ierr); }
   PetscFunctionReturn (0);
 }
 

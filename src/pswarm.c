@@ -45,6 +45,8 @@
 #include "ptatin3d_energyfv.h"
 #include "ptatin3d_energyfv_impl.h"
 #include "fvda_impl.h"
+#include "cJSON.h"
+#include "cjson_utils.h"
 
 PetscClassId PSWARM_CLASSID;
 
@@ -113,6 +115,7 @@ PetscErrorCode PSwarmCreate(MPI_Comm comm,PSwarm *ps)
   ierr = PetscMemzero(p->ops, sizeof(struct _PSwarmOps));CHKERRQ(ierr);
 
   p->state = PSW_TS_UNINIT;
+  p->restart = PETSC_FALSE;
 
   DataBucketCreate(&p->db);
   DataBucketRegisterField(p->db,MPntStd_classname,sizeof(MPntStd),NULL);
@@ -149,6 +152,7 @@ PetscErrorCode PSwarmSetPtatinCtx(PSwarm ps,pTatinCtx pctx)
 {
   PetscFunctionBegin;
   ps->pctx = pctx;
+  pctx->pswarm = ps;
   PetscFunctionReturn(0);
 }
 
@@ -1286,10 +1290,9 @@ PetscErrorCode PSwarmSetUp(PSwarm ps)
   PetscFunctionBegin;
 
   if (ps->setup) PetscFunctionReturn(0);
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
 
-  if (!ps->pctx) {
-    SETERRQ(PetscObjectComm((PetscObject)ps),PETSC_ERR_USER,"Must provide a valid pTatinCtx");
-  }
+  if (!ps->pctx) { SETERRQ(PetscObjectComm((PetscObject)ps),PETSC_ERR_USER,"Must provide a valid pTatinCtx"); }
 
   if (!ps->de) {
     ierr = pTatinGetStokesContext(ps->pctx,&stokes);CHKERRQ(ierr);
@@ -1297,20 +1300,22 @@ PetscErrorCode PSwarmSetUp(PSwarm ps)
     ierr = PSwarmDefineCommTopologyFromDMDA(ps,dmv);CHKERRQ(ierr);
   }
 
-  ierr = PSwarmSetUpCoords(ps);CHKERRQ(ierr);
+  if (!ps->restart) {
+    ierr = PSwarmSetUpCoords(ps);CHKERRQ(ierr);
+    {
+      const char *prefix;
+      PetscInt   ridx;
+      PetscBool  isactive;
 
-  {
-    const char *prefix;
-    PetscInt   ridx;
-    PetscBool  isactive;
 
-
-    ierr = PetscObjectGetOptionsPrefix((PetscObject)ps,&prefix);CHKERRQ(ierr);
-    ridx = 0;
-    isactive = PETSC_FALSE;
-    ierr = PetscOptionsGetInt(NULL,prefix,"-pswarm_region_index",&ridx,&isactive);CHKERRQ(ierr);
-    if (isactive) { ierr = PSwarmSetRegionIndex(ps,ridx);CHKERRQ(ierr); }
+      ierr = PetscObjectGetOptionsPrefix((PetscObject)ps,&prefix);CHKERRQ(ierr);
+      ridx = 0;
+      isactive = PETSC_FALSE;
+      ierr = PetscOptionsGetInt(NULL,prefix,"-pswarm_region_index",&ridx,&isactive);CHKERRQ(ierr);
+      if (isactive) { ierr = PSwarmSetRegionIndex(ps,ridx);CHKERRQ(ierr); }
+    }
   }
+  
 
   ps->setup = PETSC_TRUE;
 
@@ -1404,6 +1409,57 @@ PetscErrorCode PSwarmCoordinatesSetSynchronization(PSwarm ps,PetscBool val)
   else     { ps->state = PSW_TS_STALE; }
   PetscFunctionReturn(0);
 }
+
+PetscErrorCode PSwarmLoad_FromFile(pTatinCtx ptatin, DM dmv)
+{
+  DataBucket     db;
+  DataEx         ex;
+  PetscLogDouble t0,t1;
+  PetscBool      found;
+  PetscErrorCode ierr;
+  MPI_Comm comm;
+  PetscMPIInt commrank;
+  char jfilename[PETSC_MAX_PATH_LEN],field_string[PETSC_MAX_PATH_LEN];
+  cJSON *jfile = NULL,*jptat = NULL,*jobj;
+
+  PetscFunctionBegin;
+
+  if (!ptatin->pswarm) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Passive Swarm data structure has not been attached to pTatinCtx"); }
+
+  ierr = PetscObjectGetComm((PetscObject)dmv,&comm);CHKERRQ(ierr);
+  ierr = MPI_Comm_rank(comm,&commrank);CHKERRQ(ierr);
+  PetscSNPrintf(jfilename,PETSC_MAX_PATH_LEN-1,"%s/ptatin3dctx.json",ptatin->restart_dir);
+  if (commrank == 0) {
+    cJSON_FileView(jfilename,&jfile);
+    if (!jfile) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open JSON file \"%s\"",jfilename);
+    jptat = cJSON_GetObjectItem(jfile,"pTatinCtx");
+  }
+
+  jobj = NULL;
+  if (commrank == 0) { jobj = cJSON_GetObjectItem(jptat,"pswarm"); if (!jobj) SETERRQ_JSONKEY(PETSC_COMM_SELF,"pswarm"); }
+  ierr = cJSONGetPetscString(comm,jobj,"fileName",field_string,&found);CHKERRQ(ierr);
+  if (!found) SETERRQ_JSONKEY(comm,"fileName");
+
+  if (commrank == 0) {
+    cJSON_Delete(jfile);
+  }
+
+  /* register marker structures here */
+  PetscTime(&t0);
+  DataBucketLoad_NATIVE(comm,field_string,&db);
+  PetscTime(&t1);
+  PetscPrintf(PETSC_COMM_WORLD,"[[Passive Swarm initialization from file: %1.4lf (sec)]]\n",t1-t0);
+
+  /* create the data exchanger need for parallel particle movement */
+  ierr = SwarmDMDA3dDataExchangerCreate(dmv,&ex);CHKERRQ(ierr);
+
+  ptatin->pswarm->db = db;
+  ptatin->pswarm->de = ex;
+  ptatin->pswarm->restart = PETSC_TRUE;
+  PetscFunctionReturn(0);
+}
+
+
 
 /* ----------------- */
 /* VTU headers writers */

@@ -8,7 +8,7 @@
 -model_GENE3D_temperature_ic_from_file
 ########### Checkpointing ###########
 -checkpoint_every_ncpumins 230
--checkpoint_every_nsteps 10
+-checkpoint_every_nsteps 1
 ########### Bounding Box ###########
 -model_GENE3D_Ox 0.0
 -model_GENE3D_Oy -250.0e3

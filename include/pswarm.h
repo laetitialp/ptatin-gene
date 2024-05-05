@@ -84,4 +84,5 @@ PetscErrorCode PSwarmFieldUpdate_PressureTemperature(PSwarm ps);
 
 PetscErrorCode pSwarmParaViewMeshDeformationBaseVTS(PetscReal xmin[],PetscReal dx[],PetscInt nx[],const char name[]);
 
+PetscErrorCode PSwarmLoad_FromFile(pTatinCtx ptatin, DM dmv);
 #endif
