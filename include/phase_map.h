@@ -27,8 +27,11 @@
  **
  ** ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ @*/
 
+
 #ifndef __PHASE_MAP_H__
 #define __PHASE_MAP_H__
+
+#include "petsc.h"
 
 typedef enum { PHASE_MAP_POINT_OUTSIDE=-1, PHASE_MAP_POINT_INSIDE=1 } PhaseMapLocationIndicator;
 
@@ -49,8 +52,7 @@ void PhaseMapLoadFromFile(const char filename[],PhaseMap *map);
 void PhaseMapGetDensity(PhaseMap phasemap,double xp[],double *dens);
 void PhaseMapViewGnuplot(const char filename[],PhaseMap phasemap);
 PetscErrorCode pTatinScalePhaseMap(PhaseMap phasemap,PetscScalar density_bar, PetscScalar pressure_bar,PetscScalar temperature_bar);
-PetscErrorCode pTatinCtxAttachPhaseMap(pTatinCtx ctx,PhaseMap map,char *name);
-PetscErrorCode pTatinCtxGetPhaseMap(pTatinCtx ctx,PhaseMap *map,char *name);
+
 
 
 #endif

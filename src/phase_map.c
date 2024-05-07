@@ -216,19 +216,6 @@ void PhaseMapViewGnuplot(const char filename[],PhaseMap phasemap)
 
 
 
-PetscErrorCode pTatinCtxAttachPhaseMap(pTatinCtx ctx,PhaseMap map, char *name)
-{
-  PetscContainer container;
-  PetscErrorCode ierr;
-
-  PetscFunctionBegin;
-  
-  ierr = PetscContainerCreate(PETSC_COMM_WORLD,&container);CHKERRQ(ierr);
-  ierr = PetscContainerSetPointer(container,(void*)map);CHKERRQ(ierr);
-	ierr = PetscObjectCompose((PetscObject)ctx->model_data,name,(PetscObject)container);CHKERRQ(ierr);
-	
-  PetscFunctionReturn(0);
-}
 
 
 PetscErrorCode pTatinScalePhaseMap(PhaseMap phasemap,PetscScalar density_bar,PetscScalar pressure_bar,PetscScalar temperature_bar)
@@ -252,19 +239,6 @@ PetscErrorCode pTatinScalePhaseMap(PhaseMap phasemap,PetscScalar density_bar,Pet
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode pTatinCtxGetPhaseMap(pTatinCtx ctx,PhaseMap *map, char *name)
-{
-  void *mymap;
-  PetscContainer container;
-	PetscErrorCode ierr;
-    
-    PetscFunctionBegin;
-	ierr = PetscObjectQuery((PetscObject)ctx->model_data,name,(PetscObject*)&container);CHKERRQ(ierr);
-	if (!container) SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_ARG_WRONG,"No data with name %s was composed with ctx->model_data",name);
-	ierr = PetscContainerGetPointer(container,&mymap);CHKERRQ(ierr);
-	*map = (PhaseMap)mymap;
-  PetscFunctionReturn(0);
-}
 
 
 
