@@ -904,10 +904,10 @@ def Generate_pTatin_MaterialConst_DensityBoussinesq():
 def Generate_pTatin_MaterialConst_DensityTable():
 	ClassName      = 'MaterialConst_DensityTable'
 	ClassNameShort = 'DensityTable'
-	variable_names =          [ 'density', 'mapname']
-	variable_types =          [ 'double' ,'char[40]']
+	variable_names =          [ 'density', 'map'    ]
+	variable_types =          [ 'double' ,'PhaseMap']
 	variable_extents        = [ 1        ,      1   ]
-	variable_textural_names = [ 'density','mapname' ]
+	variable_textural_names = [ 'density','map'     ]
 
 	PARTICLE_CLASS_GENERATOR( ClassName, ClassNameShort, variable_names, variable_types, variable_extents, variable_textural_names )
 
