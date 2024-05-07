@@ -23,6 +23,7 @@
 #include "monitors.h"
 #include "mp_advection.h"
 #include "mesh_update.h"
+#include "pswarm.h"
 
 #include "ptatin3d_energy.h"
 #include "energy_assembly.h"
@@ -1452,7 +1453,7 @@ PetscErrorCode pTatinCtxCheckpointWriteFV(pTatinCtx ctx,const char path[],const 
   MPI_Comm         comm;
   PetscMPIInt      commsize,commrank;
   char             jfilename[PETSC_MAX_PATH_LEN];
-  char             vfilename[3][PETSC_MAX_PATH_LEN],checkpoint_prefix[3][PETSC_MAX_PATH_LEN];
+  char             vfilename[3][PETSC_MAX_PATH_LEN],checkpoint_prefix[4][PETSC_MAX_PATH_LEN];
   PetscBool        energy_activated;
   PhysCompStokes   stokes = NULL;
   PhysCompEnergyFV energy = NULL;
@@ -1478,6 +1479,7 @@ PetscErrorCode pTatinCtxCheckpointWriteFV(pTatinCtx ctx,const char path[],const 
     PetscSNPrintf(checkpoint_prefix[0],PETSC_MAX_PATH_LEN-1,"%s/stokes_v",path);
     PetscSNPrintf(checkpoint_prefix[1],PETSC_MAX_PATH_LEN-1,"%s/materialpoint",path);
     PetscSNPrintf(checkpoint_prefix[2],PETSC_MAX_PATH_LEN-1,"%s/materialconstants",path);
+    PetscSNPrintf(checkpoint_prefix[3],PETSC_MAX_PATH_LEN-1,"%s/pswarm",path);
   } else {
     SETERRQ(comm,PETSC_ERR_SUP,"Current implementation only supports ${path}/FILENAME format");
   }
@@ -1516,6 +1518,13 @@ PetscErrorCode pTatinCtxCheckpointWriteFV(pTatinCtx ctx,const char path[],const 
   ierr = pTatinGetMaterialConstants(ctx,&material_constants_db);CHKERRQ(ierr);
   if (commrank == 0) {
     DataBucketView(PETSC_COMM_SELF,material_constants_db,checkpoint_prefix[2],DATABUCKET_VIEW_NATIVE);
+  }
+
+  /* pswarm */
+  if (ctx->pswarm) {
+    DataBucket pswarm_db = NULL;
+    ierr = PSwarmGetDataBucket(ctx->pswarm,&pswarm_db);CHKERRQ(ierr);
+    DataBucketView(PETSC_COMM_WORLD,pswarm_db,checkpoint_prefix[3],DATABUCKET_VIEW_NATIVE);
   }
 
   if (commrank == 0) {
@@ -1612,6 +1621,17 @@ PetscErrorCode pTatinCtxCheckpointWriteFV(pTatinCtx ctx,const char path[],const 
     //content = cJSON_CreateString(checkpoint_prefix[2]);  cJSON_AddItemToObject(jso_object,"prefix",content);
     PetscSNPrintf(relpathtofile,PETSC_MAX_PATH_LEN-1,"%s_db.json",checkpoint_prefix[2]);
     content = cJSON_CreateString(relpathtofile);         cJSON_AddItemToObject(jso_object,"fileName",content);
+
+    /* pswarm */
+    if (ctx->pswarm) {
+      jso_object = cJSON_CreateObject();
+      cJSON_AddItemToObject(jso_ptat,"pswarm",jso_object);
+      content = cJSON_CreateString("DataBucket");          cJSON_AddItemToObject(jso_object,"ctype",content);
+      content = cJSON_CreateString("native");              cJSON_AddItemToObject(jso_object,"dataFormat",content);
+      //content = cJSON_CreateString(checkpoint_prefix[3]);  cJSON_AddItemToObject(jso_object,"prefix",content);
+      PetscSNPrintf(relpathtofile,PETSC_MAX_PATH_LEN-1,"%s_db.json",checkpoint_prefix[3]);
+      content = cJSON_CreateString(relpathtofile);         cJSON_AddItemToObject(jso_object,"fileName",content);
+    }
 
     /* State vectors */
     jso_state = cJSON_CreateObject();
@@ -1773,6 +1793,8 @@ PetscErrorCode LoadStateFromModelDefinitionFV(pTatinCtx *pctx,Vec *v1,Vec *v2,Pe
   // material point load //ierr = pTatin3dCreateMaterialPoints(user,dmv);CHKERRQ(ierr);
   ierr = pTatin3dLoadMaterialPoints_FromFile(user,dmv);CHKERRQ(ierr);
   ierr = pTatinGetMaterialPoints(user,&materialpoint_db,NULL);CHKERRQ(ierr);
+  /* Load passive tracers */
+  if (user->pswarm) { ierr = PSwarmLoad_FromFile(user,dmv);CHKERRQ(ierr); }
   
   /* Create energy context */
   /* NOTE - Calling pTatinPhysCompActivate_Energy() after pTatin3dCreateMaterialPoints() is not essential when restarting */

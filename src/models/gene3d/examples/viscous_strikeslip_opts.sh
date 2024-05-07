@@ -88,7 +88,16 @@
 -model_GENE3D_v_init_expression_0 -5.28496533062743e-16*x+1.97237591301416e-15*z-1.37307427033301e-10
 -model_GENE3D_v_init_expression_2 -1.4161021923681e-16*x+5.28496533062743e-16*z-3.67914141883684e-11
 ########### Passive tracers ###########
-#-model_GENE3D_apply_passive_markers
+-model_GENE3D_apply_passive_markers # activate passive markers
+###### Coordinate layout ######
+# 0: FillDM,  1: FillDMWithinBoundingBox
+# 2: FillBox, 3: FromUserList
+-model_GENE3D_passive_pswarm_coord_layout 2
+-model_GENE3D_passive_pswarm_box_max 6,-0.04,3 # Max coordinates of the box
+-model_GENE3D_passive_pswarm_box_min 0,-1.0,0  # Min coordinates of the box
+-model_GENE3D_passive_pswarm_box_nx 30,5,15    # Number of points in the box in x, y, z
+-model_GENE3D_passive_pswarm_region_index 1
+-model_GENE3D_passive_pswarm_pressure
 ########### Boundary conditions ###########
 -model_GENE3D_poisson_pressure_surface_p 0.0 # 0.0 is default => not necessary
 ###### Temperature ######

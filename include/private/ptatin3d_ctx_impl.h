@@ -41,6 +41,7 @@
 #include "rheology.h"
 #include "material_constants.h"
 #include "ptatin3d_energyfv.h"
+#include "pswarm.h"
 
 struct _p_pTatinCtx {
   PhysCompStokes stokes_ctx;
@@ -91,6 +92,9 @@ struct _p_pTatinCtx {
   PetscContainer model_data;
   /* logger */
   PetscViewer log;
+
+  /* PSwarm */
+  PSwarm pswarm;
 };
 
 #endif

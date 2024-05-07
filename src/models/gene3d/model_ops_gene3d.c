@@ -266,6 +266,7 @@ static PetscErrorCode ModelSetPassiveMarkersSwarmParametersFromOptions(pTatinCtx
 {
   PSwarm         pswarm;
   PetscBool      found;
+  char           prefix[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
   PetscFunctionBegin;
 
@@ -274,7 +275,8 @@ static PetscErrorCode ModelSetPassiveMarkersSwarmParametersFromOptions(pTatinCtx
   if (!found) { PetscFunctionReturn(0); }
 
   ierr = PSwarmCreate(PETSC_COMM_WORLD,&pswarm);CHKERRQ(ierr);
-  ierr = PSwarmSetOptionsPrefix(pswarm,"passive_");CHKERRQ(ierr);
+  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"%spassive_",MODEL_NAME);CHKERRQ(ierr);
+  ierr = PSwarmSetOptionsPrefix(pswarm,prefix);CHKERRQ(ierr);
   ierr = PSwarmSetPtatinCtx(pswarm,ptatin);CHKERRQ(ierr);
   ierr = PSwarmSetTransportModeType(pswarm,PSWARM_TM_LAGRANGIAN);CHKERRQ(ierr);
 
@@ -556,6 +558,8 @@ PetscErrorCode ModelApplyInitialMeshGeometry_Gene3D(pTatinCtx ptatin,void *ctx)
   ierr = PhysCompStokesSetGravityVector(ptatin->stokes_ctx,gvec);CHKERRQ(ierr);
   ierr = PhysCompStokesScaleGravityVector(ptatin->stokes_ctx,1.0/data->scale->acceleration_bar);CHKERRQ(ierr);
 
+  /* Passive markers setup */
+  if (data->passive_markers) { ierr = PSwarmSetUp(data->pswarm);CHKERRQ(ierr); }
   PetscFunctionReturn (0);
 }
 
