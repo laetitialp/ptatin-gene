@@ -193,7 +193,7 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
   double         inv2_D_mp,inv2_Tpred_mp;
 
   DataField      PField_MatTypes;
-  DataField      PField_DensityConst,PField_DensityBoussinesq;
+  DataField      PField_DensityConst,PField_DensityBoussinesq,PField_DensityTable;
   DataField      PField_ViscConst,PField_ViscZ,PField_ViscFK,PField_ViscArrh,PField_ViscArrhDislDiff;
   DataField      PField_PlasticMises,PField_PlasticDP;
   DataField      PField_SoftLin,PField_SoftExpo;
@@ -201,6 +201,7 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
   MaterialConst_MaterialType           *MatType_data;
   MaterialConst_DensityConst           *DensityConst_data;
   MaterialConst_DensityBoussinesq      *DensityBoussinesq_data;
+  MaterialConst_DensityTable           *DensityTable_data;
   MaterialConst_ViscosityConst         *ViscConst_data;
   MaterialConst_ViscosityZ             *ViscZ_data;
   MaterialConst_ViscosityFK            *ViscFK_data;
@@ -273,6 +274,9 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
 
   DataBucketGetDataFieldByName(material_constants,MaterialConst_DensityBoussinesq_classname,  &PField_DensityBoussinesq);
   DensityBoussinesq_data = (MaterialConst_DensityBoussinesq*)PField_DensityBoussinesq->data;
+
+  DataBucketGetDataFieldByName(material_constants,MaterialConst_DensityTable_classname,  &PField_DensityTable);
+  DensityTable_data = (MaterialConst_DensityTable*)PField_DensityTable->data;
 
   DataBucketGetDataFieldByName(material_constants,MaterialConst_ViscosityConst_classname,&PField_ViscConst);
   ViscConst_data         = (MaterialConst_ViscosityConst*)PField_ViscConst->data;
@@ -753,6 +757,22 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
           MPntPStokesSetField_density(mpprop_stokes,rho_mp);
         }
         break;
+
+      case DENSITY_TABLE: 
+        {
+          PetscReal rho_mp,xp[2];
+          PhaseMap phasemap= DensityTable_data[region_idx].map;
+          PetscReal rho0  = DensityTable_data[region_idx].density;
+          xp[0] = T_mp; 
+          xp[1] = pressure_mp; 
+          PhaseMapGetDensity(phasemap,xp,&rho_mp);
+          if (rho_mp == (double)PHASE_MAP_POINT_OUTSIDE) {
+              rho_mp = rho0; 
+          }
+          MPntPStokesSetField_density(mpprop_stokes,rho_mp);
+        }
+        break;
+
       default:
         SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"No default DensityType set. Valid choices are DENSITY_CONSTANT, DENSITY_BOUSSINESQ");
 
@@ -822,7 +842,7 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
   double         inv2_D_mp,inv2_Tpred_mp;
   
   DataField      PField_MatTypes;
-  DataField      PField_DensityConst,PField_DensityBoussinesq;
+  DataField      PField_DensityConst,PField_DensityBoussinesq,PField_DensityTable;
   DataField      PField_ViscConst,PField_ViscZ,PField_ViscFK,PField_ViscArrh,PField_ViscArrhDislDiff;
   DataField      PField_PlasticMises,PField_PlasticDP;
   DataField      PField_SoftLin,PField_SoftExpo;
@@ -831,6 +851,7 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
   MaterialConst_MaterialType           *MatType_data;
   MaterialConst_DensityConst           *DensityConst_data;
   MaterialConst_DensityBoussinesq      *DensityBoussinesq_data;
+  MaterialConst_DensityTable           *DensityTable_data;
   MaterialConst_ViscosityConst         *ViscConst_data;
   MaterialConst_ViscosityZ             *ViscZ_data;
   MaterialConst_ViscosityFK            *ViscFK_data;
@@ -889,6 +910,9 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
   DataBucketGetDataFieldByName(material_constants,MaterialConst_DensityBoussinesq_classname,  &PField_DensityBoussinesq);
   DensityBoussinesq_data = (MaterialConst_DensityBoussinesq*)PField_DensityBoussinesq->data;
   
+  DataBucketGetDataFieldByName(material_constants,MaterialConst_DensityTable_classname,  &PField_DensityTable);
+  DensityTable_data      = (MaterialConst_DensityTable*)PField_DensityTable->data;
+
   DataBucketGetDataFieldByName(material_constants,MaterialConst_ViscosityConst_classname,&PField_ViscConst);
   ViscConst_data         = (MaterialConst_ViscosityConst*)PField_ViscConst->data;
   
@@ -1385,6 +1409,21 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
         PetscReal beta  = DensityBoussinesq_data[region_idx].beta;
         
         rho_mp = rho0*(1-alpha*T_mp+beta*pressure_mp);
+        MPntPStokesSetField_density(mpprop_stokes,rho_mp);
+      }
+        break;
+
+      case DENSITY_TABLE:
+      {
+        PetscReal rho_mp,xp[2];
+        PhaseMap phasemap= DensityTable_data[region_idx].map;
+        PetscReal rho0  = DensityTable_data[region_idx].density;
+        xp[0] = T_mp; 
+        xp[1] = pressure_mp; 
+        PhaseMapGetDensity(phasemap,xp,&rho_mp);
+        if (rho_mp == (double)PHASE_MAP_POINT_OUTSIDE) {
+            rho_mp = rho0; 
+        }
         MPntPStokesSetField_density(mpprop_stokes,rho_mp);
       }
         break;
