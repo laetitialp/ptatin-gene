@@ -152,11 +152,11 @@ void PhaseMapLoadFromFile(const char filename[],PhaseMap *map)
   }
 }
 
-void PhaseMapGetDensity(PhaseMap phasemap,double xp[],double *dens)
+void PhaseMapGetValue(PhaseMap phasemap,double xp[],double *val)
 {
   int i,j,index;
 
-  (*dens) = (double)PHASE_MAP_POINT_OUTSIDE;
+  (*val) = (double)PHASE_MAP_POINT_OUTSIDE;
 
   if (xp[0] < phasemap->x0) { return; }
   if (xp[0] > phasemap->x1) { return; }
@@ -170,7 +170,7 @@ void PhaseMapGetDensity(PhaseMap phasemap,double xp[],double *dens)
 
   PhaseMapGetIndex(phasemap,i,j,&index);
 
-  *dens = phasemap->data[index];
+  *val = phasemap->data[index];
 }
 
 
@@ -218,21 +218,21 @@ void PhaseMapViewGnuplot(const char filename[],PhaseMap phasemap)
 
 
 
-PetscErrorCode pTatinScalePhaseMap(PhaseMap phasemap,PetscScalar density_bar,PetscScalar pressure_bar,PetscScalar temperature_bar)
+PetscErrorCode pTatinScalePhaseMap(PhaseMap phasemap,PetscScalar value_bar,PetscScalar y_bar,PetscScalar x_bar)
 {
   PetscInt i,j,index; 
   PetscErrorCode ierr;
 
-  phasemap->dy = phasemap->dy/pressure_bar;
-  phasemap->y0 = phasemap->y0/pressure_bar;
-  phasemap->y1 = phasemap->y1/pressure_bar;
-  phasemap->dx = phasemap->dx/temperature_bar; 
-  phasemap->x0 = phasemap->x0/temperature_bar; 
-  phasemap->x1 = phasemap->x1/temperature_bar; 
+  phasemap->dy = phasemap->dy/y_bar;
+  phasemap->y0 = phasemap->y0/y_bar;
+  phasemap->y1 = phasemap->y1/y_bar;
+  phasemap->dx = phasemap->dx/x_bar; 
+  phasemap->x0 = phasemap->x0/x_bar; 
+  phasemap->x1 = phasemap->x1/x_bar; 
   index = 0;
   for (j=0; j<phasemap->my; j++) {
     for (i=0; i<phasemap->mx; i++) {
-      phasemap->data[index] = phasemap->data[index] /density_bar  ;
+      phasemap->data[index] = phasemap->data[index] /value_bar  ;
       index++;
     }
   }
