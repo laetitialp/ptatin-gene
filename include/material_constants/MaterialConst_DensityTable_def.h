@@ -8,15 +8,16 @@
 #define __MaterialConst_DensityTable_DEF_H__
 
 #include <mpi.h>
+#include <phase_map.h>
 
 typedef struct {
  double density;
- char[40] mapname;
+ PhaseMap map;
 } MaterialConst_DensityTable;
 
 typedef enum {
   DensityTable_density = 0,
-  DensityTable_mapname
+  DensityTable_map
 } MaterialConst_DensityTableTypeName;
 
 extern const char MaterialConst_DensityTable_classname[];
@@ -31,14 +32,10 @@ extern MPI_Datatype MPI_MATERIALCONST_DENSITYTABLE;
 
 /* prototypes */
 void MaterialConst_DensityTableGetField_density(MaterialConst_DensityTable *point,double *data);
-void MaterialConst_DensityTableGetField_mapname(MaterialConst_DensityTable *point,char[40] *data);
+void MaterialConst_DensityTableGetField_map(MaterialConst_DensityTable *point,PhaseMap *data);
 void MaterialConst_DensityTableSetField_density(MaterialConst_DensityTable *point,double data);
-void MaterialConst_DensityTableSetField_mapname(MaterialConst_DensityTable *point,char[40] data);
+void MaterialConst_DensityTableSetField_map(MaterialConst_DensityTable *point,PhaseMap data);
 void MaterialConst_DensityTableView(MaterialConst_DensityTable *point);
-void MaterialConst_DensityTableVTKWriteAsciiAllFields(FILE *vtk_fp,const int N,const MaterialConst_DensityTable points[]);
-void MaterialConst_DensityTablePVTUWriteAllPPointDataFields(FILE *vtk_fp);
-void MaterialConst_DensityTableVTKWriteBinaryAppendedHeaderAllFields(FILE *vtk_fp,int *offset,const int N,const MaterialConst_DensityTable points[]);
-void MaterialConst_DensityTableVTKWriteBinaryAppendedDataAllFields(FILE *vtk_fp,const int N,const MaterialConst_DensityTable points[]);
 int MaterialConst_DensityTableCreateMPIDataType(MPI_Datatype *ptype);
 
 #endif

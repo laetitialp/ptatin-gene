@@ -8,7 +8,7 @@
 #include <string.h>
 #include <mpi.h>
 
-#include "MaterialConst_DensityTable_def.h"
+#include "material_constants/MaterialConst_DensityTable_def.h"
 
 
 const char MaterialConst_DensityTable_classname[] = "MaterialConst_DensityTable";
@@ -16,13 +16,13 @@ const char MaterialConst_DensityTable_classname[] = "MaterialConst_DensityTable"
 const int MaterialConst_DensityTable_nmembers = 2;
 
 const size_t MaterialConst_DensityTable_member_sizes[] = {
-  1 * sizeof(double),
-  1 * sizeof(char[40])
+  1  * sizeof(double),
+  1  * sizeof(PhaseMap)
 };
 
 const char *MaterialConst_DensityTable_member_names[] = {
   "density",
-  "mapname"
+  "map"
 };
 
 MPI_Datatype MPI_MATERIALCONST_DENSITYTABLE;
@@ -36,9 +36,9 @@ void MaterialConst_DensityTableGetField_density(MaterialConst_DensityTable *poin
   *data = point->density;
 }
 
-void MaterialConst_DensityTableGetField_mapname(MaterialConst_DensityTable *point,char[40] *data) 
+void MaterialConst_DensityTableGetField_map(MaterialConst_DensityTable *point,PhaseMap *data) 
 {
-  *data = point->mapname;
+  *data = point->map;
 }
 
 
@@ -48,11 +48,11 @@ void MaterialConst_DensityTableGetField_mapname(MaterialConst_DensityTable *poin
 void MaterialConst_DensityTableSetField_density(MaterialConst_DensityTable *point,double data) 
 {
   point->density = data;
+  PetscPrintf(PETSC_COMM_WORLD," %f \n", point->density); 
 }
-
-void MaterialConst_DensityTableSetField_mapname(MaterialConst_DensityTable *point,char[40] data) 
+void MaterialConst_DensityTableSetField_map(MaterialConst_DensityTable *point,PhaseMap data) 
 {
-  point->mapname = data;
+  point->map = data;
 }
 
 
@@ -66,23 +66,7 @@ void MaterialConst_DensityTableView(MaterialConst_DensityTable *point)
     MaterialConst_DensityTableGetField_density(point,&data);
     printf("field: density = %1.6e; [size %zu; type double; variable_name density]\n",data, MaterialConst_DensityTable_member_sizes[0] );
   }
-  {
-    char[40] data;
-    MaterialConst_DensityTableGetField_mapname(point,&data);
-    printf("field: mapname = ; [size %zu; type char[40]; variable_name mapname]\n",data, MaterialConst_DensityTable_member_sizes[1] );
-  }
 }
 
 
-/* ===================================== */
-/* VTK viewer for MaterialConst_DensityTable */
-/* ===================================== */
-void MaterialConst_DensityTableVTKWriteAsciiAllFields(FILE *vtk_fp,const int N,const MaterialConst_DensityTable points[]) 
-{
-  int p;
-  fprintf( vtk_fp, "\t\t\t\t<DataArray type=\"Float64\" Name=\"density\" format=\"ascii\">\n");
-  for(p=0;p<N;p++) {
-    fprintf( vtk_fp,"\t\t\t\t\t%lf\n",(double)points[p].density);
-  }
-  fprintf( vtk_fp, "\t\t\t\t</DataArray>\n");
-Unknown type: Cannot find equivalent VTKType
+

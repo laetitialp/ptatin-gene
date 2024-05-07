@@ -35,6 +35,7 @@
 #include "material_constants/MaterialConst_ViscosityConst_def.h"
 #include "material_constants/MaterialConst_DensityConst_def.h"
 #include "material_constants/MaterialConst_DensityBoussinesq_def.h"
+#include "material_constants/MaterialConst_DensityTable_def.h"
 #include "material_constants/MaterialConst_ViscosityZ_def.h"
 #include "material_constants/MaterialConst_ViscosityFK_def.h"
 #include "material_constants/MaterialConst_ViscosityArrh_def.h"
@@ -69,7 +70,8 @@ typedef enum {
 
 typedef enum {
   DENSITY_CONSTANT=0,
-  DENSITY_BOUSSINESQ
+  DENSITY_BOUSSINESQ,
+  DENSITY_TABLE
 } DensityType;
 
 PetscErrorCode MaterialConstantsCreate(DataBucket *_db);
@@ -113,6 +115,12 @@ PetscErrorCode MaterialConstantsSetFromOptions_DensityBoussinesq(DataBucket db,c
 PetscErrorCode MaterialConstantsSetValues_DensityBoussinesq(DataBucket db,const int region_id,PetscReal density,PetscReal alpha,PetscReal beta);
 PetscErrorCode MaterialConstantsPrintValues_DensityBoussinesq(DataBucket db,const int region_id);
 PetscErrorCode MaterialConstantsScaleValues_DensityBoussinesq(DataBucket db,const int region_id,PetscReal rho_star,PetscReal sigma_star);
+
+PetscErrorCode MaterialConstantsSetFromOptions_DensityTable(DataBucket db,const char model_name[],const int region_id,PetscBool essential);
+PetscErrorCode MaterialConstantsSetValues_DensityTable(DataBucket db,const int region_id,PetscReal density,PhaseMap map);
+PetscErrorCode MaterialConstantsPrintValues_DensityTable(DataBucket db,const int region_id);
+PetscErrorCode MaterialConstantsScaleValues_DensityTable(DataBucket db,const int region_id,PetscReal rho_star,PetscReal sigma_star);
+
 
 PetscErrorCode MaterialConstantsSetFromOptions_PlasticMises(DataBucket db,const char model_name[],const int region_id,PetscBool essential);
 PetscErrorCode MaterialConstantsSetValues_PlasticMises(DataBucket db,const int region_id,PetscReal yield_stress,PetscReal yield_stress_inf);

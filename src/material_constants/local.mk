@@ -2,6 +2,7 @@ libptatin3d-y.c += $(call thisdir, \
   MaterialConst_MaterialType_def.c \
   MaterialConst_DensityConst_def.c \
   MaterialConst_DensityBoussinesq_def.c \
+  MaterialConst_DensityTable_def.c \
   MaterialConst_ViscosityConst_def.c \
   MaterialConst_ViscosityZ_def.c \
   MaterialConst_ViscosityArrh_def.c \
