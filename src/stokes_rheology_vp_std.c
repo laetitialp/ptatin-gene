@@ -765,7 +765,7 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
           PetscReal rho0  = DensityTable_data[region_idx].density;
           xp[0] = T_mp; 
           xp[1] = pressure_mp; 
-          PhaseMapGetDensity(phasemap,xp,&rho_mp);
+          PhaseMapGetValue(phasemap,xp,&rho_mp);
           if (rho_mp == (double)PHASE_MAP_POINT_OUTSIDE) {
               rho_mp = rho0; 
           }
@@ -1420,7 +1420,7 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
         PetscReal rho0  = DensityTable_data[region_idx].density;
         xp[0] = T_mp; 
         xp[1] = pressure_mp; 
-        PhaseMapGetDensity(phasemap,xp,&rho_mp);
+        PhaseMapGetValue(phasemap,xp,&rho_mp);
         if (rho_mp == (double)PHASE_MAP_POINT_OUTSIDE) {
             rho_mp = rho0; 
         }

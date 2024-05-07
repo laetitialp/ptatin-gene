@@ -49,7 +49,7 @@ void PhaseMapCreate(PhaseMap *map);
 void PhaseMapDestroy(PhaseMap *map);
 void PhaseMapGetIndex(PhaseMap pm,const int i,const int j, int *index);
 void PhaseMapLoadFromFile(const char filename[],PhaseMap *map);
-void PhaseMapGetVal(PhaseMap phasemap,double xp[],double *val);
+void PhaseMapGetValue(PhaseMap phasemap,double xp[],double *val);
 void PhaseMapViewGnuplot(const char filename[],PhaseMap phasemap);
 PetscErrorCode pTatinScalePhaseMap(PhaseMap phasemap,PetscScalar value_bar, PetscScalar y_bar,PetscScalar x_bar);
 
