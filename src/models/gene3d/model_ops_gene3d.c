@@ -322,6 +322,7 @@ static PetscErrorCode SurfaceConstraintSetFromOptions_Gene3D(pTatinCtx ptatin, M
 
     /* get facet mesh */
     parse_mesh(PETSC_COMM_WORLD,meshfile,&(data->mesh_facets[f]));
+    if (!data->mesh_facets[f]) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to read the mesh file %s\n",meshfile); }
   }
   
   data->bc_debug = PETSC_FALSE;
