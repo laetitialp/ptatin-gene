@@ -460,9 +460,9 @@ static PetscErrorCode ModelApplyMeshRefinement(DM dav)
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
 
   ndir = 0;
-  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,"-n_refinement_dir",&ndir,&found);CHKERRQ(ierr);
-  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"-%sn_refinement_dir not found!",MODEL_NAME); }
-  if (ndir <= 0 || ndir > 3) { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"n_refinement_dir cannot be 0 or more than 3. -%sn_refinement_dir = %d.",MODEL_NAME,ndir); }
+  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,"-refinement_ndir",&ndir,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"-%srefinement_ndir not found!",MODEL_NAME); }
+  if (ndir <= 0 || ndir > 3) { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"refinement_ndir cannot be 0 or more than 3. -%srefinement_ndir = %d.",MODEL_NAME,ndir); }
 
   PetscPrintf(PETSC_COMM_WORLD,"Mesh is refined in %d directions.\n",ndir);
 
@@ -471,7 +471,7 @@ static PetscErrorCode ModelApplyMeshRefinement(DM dav)
   ierr = PetscOptionsGetIntArray(NULL,MODEL_NAME,"-refinement_dir",dir,&nn,&found);CHKERRQ(ierr);
   if (found) {
     if (nn != ndir) {
-      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"n_refinement_dir (%d) and the number of entries in refinement_dir (%d) mismatch!\n",ndir,nn);
+      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"refinement_ndir (%d) and the number of entries in refinement_dir (%d) mismatch!\n",ndir,nn);
     }
   } else {
     SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"-%srefinement_dir not found!",MODEL_NAME);

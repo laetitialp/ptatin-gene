@@ -18,8 +18,8 @@
 ###### Mesh refinement ######
 -model_GENE3D_apply_mesh_refinement
 # number of directions in which the mesh is refined
--model_GENE3D_n_refinement_dir 1 
-# array of directions, the number of entries must equal n_refinement_dir
+-model_GENE3D_refinement_ndir 1 
+# array of directions, the number of entries must equal refinement_ndir
 # X: 0, Y: 1, Z: 2
 -model_GENE3D_refinement_dir 1 
 ###### y refinement: 1 ######
