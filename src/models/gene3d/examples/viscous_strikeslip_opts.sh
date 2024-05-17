@@ -5,8 +5,8 @@
 -model_GENE3D_output_markers
 -model_GENE3D_bc_debug
 -view_ic
--model_GENE3D_poisson_pressure_active
--model_GENE3D_temperature_ic_from_file
+-model_GENE3D_poisson_pressure_apply
+-model_GENE3D_ic_temperature_from_file
 ########### Checkpointing ###########
 -checkpoint_every_ncpumins 230
 -checkpoint_every_nsteps 10
@@ -27,7 +27,7 @@
 -my 8
 -mz 8
 ###### Mesh refinement ######
--model_GENE3D_apply_mesh_refinement # activate mesh refinement
+-model_GENE3D_refinement_apply # activate mesh refinement
 # number of directions in which the mesh is refined
 -model_GENE3D_refinement_ndir 1 
 # array of directions, the number of entries must equal refinement_ndir
@@ -38,9 +38,9 @@
 -model_GENE3D_refinement_xref_1 0.0,0.28,0.65,1.0
 -model_GENE3D_refinement_xnat_1 0.0,0.8,0.935,1.0
 ########### Surface processes ###########
--model_GENE3D_apply_surface_diffusion
+-model_GENE3D_spm_apply_surface_diffusion
 # spm diffusivity
--model_GENE3D_diffusivity_spm 1.0e-6
+-model_GENE3D_spm_diffusivity 1.0e-6
 # spm diffusion boundary conditions minimum 1 must be passed
 #-model_GENE3D_spm_diffusion_dirichlet_xmin
 #-model_GENE3D_spm_diffusion_dirichlet_xmax
@@ -49,13 +49,13 @@
 ########### Initial geometry ###########
 -model_GENE3D_mesh_file src/models/gene3d/examples/box_ptatin_md.bin
 -model_GENE3D_regions_file src/models/gene3d/examples/box_ptatin_region_cell.bin
--model_GENE3D_n_regions 4
+-model_GENE3D_regions_nregions 4
 -model_GENE3D_regions_list 38,39,40,41
 # Method to locate material points in gmsh mesh
 # Brute force: 0, Partitioned box: 1
 -model_GENE3D_mesh_point_location_method 1
 ########### Initial plastic strain for weak zone ###########
--model_GENE3D_n_weak_zones 2
+-model_GENE3D_wz_nwz 2
 -model_GENE3D_wz_expression_0 1.0
 -model_GENE3D_wz_expression_1 1.0
 ########### Markers layout ###########
@@ -79,16 +79,16 @@
 #  3: south = ymin = jmin = Neta
 #  4: front = zmax = kmax = Pzeta
 #  5: back  = zmin = kmin = Nzeta
--model_GENE3D_bc_marker_n_faces 4
+-model_GENE3D_bc_marker_nfaces 4
 -model_GENE3D_bc_marker_faces_list 0,1,4,5
 ########### Initial velocity field ###########
 # if nothing is provided the velocity is initialized to 0
--model_GENE3D_v_init_n_dir 2
--model_GENE3D_v_init_dir 0,2
--model_GENE3D_v_init_expression_0 -5.28496533062743e-16*x+1.97237591301416e-15*z-1.37307427033301e-10
--model_GENE3D_v_init_expression_2 -1.4161021923681e-16*x+5.28496533062743e-16*z-3.67914141883684e-11
+-model_GENE3D_ic_velocity_ndir 2
+-model_GENE3D_ic_velocity_dir 0,2
+-model_GENE3D_ic_velocity_expression_0 -5.28496533062743e-16*x+1.97237591301416e-15*z-1.37307427033301e-10
+-model_GENE3D_ic_velocity_expression_2 -1.4161021923681e-16*x+5.28496533062743e-16*z-3.67914141883684e-11
 ########### Passive tracers ###########
--model_GENE3D_apply_passive_markers # activate passive markers
+-model_GENE3D_passive_pswarm_apply # activate passive markers
 ###### Coordinate layout ######
 # 0: FillDM,  1: FillDMWithinBoundingBox
 # 2: FillBox, 3: FromUserList
@@ -101,8 +101,8 @@
 ########### Boundary conditions ###########
 -model_GENE3D_poisson_pressure_surface_p 0.0 # 0.0 is default => not necessary
 ###### Temperature ######
--model_GENE3D_energy_bc_ymax 0.0
--model_GENE3D_energy_bc_ymin 1450.0
+-model_GENE3D_bc_energy_ymax 0.0
+-model_GENE3D_bc_energy_ymin 1450.0
 ###### Velocity ######
 -model_GENE3D_bc_nsubfaces 5
 -model_GENE3D_bc_tag_list 14,23,32,33,37
@@ -113,9 +113,9 @@
 # 6: NITSCHE_GENERAL_SLIP, 7: DIRICHLET
 #######################################
 # BC 14: Xmin
--model_GENE3D_sc_name_14 xmin
--model_GENE3D_facet_mesh_file_14 src/models/gene3d/examples/box_ptatin_facet_14_mesh.bin
--model_GENE3D_sc_type_14 6
+-model_GENE3D_bc_sc_name_14 xmin
+-model_GENE3D_bc_facet_mesh_file_14 src/models/gene3d/examples/box_ptatin_facet_14_mesh.bin
+-model_GENE3D_bc_sc_type_14 6
 -model_GENE3D_bc_navier_penalty_14 1.0e3
 -model_GENE3D_bc_navier_duxdx_14 -5.28496533062743e-16
 -model_GENE3D_bc_navier_duxdz_14 1.97237591301416e-15
@@ -124,15 +124,15 @@
 -model_GENE3D_bc_navier_uL_14 3.0629307023372284e-10,8.207098081637518e-11
 -model_GENE3D_bc_navier_mathcal_H_14 0,1,0,1,1,1
 # BC 23: Zmax
--model_GENE3D_sc_name_23 zmax
--model_GENE3D_facet_mesh_file_23 src/models/gene3d/examples/box_ptatin_facet_23_mesh.bin
--model_GENE3D_sc_type_23 7
--model_GENE3D_ux_23 -5.28496533062743e-16*x+1.97237591301416e-15*z-1.37307427033301e-10
--model_GENE3D_uz_23 -1.4161021923681e-16*x+5.28496533062743e-16*z-3.67914141883684e-11
+-model_GENE3D_bc_sc_name_23 zmax
+-model_GENE3D_bc_facet_mesh_file_23 src/models/gene3d/examples/box_ptatin_facet_23_mesh.bin
+-model_GENE3D_bc_sc_type_23 7
+-model_GENE3D_bc_dirichlet_ux_23 -5.28496533062743e-16*x+1.97237591301416e-15*z-1.37307427033301e-10
+-model_GENE3D_bc_dirichlet_uz_23 -1.4161021923681e-16*x+5.28496533062743e-16*z-3.67914141883684e-11
 # BC 32: Xmax
--model_GENE3D_sc_name_32 xmax_litho
--model_GENE3D_facet_mesh_file_32 src/models/gene3d/examples/box_ptatin_facet_32_mesh.bin
--model_GENE3D_sc_type_32 6
+-model_GENE3D_bc_sc_name_32 xmax_litho
+-model_GENE3D_bc_facet_mesh_file_32 src/models/gene3d/examples/box_ptatin_facet_32_mesh.bin
+-model_GENE3D_bc_sc_type_32 6
 -model_GENE3D_bc_navier_penalty_32 1.0e3
 -model_GENE3D_bc_navier_duxdx_32 -5.28496533062743e-16
 -model_GENE3D_bc_navier_duxdz_32 1.97237591301416e-15
@@ -141,16 +141,16 @@
 -model_GENE3D_bc_navier_uL_32 3.0629307023372284e-10,8.207098081637518e-11
 -model_GENE3D_bc_navier_mathcal_H_32 0,1,0,1,1,1
 # BC 33: Bottom
--model_GENE3D_sc_name_33 Bottom
--model_GENE3D_facet_mesh_file_33 src/models/gene3d/examples/box_ptatin_facet_33_mesh.bin
--model_GENE3D_sc_type_33 7
--model_GENE3D_dirichlet_bot_u.n_33
+-model_GENE3D_bc_sc_name_33 Bottom
+-model_GENE3D_bc_facet_mesh_file_33 src/models/gene3d/examples/box_ptatin_facet_33_mesh.bin
+-model_GENE3D_bc_sc_type_33 7
+-model_GENE3D_bc_dirichlet_bot_u.n_33
 # BC 37: Zmin
--model_GENE3D_sc_name_37 zmin_litho
--model_GENE3D_facet_mesh_file_37 src/models/gene3d/examples/box_ptatin_facet_37_mesh.bin
--model_GENE3D_sc_type_37 7
--model_GENE3D_ux_37 -5.28496533062743e-16*x+1.97237591301416e-15*z-1.37307427033301e-10
--model_GENE3D_uz_37 -1.4161021923681e-16*x+5.28496533062743e-16*z-3.67914141883684e-11
+-model_GENE3D_bc_sc_name_37 zmin_litho
+-model_GENE3D_bc_facet_mesh_file_37 src/models/gene3d/examples/box_ptatin_facet_37_mesh.bin
+-model_GENE3D_bc_sc_type_37 7
+-model_GENE3D_bc_dirichlet_ux_37 -5.28496533062743e-16*x+1.97237591301416e-15*z-1.37307427033301e-10
+-model_GENE3D_bc_dirichlet_uz_37 -1.4161021923681e-16*x+5.28496533062743e-16*z-3.67914141883684e-11
 ########### Material parameters ###########
 ###### Upper crust ######
 # viscosity type

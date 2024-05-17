@@ -176,25 +176,30 @@ static PetscErrorCode ModelSetMaterialParametersFromOptions(pTatinCtx ptatin, Da
 {
   PetscInt       nn,n,region_idx;
   PetscBool      found;
+  char           prefix[PETSC_MAX_PATH_LEN],option_name[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
 
+  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"regions_");CHKERRQ(ierr);
+
   /* Get the number of regions */
-  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,"-n_regions",&data->n_regions,&found);CHKERRQ(ierr);
-  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%sn_regions not found!\n",MODEL_NAME); }
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%snregions",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,option_name,&data->n_regions,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!\n",option_name); }
 
   /* Allocate an array to hold the regions indices */
   ierr = PetscCalloc1(data->n_regions,&data->regions_table);CHKERRQ(ierr);
   /* Get user regions indices */
   nn = data->n_regions;
-  ierr = PetscOptionsGetIntArray(NULL,MODEL_NAME,"-regions_list",data->regions_table,&nn,&found);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%slist",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetIntArray(NULL,MODEL_NAME,option_name,data->regions_table,&nn,&found);CHKERRQ(ierr);
   if (found) {
     if (nn != data->n_regions) {
-      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"n_regions (%d) and the number of entries in regions_list (%d) mismatch!\n",data->n_regions,nn);
+      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"regions_nregions (%d) and the number of entries in regions_list (%d) mismatch!\n",data->n_regions,nn);
     }
-  }
+  } else { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!\n",option_name); }
 
   /* Set regions parameters */
   for (n=0; n<data->n_regions; n++) {
@@ -216,15 +221,26 @@ static PetscErrorCode ModelSetMaterialParametersFromOptions(pTatinCtx ptatin, Da
 
 static PetscErrorCode ModelSetViscosityCutoffFromOptions(ModelGENE3DCtx *data)
 {
+  char           prefix[PETSC_MAX_PATH_LEN],option_name[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
   PetscFunctionBegin;
 
   data->eta_cutoff = PETSC_TRUE;
   data->eta_max = 1.0e+25;
   data->eta_min = 1.0e+19;
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-apply_viscosity_cutoff",&data->eta_cutoff,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-eta_lower_cutoff",      &data->eta_min,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-eta_upper_cutoff",      &data->eta_max,NULL);CHKERRQ(ierr);
+
+  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"viscosity_cutoff_");CHKERRQ(ierr);
+
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sapply",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,option_name,&data->eta_cutoff,NULL);CHKERRQ(ierr);
+
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%seta_lower",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&data->eta_min,NULL);CHKERRQ(ierr);
+
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%seta_upper",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&data->eta_max,NULL);CHKERRQ(ierr);
+  /* Report if activated */
+  if (data->eta_cutoff) { PetscPrintf(PETSC_COMM_WORLD,"[[ Viscosity Cutoff ]]: eta_min = %1.4e [Pa.s] eta_max = %1.4e [Pa.s]\n",data->eta_min,data->eta_max); }
   
   PetscFunctionReturn(0);
 }
@@ -232,14 +248,19 @@ static PetscErrorCode ModelSetViscosityCutoffFromOptions(ModelGENE3DCtx *data)
 static PetscErrorCode ModelSetSPMParametersFromOptions(ModelGENE3DCtx *data)
 {
   PetscBool      found,flg;
+  char           prefix[PETSC_MAX_PATH_LEN],option_name[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
   PetscFunctionBegin;
 
+  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"spm_");CHKERRQ(ierr);
+
   data->surface_diffusion = PETSC_FALSE;
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-apply_surface_diffusion",&data->surface_diffusion,&found);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sapply_surface_diffusion",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,option_name,&data->surface_diffusion,&found);CHKERRQ(ierr);
   if (found) {
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-diffusivity_spm",&data->diffusivity_spm,&flg);CHKERRQ(ierr);
-    if (!flg) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface diffusion activated but no diffusivity provided. Use -%sdiffusivity_spm to set it.\n",MODEL_NAME); }
+    ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sdiffusivity",prefix);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&data->diffusivity_spm,&flg);CHKERRQ(ierr);
+    if (!flg) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface diffusion activated but no diffusivity provided. Use %s to set it.\n",option_name); }
   }
   PetscFunctionReturn(0);
 }
@@ -247,15 +268,20 @@ static PetscErrorCode ModelSetSPMParametersFromOptions(ModelGENE3DCtx *data)
 static PetscErrorCode ModelSetPoissonPressureParametersFromOptions_Gene3D(ModelGENE3DCtx *data)
 {
   PetscBool      found;
+  char           prefix[PETSC_MAX_PATH_LEN],option_name[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
   PetscFunctionBegin;
 
+  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"poisson_pressure_");CHKERRQ(ierr);
+
   data->poisson_pressure_active = PETSC_FALSE;
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-poisson_pressure_active",&data->poisson_pressure_active,NULL);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sapply",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,option_name,&data->poisson_pressure_active,NULL);CHKERRQ(ierr);
   if (!data->poisson_pressure_active) { PetscFunctionReturn(0); }
 
   data->surface_pressure = 0.0;
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-poisson_pressure_surface_p",&data->surface_pressure,&found);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%ssurface_p",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&data->surface_pressure,&found);CHKERRQ(ierr);
   if (!found) {
     PetscPrintf(PETSC_COMM_WORLD,"[[ WARNING ]]: No value provided for surface pressure to solve the poisson pressure. Assuming %1.6e [Pa]\n",data->surface_pressure);
   }
@@ -271,7 +297,7 @@ static PetscErrorCode ModelSetPassiveMarkersSwarmParametersFromOptions(pTatinCtx
   PetscFunctionBegin;
 
   data->passive_markers = PETSC_FALSE;
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-apply_passive_markers",&data->passive_markers,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-passive_pswarm_apply",&data->passive_markers,&found);CHKERRQ(ierr);
   if (!found) { PetscFunctionReturn(0); }
 
   ierr = PSwarmCreate(PETSC_COMM_WORLD,&pswarm);CHKERRQ(ierr);
@@ -292,33 +318,38 @@ static PetscErrorCode SurfaceConstraintSetFromOptions_Gene3D(pTatinCtx ptatin, M
 {
   PetscInt       f,nn;
   PetscBool      found;
+  char           prefix[PETSC_MAX_PATH_LEN],option_name[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
   PetscFunctionBegin;
 
+  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"bc_");CHKERRQ(ierr);
+
   /* Create boundaries data */
-  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,"-bc_nsubfaces",&data->bc_nfaces,&found);CHKERRQ(ierr);
-  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option -%sbc_nsubfaces not found!\n",MODEL_NAME); }
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%snsubfaces",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,option_name,&data->bc_nfaces,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!\n",option_name); }
   ierr = PetscCalloc1(data->bc_nfaces,&data->bc_tag_table);CHKERRQ(ierr);
   ierr = PetscCalloc1(data->bc_nfaces,&data->mesh_facets);CHKERRQ(ierr);
 
   /* get the number of subfaces and their tag correspondance */
   nn = data->bc_nfaces;
-  ierr = PetscOptionsGetIntArray(NULL,MODEL_NAME,"-bc_tag_list",data->bc_tag_table,&nn,&found);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%stag_list",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetIntArray(NULL,MODEL_NAME,option_name,data->bc_tag_table,&nn,&found);CHKERRQ(ierr);
   if (found) {
     if (nn != data->bc_nfaces) {
       SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"bc_nsubfaces (%d) and the number of entries in bc_tag_list (%d) mismatch!\n",data->bc_nfaces,nn);
     }
-  }
+  } else { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER_INPUT,"Option %s not found!",option_name); }
 
   for (f=0; f<data->bc_nfaces; f++) {
     PetscInt tag = data->bc_tag_table[f];
-    char     meshfile[PETSC_MAX_PATH_LEN],opt_name[PETSC_MAX_PATH_LEN];
+    char     meshfile[PETSC_MAX_PATH_LEN];
 
     /* read the facets mesh corresponding to tag */
     ierr = PetscSNPrintf(meshfile,PETSC_MAX_PATH_LEN-1,"facet_%d_mesh.bin",tag);CHKERRQ(ierr);
-    ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-facet_mesh_file_%d",tag);CHKERRQ(ierr);
-    ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,meshfile,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
-    if (!found) { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Options parsing the facet mesh for tag %d not found; Use %s",tag,opt_name); }
+    ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sfacet_mesh_file_%d",prefix,tag);CHKERRQ(ierr);
+    ierr = PetscOptionsGetString(NULL,MODEL_NAME,option_name,meshfile,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+    if (!found) { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Options parsing the facet mesh for tag %d not found; Use %s",tag,option_name); }
 
     /* get facet mesh */
     parse_mesh(PETSC_COMM_WORLD,meshfile,&(data->mesh_facets[f]));
@@ -326,7 +357,8 @@ static PetscErrorCode SurfaceConstraintSetFromOptions_Gene3D(pTatinCtx ptatin, M
   }
   
   data->bc_debug = PETSC_FALSE;
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-bc_debug",&data->bc_debug,NULL);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sdebug",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,option_name,&data->bc_debug,NULL);CHKERRQ(ierr);
   
   PetscFunctionReturn(0);
 }
@@ -334,23 +366,29 @@ static PetscErrorCode SurfaceConstraintSetFromOptions_Gene3D(pTatinCtx ptatin, M
 static PetscErrorCode ModelSetScalingParametersFromOptions(ModelGENE3DCtx *data)
 {
   PetscBool      found;
+  char           prefix[PETSC_MAX_PATH_LEN],option_name[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
+
+  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"scaling_");CHKERRQ(ierr);
 
   /* Assume scaling factors based on typical length, viscosity and velocity of long-term geodynamic systems */
   data->scale->length_bar     = 1.0e+5;
   data->scale->viscosity_bar  = 1.0e+22;
   data->scale->velocity_bar   = 1.0e-10;
 
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-length_scale",&data->scale->length_bar,&found);CHKERRQ(ierr);
-  if (!found) { PetscPrintf(PETSC_COMM_WORLD,"[[ WARNING ]] No scaling factor for length provided, assuming %1.4e. You can change it with the option -%slength_scale\n",data->scale->length_bar,MODEL_NAME); }
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%slength",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&data->scale->length_bar,&found);CHKERRQ(ierr);
+  if (!found) { PetscPrintf(PETSC_COMM_WORLD,"[[ WARNING ]] No scaling factor for length provided, assuming %1.4e. You can change it with the option %s\n",data->scale->length_bar,option_name); }
 
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-viscosity_scale",&data->scale->viscosity_bar,&found);CHKERRQ(ierr);
-  if (!found) { PetscPrintf(PETSC_COMM_WORLD,"[[ WARNING ]] No scaling factor for viscosity provided, assuming %1.4e. You can change it with the option -%sviscosity_scale\n",data->scale->viscosity_bar,MODEL_NAME); }
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sviscosity",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&data->scale->viscosity_bar,&found);CHKERRQ(ierr);
+  if (!found) { PetscPrintf(PETSC_COMM_WORLD,"[[ WARNING ]] No scaling factor for viscosity provided, assuming %1.4e. You can change it with the option %s\n",data->scale->viscosity_bar,option_name); }
 
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-velocity_scale",&data->scale->velocity_bar,&found);CHKERRQ(ierr);
-  if (!found) { PetscPrintf(PETSC_COMM_WORLD,"[[ WARNING ]] No scaling factor for velocity provided, assuming %1.4e. You can change it with the option -%svelocity_scale\n",data->scale->velocity_bar,MODEL_NAME); }
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%svelocity",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&data->scale->velocity_bar,&found);CHKERRQ(ierr);
+  if (!found) { PetscPrintf(PETSC_COMM_WORLD,"[[ WARNING ]] No scaling factor for velocity provided, assuming %1.4e. You can change it with the option %s\n",data->scale->velocity_bar,option_name); }
 
   /* Compute additional scaling parameters */
   data->scale->time_bar         = data->scale->length_bar / data->scale->velocity_bar;
@@ -455,27 +493,30 @@ static PetscErrorCode ModelApplyMeshRefinement(DM dav)
   PetscInt       nn,d,ndir;
   PetscInt       *dir;
   PetscBool      found;
+  char           prefix[PETSC_MAX_PATH_LEN],option_name[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
 
+  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"refinement_");CHKERRQ(ierr);
+
   ndir = 0;
-  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,"-refinement_ndir",&ndir,&found);CHKERRQ(ierr);
-  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"-%srefinement_ndir not found!",MODEL_NAME); }
-  if (ndir <= 0 || ndir > 3) { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"refinement_ndir cannot be 0 or more than 3. -%srefinement_ndir = %d.",MODEL_NAME,ndir); }
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sndir",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,option_name,&ndir,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"%s not found!",option_name); }
+  if (ndir <= 0 || ndir > 3) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"refinement_ndir cannot be 0 or more than 3. Found -refinement_ndir = %d!",ndir); }
 
   PetscPrintf(PETSC_COMM_WORLD,"Mesh is refined in %d directions.\n",ndir);
 
   ierr = PetscCalloc1(ndir,&dir);CHKERRQ(ierr);
   nn = ndir;
-  ierr = PetscOptionsGetIntArray(NULL,MODEL_NAME,"-refinement_dir",dir,&nn,&found);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sdir",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetIntArray(NULL,MODEL_NAME,option_name,dir,&nn,&found);CHKERRQ(ierr);
   if (found) {
     if (nn != ndir) {
       SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"refinement_ndir (%d) and the number of entries in refinement_dir (%d) mismatch!\n",ndir,nn);
     }
-  } else {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"-%srefinement_dir not found!",MODEL_NAME);
-  }
+  } else { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"%s not found!",option_name); }
 
   for (d=0; d<ndir; d++) {
     PetscInt  dim,npoints;
@@ -484,7 +525,7 @@ static PetscErrorCode ModelApplyMeshRefinement(DM dav)
 
     dim = dir[d];
 
-    ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-refinement_npoints_%d",dim);CHKERRQ(ierr);
+    ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%snpoints_%d",prefix,dim);CHKERRQ(ierr);
     ierr = PetscOptionsGetInt(NULL,MODEL_NAME,option_name,&npoints,&found);CHKERRQ(ierr);
     if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"%s not found!",option_name); }
 
@@ -494,27 +535,23 @@ static PetscErrorCode ModelApplyMeshRefinement(DM dav)
 
     /* Get xref */
     nn = npoints;
-    ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-refinement_xref_%d",dim);CHKERRQ(ierr);
+    ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sxref_%d",prefix,dim);CHKERRQ(ierr);
     ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME,option_name,xref,&nn,&found);CHKERRQ(ierr);
     if (found) {
       if (nn != npoints) {
         SETERRQ4(PETSC_COMM_SELF,PETSC_ERR_USER,"-refinement_npoints_%d (%d) and the number of entries in refinement_xref_%d (%d) mismatch!\n",dim,npoints,dim,nn);
       }
-    } else {
-      SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"%s not found!",option_name);
-    }
+    } else { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"%s not found!",option_name); }
 
     /* Get xnat */
     nn = npoints;
-    ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-refinement_xnat_%d",dim);CHKERRQ(ierr);
+    ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sxnat_%d",prefix,dim);CHKERRQ(ierr);
     ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME,option_name,xnat,&nn,&found);CHKERRQ(ierr);
     if (found) {
       if (nn != npoints) {
         SETERRQ4(PETSC_COMM_SELF,PETSC_ERR_USER,"-refinement_npoints_%d (%d) and the number of entries in refinement_xnat_%d (%d) mismatch!\n",dim,npoints,dim,nn);
       }
-    } else {
-      SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"%s not found!",option_name);
-    }
+    } else { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"%s not found!",option_name); }
 
     /* Apply mesh refinement */
     ierr = DMDACoordinateRefinementTransferFunction(dav,dim,PETSC_TRUE,npoints,xref,xnat);CHKERRQ(ierr);
@@ -541,9 +578,10 @@ PetscErrorCode ModelApplyInitialMeshGeometry_Gene3D(pTatinCtx ptatin,void *ctx)
   ierr = DMDASetUniformCoordinates(ptatin->stokes_ctx->dav, data->O[0], data->L[0], data->O[1], data->L[1], data->O[2], data->L[2]); CHKERRQ(ierr);
   
   refine = PETSC_FALSE;
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-apply_mesh_refinement",&refine,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-refinement_apply",&refine,NULL);CHKERRQ(ierr);
   if (refine) { 
     ierr = ModelApplyMeshRefinement(ptatin->stokes_ctx->dav);CHKERRQ(ierr);
+    ierr = DMDABilinearizeQ2Elements(ptatin->stokes_ctx->dav);CHKERRQ(ierr);
   }
   /* Gravity */
   nn = 3;
@@ -567,18 +605,25 @@ PetscErrorCode ModelApplyInitialMeshGeometry_Gene3D(pTatinCtx ptatin,void *ctx)
 static PetscErrorCode ModelApplySurfaceRemeshing(DM dav, PetscReal dt, ModelGENE3DCtx *data)
 {
   PetscBool      dirichlet_xmin,dirichlet_xmax,dirichlet_zmin,dirichlet_zmax;
+  char           prefix[PETSC_MAX_PATH_LEN],option_name[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
   PetscFunctionBegin;
+
+  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"spm_diffusion_");CHKERRQ(ierr);
 
   dirichlet_xmin = PETSC_FALSE;
   dirichlet_xmax = PETSC_FALSE;
   dirichlet_zmin = PETSC_FALSE;
   dirichlet_zmax = PETSC_FALSE;
 
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-spm_diffusion_dirichlet_xmin",&dirichlet_xmin,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-spm_diffusion_dirichlet_xmax",&dirichlet_xmax,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-spm_diffusion_dirichlet_zmin",&dirichlet_zmin,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-spm_diffusion_dirichlet_zmax",&dirichlet_zmax,NULL);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sdirichlet_xmin",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,option_name,&dirichlet_xmin,NULL);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sdirichlet_xmax",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,option_name,&dirichlet_xmax,NULL);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sdirichlet_zmin",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,option_name,&dirichlet_zmin,NULL);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sdirichlet_zmax",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,option_name,&dirichlet_zmax,NULL);CHKERRQ(ierr);
 
   if ( !dirichlet_xmin && !dirichlet_xmax && !dirichlet_zmin && !dirichlet_zmax ) {
     SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"No boundary conditions provided for the surface diffusion (spm)! Use at least one of -%sspm_diffusion_dirichlet_{xmin,xmax,zmin,zmax}",MODEL_NAME);
@@ -622,7 +667,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_Gene3D(pTatinCtx ptatin,Vec X,void *
  
   /* Update Mesh Refinement */
   refine = PETSC_FALSE;
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-apply_mesh_refinement",&refine,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-refinement_apply",&refine,NULL);CHKERRQ(ierr);
   if (refine) { 
     ierr = ModelApplyMeshRefinement(ptatin->stokes_ctx->dav);CHKERRQ(ierr);
     ierr = DMDABilinearizeQ2Elements(dav);CHKERRQ(ierr);
@@ -649,17 +694,18 @@ static PetscErrorCode ModelApplyInitialPlasticStrain_FromExpr(pTatinCtx ptatin, 
   PetscScalar    coor[3];
   PetscBool      found;
   int            p,n_mp_points,err;
-  char           opt_name[PETSC_MAX_PATH_LEN],wz_expr[PETSC_MAX_PATH_LEN];
+  char           prefix[PETSC_MAX_PATH_LEN],option_name[PETSC_MAX_PATH_LEN],wz_expr[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
 
+  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"wz_");CHKERRQ(ierr);
+
   /* Get the number of weak zones to set */
   n_wz = 0;
-  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,"-n_weak_zones",&n_wz,&found);CHKERRQ(ierr);
-  if (!found || !n_wz) {
-    PetscFunctionReturn(0);
-  }
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%snwz",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,option_name,&n_wz,&found);CHKERRQ(ierr);
+  if (!found || !n_wz) { PetscFunctionReturn(0); }
   /* Allocate an array of expression (1 for each weak zone) */
   ierr = PetscMalloc1(n_wz,&expression);CHKERRQ(ierr);
   /* Register variables for expression */
@@ -671,9 +717,9 @@ static PetscErrorCode ModelApplyInitialPlasticStrain_FromExpr(pTatinCtx ptatin, 
 
   for (n=0; n<n_wz; n++) {
     /* Evaluate expression of each weak zone */
-    ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-wz_expression_%d",n);CHKERRQ(ierr);
-    ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,wz_expr,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
-    if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
+    ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sexpression_%d",prefix,n);CHKERRQ(ierr);
+    ierr = PetscOptionsGetString(NULL,MODEL_NAME,option_name,wz_expr,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+    if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",option_name); }
     PetscPrintf(PETSC_COMM_WORLD,"Weak zone %d, evaluating expression:\n\t%s\n",n,wz_expr);
 
     expression[n] = te_compile(wz_expr, vars, 3, &err);
@@ -844,26 +890,27 @@ static PetscErrorCode ModelSetInitialVelocityFromExpr(DM dav, Vec velocity, Mode
   PetscInt       *dir;
   PetscBool      found;
   int            err;
+  char           prefix[PETSC_MAX_PATH_LEN],option_name[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
   PetscFunctionBegin;
 
+  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"ic_velocity_");CHKERRQ(ierr);
+
   /* Get the number of directions for which a function is passed */
   ndir = 0;
-  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,"-v_init_n_dir",&ndir,&found);CHKERRQ(ierr);
-  if (!found || !ndir) {
-    PetscFunctionReturn(0);
-  }
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sndir",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,option_name,&ndir,&found);CHKERRQ(ierr);
+  if (!found || !ndir) { PetscFunctionReturn(0); }
   /* Get the directions for which an expression is passed */
   ierr = PetscCalloc1(ndir,&dir);CHKERRQ(ierr);
   nn = ndir;
-  ierr = PetscOptionsGetIntArray(NULL,MODEL_NAME,"-v_init_dir",dir,&nn,&found);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sdir",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetIntArray(NULL,MODEL_NAME,option_name,dir,&nn,&found);CHKERRQ(ierr);
   if (found) {
     if (nn != ndir) {
-      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"v_init_n_dir (%d) and the number of entries in v_init_dir (%d) mismatch!\n",ndir,nn);
+      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"ic_velocity_ndir (%d) and the number of entries in ic_velocity_dir (%d) mismatch!\n",ndir,nn);
     }
-  } else {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"-%sv_init_dir not found!",MODEL_NAME);
-  }
+  } else { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",option_name); }
 
   /* Allocate and zero the expression variables data structure */
   n_vars = 4; // 4 variables x,y,z,t
@@ -876,12 +923,12 @@ static PetscErrorCode ModelSetInitialVelocityFromExpr(DM dav, Vec velocity, Mode
 
   time = 0.0;
   for (n=0; n<ndir; n++) {
-    char     opt_name[PETSC_MAX_PATH_LEN],v_expr[PETSC_MAX_PATH_LEN];
+    char     v_expr[PETSC_MAX_PATH_LEN];
     PetscInt dim = dir[n];
 
-    ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-v_init_expression_%d",dim);CHKERRQ(ierr);
-    ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,v_expr,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
-    if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
+    ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sexpression_%d",prefix,dim);CHKERRQ(ierr);
+    ierr = PetscOptionsGetString(NULL,MODEL_NAME,option_name,v_expr,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+    if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",option_name); }
     if (data->bc_debug) { PetscPrintf(PETSC_COMM_WORLD,"Velocity component %d, evaluating expression:\n\t%s\n",dim,v_expr); }
 
     expression = te_compile(v_expr, vars, n_vars, &err);
@@ -1034,13 +1081,13 @@ static PetscErrorCode SurfaceConstraintCreateFromOptions_Gene3D(
   SurfaceConstraint sc;
   PetscInt          sc_type;
   PetscBool         found;
-  char              opt_name[PETSC_MAX_PATH_LEN];
+  char              option_name[PETSC_MAX_PATH_LEN];
   PetscErrorCode    ierr;
   PetscFunctionBegin;
 
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-sc_type_%d",tag);CHKERRQ(ierr);
-  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,opt_name,&sc_type,&found);CHKERRQ(ierr);
-  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Providing a type to -sc_type_%d is mandatory!",tag); }
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-bc_sc_type_%d",tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,option_name,&sc_type,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Providing a type to -bc_sc_type_%d is mandatory!",tag); }
 
   /* force insertion if not a type of constraint that requires changing A11 */
   if (sc_type != SC_NITSCHE_GENERAL_SLIP || 
@@ -1087,19 +1134,21 @@ static PetscErrorCode ModelSetDirichlet_VelocityBC_Constant(pTatinCtx ptatin, DM
   PetscInt       d;
   PetscReal      u_bc[] = {0.0, 0.0, 0.0};
   PetscBool      found[3];
-  char           opt_name[PETSC_MAX_PATH_LEN];
+  char           prefix[PETSC_MAX_PATH_LEN],option_name[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
+
+  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"bc_dirichlet_");CHKERRQ(ierr);
   /* get ux */
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-ux_%d",tag);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,opt_name,&u_bc[0],&found[0]);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sux_%d",prefix,tag);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&u_bc[0],&found[0]);CHKERRQ(ierr);
   /* get uy */
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-uy_%d",tag);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,opt_name,&u_bc[1],&found[1]);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%suy_%d",prefix,tag);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&u_bc[1],&found[1]);CHKERRQ(ierr);
   /* get uz */
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-uz_%d",tag);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,opt_name,&u_bc[2],&found[2]);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%suz_%d",prefix,tag);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&u_bc[2],&found[2]);CHKERRQ(ierr);
 
   for (d=0; d<3; d++) {
     /* Set velocity */
@@ -1115,20 +1164,22 @@ static PetscErrorCode ModelSetDirichlet_VelocityBC_Expression(pTatinCtx ptatin, 
   PetscInt       d,n_vars;
   PetscReal      x,y,z,time;
   PetscBool      found[3];
-  char           opt_name[PETSC_MAX_PATH_LEN];
+  char           prefix[PETSC_MAX_PATH_LEN],option_name[PETSC_MAX_PATH_LEN];
   char           expr_ux[PETSC_MAX_PATH_LEN],expr_uy[PETSC_MAX_PATH_LEN],expr_uz[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
   PetscFunctionBegin;
 
+  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"bc_dirichlet_");CHKERRQ(ierr);
+
   /* get ux */
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-ux_%d",tag);
-  ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,expr_ux,PETSC_MAX_PATH_LEN-1,&found[0]);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sux_%d",prefix,tag);
+  ierr = PetscOptionsGetString(NULL,MODEL_NAME,option_name,expr_ux,PETSC_MAX_PATH_LEN-1,&found[0]);CHKERRQ(ierr);
   /* get uy */
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-uy_%d",tag);
-  ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,expr_uy,PETSC_MAX_PATH_LEN-1,&found[1]);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%suy_%d",prefix,tag);
+  ierr = PetscOptionsGetString(NULL,MODEL_NAME,option_name,expr_uy,PETSC_MAX_PATH_LEN-1,&found[1]);CHKERRQ(ierr);
   /* get uz */
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-uz_%d",tag);
-  ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,expr_uz,PETSC_MAX_PATH_LEN-1,&found[2]);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%suz_%d",prefix,tag);
+  ierr = PetscOptionsGetString(NULL,MODEL_NAME,option_name,expr_uz,PETSC_MAX_PATH_LEN-1,&found[2]);CHKERRQ(ierr);
   /* get time */
   ierr = pTatinGetTime(ptatin,&time);CHKERRQ(ierr);
   /* scale time for expression evaluation */
@@ -1240,18 +1291,20 @@ static PetscErrorCode ModelSetDirichlet_VelocityBC_BottomFlowUdotN(pTatinCtx pta
 PetscErrorCode ModelSetDirichlet_VelocityBC(pTatinCtx ptatin, DM dav, BCList bclist, SurfaceConstraint sc, PetscInt tag, ModelGENE3DCtx *data)
 {
   PetscBool      constant,bot_udotn;
-  char           opt_name[PETSC_MAX_PATH_LEN];
+  char           prefix[PETSC_MAX_PATH_LEN],option_name[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
   PetscFunctionBegin;
+
+  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"bc_dirichlet_");CHKERRQ(ierr);
 
   constant  = PETSC_FALSE;
   bot_udotn = PETSC_FALSE;
 
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-dirichlet_constant_%d",tag);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,opt_name,&constant,NULL);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sconstant_%d",prefix,tag);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,option_name,&constant,NULL);CHKERRQ(ierr);
 
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-dirichlet_bot_u.n_%d",tag);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,opt_name,&bot_udotn,NULL);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sbot_u.n_%d",prefix,tag);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,option_name,&bot_udotn,NULL);CHKERRQ(ierr);
 
   if (constant) {
     ierr = ModelSetDirichlet_VelocityBC_Constant(ptatin,dav,bclist,sc,tag,data);CHKERRQ(ierr);
@@ -1341,7 +1394,7 @@ PetscErrorCode ModelApplyNeumannConstraint(pTatinCtx ptatin, SurfaceConstraint s
   PetscScalar         *LA_gcoords;
   PetscBool           found;
   int                 err;
-  char                opt_name[PETSC_MAX_PATH_LEN],expr_tau[PETSC_MAX_PATH_LEN];
+  char                option_name[PETSC_MAX_PATH_LEN],expr_tau[PETSC_MAX_PATH_LEN];
   PetscErrorCode      ierr;
 
   PetscFunctionBegin;
@@ -1395,9 +1448,9 @@ PetscErrorCode ModelApplyNeumannConstraint(pTatinCtx ptatin, SurfaceConstraint s
   /* Initialize Expression data structure */
   ierr = PetscMemzero(&expression_ctx,sizeof(ExpressionCtx));CHKERRQ(ierr);
   /* Get user expression */
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-dev_stress_%d",tag);
-  ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,expr_tau,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
-  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Expression not found! Use %s to set it.",opt_name); }
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-bc_neumann_dev_stress_%d",tag);
+  ierr = PetscOptionsGetString(NULL,MODEL_NAME,option_name,expr_tau,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Expression not found! Use %s to set it.",option_name); }
   /* Compile expression */
   expression = te_compile(expr_tau, vars, n_vars, &err);
   if (!expression) {
@@ -1431,7 +1484,7 @@ PetscErrorCode ModelApplyNeumannConstraint(pTatinCtx ptatin, SurfaceConstraint s
 static PetscErrorCode ModelSetNeumann_VelocityBC(pTatinCtx ptatin, SurfaceConstraint sc, PetscInt tag, ModelGENE3DCtx *data)
 {
   PetscBool      active_poisson,found;
-  char           opt_name[PETSC_MAX_PATH_LEN],expr[PETSC_MAX_PATH_LEN];
+  char           option_name[PETSC_MAX_PATH_LEN],expr[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
   PetscFunctionBegin;
 
@@ -1446,8 +1499,8 @@ static PetscErrorCode ModelSetNeumann_VelocityBC(pTatinCtx ptatin, SurfaceConstr
     ierr = ModelSolvePoissonPressure(ptatin,data);CHKERRQ(ierr);
   }
 
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-dev_stress_%d",tag);
-  ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,expr,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-bc_neumann_dev_stress_%d",tag);
+  ierr = PetscOptionsGetString(NULL,MODEL_NAME,option_name,expr,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
   if (found) { ierr = ModelApplyNeumannConstraint(ptatin,sc,tag,data);CHKERRQ(ierr); }
   else       { ierr = ApplyPoissonPressureNeumannConstraint(ptatin,sc);CHKERRQ(ierr); }
   PetscFunctionReturn(0);
@@ -1488,7 +1541,7 @@ static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Constan
   PetscInt       nn;
   PetscReal      duxdx,duxdz,duzdx,duzdz;
   PetscReal      uL[] = {0.0,0.0};
-  char           opt_name[PETSC_MAX_PATH_LEN],prefix[PETSC_MAX_PATH_LEN];
+  char           option_name[PETSC_MAX_PATH_LEN],prefix[PETSC_MAX_PATH_LEN];
   PetscBool      found;
   PetscErrorCode ierr;
   PetscFunctionBegin;
@@ -1497,31 +1550,31 @@ static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Constan
 
   /* Get velocity vector at (Lx,Lz), magnitude does not matter we only use it for orientation */
   nn = 2;
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%suL_%d",prefix,tag);CHKERRQ(ierr);
-  ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME,opt_name,uL,&nn,&found);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%suL_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME,option_name,uL,&nn,&found);CHKERRQ(ierr);
   if (found) {
     if (nn != 2) {
-      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s requires 2 entries, found %d.",opt_name,nn);
+      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s requires 2 entries, found %d.",option_name,nn);
     }
-  } else { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
+  } else { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",option_name); }
 
   /* Get derivatives */
   /* dux/dx */
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%sduxdx_%d",prefix,tag);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,opt_name,&duxdx,&found);CHKERRQ(ierr);
-  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sduxdx_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&duxdx,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",option_name); }
   /* dux/dz */
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%sduxdz_%d",prefix,tag);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,opt_name,&duxdz,&found);CHKERRQ(ierr);
-  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sduxdz_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&duxdz,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",option_name); }
   /* duz/dx */
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%sduzdx_%d",prefix,tag);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,opt_name,&duzdx,&found);CHKERRQ(ierr);
-  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sduzdx_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&duzdx,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",option_name); }
   /* duz/dz */
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%sduzdz_%d",prefix,tag);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,opt_name,&duzdz,&found);CHKERRQ(ierr);
-  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sduzdz_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&duzdz,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",option_name); }
 
   /* Scale by 1/t_bar ==> du / (1/t_bar) = du * t_bar */
   duxdx *= data->scale->time_bar;
@@ -1540,11 +1593,11 @@ static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Constan
   
   /* 
   Tangent vector 1, the scaling is not necessary because it is an orientation 
-  but scaling it permits to keep numbers in an acceptable value range 
+  better if user provides a normalized vector
   */
-  bc_data->t1_hat[0] = uL[0] / data->scale->velocity_bar;
+  bc_data->t1_hat[0] = uL[0];
   bc_data->t1_hat[1] = 0.0;
-  bc_data->t1_hat[2] = uL[1] / data->scale->velocity_bar;
+  bc_data->t1_hat[2] = uL[1];
   /* Normal vector */
   bc_data->n_hat[0] = -bc_data->t1_hat[2];
   bc_data->n_hat[1] = 0.0;
@@ -1560,12 +1613,12 @@ static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Constan
   bc_data->mcal_H[3] = 1; //H_01
   bc_data->mcal_H[4] = 1; //H_02
   bc_data->mcal_H[5] = 1; //H_12
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%smathcal_H_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%smathcal_H_%d",prefix,tag);CHKERRQ(ierr);
   nn   = 6;
-  ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME,opt_name,bc_data->mcal_H,&nn,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME,option_name,bc_data->mcal_H,&nn,&found);CHKERRQ(ierr);
   if (found) {
     if (nn != 6) {
-      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"%s requires 6 entries, found %d.",opt_name,nn);
+      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"%s requires 6 entries, found %d.",option_name,nn);
     }
   }
   PetscFunctionReturn(0);
@@ -1578,7 +1631,7 @@ static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Express
   PetscReal      time,duxdx,duxdz,duzdx,duzdz,uLx,uLz,uL_norm2;
   PetscInt       n,n_vars,n_expression,nn;
   PetscBool      found;
-  char           prefix[PETSC_MAX_PATH_LEN],opt_name[PETSC_MAX_PATH_LEN];
+  char           prefix[PETSC_MAX_PATH_LEN],option_name[PETSC_MAX_PATH_LEN];
   char           expr_duxdx[PETSC_MAX_PATH_LEN],expr_duxdz[PETSC_MAX_PATH_LEN];
   char           expr_duzdx[PETSC_MAX_PATH_LEN],expr_duzdz[PETSC_MAX_PATH_LEN];
   char           expr_uLx[PETSC_MAX_PATH_LEN],expr_uLz[PETSC_MAX_PATH_LEN];
@@ -1617,29 +1670,29 @@ static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Express
   n_expression = 6; // 6 expression dux/dx, dux/dz, duz/dx, duz/dz, uLx, uLz
   ierr = PetscCalloc1(n_expression,&expression);CHKERRQ(ierr);
   /* dux/dx */
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%sduxdx_%d",prefix,tag);CHKERRQ(ierr);
-  ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,expr_duxdx,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
-  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sduxdx_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL,MODEL_NAME,option_name,expr_duxdx,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",option_name); }
   /* dux/dz */
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%sduxdz_%d",prefix,tag);CHKERRQ(ierr);
-  ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,expr_duxdz,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
-  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sduxdz_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL,MODEL_NAME,option_name,expr_duxdz,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",option_name); }
   /* duz/dx */
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%sduzdx_%d",prefix,tag);CHKERRQ(ierr);
-  ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,expr_duzdx,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
-  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sduzdx_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL,MODEL_NAME,option_name,expr_duzdx,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",option_name); }
   /* duz/dz */
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%sduzdz_%d",prefix,tag);CHKERRQ(ierr);
-  ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,expr_duzdz,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
-  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sduzdz_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL,MODEL_NAME,option_name,expr_duzdz,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",option_name); }
   /* uLx */
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%suLx_%d",prefix,tag);CHKERRQ(ierr);
-  ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,expr_uLx,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
-  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%suLx_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL,MODEL_NAME,option_name,expr_uLx,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",option_name); }
   /* uLz */
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%suLz_%d",prefix,tag);CHKERRQ(ierr);
-  ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,expr_uLz,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
-  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",opt_name); }
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%suLz_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL,MODEL_NAME,option_name,expr_uLz,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+  if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",option_name); }
 
   /* Compile expression */
   expression[0] = te_compile(expr_duxdx, vars, n_vars, &err);
@@ -1691,10 +1744,8 @@ static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Express
 
   /* 
   Tangent vector 1, the scaling is not necessary because it is an orientation 
-  but scaling it permits to keep numbers in an acceptable value range 
+  but it is better if user can provide a normalized vector
   */
-  uLx /= data->scale->velocity_bar;
-  uLz /= data->scale->velocity_bar;
   uL_norm2 = uLx*uLx + uLz*uLz;
   /* 
   if the norm evaluates to 0 we will assume that it is due to the time in the expression
@@ -1725,12 +1776,12 @@ static PetscErrorCode ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Express
   bc_data->mcal_H[3] = 1; //H_01
   bc_data->mcal_H[4] = 1; //H_02
   bc_data->mcal_H[5] = 1; //H_12
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%smathcal_H_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%smathcal_H_%d",prefix,tag);CHKERRQ(ierr);
   nn   = 6;
-  ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME,opt_name,bc_data->mcal_H,&nn,&found);CHKERRQ(ierr);
+  ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME,option_name,bc_data->mcal_H,&nn,&found);CHKERRQ(ierr);
   if (found) {
     if (nn != 6) {
-      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"%s requires 6 entries, found %d.",opt_name,nn);
+      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"%s requires 6 entries, found %d.",option_name,nn);
     }
   }
 
@@ -1745,18 +1796,21 @@ static PetscErrorCode ModelSetBoundaryValues_GeneralNavierSlip(pTatinCtx ptatin,
   GenNavierSlipCtx bc_data;
   PetscReal        penalty;
   PetscBool        expr=PETSC_FALSE;
-  char             opt_name[PETSC_MAX_PATH_LEN];
+  char             prefix[PETSC_MAX_PATH_LEN],option_name[PETSC_MAX_PATH_LEN];
   PetscErrorCode   ierr;
   PetscFunctionBegin;
 
+  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"bc_navier_");CHKERRQ(ierr);
+
   /* penalty for the nitsche method */
   penalty = 1.0e3;
-  ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-bc_navier_penalty_%d",tag);CHKERRQ(ierr);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,opt_name,&penalty,NULL);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%spenalty_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&penalty,NULL);
   ierr = SurfaceConstraintNitscheGeneralSlip_SetPenalty(sc,penalty);CHKERRQ(ierr);
   /* Set values on boundary from options */
   ierr = PetscMemzero(&bc_data,sizeof(GenNavierSlipCtx));CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-bc_navier_expression_%d",&expr,NULL);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sexpression_%d",prefix,tag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,option_name,&expr,NULL);CHKERRQ(ierr);
 
   if (expr) { ierr = ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Expression(ptatin,tag,data,&bc_data);CHKERRQ(ierr); }
   else      { ierr = ModelSetGeneralNavierSlipBoundaryValuesFromOptions_Constant(tag,data,&bc_data);CHKERRQ(ierr); }
@@ -1825,14 +1879,14 @@ static PetscErrorCode ModelApplyBoundaryCondition_Velocity(pTatinCtx ptatin, DM 
     SurfaceConstraint sc;
     Mesh              mesh;
     PetscInt          tag;
-    char              opt_name[PETSC_MAX_PATH_LEN],sc_name[PETSC_MAX_PATH_LEN];
+    char              option_name[PETSC_MAX_PATH_LEN],sc_name[PETSC_MAX_PATH_LEN];
 
     tag  = data->bc_tag_table[f];
     mesh = data->mesh_facets[f]; 
     /* Get sc name */
-    ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-sc_name_%d",tag);CHKERRQ(ierr);
-    ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,sc_name,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
-    if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Providing a name to -sc_name_%d is mandatory!",tag); }
+    ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-bc_sc_name_%d",tag);CHKERRQ(ierr);
+    ierr = PetscOptionsGetString(NULL,MODEL_NAME,option_name,sc_name,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+    if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Providing a name to -bc_sc_name_%d is mandatory!",tag); }
 
     ierr = SurfaceConstraintCreateFromOptions_Gene3D(surf_bclist,tag,sc_name,insert_if_not_found,data);CHKERRQ(ierr);
 
@@ -1856,15 +1910,24 @@ static PetscErrorCode ModelApplyBoundaryCondition_EnergyFV(FVDA fv, ModelGENE3DC
   PetscInt       f;
   PetscReal      bc_T[] = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
   PetscBool      found[6];
+  char           prefix[PETSC_MAX_PATH_LEN],option_name[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;  
   PetscFunctionBegin;
 
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-energy_bc_xmin",&bc_T[0],&found[0]);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-energy_bc_xmax",&bc_T[1],&found[1]);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-energy_bc_ymin",&bc_T[2],&found[2]);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-energy_bc_ymax",&bc_T[3],&found[3]);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-energy_bc_zmin",&bc_T[4],&found[4]);
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-energy_bc_zmax",&bc_T[5],&found[5]);
+  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"bc_energy_");CHKERRQ(ierr);
+
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sxmin",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&bc_T[0],&found[0]);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sxmax",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&bc_T[1],&found[1]);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%symin",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&bc_T[2],&found[2]);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%symax",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&bc_T[3],&found[3]);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%szmin",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&bc_T[4],&found[4]);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%szmax",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&bc_T[5],&found[5]);
 
   for (f=0; f<6; f++) {
     if (found[f]) {
@@ -2263,13 +2326,17 @@ PetscErrorCode ModelAdaptMaterialPointResolution_Gene3D(pTatinCtx ptatin,void *c
   PetscInt       n_face_list,nn;
   PetscInt       *face_list;
   PetscBool      found;
+  char           prefix[PETSC_MAX_PATH_LEN],option_name[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD, "[[%s]]\n", PETSC_FUNCTION_NAME);
 
+  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"bc_marker_");CHKERRQ(ierr);
+
   /* TODO: think about what to do by default */
   n_face_list = 0;
-  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,"-bc_marker_n_faces",&n_face_list,&found);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%snfaces",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,option_name,&n_face_list,&found);
   /* Allocate memory for the face_list */
   ierr = PetscCalloc1(n_face_list,&face_list);CHKERRQ(ierr);
   /* 
@@ -2282,9 +2349,10 @@ PetscErrorCode ModelAdaptMaterialPointResolution_Gene3D(pTatinCtx ptatin,void *c
     5: back  = zmin = kmin = Nzeta
   */
   nn = n_face_list;
-  ierr = PetscOptionsGetIntArray(NULL,MODEL_NAME,"-bc_marker_faces_list",face_list,&nn,&found);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sfaces_list",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetIntArray(NULL,MODEL_NAME,option_name,face_list,&nn,&found);CHKERRQ(ierr);
   if (found) {
-    if (nn != n_face_list) { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Found %d entries to -faces_list, while expected %d from -bc_marker_n_faces",nn,n_face_list); }
+    if (nn != n_face_list) { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Found %d entries to -bc_marker_faces_list, while expected %d from -bc_marker_nfaces",nn,n_face_list); }
   }
   /* Particles injection on faces */
   ierr = ModelApplyMaterialBoundaryCondition_Gene3D(ptatin,n_face_list,face_list,data);CHKERRQ(ierr);
@@ -2305,7 +2373,7 @@ static PetscErrorCode ModelOutputMarkerFields_Gene3D(pTatinCtx ptatin,const char
   DataBucket               materialpoint_db;
   int                      nf;
   const MaterialPointField mp_prop_list[] = { MPField_Std, MPField_Stokes, MPField_StokesPl};
-  char                     mp_file_prefix[256];
+  char                     mp_file_prefix[PETSC_MAX_PATH_LEN];
   PetscErrorCode           ierr;
 
   PetscFunctionBegin;
@@ -2313,7 +2381,7 @@ static PetscErrorCode ModelOutputMarkerFields_Gene3D(pTatinCtx ptatin,const char
   nf = sizeof(mp_prop_list)/sizeof(mp_prop_list[0]);
 
   ierr = pTatinGetMaterialPoints(ptatin,&materialpoint_db,NULL);CHKERRQ(ierr);
-  sprintf(mp_file_prefix,"%s_mpoints",prefix);
+  ierr = PetscSNPrintf(mp_file_prefix,PETSC_MAX_PATH_LEN-1,"%s_mpoints",prefix);CHKERRQ(ierr);
   ierr = SwarmViewGeneric_ParaView(materialpoint_db,nf,mp_prop_list,ptatin->outputpath,mp_file_prefix);CHKERRQ(ierr);
   
   PetscFunctionReturn(0);
@@ -2333,13 +2401,13 @@ static PetscErrorCode ModelViewSurfaceConstraint_Gene3D(pTatinCtx ptatin, ModelG
     SurfaceConstraint sc;
     PetscInt          tag;
     PetscBool         found;
-    char              opt_name[PETSC_MAX_PATH_LEN],sc_name[PETSC_MAX_PATH_LEN];
+    char              option_name[PETSC_MAX_PATH_LEN],sc_name[PETSC_MAX_PATH_LEN];
 
     tag = data->bc_tag_table[f];
     /* Get sc name */
-    ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-sc_name_%d",tag);CHKERRQ(ierr);
-    ierr = PetscOptionsGetString(NULL,MODEL_NAME,opt_name,sc_name,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
-    if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Providing a name to -sc_name_%d is mandatory!",tag); }
+    ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-bc_sc_name_%d",tag);CHKERRQ(ierr);
+    ierr = PetscOptionsGetString(NULL,MODEL_NAME,option_name,sc_name,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+    if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Providing a name to -bc_sc_name_%d is mandatory!",tag); }
 
     /* Get sc object */
     ierr = SurfBCListGetConstraint(stokes->surf_bclist,sc_name,&sc);CHKERRQ(ierr);

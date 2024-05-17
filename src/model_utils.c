@@ -1791,7 +1791,7 @@ PetscErrorCode pTatin_ModelLoadTemperatureInitialSolution_FromFile(pTatinCtx pta
   ierr = pTatinGetContext_EnergyFV(ptatin,&energy);CHKERRQ(ierr);
   /* If job is restarted skip that part (Temperature is loaded from checkpointed file) */
   if (!ptatin->restart_from_file) {
-    ierr = PetscOptionsGetBool(NULL,model_name,"-temperature_ic_from_file",&temperature_ic_from_file,NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsGetBool(NULL,model_name,"-ic_temperature_from_file",&temperature_ic_from_file,NULL);CHKERRQ(ierr);
     if (temperature_ic_from_file) {
       /* Check if a file is provided */
       ierr = PetscOptionsGetString(NULL,model_name,"-temperature_file",temperature_file,PETSC_MAX_PATH_LEN-1,&flg);CHKERRQ(ierr);
