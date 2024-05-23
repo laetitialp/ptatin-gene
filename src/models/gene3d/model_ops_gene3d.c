@@ -1282,14 +1282,63 @@ static PetscErrorCode ModelSetDirichlet_VelocityBC_BottomFlowUdotN(pTatinCtx pta
   ierr = DMCompositeRestoreAccess(dms,X,&velocity,&pressure);CHKERRQ(ierr);
   
   /* Compute the uy velocity based on faces inflow/outflow except the top free surface */
+  /* At step 0, use the user provided initial velocity */
   if (ptatin->step == 0) {
-    uy = 0.0;
+    PetscBool found;
+    char uy_expr[PETSC_MAX_PATH_LEN];
+    
+    ierr = PetscOptionsGetString(NULL,MODEL_NAME,"-ic_velocity_expression_1",uy_expr,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+    /* use the user provided expression for the initial condition if it exists */
+    if (found) {
+      ExpressionCtx  ctx;
+      te_variable    *vars;
+      te_expr        *expression;
+      PetscScalar    x,y,z,time;
+      PetscInt       n_vars;
+      int            err;
+
+      if (data->bc_debug) { PetscPrintf(PETSC_COMM_WORLD,"Step 0, vertical velocity at bottom, evaluating expression:\n\t%s\n",uy_expr); }
+
+      /* get time */
+      ierr = pTatinGetTime(ptatin,&time);CHKERRQ(ierr);
+      /* scale time for expression evaluation */
+      time *= data->scale->time_bar;
+      
+      /* Allocate and zero the expression variables data structure */
+      n_vars = 4; // 4 variables x,y,z,t
+      ierr = PetscCalloc1(n_vars,&vars);CHKERRQ(ierr);
+      /* Attach variables */
+      vars[0].name = "x"; vars[0].address = &x;
+      vars[1].name = "y"; vars[1].address = &y;
+      vars[2].name = "z"; vars[2].address = &z;
+      vars[3].name = "t"; vars[3].address = &time;
+
+      expression = te_compile(uy_expr, vars, n_vars, &err);
+      if (!expression) {
+        PetscPrintf(PETSC_COMM_WORLD,"\t%*s^\nError near here", err-1, "");
+        SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Expression %s did not compile.",uy_expr);
+      }
+      /* Initialize the ExpressionCtx struct */
+      ierr = PetscMemzero(&ctx,sizeof(ExpressionCtx));CHKERRQ(ierr);
+      /* Attach variables to struct for the evaluating function */
+      ctx.x = &x; ctx.y = &y; ctx.z = &z; ctx.t = &time;
+      /* Attach expression */
+      ctx.expression   = expression;
+      ctx.scale        = data->scale;
+      /* Set velocity */
+      ierr = DMDABCListTraverseFacets3d(bclist,dav,sc,1,EvaluateVelocityFromExpression,(void*)&ctx);CHKERRQ(ierr);
+      te_free(expression);
+      ierr = PetscFree(vars);CHKERRQ(ierr);
+    } else { 
+      /* if not found, set uy = 0 */
+      uy = 0.0; 
+      ierr = DMDABCListTraverseFacets3d(bclist,dav,sc,1,BCListEvaluator_constant,(void*)&uy);CHKERRQ(ierr);
+    }
   } else {
     uy = (int_u_dot_n[WEST_FACE-1]+int_u_dot_n[EAST_FACE-1]+int_u_dot_n[BACK_FACE-1]+int_u_dot_n[FRONT_FACE-1])/((data->L[0] - data->O[0])*(data->L[2] - data->O[2]));
     PetscPrintf(PETSC_COMM_WORLD,"Computed bottom velocity uy = %+1.4e\n",uy);
+    ierr = DMDABCListTraverseFacets3d(bclist,dav,sc,1,BCListEvaluator_constant,(void*)&uy);CHKERRQ(ierr);
   }
-  ierr = DMDABCListTraverseFacets3d(bclist,dav,sc,1,BCListEvaluator_constant,(void*)&uy);CHKERRQ(ierr);
-
   PetscFunctionReturn(0);
 }
 
