@@ -475,6 +475,11 @@ PetscErrorCode ModelInitialize_Gene3D(pTatinCtx ptatin, void *ctx)
   ierr = ModelSetScalingParametersFromOptions(data);CHKERRQ(ierr);
   ierr = ModelScaleParameters(materialconstants,data);CHKERRQ(ierr);
 
+  /* Fetch scaled values for the viscosity cutoff */
+  rheology->apply_viscosity_cutoff_global = data->eta_cutoff;
+  rheology->eta_upper_cutoff_global       = data->eta_max;
+  rheology->eta_lower_cutoff_global       = data->eta_min;
+
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-output_markers",&data->output_markers,NULL);CHKERRQ(ierr);CHKERRQ(ierr);
 
   /* Initialize prev_step to step - 1 in case of restart */
