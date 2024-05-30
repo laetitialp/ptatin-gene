@@ -444,6 +444,34 @@ static PetscErrorCode ModelScaleParameters(DataBucket materialconstants, ModelGE
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ModelSetIsostaticTopographyParameters(ModelGENE3DCtx *data)
+{
+  PetscReal      isostatic_density_ref,isostatic_depth;
+  PetscBool      found;
+  char           prefix[PETSC_MAX_PATH_LEN],option_name[PETSC_MAX_PATH_LEN],option_value[PETSC_MAX_PATH_LEN];
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"isostatic_");CHKERRQ(ierr);
+
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sdensity_ref",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&isostatic_density_ref,&found);CHKERRQ(ierr);
+  if (found) {
+    isostatic_density_ref = isostatic_density_ref / data->scale->density_bar;
+    ierr = PetscSNPrintf(option_value,PETSC_MAX_PATH_LEN-1,"%1.5e",isostatic_density_ref);CHKERRQ(ierr);
+    ierr = PetscOptionsSetValue(NULL,"-isostatic_density_ref_adim",option_value);CHKERRQ(ierr);
+  }
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sdepth",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&isostatic_depth,&found);CHKERRQ(ierr);
+  if (found) {
+    isostatic_depth = isostatic_depth / data->scale->length_bar;
+    PetscSNPrintf(option_value,PETSC_MAX_PATH_LEN-1,"%1.5e",isostatic_depth);
+    ierr = PetscOptionsSetValue(NULL,"-isostatic_compensation_depth_adim",option_value);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode ModelInitialize_Gene3D(pTatinCtx ptatin, void *ctx)
 {
   ModelGENE3DCtx    *data = (ModelGENE3DCtx*)ctx;
@@ -474,6 +502,8 @@ PetscErrorCode ModelInitialize_Gene3D(pTatinCtx ptatin, void *ctx)
   /* Scaling */
   ierr = ModelSetScalingParametersFromOptions(data);CHKERRQ(ierr);
   ierr = ModelScaleParameters(materialconstants,data);CHKERRQ(ierr);
+  /* Isostatic initial topography options */
+  ierr = ModelSetIsostaticTopographyParameters(data);CHKERRQ(ierr);
 
   /* Fetch scaled values for the viscosity cutoff */
   rheology->apply_viscosity_cutoff_global = data->eta_cutoff;
@@ -823,6 +853,10 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_Gene3D(pTatinCtx ptatin, void *
   ierr = pTatin_MPntStdSetRegionIndexFromMesh(ptatin,mesh_file,region_file,method,data->scale->length_bar);CHKERRQ(ierr);
   /* Initial plastic strain */
   ierr = ModelApplyInitialPlasticStrain_FromExpr(ptatin,data);CHKERRQ(ierr);
+  
+  /* Last thing done (should always be the last thing done) */
+  ierr = LagrangianAdvectionFromIsostaticDisplacementVector(ptatin);CHKERRQ(ierr);
+
   PetscFunctionReturn (0);
 }
 
