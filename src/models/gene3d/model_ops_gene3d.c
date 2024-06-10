@@ -1149,7 +1149,7 @@ static PetscErrorCode ModelMarkBoundaryFacets_Gene3D(Mesh mesh, SurfaceConstrain
 {
   MeshFacetInfo     facet_info;
   MeshEntity        mesh_entity;
-  PetscInt          method=1;
+  PetscInt          method=0;
   PetscErrorCode    ierr;
   PetscFunctionBegin;
   
