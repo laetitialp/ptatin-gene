@@ -48,6 +48,9 @@
 #include "QPntVolCoefEnergy_def.h"
 #include "phys_comp_energy.h"
 #include "ptatin3d_energy.h"
+#include "output_paraview.h"
+#include "ptatin_utils.h"
+#include "material_point_point_location.h"
 #include "litho_pressure_PDESolve.h"
 
 /* defined in ptatin3d_energyfv.c */
