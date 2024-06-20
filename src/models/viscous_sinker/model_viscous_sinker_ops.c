@@ -47,6 +47,7 @@
 #include "output_material_points.h"
 #include "xdmf_writer.h"
 #include "output_material_points_p0.h"
+#include "stokes_output.h"
 #include "private/quadrature_impl.h"
 #include "quadrature.h"
 #include "QPntSurfCoefStokes_def.h"
