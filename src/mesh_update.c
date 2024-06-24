@@ -167,7 +167,7 @@ PetscErrorCode UpdateMeshGeometry_VerticalLagrangianSurfaceRemesh(DM dav,Vec vel
   ierr = VecCopy(velocity,velocity_ale);CHKERRQ(ierr);
 
   ierr = VecStrideSet(velocity_ale,0,0.0);CHKERRQ(ierr); /* zero x component */
-  ierr = VecStrideSet(velocity_ale,2,0.0);CHKERRQ(ierr); /* zero y component */
+  ierr = VecStrideSet(velocity_ale,2,0.0);CHKERRQ(ierr); /* zero z component */
 
   ierr = DMDAVecTraverseIJK(dav,velocity_ale,1,DMDAVecTraverseIJK_ZeroInteriorMinusNmax,(void*)&N);CHKERRQ(ierr);
 
