@@ -33,6 +33,8 @@
 
 #include "pswarm.h"
 
+typedef enum { MESH_EULERIAN=0, MESH_ALE } GeneMeshType;
+
 struct _p_ScalingCtx {
   /* Scaling values */
   PetscReal length_bar;
@@ -79,6 +81,7 @@ typedef struct {
   PetscReal epsilon_s[6],t1_hat[3],n_hat[3];
   /* Meshes */
   Mesh *mesh_facets;
+  GeneMeshType mesh_type;
 } ModelGENE3DCtx;
 
 typedef struct {
