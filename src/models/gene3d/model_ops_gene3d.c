@@ -1733,10 +1733,12 @@ static PetscErrorCode ModelSetNeumann_VelocityBC(pTatinCtx ptatin, SurfaceConstr
     data->poisson_pressure_active = PETSC_TRUE;
   }
 
-  // TODO: check if we restrain the solve to once per time step or not
-  if (data->prev_step != ptatin->step) {
-    ierr = ModelSolvePoissonPressure(ptatin,data);CHKERRQ(ierr);
-  }
+  /* 
+  Solve the poisson pressure at each BC call.
+  When the density is of type Boussinesq, the poisson pressure needs to be
+  solved at each Stokes non-linear iteration due to the Stokes pressure changes.
+  */
+  ierr = ModelSolvePoissonPressure(ptatin,data);CHKERRQ(ierr);
 
   ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-bc_neumann_dev_stress_%d",tag);
   ierr = PetscOptionsGetString(NULL,MODEL_NAME,option_name,expr,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
