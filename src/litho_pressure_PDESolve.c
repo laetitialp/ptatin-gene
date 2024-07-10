@@ -1469,6 +1469,7 @@ PetscErrorCode LagrangianAdvectionFromIsostaticDisplacementVector(pTatinCtx ptat
   ierr = MaterialPointStd_UpdateGlobalCoordinates(ptatin->materialpoint_db,dav,u_isostatic,1.0);CHKERRQ(ierr);
   /* Restore */
   ierr = DMRestoreGlobalVector(dav,&u_isostatic);CHKERRQ(ierr);
+  fclose(fp);
   
   PetscFunctionReturn(0);
 }

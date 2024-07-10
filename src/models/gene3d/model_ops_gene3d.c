@@ -1082,9 +1082,11 @@ static PetscErrorCode ModelApplyInitialVariables_FromExpr(pTatinCtx ptatin, Mode
 PetscErrorCode ModelApplyInitialMaterialGeometry_Gene3D(pTatinCtx ptatin, void *ctx)
 {
   ModelGENE3DCtx *data = (ModelGENE3DCtx*)ctx;
+  FILE           *fp;
   PetscInt       method;
   PetscBool      found;
   char           mesh_file[PETSC_MAX_PATH_LEN],region_file[PETSC_MAX_PATH_LEN];
+  char           fname[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
   PetscFunctionBegin;
 
@@ -1112,8 +1114,23 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_Gene3D(pTatinCtx ptatin, void *
   ierr = ModelApplyInitialVariables_FromExpr(ptatin,data);CHKERRQ(ierr);
   
   /* Last thing done (should always be the last thing done) */
-  ierr = LagrangianAdvectionFromIsostaticDisplacementVector(ptatin);CHKERRQ(ierr);
-
+  /* Check if a file for isostatic displacement exists */
+  PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/isostatic_displacement.pbvec",ptatin->outputpath);
+  fp = fopen(fname,"r");
+  if (fp) {
+    PetscBool refine;
+    /* Apply the isostatic displacement */
+    ierr = LagrangianAdvectionFromIsostaticDisplacementVector(ptatin);CHKERRQ(ierr);
+    /* Check if refinement is required */
+    refine = PETSC_FALSE;
+    ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-refinement_apply",&refine,NULL);CHKERRQ(ierr);
+    if (refine) { 
+      /* Apply mesh refinement */
+      ierr = ModelApplyMeshRefinement(ptatin->stokes_ctx->dav);CHKERRQ(ierr);
+      ierr = DMDABilinearizeQ2Elements(ptatin->stokes_ctx->dav);CHKERRQ(ierr);
+    }
+    fclose(fp);
+  }
   PetscFunctionReturn (0);
 }
 
