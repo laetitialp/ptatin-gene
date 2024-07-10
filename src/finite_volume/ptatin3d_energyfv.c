@@ -1060,7 +1060,7 @@ PetscErrorCode EnergyFVEvaluateCoefficients_MaterialPoints(pTatinCtx user,PetscR
           break;
           
         case ENERGYSOURCE_USE_MATERIALPOINT_VALUE:
-          H_mp += mpp_energy->heat_source;
+          H_mp += mpp_energy->heat_source_init;
           break;
           
         case ENERGYSOURCE_CONSTANT:
@@ -1151,7 +1151,6 @@ PetscErrorCode EnergyFVEvaluateCoefficients_MaterialPoints(pTatinCtx user,PetscR
     diffusivity_mp = conductivity_mp / (rho_mp * Cp);
     
     H_mp = H_mp / (rho_mp * Cp);
-
     MPntPEnergySetField_diffusivity(mpp_energy,diffusivity_mp);
     MPntPEnergySetField_heat_source(mpp_energy,H_mp);
   }

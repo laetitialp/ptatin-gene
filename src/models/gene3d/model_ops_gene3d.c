@@ -123,15 +123,152 @@ static PetscErrorCode ModelSetMeshTypeFromOptions(ModelGENE3DCtx *data)
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ModelSetRegionHeatSourceTypeFromOptions(const int region_idx, const char model_name[], int source_type[])
+{
+  PetscInt       i,nn=7;
+  PetscBool      found;
+  int            type[] = {0, 0, 0, 0, 0, 0, 0};
+  char           option_name[PETSC_MAX_PATH_LEN];
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-heat_source_type_%d",region_idx);CHKERRQ(ierr);
+  ierr = PetscOptionsGetIntArray(NULL,model_name,option_name,type,&nn,&found);CHKERRQ(ierr);
+  PetscPrintf(PETSC_COMM_WORLD,"Found %d source types\n",nn);
+  if (nn > 7) { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"[ Region %d ]: Too many heat source types, maximum is 7, found %d\n",region_idx,nn);}
+
+  for (i=0; i<nn; i++) {
+    switch (type[i]) {
+      case 0:
+        source_type[i] = ENERGYSOURCE_NONE;
+        break;
+      
+      case 1:
+        source_type[i] = ENERGYSOURCE_USE_MATERIALPOINT_VALUE;
+        break;
+      
+      case 2:
+        source_type[i] = ENERGYSOURCE_CONSTANT;
+        break;
+      
+      case 3:
+        source_type[i] = ENERGYSOURCE_SHEAR_HEATING;
+        break;
+      
+      case 4:
+        source_type[i] = ENERGYSOURCE_DECAY;
+        break;
+      
+      case 5:
+        SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"[ENERGYSOURCE_ADIABATIC] Not supported with Gene3D (because not supported with FV)");
+        break;
+      
+      case 6:
+        SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"[ENERGYSOURCE_ADIABATIC_ADVECTION] Not supported with Gene3D (because not supported with FV)");
+        break;
+      
+      default:
+        SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"[ Region %d ]: Unknown heat source type %d\n",region_idx,type[i]);
+        break;
+    }
+  }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode MaterialConstantsEnergySetFromOptions_SourceConstant(DataBucket materialconstants, const char model_name[], const int region_idx)
+{
+  DataField         PField;
+  EnergySourceConst *data_Q;
+  PetscReal         heat_source;
+  char              option_name[PETSC_MAX_PATH_LEN];
+  PetscErrorCode    ierr;
+  PetscFunctionBegin;
+
+  /* Heat source */
+  DataBucketGetDataFieldByName(materialconstants,EnergySourceConst_classname,&PField);
+  DataFieldGetEntries(PField,(void**)&data_Q);
+  heat_source = 0.0;
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-heat_source_%d",region_idx);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,model_name,option_name,&heat_source,NULL);CHKERRQ(ierr);
+  EnergySourceConstSetField_HeatSource(&data_Q[region_idx],heat_source);
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode MaterialConstantsEnergySetFromOptions_SourceDecay(DataBucket materialconstants, const char model_name[], const int region_idx)
+{
+  DataField         PField;
+  EnergySourceDecay *data_Q;
+  PetscReal         heat_source_ref,half_life;
+  char              option_name[PETSC_MAX_PATH_LEN];
+  PetscErrorCode    ierr;
+  PetscFunctionBegin;
+
+  DataBucketGetDataFieldByName(materialconstants,EnergySourceDecay_classname,&PField);
+  DataFieldGetEntries(PField,(void**)&data_Q);
+
+  heat_source_ref = 0.0;
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-heat_source_ref_%d",region_idx);CHKERRQ(ierr);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,model_name,option_name,&heat_source_ref,NULL);CHKERRQ(ierr);
+
+  half_life = 0.0;
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-heat_source_half_life_%d",region_idx);CHKERRQ(ierr);CHKERRQ(ierr);
+  ierr = PetscOptionsGetReal(NULL,model_name,option_name,&half_life,NULL);CHKERRQ(ierr);
+
+  EnergySourceDecaySetField_HeatSourceRef(&data_Q[region_idx],heat_source_ref);
+  EnergySourceDecaySetField_HalfLife(&data_Q[region_idx],half_life);
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode MaterialConstantsEnergySetFromOptions_Source(DataBucket materialconstants, const char model_name[], int source_type[], const int region_idx)
+{
+  int            i,nsource = 7;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  for (i=0; i<nsource; i++) {
+    switch (source_type[i]) {
+      case ENERGYSOURCE_NONE: // nothing to do
+        break;
+
+      case ENERGYSOURCE_USE_MATERIALPOINT_VALUE: // done in ModelApplyInitialMaterialGeometry_Gene3D
+        break;
+      
+      case ENERGYSOURCE_CONSTANT:
+        ierr = MaterialConstantsEnergySetFromOptions_SourceConstant(materialconstants,model_name,region_idx);CHKERRQ(ierr);
+        break;
+      
+      case ENERGYSOURCE_SHEAR_HEATING: // nothing to do
+        break;
+
+      case ENERGYSOURCE_DECAY:
+        ierr = MaterialConstantsEnergySetFromOptions_SourceDecay(materialconstants,model_name,region_idx);CHKERRQ(ierr);
+        break;
+      
+      case ENERGYSOURCE_ADIABATIC:
+        SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"[ENERGYSOURCE_ADIABATIC] Not supported with Gene3D (because not supported with FV)");
+        break;
+      
+      case ENERGYSOURCE_ADIABATIC_ADVECTION:
+        SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"[ENERGYSOURCE_ADIABATIC_ADVECTION] Not supported with Gene3D (because not supported with FV)");
+        break;
+      
+      default:
+        SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"[ Region %d ]: Unknown heat source type %d\n",region_idx,source_type[i]);
+        break;
+    }
+  }
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode ModelSetRegionParametersFromOptions_Energy(DataBucket materialconstants, const int region_idx)
 {
-  DataField                 PField,PField_k,PField_Q;
+  DataField                 PField,PField_k;
   EnergyConductivityConst   *data_k;
-  EnergySourceConst         *data_Q;
   EnergyMaterialConstants   *matconstants_e;
   int                       source_type[7] = {0, 0, 0, 0, 0, 0, 0};
-  PetscReal                 alpha,beta,rho,heat_source,conductivity,Cp;
-  char                      *option_name;
+  PetscReal                 alpha,beta,rho,conductivity,Cp;
+  char                      option_name[PETSC_MAX_PATH_LEN];
   PetscErrorCode            ierr;
   PetscFunctionBegin;
 
@@ -144,50 +281,36 @@ static PetscErrorCode ModelSetRegionParametersFromOptions_Energy(DataBucket mate
   /* Conductivity */
   DataBucketGetDataFieldByName(materialconstants,EnergyConductivityConst_classname,&PField_k);
   DataFieldGetEntries(PField_k,(void**)&data_k);
-  
-  /* Heat source */
-  DataBucketGetDataFieldByName(materialconstants,EnergySourceConst_classname,&PField_Q);
-  DataFieldGetEntries(PField_Q,(void**)&data_Q);
-
-  /* Set default values for parameters */
-  source_type[0] = ENERGYSOURCE_CONSTANT;
-  source_type[1] = ENERGYSOURCE_SHEAR_HEATING;
 
   /* Set material energy parameters from options file */
   Cp = 800.0;
-  if (asprintf (&option_name, "-heatcapacity_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-heatcapacity_%d",region_idx);CHKERRQ(ierr);
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&Cp,NULL);CHKERRQ(ierr);
-  free (option_name);
 
   alpha = 0.0;
-  if (asprintf (&option_name, "-thermalexpension_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-thermalexpension_%d",region_idx);CHKERRQ(ierr);
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&alpha,NULL);CHKERRQ(ierr);
-  free (option_name);
 
   beta = 0.0;
-  if (asprintf (&option_name, "-compressibility_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-compressibility_%d",region_idx);CHKERRQ(ierr);
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&beta,NULL);CHKERRQ(ierr);
-  free (option_name);
 
   rho = 1.0;
-  if (asprintf (&option_name, "-density_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-density_%d",region_idx);CHKERRQ(ierr);
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&rho,NULL);CHKERRQ(ierr);
-  free (option_name);
   
-  heat_source = 0.0;
-  if (asprintf (&option_name, "-heat_source_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-  ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&heat_source,NULL);CHKERRQ(ierr);
-  free (option_name);
-
   conductivity = 1.0;
-  if (asprintf (&option_name, "-conductivity_%d", (int)region_idx) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-conductivity_%d",region_idx);CHKERRQ(ierr);
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME, option_name,&conductivity,NULL);CHKERRQ(ierr);
-  free (option_name);
 
+  ierr = ModelSetRegionHeatSourceTypeFromOptions(region_idx,MODEL_NAME,source_type);CHKERRQ(ierr);
+  for (int k=0; k<7; k++) {
+    PetscPrintf(PETSC_COMM_WORLD,"[ Region %d ]: Heat source type %d\n",region_idx,source_type[k]);
+  }
   /* Set energy params for region_idx */
   MaterialConstantsSetValues_EnergyMaterialConstants(region_idx,matconstants_e,alpha,beta,rho,Cp,ENERGYDENSITY_CONSTANT,ENERGYCONDUCTIVITY_CONSTANT,source_type);
-  EnergySourceConstSetField_HeatSource(&data_Q[region_idx],heat_source);
   EnergyConductivityConstSetField_k0(&data_k[region_idx],conductivity);
+  ierr = MaterialConstantsEnergySetFromOptions_Source(materialconstants,MODEL_NAME,source_type,region_idx);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -802,31 +925,42 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_Gene3D(pTatinCtx ptatin,Vec X,void *
 =              Initial Material geometry             =
 ======================================================
 */
-
-static PetscErrorCode ModelApplyInitialPlasticStrain_FromExpr(pTatinCtx ptatin, ModelGENE3DCtx *data)
+static PetscErrorCode ModelApplyInitialVariables_FromExpr(pTatinCtx ptatin, ModelGENE3DCtx *data)
 {
   DataBucket     material_points;
-  DataField      PField_std,PField_pls,PField_stokes;
+  DataField      PField_std,PField_pls,PField_stokes,PField_energy;
   te_variable    *vars; 
-  te_expr        **expression;
-  PetscInt       n,n_wz,n_var;
+  te_expr        **expression_plastic,**expression_heat_source;
+  PetscInt       n,n_wz,n_hs,n_var;
   PetscScalar    coor[3];
-  PetscBool      found;
+  PetscBool      found,energy_active;
   int            p,n_mp_points,err;
-  char           prefix[PETSC_MAX_PATH_LEN],option_name[PETSC_MAX_PATH_LEN],wz_expr[PETSC_MAX_PATH_LEN];
+  char           prefix_wz[PETSC_MAX_PATH_LEN],prefix_hs[PETSC_MAX_PATH_LEN],option_name[PETSC_MAX_PATH_LEN];
+  char           wz_expr[PETSC_MAX_PATH_LEN],hs_expr[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
+
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
 
-  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"wz_");CHKERRQ(ierr);
+  ierr = PetscSNPrintf(prefix_wz,PETSC_MAX_PATH_LEN-1,"wz_");CHKERRQ(ierr);
+  ierr = PetscSNPrintf(prefix_hs,PETSC_MAX_PATH_LEN-1,"heat_source_");CHKERRQ(ierr);
 
-  /* Get the number of weak zones to set */
+  /* Get the number of weak zones expressions to evaluate */
   n_wz = 0;
-  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%snwz",prefix);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%snwz",prefix_wz);CHKERRQ(ierr);
   ierr = PetscOptionsGetInt(NULL,MODEL_NAME,option_name,&n_wz,&found);CHKERRQ(ierr);
-  if (!found || !n_wz) { PetscFunctionReturn(0); }
-  /* Allocate an array of expression (1 for each weak zone) */
-  ierr = PetscMalloc1(n_wz,&expression);CHKERRQ(ierr);
+  /* Get the number of heat sources expressions to evaluate */
+  n_hs = 0;
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%snhs",prefix_hs);CHKERRQ(ierr);
+  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,option_name,&n_hs,&found);CHKERRQ(ierr);
+  /* If there are no weak zones and no heat source on marker to set, return */
+  if ((!n_wz && !n_hs)) { PetscFunctionReturn(0); }
+
+  /* Allocate arrays of expression - 1 for each weak zone */
+  ierr = PetscMalloc1(n_wz,&expression_plastic);CHKERRQ(ierr);
+  /* 1 for each source */
+  ierr = PetscMalloc1(n_hs,&expression_heat_source);CHKERRQ(ierr);
+
   /* Register variables for expression */
   n_var = 3; // 3 variables: x,y,z
   ierr = PetscCalloc1(n_var,&vars);CHKERRQ(ierr);
@@ -836,15 +970,29 @@ static PetscErrorCode ModelApplyInitialPlasticStrain_FromExpr(pTatinCtx ptatin, 
 
   for (n=0; n<n_wz; n++) {
     /* Evaluate expression of each weak zone */
-    ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sexpression_%d",prefix,n);CHKERRQ(ierr);
+    ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sexpression_%d",prefix_wz,n);CHKERRQ(ierr);
     ierr = PetscOptionsGetString(NULL,MODEL_NAME,option_name,wz_expr,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
     if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",option_name); }
     PetscPrintf(PETSC_COMM_WORLD,"Weak zone %d, evaluating expression:\n\t%s\n",n,wz_expr);
 
-    expression[n] = te_compile(wz_expr, vars, 3, &err);
-    if (!expression[n]) {
+    expression_plastic[n] = te_compile(wz_expr, vars, 3, &err);
+    if (!expression_plastic[n]) {
       PetscPrintf(PETSC_COMM_WORLD,"\t%*s^\nError near here", err-1, "");
       SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Weak zone %d, expression %s did not compile.",n,wz_expr);
+    }
+  }
+
+  for (n=0; n<n_hs; n++) {
+    /* Evaluate expression of heat source */
+    ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sexpression_%d",prefix_hs,n);CHKERRQ(ierr);
+    ierr = PetscOptionsGetString(NULL,MODEL_NAME,option_name,hs_expr,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+    if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",option_name); }
+    PetscPrintf(PETSC_COMM_WORLD,"Heat source %d, evaluating expression:\n\t%s\n",n,hs_expr);
+
+    expression_heat_source[n] = te_compile(hs_expr, vars, 3, &err);
+    if (!expression_heat_source[n]) {
+      PetscPrintf(PETSC_COMM_WORLD,"\t%*s^\nError near here", err-1, "");
+      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Heat source %d, expression %s did not compile.",n,hs_expr);
     }
   }
 
@@ -861,18 +1009,27 @@ static PetscErrorCode ModelApplyInitialPlasticStrain_FromExpr(pTatinCtx ptatin, 
   DataBucketGetDataFieldByName(material_points,MPntPStokesPl_classname,&PField_pls);
   DataFieldGetAccess(PField_pls);
   DataFieldVerifyAccess(PField_pls,sizeof(MPntPStokesPl));
-  
+  /* Energy variables */
+  ierr = pTatinContextValid_EnergyFV(ptatin,&energy_active);CHKERRQ(ierr);
+  if (energy_active) {
+    DataBucketGetDataFieldByName(material_points,MPntPEnergy_classname,&PField_energy);
+    DataFieldGetAccess(PField_energy);
+    DataFieldVerifyAccess(PField_energy,sizeof(MPntPEnergy));
+  }
+
   DataBucketGetSizes(material_points,&n_mp_points,0,0);
   for (p=0; p<n_mp_points; p++) {
     MPntStd       *material_point;
     MPntPStokes   *mpprop_stokes;
     MPntPStokesPl *mpprop_pls;
+    MPntPEnergy   *mpprop_energy;
     double        *position,eta0;
     float         pls;
 
     DataFieldAccessPoint(PField_std,   p,(void**)&material_point);
     DataFieldAccessPoint(PField_pls,   p,(void**)&mpprop_pls);
     DataFieldAccessPoint(PField_stokes,p,(void**)&mpprop_stokes);
+    if (energy_active) { DataFieldAccessPoint(PField_energy,p,(void**)&mpprop_energy); }
 
     /* Set an initial non-zero viscosity */
     eta0 = 1.0e+22 / data->scale->viscosity_bar;
@@ -890,18 +1047,34 @@ static PetscErrorCode ModelApplyInitialPlasticStrain_FromExpr(pTatinCtx ptatin, 
     pls = ptatin_RandomNumberGetDouble(0.0,0.03);
     /* Evaluate expression of each weak zone */
     for (n=0; n<n_wz; n++) {
-      pls += te_eval(expression[n]) * ptatin_RandomNumberGetDouble(0.0,1.0);
+      pls += te_eval(expression_plastic[n]) * ptatin_RandomNumberGetDouble(0.0,1.0);
     }
     MPntPStokesPlSetField_yield_indicator(mpprop_pls,0);
     MPntPStokesPlSetField_plastic_strain(mpprop_pls,pls);
+
+    /* Evaluate expression of heat source */
+    if (energy_active) {
+      PetscReal heat_source = 0.0;
+      for (n=0; n<n_hs; n++) {
+        heat_source += te_eval(expression_heat_source[n]);
+      }
+      heat_source /= (data->scale->pressure_bar / data->scale->time_bar);
+      if (heat_source > 1.0e3) {
+        PetscPrintf(PETSC_COMM_WORLD,"Heat source: %1.4e\n",heat_source);
+      }
+      MPntPEnergySetField_heat_source_init(mpprop_energy,heat_source);
+    }
   }
   DataFieldRestoreAccess(PField_std);
   DataFieldRestoreAccess(PField_pls);
   DataFieldRestoreAccess(PField_stokes);
+  if (energy_active) { DataFieldRestoreAccess(PField_energy); }
 
   /* Free expressions and variables */
-  for (n=0; n<n_wz; n++) { te_free(expression[n]); }
-  ierr = PetscFree(expression);CHKERRQ(ierr);
+  for (n=0; n<n_wz; n++) { te_free(expression_plastic[n]); }
+  for (n=0; n<n_hs; n++) { te_free(expression_heat_source[n]); }
+  ierr = PetscFree(expression_plastic);CHKERRQ(ierr);
+  ierr = PetscFree(expression_heat_source);CHKERRQ(ierr);
   ierr = PetscFree(vars);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -936,7 +1109,7 @@ PetscErrorCode ModelApplyInitialMaterialGeometry_Gene3D(pTatinCtx ptatin, void *
   ierr = PetscOptionsGetInt(NULL,MODEL_NAME,"-mesh_point_location_method",&method,NULL);CHKERRQ(ierr);
   ierr = pTatin_MPntStdSetRegionIndexFromMesh(ptatin,mesh_file,region_file,method,data->scale->length_bar);CHKERRQ(ierr);
   /* Initial plastic strain */
-  ierr = ModelApplyInitialPlasticStrain_FromExpr(ptatin,data);CHKERRQ(ierr);
+  ierr = ModelApplyInitialVariables_FromExpr(ptatin,data);CHKERRQ(ierr);
   
   /* Last thing done (should always be the last thing done) */
   ierr = LagrangianAdvectionFromIsostaticDisplacementVector(ptatin);CHKERRQ(ierr);
@@ -2604,20 +2777,29 @@ PetscErrorCode ModelAdaptMaterialPointResolution_Gene3D(pTatinCtx ptatin,void *c
 */
 static PetscErrorCode ModelOutputMarkerFields_Gene3D(pTatinCtx ptatin,const char prefix[])
 {
-  DataBucket               materialpoint_db;
-  int                      nf;
-  const MaterialPointField mp_prop_list[] = { MPField_Std, MPField_Stokes, MPField_StokesPl};
-  char                     mp_file_prefix[PETSC_MAX_PATH_LEN];
-  PetscErrorCode           ierr;
+  DataBucket         materialpoint_db;
+  MaterialPointField *mp_prop_list;
+  char               mp_file_prefix[PETSC_MAX_PATH_LEN];
+  int                nf;
+  PetscBool          energy_active;
+  PetscErrorCode     ierr;
 
   PetscFunctionBegin;
 
-  nf = sizeof(mp_prop_list)/sizeof(mp_prop_list[0]);
+  ierr = pTatinContextValid_EnergyFV(ptatin,&energy_active);CHKERRQ(ierr);
+  if (energy_active) { nf = 4; } 
+  else               { nf = 3; }
+  ierr = PetscCalloc1(nf,&mp_prop_list);CHKERRQ(ierr);
+  mp_prop_list[0] = MPField_Std;
+  mp_prop_list[1] = MPField_Stokes;
+  mp_prop_list[2] = MPField_StokesPl;
+  if (energy_active) { mp_prop_list[3] = MPField_Energy; }
 
   ierr = pTatinGetMaterialPoints(ptatin,&materialpoint_db,NULL);CHKERRQ(ierr);
   ierr = PetscSNPrintf(mp_file_prefix,PETSC_MAX_PATH_LEN-1,"%s_mpoints",prefix);CHKERRQ(ierr);
   ierr = SwarmViewGeneric_ParaView(materialpoint_db,nf,mp_prop_list,ptatin->outputpath,mp_file_prefix);CHKERRQ(ierr);
   
+  ierr = PetscFree(mp_prop_list);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
