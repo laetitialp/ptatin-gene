@@ -760,16 +760,22 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
 
       case DENSITY_TABLE: 
         {
-          PetscReal rho_mp,xp[2];
-          PhaseMap phasemap= DensityTable_data[region_idx].map;
-          PetscReal rho0  = DensityTable_data[region_idx].density;
+          PhaseMap  phasemap = DensityTable_data[region_idx].map;
+          PetscReal rho0     = DensityTable_data[region_idx].density;
+          PetscReal rho_mp,rho_mp_old,xp[2];
+          
           xp[0] = T_mp; 
           xp[1] = pressure_mp; 
           PhaseMapGetValue(phasemap,xp,&rho_mp);
           if (rho_mp == (double)PHASE_MAP_POINT_OUTSIDE) {
-              rho_mp = rho0; 
+            rho_mp = rho0; 
           }
-          MPntPStokesSetField_density(mpprop_stokes,rho_mp);
+          MPntPStokesGetField_density(mpprop_stokes,&rho_mp_old);
+          /* this check that there is no 1.0 (change table) 
+             if that happens the previous density stored on the marker is conserved */
+          if (rho_mp > rho_mp_old/10.0) {
+            MPntPStokesSetField_density(mpprop_stokes,rho_mp);
+          }
         }
         break;
 
@@ -1415,16 +1421,22 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
 
       case DENSITY_TABLE:
       {
-        PetscReal rho_mp,xp[2];
-        PhaseMap phasemap= DensityTable_data[region_idx].map;
-        PetscReal rho0  = DensityTable_data[region_idx].density;
+        PhaseMap  phasemap = DensityTable_data[region_idx].map;
+        PetscReal rho0     = DensityTable_data[region_idx].density;
+        PetscReal rho_mp,rho_mp_old,xp[2];
+
         xp[0] = T_mp; 
         xp[1] = pressure_mp; 
         PhaseMapGetValue(phasemap,xp,&rho_mp);
         if (rho_mp == (double)PHASE_MAP_POINT_OUTSIDE) {
-            rho_mp = rho0; 
+          rho_mp = rho0; 
         }
-        MPntPStokesSetField_density(mpprop_stokes,rho_mp);
+        MPntPStokesGetField_density(mpprop_stokes,&rho_mp_old);
+        /* this check that there is no 1.0 (change table) 
+           if that happens the previous density stored on the marker is conserved */
+        if (rho_mp > rho_mp_old/10.0) {
+          MPntPStokesSetField_density(mpprop_stokes,rho_mp);
+        }
       }
         break;
       default:

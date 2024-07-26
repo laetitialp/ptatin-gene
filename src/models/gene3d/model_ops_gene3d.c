@@ -1059,9 +1059,6 @@ static PetscErrorCode ModelApplyInitialVariables_FromExpr(pTatinCtx ptatin, Mode
         heat_source += te_eval(expression_heat_source[n]);
       }
       heat_source /= (data->scale->pressure_bar / data->scale->time_bar);
-      if (heat_source > 1.0e3) {
-        PetscPrintf(PETSC_COMM_WORLD,"Heat source: %1.4e\n",heat_source);
-      }
       MPntPEnergySetField_heat_source_init(mpprop_energy,heat_source);
     }
   }
