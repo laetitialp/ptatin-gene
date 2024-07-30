@@ -1023,8 +1023,10 @@ static PetscErrorCode ModelApplyInitialVariables_FromExpr(pTatinCtx ptatin, Mode
     MPntPStokes   *mpprop_stokes;
     MPntPStokesPl *mpprop_pls;
     MPntPEnergy   *mpprop_energy;
-    double        *position,eta0;
+    double        *position,eta0,rho0;
     float         pls;
+    int           region_idx;
+    char          option_name[PETSC_MAX_PATH_LEN];
 
     DataFieldAccessPoint(PField_std,   p,(void**)&material_point);
     DataFieldAccessPoint(PField_pls,   p,(void**)&mpprop_pls);
@@ -1051,6 +1053,14 @@ static PetscErrorCode ModelApplyInitialVariables_FromExpr(pTatinCtx ptatin, Mode
     }
     MPntPStokesPlSetField_yield_indicator(mpprop_pls,0);
     MPntPStokesPlSetField_plastic_strain(mpprop_pls,pls);
+
+    MPntStdGetField_phase_index(material_point,&region_idx);
+    /* Get the density from options */
+    rho0 = 3300.0;
+    ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-density_%d",region_idx);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&rho0,NULL);CHKERRQ(ierr);
+    rho0 /= data->scale->density_bar;
+    MPntPStokesSetField_density(mpprop_stokes,rho0);
 
     /* Evaluate expression of heat source */
     if (energy_active) {
