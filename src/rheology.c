@@ -154,21 +154,24 @@ PetscErrorCode pTatin_EvaluateRheologyNonlinearitiesMarkers(pTatinCtx user,DM da
     case 0:     /* Perform P0 projection over Q2 element directly onto quadrature points */
       //SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"P0 [arithmetic avg] marker->quadrature projection not supported");
             ierr = MPntPStokesProj_P0(CoefAvgARITHMETIC,npoints,mp_std,mp_stokes,stokes->dav,stokes->volQ);CHKERRQ(ierr);
+            ierr = QPntSurfCoefStokes_ProjectP0_Surface(stokes->mfi,stokes->volQ,stokes->surfQ);CHKERRQ(ierr);
       break;
     case 10:
       //SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"P0 [harmonic avg] marker->quadrature projection not supported");
             ierr = MPntPStokesProj_P0(CoefAvgHARMONIC,npoints,mp_std,mp_stokes,stokes->dav,stokes->volQ);CHKERRQ(ierr);
+            ierr = QPntSurfCoefStokes_ProjectP0_Surface(stokes->mfi,stokes->volQ,stokes->surfQ);CHKERRQ(ierr);
       break;
     case 20:
       //SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"P0 [geometric avg] marker->quadrature projection not supported");
             ierr = MPntPStokesProj_P0(CoefAvgGEOMETRIC,npoints,mp_std,mp_stokes,stokes->dav,stokes->volQ);CHKERRQ(ierr);
+            ierr = QPntSurfCoefStokes_ProjectP0_Surface(stokes->mfi,stokes->volQ,stokes->surfQ);CHKERRQ(ierr);
       break;
     case 30:
       SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"P0 [dominant phase] marker->quadrature projection not supported");
       break;
 
     case 1:     /* Perform Q1 projection over Q2 element and interpolate back to quadrature points */
-      ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes(npoints,mp_std,mp_stokes,stokes->dav,stokes->volQ);CHKERRQ(ierr);
+      ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes(npoints,mp_std,mp_stokes,stokes->dav,stokes->volQ,stokes->surfQ,stokes->mfi);CHKERRQ(ierr);
       break;
 
     case 2:       /* Perform Q2 projection and interpolate back to quadrature points */
@@ -179,6 +182,7 @@ PetscErrorCode pTatin_EvaluateRheologyNonlinearitiesMarkers(pTatinCtx user,DM da
       SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"P1 marker->quadrature projection not supported");
       break;
         case 4:
+            PetscPrintf(PETSC_COMM_WORLD,"** WARNING [pTatin_EvaluateRheologyNonlinearitiesMarkers] ** Fine level will not have interpolated surface data using coefficient_projection_type = 3\n");
             ierr = SwarmUpdateGaussPropertiesOne2OneMap_MPntPStokes(npoints,mp_std,mp_stokes,stokes->volQ);CHKERRQ(ierr);
             break;
 

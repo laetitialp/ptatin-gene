@@ -45,15 +45,21 @@ static const char help[] = "Stokes solver using Q2-Pm1 mixed finite elements.\n"
 #include "stokes_operators.h"
 #include "sub_comm.h"
 #include "dmda_redundant.h"
+#include "stokes_output.h"
+#include <ptatin3d_energyfv.h>
+#include <ptatin3d_energyfv_impl.h>
+#include <fvda_impl.h>
+
 
 PetscErrorCode pTatin3d_material_points_check_ic(int argc,char **argv)
 {
-  DM              multipys_pack,dav;
-  PetscErrorCode  ierr;
-  pTatinCtx       user;
-  Vec             X,F,T;
-  PetscBool       active_energy;
-  PhysCompEnergy  energy;
+  DM               multipys_pack,dav,dmfv=NULL;
+  PetscErrorCode   ierr;
+  pTatinCtx        user;
+  Vec              X,F,T,X_e;
+  PetscBool        active_energy,active_energyfv;
+  PhysCompEnergy   energy;
+  PhysCompEnergyFV energyfv;
 
   PetscFunctionBegin;
 
@@ -81,11 +87,14 @@ PetscErrorCode pTatin3d_material_points_check_ic(int argc,char **argv)
 
   ierr = DMCreateGlobalVector(multipys_pack,&X);CHKERRQ(ierr);
   ierr = VecDuplicate(X,&F);CHKERRQ(ierr);
-
+  ierr = pTatinPhysCompAttachData_Stokes(user,X);CHKERRQ(ierr);
+  
   ierr = pTatin3dCreateMaterialPoints(user,dav);CHKERRQ(ierr);
 
   /* mesh geometry */
   ierr = pTatinModel_ApplyInitialMeshGeometry(user->model,user);CHKERRQ(ierr);
+  ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(user->stokes_ctx);CHKERRQ(ierr);
+  ierr = SurfaceQuadratureViewParaview_Stokes(user->stokes_ctx,user->outputpath,"def");CHKERRQ(ierr);
 
   /* generate energy solver */
   /* NOTE - Generating the thermal solver here will ensure that the initial geometry on the mechanical model is copied */
@@ -104,18 +113,27 @@ PetscErrorCode pTatin3d_material_points_check_ic(int argc,char **argv)
     ierr = DMCreateGlobalVector(energy->daT,&T);CHKERRQ(ierr);
     ierr = pTatinPhysCompAttachData_Energy(user,T,NULL);CHKERRQ(ierr);
   }
-
-
+  /* generate energyfv solver */
+  {
+    PetscBool load_energyfv = PETSC_FALSE;
+    PetscOptionsGetBool(NULL,NULL,"-activate_energyfv",&load_energyfv,NULL);
+    ierr = pTatinPhysCompActivate_EnergyFV(user,load_energyfv);CHKERRQ(ierr);
+    ierr = pTatinContextValid_EnergyFV(user,&active_energyfv);CHKERRQ(ierr);
+  }
+  if (active_energyfv) {
+    ierr = pTatinGetContext_EnergyFV(user,&energyfv);CHKERRQ(ierr);
+    ierr = FVDAGetDM(energyfv->fv,&dmfv);CHKERRQ(ierr);
+    ierr = pTatinLogBasicDMDA(user,"EnergyFV",dmfv);CHKERRQ(ierr);
+    X_e  = energyfv->T;
+    ierr = pTatinCtxAttachModelData(user,"PhysCompEnergy_T",(void*)X_e);CHKERRQ(ierr);
+  }
   /* interpolate point coordinates (needed if mesh was modified) */
-  //ierr = QuadratureStokesCoordinateSetUp(user->stokes_ctx->Q,dav);CHKERRQ(ierr);
-  //for (e=0; e<QUAD_EDGES; e++) {
-  //  ierr = SurfaceQuadratureStokesGeometrySetUp(user->stokes_ctx->surfQ[e],dav);CHKERRQ(ierr);
-  //}
   /* interpolate material point coordinates (needed if mesh was modified) */
   ierr = MaterialPointCoordinateSetUp(user,dav);CHKERRQ(ierr);
 
   /* material geometry */
   ierr = pTatinModel_ApplyInitialMaterialGeometry(user->model,user);CHKERRQ(ierr);
+  ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(user->stokes_ctx);CHKERRQ(ierr);
 
   /* boundary conditions */
   ierr = pTatinModel_ApplyBoundaryCondition(user->model,user);CHKERRQ(ierr);
@@ -129,7 +147,10 @@ PetscErrorCode pTatin3d_material_points_check_ic(int argc,char **argv)
     ierr = DMCompositeRestoreAccess(multipys_pack,X,&Xu,&Xp);CHKERRQ(ierr);
   }
 
-
+  if (active_energyfv) {
+    /* Evaluate coefficients (diffusivity and heat source) on markers for initial conditions report */
+    ierr = EnergyFVEvaluateCoefficients(user,0.0,energyfv,NULL,X);CHKERRQ(ierr);
+  }
 
   /* test form function */
   {

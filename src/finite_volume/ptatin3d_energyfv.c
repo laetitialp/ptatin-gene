@@ -14,7 +14,6 @@
 #include <finite_volume/fvda_private.h>
 #include <finite_volume/kdtree.h>
 
-PetscErrorCode fvgeometry_dmda3d_create_from_element_partition(MPI_Comm comm,PetscInt target_decomp[],const PetscInt m[],DM *dm);
 PetscErrorCode _cart_convert_index_to_ijk(PetscInt r,const PetscInt mp[],PetscInt rijk[]);
 PetscErrorCode _cart_convert_ijk_to_index(const PetscInt rijk[],const PetscInt mp[],PetscInt *r);
 
@@ -40,6 +39,7 @@ PetscErrorCode PhysCompEnergyFVDestroy(PhysCompEnergyFV *energy)
   ierr = VecDestroy(&e->Told);CHKERRQ(ierr);
   ierr = VecDestroy(&e->Xold);CHKERRQ(ierr);
   ierr = VecDestroy(&e->F);CHKERRQ(ierr);
+  ierr = VecDestroy(&e->G);CHKERRQ(ierr);
   ierr = MatDestroy(&e->J);CHKERRQ(ierr);
   ierr = SNESDestroy(&e->snes);CHKERRQ(ierr);
   ierr = FVDADestroy(&e->fv);CHKERRQ(ierr);
@@ -202,6 +202,7 @@ PetscErrorCode PhysCompEnergyFVSetUp(PhysCompEnergyFV energy,pTatinCtx pctx)
   ierr = PetscObjectSetName((PetscObject)energy->T,"T");CHKERRQ(ierr);
   ierr = DMCreateGlobalVector(energy->fv->dm_fv,&energy->Told);CHKERRQ(ierr);
   ierr = DMCreateGlobalVector(energy->fv->dm_fv,&energy->F);CHKERRQ(ierr);
+  ierr = DMCreateGlobalVector(energy->fv->dm_fv,&energy->G);CHKERRQ(ierr);
   /*ierr = DMCreateMatrix(energy->fv->dm_fv,&energy->J);CHKERRQ(ierr);*/
   ierr = FVDACreateMatrix(energy->fv,DMDA_STENCIL_STAR,&energy->J);CHKERRQ(ierr);
   {
@@ -222,12 +223,12 @@ PetscErrorCode PhysCompEnergyFVSetUp(PhysCompEnergyFV energy,pTatinCtx pctx)
   //ierr = SNESSetJacobian(energy->snes,energy->J,energy->J,fvda_eval_J_timedep,NULL);CHKERRQ(ierr);
 
   // Low-resolution ALE (note both advection and diffusion use low order implementations)
-  //ierr = SNESSetFunction(energy->snes,energy->F,          fvda_eval_F_forward_ale,NULL);CHKERRQ(ierr);
-  //ierr = SNESSetJacobian(energy->snes,energy->J,energy->J,fvda_eval_J_forward_ale,NULL);CHKERRQ(ierr);
+  ierr = SNESSetFunction(energy->snes,energy->F,          fvda_eval_F_forward_ale,NULL);CHKERRQ(ierr);
+  ierr = SNESSetJacobian(energy->snes,energy->J,energy->J,fvda_eval_J_forward_ale,NULL);CHKERRQ(ierr);
 
   // High-resolution ALE
-  ierr = SNESSetFunction(energy->snes,energy->F,          fvda_highres_eval_F_forward_ale,NULL);CHKERRQ(ierr);
-  ierr = SNESSetJacobian(energy->snes,energy->J,energy->J,fvda_eval_J_forward_ale,NULL);CHKERRQ(ierr);
+  //ierr = SNESSetFunction(energy->snes,energy->F,          fvda_highres_eval_F_forward_ale,NULL);CHKERRQ(ierr);
+  //ierr = SNESSetJacobian(energy->snes,energy->J,energy->J,fvda_eval_J_forward_ale,NULL);CHKERRQ(ierr);
 
   
   ierr = SNESSetFromOptions(energy->snes);CHKERRQ(ierr);
@@ -646,7 +647,7 @@ PetscErrorCode _ijk_get_ownership_ranges_3d(MPI_Comm comm,const PetscInt mp[],co
  The special item to note is that the left-most rank as +1 points cf the other ranks.
  
 */
-PetscErrorCode fvgeometry_dmda3d_create_from_element_partition(MPI_Comm comm,PetscInt target_decomp[],const PetscInt m[],DM *dm)
+PetscErrorCode dmda3d_create_q1_from_element_partition(MPI_Comm comm,PetscInt bs,PetscInt target_decomp[],const PetscInt m[],DM *dm)
 {
   PetscErrorCode ierr;
   PetscMPIInt    commsize,commsize2;
@@ -680,7 +681,7 @@ PetscErrorCode fvgeometry_dmda3d_create_from_element_partition(MPI_Comm comm,Pet
   ierr = DMDACreate3d(comm,DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,DMDA_STENCIL_BOX,
                       M[0],M[1],M[2],
                       target_decomp[0],target_decomp[1],target_decomp[2],
-                      3,1, /* [NOTE] stencil width 1 */
+                      bs,1, /* [NOTE] stencil width 1 */
                       ni,nj,nk,dm);CHKERRQ(ierr);
   ierr = DMSetUp(*dm);CHKERRQ(ierr);
   
@@ -733,6 +734,14 @@ PetscErrorCode fvgeometry_dmda3d_create_from_element_partition(MPI_Comm comm,Pet
   ierr = PetscFree(nj);CHKERRQ(ierr);
   ierr = PetscFree(nk);CHKERRQ(ierr);
   
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode fvgeometry_dmda3d_create_from_element_partition(MPI_Comm comm,PetscInt target_decomp[],const PetscInt m[],DM *dm)
+{
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  ierr = dmda3d_create_q1_from_element_partition(comm,3,target_decomp,m,dm);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -868,18 +877,29 @@ void ProjectFV2MP_Q1P1CG(void) {}
 /* coefficients */
 #include "material_constants_energy.h"
 
-PetscErrorCode EnergyFVEvaluateCoefficients_MaterialPoints(pTatinCtx user,PetscReal time,PhysCompEnergyFV efv,PetscScalar LA_T[],PetscScalar LA_U[])
+PetscErrorCode EnergyFVEvaluateCoefficients_MaterialPoints(pTatinCtx user,PetscReal time,PhysCompEnergyFV efv,DM dau,PetscScalar LA_T[],PetscScalar LA_U[])
 {
   PetscErrorCode ierr;
   DataBucket     material_constants,material_points;
   DataField      PField_MatConsts,PField_SourceConst,PField_SourceDecay,PField_SourceAdiAdv,PField_ConductivityConst,PField_ConductivityThreshold;
-  DataField      PField_std,PField_energy;
+  DataField      PField_std,PField_stokes,PField_energy;
   EnergyMaterialConstants        *mat_consts;
   EnergySourceConst              *source_const;
   EnergySourceDecay              *source_decay;
   EnergySourceAdiabaticAdvection *source_adi_adv;
   EnergyConductivityConst        *k_const;
   EnergyConductivityThreshold    *k_threshold;
+  DM             cda;
+  Vec            gcoords;
+  PetscScalar    *LA_gcoords;
+  PetscReal      elcoords[3*Q2_NODES_PER_EL_3D];
+  PetscReal      elu[3*Q2_NODES_PER_EL_3D];
+  PetscReal      ux[Q2_NODES_PER_EL_3D],uy[Q2_NODES_PER_EL_3D],uz[Q2_NODES_PER_EL_3D];
+  PetscReal      GNI[3][Q2_NODES_PER_EL_3D];
+  PetscReal      dNudx[Q2_NODES_PER_EL_3D],dNudy[Q2_NODES_PER_EL_3D],dNudz[Q2_NODES_PER_EL_3D];
+  PetscReal      E_mp[NSD][NSD],J2_mp;
+  const PetscInt *elnidx_u;
+  PetscInt       nel,nen_u;
   int       pidx,n_mp_points;
   PhysCompStokes stokes;
   PetscReal *grav_vec;
@@ -916,19 +936,31 @@ PetscErrorCode EnergyFVEvaluateCoefficients_MaterialPoints(pTatinCtx user,PetscR
   
   DataBucketGetDataFieldByName(material_points,MPntStd_classname,&PField_std);
   DataFieldGetAccess(PField_std);
+  DataBucketGetDataFieldByName(material_points,MPntPStokes_classname,&PField_stokes);
+  DataFieldGetAccess(PField_stokes);
   DataBucketGetDataFieldByName(material_points,MPntPEnergy_classname,&PField_energy);
   DataFieldGetAccess(PField_energy);
+
+  /* setup for coords */
+  ierr = DMGetCoordinateDM(dau,&cda);CHKERRQ(ierr);
+  ierr = DMGetCoordinatesLocal(dau,&gcoords);CHKERRQ(ierr);
+  ierr = VecGetArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
+
+  /* setup for elements */
+  ierr = DMDAGetElements_pTatinQ2P1(dau,&nel,&nen_u,&elnidx_u);CHKERRQ(ierr);
   
   for (pidx=0; pidx<n_mp_points; pidx++) {
     MPntStd       *mp_std;
     MPntPEnergy   *mpp_energy;
+    MPntPStokes   *mpprop_stokes;
     double        *xi_mp,T_mp,u_mp[3];
-    int           t,eidx,region_idx;
-    double        rho_mp,conductivity_mp,diffusivity_mp,H_mp,Cp;
+    int           t,i,j,k,eidx,region_idx;
+    double        rho_mp,conductivity_mp,diffusivity_mp,H_mp,Cp,eta_mp;
     int           density_type,conductivity_type;
     int           *source_type;
     
     DataFieldAccessPoint(PField_std,    pidx,(void**)&mp_std);
+    DataFieldAccessPoint(PField_stokes, pidx,(void**)&mpprop_stokes);
     DataFieldAccessPoint(PField_energy, pidx,(void**)&mpp_energy);
     
     /* Get index of element containing this marker */
@@ -941,6 +973,17 @@ PetscErrorCode EnergyFVEvaluateCoefficients_MaterialPoints(pTatinCtx user,PetscR
     
     T_mp = 0.0;
     
+    /* Get element coordinates */
+    ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx_u[nen_u*eidx],LA_gcoords);CHKERRQ(ierr);
+    /* Get element velocity */
+    ierr = DMDAGetVectorElementFieldQ2_3D(elu,(PetscInt*)&elnidx_u[nen_u*eidx],LA_U);CHKERRQ(ierr);
+    /* get velocity components */
+    for (k=0; k<Q2_NODES_PER_EL_3D; k++) {
+      ux[k] = elu[3*k  ];
+      uy[k] = elu[3*k+1];
+      uz[k] = elu[3*k+2];
+    }
+    /* if u_mp required perform here the interpolation */
     u_mp[0] = u_mp[1] = u_mp[2] = 0.0;
     
     density_type      = mat_consts[ region_idx ].density_type;
@@ -1017,7 +1060,7 @@ PetscErrorCode EnergyFVEvaluateCoefficients_MaterialPoints(pTatinCtx user,PetscR
           break;
           
         case ENERGYSOURCE_USE_MATERIALPOINT_VALUE:
-          H_mp += mpp_energy->heat_source;
+          H_mp += mpp_energy->heat_source_init;
           break;
           
         case ENERGYSOURCE_CONSTANT:
@@ -1025,7 +1068,43 @@ PetscErrorCode EnergyFVEvaluateCoefficients_MaterialPoints(pTatinCtx user,PetscR
           break;
           
         case ENERGYSOURCE_SHEAR_HEATING:
-          SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_SUP,"[region %D] SHEAR-HEATING is not available",region_idx);
+        {
+          /* Compute H_mp = \tau : \dot{\varepsilon} = 2 \eta \dot{\varepsilon} : \dot{\varepsilon} */
+          MPntPStokesGetField_eta_effective(mpprop_stokes,&eta_mp);
+          /* grad.Ni */
+          P3D_ConstructGNi_Q2_3D(xi_mp,GNI);
+          /* Get shape function derivatives */
+          P3D_evaluate_global_derivatives_Q2(elcoords,GNI,dNudx,dNudy,dNudz);
+
+          /* compute strain rate */
+          for (i=0; i<NSD; i++) {
+            for (j=0; j<NSD; j++) {
+              E_mp[i][j] = 0.0; // initialise to zero
+            }
+          }
+
+          for (k=0; k<Q2_NODES_PER_EL_3D; k++) {
+            E_mp[0][0] += dNudx[k] * ux[k];
+            E_mp[1][1] += dNudy[k] * uy[k];
+            E_mp[2][2] += dNudz[k] * uz[k];
+
+            E_mp[0][1] += 0.5*(dNudy[k] * ux[k] + dNudx[k] * uy[k]);
+            E_mp[0][2] += 0.5*(dNudz[k] * ux[k] + dNudx[k] * uz[k]);
+            E_mp[1][2] += 0.5*(dNudz[k] * uy[k] + dNudy[k] * uz[k]);
+          }
+          E_mp[1][0] = E_mp[0][1];
+          E_mp[2][0] = E_mp[0][2];
+          E_mp[2][1] = E_mp[1][2];
+
+          /* compute E:E */
+          J2_mp = 0.0;
+          for (i=0; i<NSD; i++) {
+            for (j=0; j<NSD; j++) {
+              J2_mp += E_mp[i][j] * E_mp[i][j];
+            }
+          }
+          H_mp += 2.0 * eta_mp * J2_mp;
+        }
           break;
           
         case ENERGYSOURCE_DECAY:
@@ -1072,28 +1151,46 @@ PetscErrorCode EnergyFVEvaluateCoefficients_MaterialPoints(pTatinCtx user,PetscR
     diffusivity_mp = conductivity_mp / (rho_mp * Cp);
     
     H_mp = H_mp / (rho_mp * Cp);
-    
     MPntPEnergySetField_diffusivity(mpp_energy,diffusivity_mp);
     MPntPEnergySetField_heat_source(mpp_energy,H_mp);
   }
   
   DataFieldRestoreAccess(PField_std);
+  DataFieldRestoreAccess(PField_stokes);
   DataFieldRestoreAccess(PField_energy);
+  ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
   
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode EnergyFVEvaluateCoefficients(pTatinCtx user,PetscReal time,PhysCompEnergyFV efv,PetscScalar LA_T[],PetscScalar LA_U[])
+PetscErrorCode EnergyFVEvaluateCoefficients(pTatinCtx user,PetscReal time,PhysCompEnergyFV efv,PetscScalar LA_T[],Vec X)
 {
+  PhysCompStokes stokes;
+  DM             stokes_pack,dau;
+  Vec            Uloc;
+  PetscScalar    *LA_U;
   PetscErrorCode ierr;
   
   PetscFunctionBegin;
+
+  /* Get velocity */
+  ierr = pTatinGetStokesContext(user,&stokes);CHKERRQ(ierr);
+  stokes_pack = stokes->stokes_pack;
+
+  ierr = DMCompositeGetEntries(stokes_pack,&dau,NULL);CHKERRQ(ierr);
+  ierr = DMCompositeGetLocalVectors(stokes_pack,&Uloc,NULL);CHKERRQ(ierr);
+
+  /* get the local (ghosted) entries for each physics */
+  ierr = DMCompositeScatter(stokes_pack,X,Uloc,NULL);CHKERRQ(ierr);
+  ierr = VecGetArray(Uloc,&LA_U);CHKERRQ(ierr);
   
   /* Evaluate physics on material points */
-  ierr = EnergyFVEvaluateCoefficients_MaterialPoints(user,time,efv,LA_T,LA_U);CHKERRQ(ierr);
+  ierr = EnergyFVEvaluateCoefficients_MaterialPoints(user,time,efv,dau,LA_T,LA_U);CHKERRQ(ierr);
   
   /* Project effective diffusivity and source from material points to fv cells and faces */
-  
+  ierr = VecRestoreArray(Uloc,&LA_U);CHKERRQ(ierr);
+  ierr = DMCompositeRestoreLocalVectors(stokes_pack,&Uloc,NULL);CHKERRQ(ierr);
+
   PetscFunctionReturn(0);
 }
 
@@ -1342,10 +1439,10 @@ PetscErrorCode pTatinPhysCompEnergyFV_MPProjection_FVP0DG(PhysCompEnergyFV efv,p
     PetscTime(&st0);
     KDTreeGetPoints(kdtree,NULL,&node);
     for (p=start; p<end; p++) {
-      node[p-start].x[0]  = point[p].coor[0];
-      node[p-start].x[1]  = point[p].coor[1];
-      node[p-start].x[2]  = point[p].coor[2];
-      node[p-start].index = p;
+      node[p-start].x[0]  = point[order[p]].coor[0];
+      node[p-start].x[1]  = point[order[p]].coor[1];
+      node[p-start].x[2]  = point[order[p]].coor[2];
+      node[p-start].index = order[p];
     }
     PetscTime(&st1);
     cumtime[0] += (st1 - st0);
@@ -1396,6 +1493,8 @@ PetscErrorCode pTatinPhysCompEnergyFV_MPProjection_FVP0DG(PhysCompEnergyFV efv,p
   DataFieldRestoreEntries(pfield,(void**)&point);
   DataFieldRestoreEntries(pfield_energy,(void**)&point_energy);
   ierr = PetscFree(fvcorners);CHKERRQ(ierr);
+  ierr = PetscFree(order);CHKERRQ(ierr);
+  ierr = PetscFree(offset);CHKERRQ(ierr);
   
   PetscFunctionReturn(0);
 }
@@ -1590,6 +1689,43 @@ PetscErrorCode pTatinPhysCompEnergyFV_ComputeAdvectiveTimestep(PhysCompEnergyFV 
   PetscFunctionReturn(0);
 }
 
-
+PetscErrorCode EvalRHS_HeatProd(FVDA fv,Vec F)
+{
+  PetscErrorCode  ierr;
+  PetscReal       dV;
+  const PetscReal *H;
+  PetscReal       cell_coor[3 * DACELL3D_Q1_SIZE];
+  Vec             coorl;
+  const PetscReal *_geom_coor;
+  PetscReal       *_F;
+  PetscInt        c,dm_nel,dm_nen;
+  const PetscInt  *dm_element,*element;
+  
+  PetscFunctionBegin;
+  
+  ierr = VecZeroEntries(F);CHKERRQ(ierr);
+  ierr = VecGetArray(F,&_F);CHKERRQ(ierr);
+  
+  ierr = DMDAGetElements(fv->dm_geometry,&dm_nel,&dm_nen,&dm_element);CHKERRQ(ierr);
+  ierr = DMCreateLocalVector(fv->dm_geometry,&coorl);CHKERRQ(ierr);
+  ierr = DMGlobalToLocal(fv->dm_geometry,fv->vertex_coor_geometry,INSERT_VALUES,coorl);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(coorl,&_geom_coor);CHKERRQ(ierr);
+  
+  ierr = FVDAGetCellPropertyByNameArrayRead(fv,"H",&H);CHKERRQ(ierr);
+  
+  for (c=0; c<fv->ncells; c++) {
+    element = (const PetscInt*)&dm_element[DACELL3D_Q1_SIZE * c];
+    
+    ierr = DACellGeometry3d_GetCoordinates(element,_geom_coor,cell_coor);CHKERRQ(ierr);
+    _EvaluateCellVolume3d(cell_coor,&dV);
+    
+    _F[c] = H[c] * dV;
+  }
+  ierr = VecRestoreArray(F,&_F);CHKERRQ(ierr);
+  ierr = VecRestoreArrayRead(coorl,&_geom_coor);CHKERRQ(ierr);
+  ierr = VecDestroy(&coorl);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
 
 

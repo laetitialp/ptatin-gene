@@ -74,7 +74,7 @@ PetscErrorCode pTatin3d_PhysCompStokesNew(pTatinCtx user)
   ierr = PhysCompCreateBoundaryList_Stokes(stokes);CHKERRQ(ierr);
   ierr = PhysCompCreateVolumeQuadrature_Stokes(stokes);CHKERRQ(ierr);
   ierr = PhysCompCreateSurfaceQuadrature_Stokes(stokes);CHKERRQ(ierr);
-
+  ierr = PhysCompCreateSurfaceBoundaryList_Stokes(stokes);CHKERRQ(ierr);
   user->stokes_ctx = stokes;
 
   PetscFunctionReturn(0);
@@ -616,9 +616,12 @@ PetscErrorCode pTatin3dCreateContext(pTatinCtx *ctx)
   /* init */
   user->stokes_ctx = NULL;
   user->energy_ctx = NULL;
+  user->litho_p_ctx = NULL;
 //  user->coords_ctx = NULL;
 
   user->pack     = NULL; /* DM composite for velocity and pressure */
+  /* passive tracers */
+  user->pswarm = NULL;
 
   /* set defaults */
   user->restart_from_file         = PETSC_FALSE;
@@ -678,7 +681,9 @@ PetscErrorCode pTatin3dDestroyContext(pTatinCtx *ctx)
   if (user->energy_ctx) { ierr = PhysCompDestroy_Energy(&user->energy_ctx);CHKERRQ(ierr); }
   if (user->stokes_ctx) { ierr = PhysCompDestroy_Stokes(&user->stokes_ctx);CHKERRQ(ierr); }
   if (user->pack) {       ierr = DMDestroy(&user->pack);CHKERRQ(ierr); }
+  if (user->litho_p_ctx){ ierr = PhysCompDestroy_LithoP(&user->litho_p_ctx); }
 
+  if (user->pswarm) { ierr = PSwarmDestroy(&user->pswarm);CHKERRQ(ierr); }
   /*
    if (user->Q) { ierr = QuadratureStokesDestroy(&user->Q);CHKERRQ(ierr); }
    for (e=0; e<QUAD_EDGES; e++) {
@@ -694,6 +699,7 @@ PetscErrorCode pTatin3dDestroyContext(pTatinCtx *ctx)
 
   ierr = PetscContainerDestroy(&user->model_data);CHKERRQ(ierr);
 
+  PetscLogDefaultBegin();
   {
     char  logfile[PETSC_MAX_PATH_LEN];
     PetscViewer viewer;
@@ -718,11 +724,12 @@ PetscErrorCode pTatin3dDestroyContext(pTatinCtx *ctx)
 PetscErrorCode pTatinCtxGetModelData(pTatinCtx ctx,const char name[],void **data)
 {
   PetscErrorCode ierr;
-  PetscContainer container;
+  PetscContainer container = NULL;
 
   PetscFunctionBegin;
+  if (!ctx->model_data) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"The PetscContainer in pTatinCtx is NULL");
   ierr = PetscObjectQuery((PetscObject)ctx->model_data,name,(PetscObject*)&container);CHKERRQ(ierr);
-  if (!container) SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_ARG_WRONG,"No data with name \"%s\" was composed with ctx->model_data",name);
+  if (!container) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"No data with name \"%s\" was composed with pTatinCtx",name);
   ierr = PetscContainerGetPointer(container,data);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
@@ -734,12 +741,45 @@ PetscErrorCode pTatinCtxAttachModelData(pTatinCtx ctx,const char name[],void *da
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  ierr = PetscContainerCreate(PETSC_COMM_WORLD,&container);CHKERRQ(ierr);
+  if (!ctx->model_data) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"The PetscContainer in pTatinCtx is NULL");
+  {
+    PetscObject obj = NULL;
+    ierr = PetscObjectQuery((PetscObject)ctx->model_data,name,&obj);CHKERRQ(ierr);
+    if (obj) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"A data object with name \"%s\" was already composed with pTatinCtx. Textual names must be unique",name);
+  }
+  ierr = PetscContainerCreate(PETSC_COMM_SELF,&container);CHKERRQ(ierr);
   ierr = PetscContainerSetPointer(container,(void*)data);CHKERRQ(ierr);
 
   ierr = PetscObjectCompose((PetscObject)ctx->model_data,name,(PetscObject)container);CHKERRQ(ierr);
   ierr = PetscContainerDestroy(&container);CHKERRQ(ierr); /* decrement ref counter */
 
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode pTatinCtxGetModelDataPetscObject(pTatinCtx ctx,const char name[],PetscObject *data)
+{
+  PetscErrorCode ierr;
+  PetscObject    obj = NULL;
+  
+  PetscFunctionBegin;
+  if (!ctx->model_data) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"The PetscContainer in pTatinCtx is NULL");
+  ierr = PetscObjectQuery((PetscObject)ctx->model_data,name,&obj);CHKERRQ(ierr);
+  if (!obj) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"No PETSc object with name \"%s\" was composed with pTatinCtx",name);
+  *data = obj;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode pTatinCtxAttachModelDataPetscObject(pTatinCtx ctx,const char name[],PetscObject data)
+{
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  if (!ctx->model_data) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"The PetscContainer in pTatinCtx is NULL");
+  {
+    PetscObject obj = NULL;
+    ierr = PetscObjectQuery((PetscObject)ctx->model_data,name,&obj);CHKERRQ(ierr);
+    if (obj) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"A PETSc object with name \"%s\" was already composed with pTatinCtx. Textual names must be unique",name);
+  }
+  ierr = PetscObjectCompose((PetscObject)ctx->model_data,name,data);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -1620,6 +1660,7 @@ PetscErrorCode pTatin3d_PhysCompStokesLoad_FromFile(pTatinCtx ctx)
   ierr = PhysCompCreateBoundaryList_Stokes(stokes);CHKERRQ(ierr);
   ierr = PhysCompCreateVolumeQuadrature_Stokes(stokes);CHKERRQ(ierr);
   ierr = PhysCompCreateSurfaceQuadrature_Stokes(stokes);CHKERRQ(ierr);
+  ierr = PhysCompCreateSurfaceBoundaryList_Stokes(stokes);CHKERRQ(ierr);
 
   /* Default action - set gravity vector to be 0,1,0 to not break existing models which set -rho.g on the material points */
   /* Model initialize function can overload the gravity value */

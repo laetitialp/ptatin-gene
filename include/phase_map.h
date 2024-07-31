@@ -27,8 +27,11 @@
  **
  ** ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ @*/
 
+
 #ifndef __PHASE_MAP_H__
 #define __PHASE_MAP_H__
+
+#include "petsc.h"
 
 typedef enum { PHASE_MAP_POINT_OUTSIDE=-1, PHASE_MAP_POINT_INSIDE=1 } PhaseMapLocationIndicator;
 
@@ -37,21 +40,19 @@ struct _p_PhaseMap {
   double x0,y0,x1,y1;
   double dx,dy;
   int mx,my;
-  int nphases;
-  int *data;
+  double *data;
 };
+
+
 
 void PhaseMapCreate(PhaseMap *map);
 void PhaseMapDestroy(PhaseMap *map);
 void PhaseMapGetIndex(PhaseMap pm,const int i,const int j, int *index);
 void PhaseMapLoadFromFile(const char filename[],PhaseMap *map);
-void PhaseMapGetPhaseIndex(PhaseMap phasemap,double xp[],int *phase);
-void PhaseMapCheckValidity(PhaseMap phasemap,int phase,int *is_valid);
-void PhaseMapGetMaxPhases(PhaseMap phasemap,int *maxphase);
+void PhaseMapGetValue(PhaseMap phasemap,double xp[],double *val);
 void PhaseMapViewGnuplot(const char filename[],PhaseMap phasemap);
+PetscErrorCode pTatinScalePhaseMap(PhaseMap phasemap,PetscScalar value_bar, PetscScalar y_bar,PetscScalar x_bar);
 
-PetscErrorCode pTatinCtxAttachPhaseMap(pTatinCtx ctx,PhaseMap map);
-PetscErrorCode pTatinCtxGetPhaseMap(pTatinCtx ctx,PhaseMap *map);
 
 
 #endif

@@ -68,12 +68,15 @@ PetscErrorCode BCListSetSizes(BCList list,PetscInt bs,PetscInt N,PetscInt N_loca
 PetscErrorCode BCListUpdateCache(BCList list);
 PetscErrorCode BCListInitGlobal(BCList list);
 PetscErrorCode BCListGlobalToLocal(BCList list);
+PetscErrorCode BCListLocalToGlobal(BCList list);
 PetscErrorCode DMDABCListCreate(DM da,BCList *list);
 PetscErrorCode BCListResidualDirichlet(BCList list,Vec X,Vec F);
 
 PetscErrorCode BCListGetGlobalValues(BCList list,PetscInt *n,PetscScalar **vals);
+PetscErrorCode BCListGetLocalValues(BCList list,PetscInt *n,PetscScalar **vals);
 PetscErrorCode BCListRestoreGlobalIndices(BCList list,PetscInt *n,PetscInt **idx);
 PetscErrorCode BCListGetGlobalIndices(BCList list,PetscInt *n,PetscInt **idx);
+PetscErrorCode BCListGetLocalIndices(BCList list,PetscInt *n,PetscInt **idx);
 PetscErrorCode BCListGetDofIdx(BCList list,PetscInt *Lg,PetscInt **dofidx_global,PetscInt *Ll,PetscInt **dofidx_local);
 
 PetscErrorCode BCListInsert(BCList list,Vec y);
@@ -100,5 +103,8 @@ PetscErrorCode BCListFlatResidualDirichlet(BCList list,Vec X,Vec F);
 PetscErrorCode BCListApplyDirichletMask(PetscInt N_EQNS, PetscInt gidx[],BCList list);
 PetscErrorCode BCListRemoveDirichletMask(PetscInt N_EQNS, PetscInt gidx[],BCList list);
 PetscErrorCode BCListInsertScaling(Mat A,PetscInt N_EQNS, PetscInt gidx[],BCList list);
+
+PetscErrorCode MatZeroRows_BCList(Mat A,BCList list,DM dmu,DM dmp);
+PetscErrorCode MatZeroCols_BCList(Mat A,BCList list,DM dmu,DM dmp);
 
 #endif

@@ -1354,3 +1354,49 @@ void DataBucketInsertPackedArray(DataBucket db,const int idx,void *data)
     offset = offset + df->atomic_size;
   }
 }
+
+void DataBucketGetEntriesdByName(DataBucket db,const char name[],void *data[])
+{
+  DataField gfield;
+  
+  *data = NULL;
+  DataBucketGetDataFieldByName(db,name,&gfield);
+  DataFieldGetAccess(gfield);
+  DataFieldGetEntries(gfield,data);
+}
+
+void DataBucketRestoreEntriesdByName(DataBucket db,const char name[],void *data[])
+{
+  DataField gfield;
+  
+  DataBucketGetDataFieldByName(db,name,&gfield);
+  DataFieldRestoreAccess(gfield);
+  DataFieldRestoreEntries(gfield,data);
+  *data = NULL;
+}
+
+void DataBucketRegister_double(DataBucket db,const char name[],int blocksize)
+{
+  DataBucketRegisterField(db,name,sizeof(double)*blocksize,NULL);
+}
+
+void DataBucketGetArray_double(DataBucket db,const char name[],int *blocksize,double *data[])
+{
+  DataField gfield;
+  
+  *data = NULL;
+  DataBucketGetDataFieldByName(db,name,&gfield);
+  DataFieldGetAccess(gfield);
+  DataFieldGetEntries(gfield,(void**)data);
+  *blocksize = gfield->atomic_size / sizeof(double);
+}
+
+void DataBucketRestoreArray_double(DataBucket db,const char name[],double *data[])
+{
+  DataField gfield;
+  
+  DataBucketGetDataFieldByName(db,name,&gfield);
+  DataFieldRestoreAccess(gfield);
+  DataFieldRestoreEntries(gfield,(void**)data);
+  *data = NULL;
+}

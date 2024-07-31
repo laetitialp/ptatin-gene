@@ -287,7 +287,7 @@ PetscErrorCode ModelApplyBoundaryCondition_ThermalSB(pTatinCtx ptatinctx,void *m
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ModelApplyBoundaryConditionMG_ThermalSB(PetscInt nl,BCList bclist[],DM dav[],pTatinCtx ptatinctx,void *modelctx)
+PetscErrorCode ModelApplyBoundaryConditionMG_ThermalSB(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[],pTatinCtx ptatinctx,void *modelctx)
 {
   ThermalSBData  *modeldata = (ThermalSBData*)modelctx;
   PetscInt       n;

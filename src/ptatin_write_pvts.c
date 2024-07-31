@@ -291,6 +291,7 @@ PetscErrorCode PhysCompStokesLoad_DM(const char vname[],const char pname[],PhysC
   ierr = PhysCompCreateBoundaryList_Stokes(stokes);CHKERRQ(ierr);
   ierr = PhysCompCreateVolumeQuadrature_Stokes(stokes);CHKERRQ(ierr);
   ierr = PhysCompCreateSurfaceQuadrature_Stokes(stokes);CHKERRQ(ierr);
+  ierr = PhysCompCreateSurfaceBoundaryList_Stokes(stokes);CHKERRQ(ierr);
 
   *ctx = stokes;
 

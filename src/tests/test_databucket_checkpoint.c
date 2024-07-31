@@ -110,6 +110,7 @@ PetscErrorCode ptatin_db_checkpoint(void)
 
   /* mesh geometry */
   ierr = pTatinModel_ApplyInitialMeshGeometry(model,user);CHKERRQ(ierr);
+  ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(user->stokes_ctx);CHKERRQ(ierr);
 
   /* interpolate material point coordinates (needed if mesh was modified) */
   ierr = MaterialPointCoordinateSetUp(user,dav);CHKERRQ(ierr);

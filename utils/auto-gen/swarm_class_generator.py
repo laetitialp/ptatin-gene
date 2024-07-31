@@ -718,10 +718,10 @@ def Generate_pTatin3d_QuadraturePointVolumeCoefficientStokes():
 def Generate_pTatin3d_QuadraturePointSurfaceCoefficientStokes():
 	ParticleClass      = 'QPntSurfCoefStokes'
 	ParticleClassShort = 'QPSCStk'
-	variable_name_list = [ 'normal', 'tangent1', 'tangent2', 'traction', 'eta','rho' ]
-	variable_type_list = [ 'double', 'double',  'double', 'double', 'double', 'double'   ]
-	variable_extend_list        = [ 3, 3, 3, 3, 1, 1 ]
-	variable_textural_name_list = [ 'surface_normal', 'surface_tangent1', 'surface_tangent2', 'surface_traction', 'viscosity', 'density' ]
+	variable_name_list = [ 'normal', 'tangent1', 'tangent2', 'eta','rho' ]
+	variable_type_list = [ 'double', 'double',  'double', 'double', 'double'   ]
+	variable_extend_list        = [ 3, 3, 3, 1, 1 ]
+	variable_textural_name_list = [ 'surface_normal', 'surface_tangent1', 'surface_tangent2', 'viscosity', 'density' ]
 
 
 	PARTICLE_CLASS_GENERATOR( ParticleClass, ParticleClassShort, variable_name_list, variable_type_list, variable_extend_list, variable_textural_name_list )
@@ -809,10 +809,10 @@ def Generate_pTatin_MaterialPointStokesPlastic():
 def Generate_pTatin_MaterialPointEnergy():
 	ParticleClass      = 'MPntPEnergy'
 	ParticleClassShort = 'MPPEgy'
-	variable_name_list = [ 'diffusivity',    'heat_source' ]
-	variable_type_list = [ 'double',         'double'      ]
-	variable_extend_list        = [ 1, 1  ]
-	variable_textural_name_list = [ 'diffusivity', 'heat_source' ]
+	variable_name_list = [ 'diffusivity',    'heat_source', 'heat_source_init' ]
+	variable_type_list = [ 'double',         'double',      'double'           ]
+	variable_extend_list        = [ 1, 1, 1 ]
+	variable_textural_name_list = [ 'diffusivity', 'heat_source', 'heat_source_init' ]
 
 	PARTICLE_CLASS_GENERATOR( ParticleClass, ParticleClassShort, variable_name_list, variable_type_list, variable_extend_list, variable_textural_name_list )
 
@@ -901,6 +901,18 @@ def Generate_pTatin_MaterialConst_DensityBoussinesq():
 
 	PARTICLE_CLASS_GENERATOR( ClassName, ClassNameShort, variable_names, variable_types, variable_extents, variable_textural_names )
 
+def Generate_pTatin_MaterialConst_DensityTable():
+	ClassName      = 'MaterialConst_DensityTable'
+	ClassNameShort = 'DensityTable'
+	variable_names =          [ 'density', 'map'    ]
+	variable_types =          [ 'double' ,'PhaseMap']
+	variable_extents        = [ 1        ,      1   ]
+	variable_textural_names = [ 'density','map'     ]
+
+	PARTICLE_CLASS_GENERATOR( ClassName, ClassNameShort, variable_names, variable_types, variable_extents, variable_textural_names )
+
+
+
 def Generate_pTatin_MaterialConst_ViscosityArrh():
 	ClassName      = 'MaterialConst_ViscosityArrh'
 	ClassNameShort = 'ViscosityArrh'
@@ -909,6 +921,16 @@ def Generate_pTatin_MaterialConst_ViscosityArrh():
 	variable_extents        = [ 1        ,      1  ,       1  , 1        , 1        ,  1       , 1         ,    1    ]
 	variable_textural_names =  [ 'preexpA','Ascale' ,'entalpy' , 'Vmol'  ,'nexp'    ,'Tref'    ,'Eta_scale','P_scale']
 	PARTICLE_CLASS_GENERATOR( ClassName, ClassNameShort, variable_names, variable_types, variable_extents, variable_textural_names )
+
+def Generate_pTatin_MaterialConst_ViscosityArrh_DislDiff():
+	ClassName      = 'MaterialConst_ViscosityArrh_DislDiff'
+	ClassNameShort = 'ViscosityArrh_DislDiff'
+	variable_names =          [ 'preexpA_disl','Ascale_disl' ,'entalpy_disl' , 'Vmol_disl'   ,'nexp_disl' ,'preexpA_diff'  ,'Ascale_diff' , 'entalpy_diff' , 'Vmol_diff' , 'pexp_diff' , 'gsize'  ,'Tref'    ,'Eta_scale','P_scale']
+	variable_types =          [ 'double'      ,'double'      , 'double'      , 'double'      ,'double'    ,'double'        ,'double'      , 'double'       , 'double'    , 'double'    , 'double' ,'double'  ,'double'   ,'double' ]
+	variable_extents        = [ 1             ,      1       ,       1       , 1             , 1          , 1              , 1            , 1              ,  1          , 1           , 1        , 1        , 1         ,    1    ]
+	variable_textural_names =  [ 'preexpA_disl','Ascale_disl' ,'entalpy_disl', 'Vmol_disl'   ,'nexp_disl' , 'preexpA_diff' ,'Ascale_diff' , 'entalpy_diff' , 'Vmol_diff' , 'pexp_diff' , 'gsize'  ,'Tref'    ,'Eta_scale','P_scale']
+	PARTICLE_CLASS_GENERATOR( ClassName, ClassNameShort, variable_names, variable_types, variable_extents, variable_textural_names )
+
 
 def Generate_pTatin_MaterialConst_ViscosityFK():
 	ClassName      = 'MaterialConst_ViscosityFK'
@@ -938,40 +960,43 @@ def Generate_pTatin_MaterialConst_SoftExpo():
 	PARTICLE_CLASS_GENERATOR( ClassName, ClassNameShort, variable_names, variable_types, variable_extents, variable_textural_names )
 
 
-# Call all functions to generate all data types
+# # Call all functions to generate all data types
 
-## quadrature point fields ##
-# Stokes
-Generate_pTatin3d_QuadraturePointVolumeCoefficientStokes()
-Generate_pTatin3d_QuadraturePointSurfaceCoefficientStokes()
+# ## quadrature point fields ##
+# # Stokes
+# Generate_pTatin3d_QuadraturePointVolumeCoefficientStokes()
+# Generate_pTatin3d_QuadraturePointSurfaceCoefficientStokes()
 
-# Energy
-Generate_pTatin_QuadraturePointVolumeCoefficientEnergy()
+# # Energy
+# Generate_pTatin_QuadraturePointVolumeCoefficientEnergy()
 
-## material point fields ##
-Generate_pTatin3d_MaterialPointStandard()
-Generate_pTatin_MaterialPointStokesData()
-Generate_pTatin_MaterialPointStokesPlastic()
+# ## material point fields ##
+# Generate_pTatin3d_MaterialPointStandard()
+# Generate_pTatin_MaterialPointStokesData()
+# Generate_pTatin_MaterialPointStokesPlastic()
 Generate_pTatin_MaterialPointEnergy()
-Generate_pTatin_MaterialPointViscoElasticity()
+# Generate_pTatin_MaterialPointViscoElasticity()
 
-## material constants ##
-Generate_pTatin_MaterialConst_ViscosityConst()
-Generate_pTatin_MaterialConst_ViscosityZ()
-Generate_pTatin_MaterialConst_ViscosityArrh()
-Generate_pTatin_MaterialConst_ViscosityFK()
+# ## material constants ##
+# Generate_pTatin_MaterialConst_ViscosityConst()
+# Generate_pTatin_MaterialConst_ViscosityZ()
+# Generate_pTatin_MaterialConst_ViscosityArrh()
+# Generate_pTatin_MaterialConst_ViscosityFK()
+# Generate_pTatin_MaterialConst_ViscosityArrh_DislDiff()
 
-Generate_pTatin_MaterialConst_DensityConst()
-Generate_pTatin_MaterialConst_DensityBoussinesq()
-Generate_pTatin_MaterialConst_PlasticMises()
-Generate_pTatin_MaterialConst_PlasticDP()
-Generate_pTatin_MaterialConst_SoftLin()
-Generate_pTatin_MaterialConst_SoftExpo()
-Generate_pTatin_MaterialConst_MaterialType()
+# Generate_pTatin_MaterialConst_DensityConst()
+# Generate_pTatin_MaterialConst_DensityBoussinesq()
+# Generate_pTatin_MaterialConst_DensityTable()
 
-# quad for surface processes
-Generate_pTatin_QuadraturePointVolumeCoefficientSPM_a()
-Generate_pTatin_QuadraturePointVolumeCoefficientSPM_standard_fields()
-Generate_pTatin_QuadraturePointVolumeCoefficientSPM_nonlinear_diffusivity()
+# Generate_pTatin_MaterialConst_PlasticMises()
+# Generate_pTatin_MaterialConst_PlasticDP()
+# Generate_pTatin_MaterialConst_SoftLin()
+# Generate_pTatin_MaterialConst_SoftExpo()
+# Generate_pTatin_MaterialConst_MaterialType()
+
+# # quad for surface processes
+# Generate_pTatin_QuadraturePointVolumeCoefficientSPM_a()
+# Generate_pTatin_QuadraturePointVolumeCoefficientSPM_standard_fields()
+# Generate_pTatin_QuadraturePointVolumeCoefficientSPM_nonlinear_diffusivity()
 
 

@@ -193,22 +193,24 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
   double         inv2_D_mp,inv2_Tpred_mp;
 
   DataField      PField_MatTypes;
-  DataField      PField_DensityConst,PField_DensityBoussinesq;
-  DataField      PField_ViscConst,PField_ViscZ,PField_ViscFK,PField_ViscArrh;
+  DataField      PField_DensityConst,PField_DensityBoussinesq,PField_DensityTable;
+  DataField      PField_ViscConst,PField_ViscZ,PField_ViscFK,PField_ViscArrh,PField_ViscArrhDislDiff;
   DataField      PField_PlasticMises,PField_PlasticDP;
   DataField      PField_SoftLin,PField_SoftExpo;
   /* structs or material constants */
-  MaterialConst_MaterialType      *MatType_data;
-  MaterialConst_DensityConst      *DensityConst_data;
-  MaterialConst_DensityBoussinesq *DensityBoussinesq_data;
-  MaterialConst_ViscosityConst    *ViscConst_data;
-  MaterialConst_ViscosityZ        *ViscZ_data;
-  MaterialConst_ViscosityFK       *ViscFK_data;
-  MaterialConst_ViscosityArrh     *ViscArrh_data;
-  MaterialConst_PlasticMises      *PlasticMises_data;
-  MaterialConst_PlasticDP         *PlasticDP_data;
-  MaterialConst_SoftLin           *SoftLin_data;
-  MaterialConst_SoftExpo          *SoftExpo_data;
+  MaterialConst_MaterialType           *MatType_data;
+  MaterialConst_DensityConst           *DensityConst_data;
+  MaterialConst_DensityBoussinesq      *DensityBoussinesq_data;
+  MaterialConst_DensityTable           *DensityTable_data;
+  MaterialConst_ViscosityConst         *ViscConst_data;
+  MaterialConst_ViscosityZ             *ViscZ_data;
+  MaterialConst_ViscosityFK            *ViscFK_data;
+  MaterialConst_ViscosityArrh          *ViscArrh_data;
+  MaterialConst_ViscosityArrh_DislDiff *ViscArrhDislDiff_data;
+  MaterialConst_PlasticMises           *PlasticMises_data;
+  MaterialConst_PlasticDP              *PlasticDP_data;
+  MaterialConst_SoftLin                *SoftLin_data;
+  MaterialConst_SoftExpo               *SoftExpo_data;
 
   int            viscous_type,plastic_type,softening_type,density_type;
   long int       npoints_yielded,npoints_yielded_g;
@@ -273,11 +275,17 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
   DataBucketGetDataFieldByName(material_constants,MaterialConst_DensityBoussinesq_classname,  &PField_DensityBoussinesq);
   DensityBoussinesq_data = (MaterialConst_DensityBoussinesq*)PField_DensityBoussinesq->data;
 
+  DataBucketGetDataFieldByName(material_constants,MaterialConst_DensityTable_classname,  &PField_DensityTable);
+  DensityTable_data = (MaterialConst_DensityTable*)PField_DensityTable->data;
+
   DataBucketGetDataFieldByName(material_constants,MaterialConst_ViscosityConst_classname,&PField_ViscConst);
   ViscConst_data         = (MaterialConst_ViscosityConst*)PField_ViscConst->data;
 
   DataBucketGetDataFieldByName(material_constants,MaterialConst_ViscosityArrh_classname,&PField_ViscArrh);
   ViscArrh_data          = (MaterialConst_ViscosityArrh*)PField_ViscArrh->data;
+
+  DataBucketGetDataFieldByName(material_constants,MaterialConst_ViscosityArrh_DislDiff_classname,&PField_ViscArrhDislDiff);
+  ViscArrhDislDiff_data  = (MaterialConst_ViscosityArrh_DislDiff*)PField_ViscArrhDislDiff->data;
 
   DataBucketGetDataFieldByName(material_constants,MaterialConst_ViscosityFK_classname,&PField_ViscFK);
   ViscFK_data            = (MaterialConst_ViscosityFK*)PField_ViscFK->data;
@@ -464,6 +472,49 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
           eta  = Ascale*pow(sr,1.0/nexp - 1.0)*pow(preexpA,-1.0/nexp)*exp(entalpy/(nexp*R*T_arrh));
           eta_mp = eta/ViscArrh_data[ region_idx ].Eta_scale;
         }
+        break;
+
+      case VISCOUS_ARRHENIUS_DISLDIFF:
+      {
+        PetscScalar R          = 8.31440;
+        PetscReal preexpA_disl = ViscArrhDislDiff_data[region_idx].preexpA_disl;
+        PetscReal Ascale_disl  = ViscArrhDislDiff_data[region_idx].Ascale_disl;
+        PetscReal entalpy_disl = ViscArrhDislDiff_data[region_idx].entalpy_disl;
+        PetscReal Vmol_disl    = ViscArrhDislDiff_data[region_idx].Vmol_disl;
+        PetscReal nexp_disl    = ViscArrhDislDiff_data[region_idx].nexp_disl;
+        PetscReal preexpA_diff = ViscArrhDislDiff_data[region_idx].preexpA_diff;
+        PetscReal Ascale_diff  = ViscArrhDislDiff_data[region_idx].Ascale_diff;
+        PetscReal entalpy_diff = ViscArrhDislDiff_data[region_idx].entalpy_diff;
+        PetscReal Vmol_diff    = ViscArrhDislDiff_data[region_idx].Vmol_diff;
+        PetscReal pexp_diff    = ViscArrhDislDiff_data[region_idx].pexp_diff;
+        PetscReal gsize        = ViscArrhDislDiff_data[region_idx].gsize;
+        PetscReal Tref         = ViscArrhDislDiff_data[ region_idx ].Tref;
+        PetscReal T_arrh       = T_mp + Tref ;
+        PetscReal sr, eta_disl, eta_diff, eta, pressure;
+
+        ComputeStrainRate3d(ux,uy,uz,dNudx,dNudy,dNudz,D_mp);
+        ComputeSecondInvariant3d(D_mp,&inv2_D_mp);
+        
+        sr = inv2_D_mp/ViscArrhDislDiff_data[ region_idx ].Eta_scale*ViscArrhDislDiff_data[ region_idx ].P_scale;
+        if (sr < 1.0e-17) {
+          sr = 1.0e-17;
+        }
+        
+        pressure = ViscArrhDislDiff_data[ region_idx ].P_scale*pressure_mp;
+        
+        if (pressure >= 0.0) {
+          entalpy_disl += pressure*Vmol_disl;
+          entalpy_diff += pressure*Vmol_diff;
+        }
+        /* dislocation creep viscosity */
+        eta_disl = Ascale_disl*pow(sr,1.0/nexp_disl - 1.0)*pow(preexpA_disl,-1.0/nexp_disl)*exp(entalpy_disl/(nexp_disl*R*T_arrh));
+        /* diffusion creep viscosity */
+        eta_diff = Ascale_diff*1.0/(preexpA_diff)*pow(gsize,pexp_diff)*exp(entalpy_diff/(R*T_arrh));
+        /* Combine the two viscosities */
+        eta      = 1.0/(1.0/eta_disl + 1.0/eta_diff);
+        /* Scale and set on marker */
+        eta_mp   = eta/ViscArrhDislDiff_data[ region_idx ].Eta_scale;
+      }
         break;
 
       default:
@@ -706,6 +757,27 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
           MPntPStokesSetField_density(mpprop_stokes,rho_mp);
         }
         break;
+
+      case DENSITY_TABLE: 
+        {
+          PhaseMap  phasemap = DensityTable_data[region_idx].map;
+          PetscReal rho0     = DensityTable_data[region_idx].density;
+          PetscReal rho_mp,xp[2];
+          
+          xp[0] = T_mp; 
+          xp[1] = pressure_mp; 
+          PhaseMapGetValue(phasemap,xp,&rho_mp);
+          if (rho_mp == (double)PHASE_MAP_POINT_OUTSIDE) {
+            rho_mp = rho0; 
+          }
+          /* this check that there is no 1.0 (change table) 
+             if that happens the previous density stored on the marker is conserved */
+          if (rho_mp > rho0/10.0) {
+            MPntPStokesSetField_density(mpprop_stokes,rho_mp);
+          }
+        }
+        break;
+
       default:
         SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"No default DensityType set. Valid choices are DENSITY_CONSTANT, DENSITY_BOUSSINESQ");
 
@@ -775,22 +847,25 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
   double         inv2_D_mp,inv2_Tpred_mp;
   
   DataField      PField_MatTypes;
-  DataField      PField_DensityConst,PField_DensityBoussinesq;
-  DataField      PField_ViscConst,PField_ViscZ,PField_ViscFK,PField_ViscArrh;
+  DataField      PField_DensityConst,PField_DensityBoussinesq,PField_DensityTable;
+  DataField      PField_ViscConst,PField_ViscZ,PField_ViscFK,PField_ViscArrh,PField_ViscArrhDislDiff;
   DataField      PField_PlasticMises,PField_PlasticDP;
   DataField      PField_SoftLin,PField_SoftExpo;
+  
   /* structs or material constants */
-  MaterialConst_MaterialType      *MatType_data;
-  MaterialConst_DensityConst      *DensityConst_data;
-  MaterialConst_DensityBoussinesq *DensityBoussinesq_data;
-  MaterialConst_ViscosityConst    *ViscConst_data;
-  MaterialConst_ViscosityZ        *ViscZ_data;
-  MaterialConst_ViscosityFK       *ViscFK_data;
-  MaterialConst_ViscosityArrh     *ViscArrh_data;
-  MaterialConst_PlasticMises      *PlasticMises_data;
-  MaterialConst_PlasticDP         *PlasticDP_data;
-  MaterialConst_SoftLin           *SoftLin_data;
-  MaterialConst_SoftExpo          *SoftExpo_data;
+  MaterialConst_MaterialType           *MatType_data;
+  MaterialConst_DensityConst           *DensityConst_data;
+  MaterialConst_DensityBoussinesq      *DensityBoussinesq_data;
+  MaterialConst_DensityTable           *DensityTable_data;
+  MaterialConst_ViscosityConst         *ViscConst_data;
+  MaterialConst_ViscosityZ             *ViscZ_data;
+  MaterialConst_ViscosityFK            *ViscFK_data;
+  MaterialConst_ViscosityArrh          *ViscArrh_data;
+  MaterialConst_ViscosityArrh_DislDiff *ViscArrhDislDiff_data;
+  MaterialConst_PlasticMises           *PlasticMises_data;
+  MaterialConst_PlasticDP              *PlasticDP_data;
+  MaterialConst_SoftLin                *SoftLin_data;
+  MaterialConst_SoftExpo               *SoftExpo_data;
   
   int            viscous_type,plastic_type,softening_type,density_type;
   long int       npoints_yielded,npoints_yielded_g;
@@ -840,12 +915,18 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
   DataBucketGetDataFieldByName(material_constants,MaterialConst_DensityBoussinesq_classname,  &PField_DensityBoussinesq);
   DensityBoussinesq_data = (MaterialConst_DensityBoussinesq*)PField_DensityBoussinesq->data;
   
+  DataBucketGetDataFieldByName(material_constants,MaterialConst_DensityTable_classname,  &PField_DensityTable);
+  DensityTable_data      = (MaterialConst_DensityTable*)PField_DensityTable->data;
+
   DataBucketGetDataFieldByName(material_constants,MaterialConst_ViscosityConst_classname,&PField_ViscConst);
   ViscConst_data         = (MaterialConst_ViscosityConst*)PField_ViscConst->data;
   
   DataBucketGetDataFieldByName(material_constants,MaterialConst_ViscosityArrh_classname,&PField_ViscArrh);
   ViscArrh_data          = (MaterialConst_ViscosityArrh*)PField_ViscArrh->data;
   
+  DataBucketGetDataFieldByName(material_constants,MaterialConst_ViscosityArrh_DislDiff_classname,&PField_ViscArrhDislDiff);
+  ViscArrhDislDiff_data  = (MaterialConst_ViscosityArrh_DislDiff*)PField_ViscArrhDislDiff->data;
+
   DataBucketGetDataFieldByName(material_constants,MaterialConst_ViscosityFK_classname,&PField_ViscFK);
   ViscFK_data            = (MaterialConst_ViscosityFK*)PField_ViscFK->data;
   
@@ -1052,9 +1133,52 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
         eta_mp = eta/ViscArrh_data[ region_idx ].Eta_scale;
       }
         break;
+
+      case VISCOUS_ARRHENIUS_DISLDIFF:
+      {
+        PetscScalar R          = 8.31440;
+        PetscReal preexpA_disl = ViscArrhDislDiff_data[region_idx].preexpA_disl;
+        PetscReal Ascale_disl  = ViscArrhDislDiff_data[region_idx].Ascale_disl;
+        PetscReal entalpy_disl = ViscArrhDislDiff_data[region_idx].entalpy_disl;
+        PetscReal Vmol_disl    = ViscArrhDislDiff_data[region_idx].Vmol_disl;
+        PetscReal nexp_disl    = ViscArrhDislDiff_data[region_idx].nexp_disl;
+        PetscReal preexpA_diff = ViscArrhDislDiff_data[region_idx].preexpA_diff;
+        PetscReal Ascale_diff  = ViscArrhDislDiff_data[region_idx].Ascale_diff;
+        PetscReal entalpy_diff = ViscArrhDislDiff_data[region_idx].entalpy_diff;
+        PetscReal Vmol_diff    = ViscArrhDislDiff_data[region_idx].Vmol_diff;
+        PetscReal pexp_diff    = ViscArrhDislDiff_data[region_idx].pexp_diff;
+        PetscReal gsize        = ViscArrhDislDiff_data[region_idx].gsize;
+        PetscReal Tref         = ViscArrhDislDiff_data[ region_idx ].Tref;
+        PetscReal T_arrh       = T_mp + Tref ;
+        PetscReal sr, eta_disl, eta_diff, eta, pressure;
+
+        ComputeStrainRate3d(ux,uy,uz,dNudx,dNudy,dNudz,D_mp);
+        ComputeSecondInvariant3d(D_mp,&inv2_D_mp);
+
+        sr = inv2_D_mp/ViscArrhDislDiff_data[ region_idx ].Eta_scale*ViscArrhDislDiff_data[ region_idx ].P_scale;
+        if (sr < 1.0e-17) {
+          sr = 1.0e-17;
+        }
         
+        pressure = ViscArrhDislDiff_data[ region_idx ].P_scale*pressure_mp;
+        
+        if (pressure >= 0.0) {
+          entalpy_disl += pressure*Vmol_disl;
+          entalpy_diff += pressure*Vmol_diff;
+        }
+        /* dislocation creep viscosity */
+        eta_disl = Ascale_disl*pow(sr,1.0/nexp_disl - 1.0)*pow(preexpA_disl,-1.0/nexp_disl)*exp(entalpy_disl/(nexp_disl*R*T_arrh));
+        /* diffusion creep viscosity */
+        eta_diff = Ascale_diff*1.0/(preexpA_diff)*pow(gsize,pexp_diff)*exp(entalpy_diff/(R*T_arrh));
+        /* Combine the two viscosities */
+        eta      = 1.0/(1.0/eta_disl + 1.0/eta_diff);
+        /* Scale and set on marker */
+        eta_mp   = eta/ViscArrhDislDiff_data[ region_idx ].Eta_scale;
+      }
+        break;
+
       default:
-        SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"No default ViscousType specified. Valid choices are VISCOUS_CONSTANT, VISCOUS_Z, VISCOUS_FRANKK, VISCOUS_ARRHENIUS, VISCOUS_ARRHENIUS_2");
+        SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"No default ViscousType specified. Valid choices are VISCOUS_CONSTANT, VISCOUS_Z, VISCOUS_FRANKK, VISCOUS_ARRHENIUS, VISCOUS_ARRHENIUS_2, VISCOUS_ARRHENIUS_DISLDIFF");
         
     }
     
@@ -1291,6 +1415,26 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
         
         rho_mp = rho0*(1-alpha*T_mp+beta*pressure_mp);
         MPntPStokesSetField_density(mpprop_stokes,rho_mp);
+      }
+        break;
+
+      case DENSITY_TABLE:
+      {
+        PhaseMap  phasemap = DensityTable_data[region_idx].map;
+        PetscReal rho0     = DensityTable_data[region_idx].density;
+        PetscReal rho_mp,xp[2];
+
+        xp[0] = T_mp; 
+        xp[1] = pressure_mp; 
+        PhaseMapGetValue(phasemap,xp,&rho_mp);
+        if (rho_mp == (double)PHASE_MAP_POINT_OUTSIDE) {
+          rho_mp = rho0; 
+        }
+        /* this check that there is no 1.0 (change table) 
+           if that happens the previous density stored on the marker is conserved */
+        if (rho_mp > rho0/10.0) {
+          MPntPStokesSetField_density(mpprop_stokes,rho_mp);
+        }
       }
         break;
       default:

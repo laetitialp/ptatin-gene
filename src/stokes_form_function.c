@@ -243,6 +243,7 @@ PetscErrorCode FormFunctionLocal_U(PhysCompStokes user,DM dau,PetscScalar ufield
 
 PetscErrorCode FormFunctionLocal_U_tractionBC(PhysCompStokes user,DM dau,PetscScalar ufield[],DM dap,PetscScalar pfield[],PetscScalar Ru[])
 {
+#if 0 // TODO DAM
   PetscErrorCode ierr;
   PetscInt p;
   DM cda;
@@ -357,7 +358,7 @@ PetscErrorCode FormFunctionLocal_U_tractionBC(PhysCompStokes user,DM dau,PetscSc
   //PetscPrintf(PETSC_COMM_WORLD,"Assembled int_S N traction[i].n[i] dS, = %1.4e (sec)\n",t1-t0);
 
   ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
-
+#endif
   PetscFunctionReturn(0);
 }
 
@@ -522,6 +523,9 @@ PetscErrorCode FormFunction_Stokes(SNES snes,Vec X,Vec F,void *ctx)
   /* ======================================== */
   ierr = pTatin_EvaluateRheologyNonlinearities(ptatin,dau,LA_Uloc,dap,LA_Ploc);CHKERRQ(ierr);
 
+  /* Set BCs on fine grid after qp update */
+  ierr = pTatinModel_ApplyBoundaryCondition(ptatin->model,ptatin);CHKERRQ(ierr);
+
   /* Form scaling for momentum */
   //ierr = FormScaling_U_etaMassMatrixDiagonal(user,dau,user->u_bclist);CHKERRQ(ierr);
 
@@ -535,6 +539,18 @@ PetscErrorCode FormFunction_Stokes(SNES snes,Vec X,Vec F,void *ctx)
   /* profiling */
   //ierr = FormFunctionLocal_profile(stokes,dau,LA_Uloc,dap,LA_Ploc,LA_FPloc);CHKERRQ(ierr);
 
+  //printf("residual\n");
+  //ierr = SurfBCListViewer(stokes->surf_bclist,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);
+  {
+    PetscInt k;
+    SurfBCList surfbc = stokes->surf_bclist;
+    
+    for (k=0; k<surfbc->sc_nreg; k++) {
+      ierr = SurfaceConstraintOps_EvaluateFu(surfbc->sc_list[k],dau,LA_Uloc,dap,LA_Ploc,LA_FUloc, PETSC_FALSE);CHKERRQ(ierr);
+      ierr = SurfaceConstraintOps_EvaluateFp(surfbc->sc_list[k],dau,LA_Uloc,dap,LA_Ploc,LA_FPloc, PETSC_FALSE);CHKERRQ(ierr);
+    }
+  }
+  
   ierr = VecRestoreArray(FPloc,&LA_FPloc);CHKERRQ(ierr);
   ierr = VecRestoreArray(FUloc,&LA_FUloc);CHKERRQ(ierr);
   ierr = VecRestoreArray(Ploc,&LA_Ploc);CHKERRQ(ierr);

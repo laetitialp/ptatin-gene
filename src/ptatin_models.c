@@ -31,6 +31,7 @@
 #include "ptatin3d.h"
 #include "private/ptatin_impl.h"
 #include "ptatin_models.h"
+#include "material_point_popcontrol.h"
 
 pTatinModel *registered_model_list = NULL;
 PetscFunctionList ptatin_registered_model_flist = NULL;
@@ -43,9 +44,9 @@ PetscLogEvent PTATIN_ModelApplyInitialMaterialGeometry;
 PetscLogEvent PTATIN_ModelApplyInitialStokesVariableMarkers;
 PetscLogEvent PTATIN_ModelApplyBoundaryCondition;
 PetscLogEvent PTATIN_ModelApplyBoundaryConditionMG;
-PetscLogEvent PTATIN_ModelApplyMaterialBoundaryCondition;
 PetscLogEvent PTATIN_ModelUpdateMeshGeometry;
 PetscLogEvent PTATIN_ModelOutput;
+PetscLogEvent PTATIN_ModelAdaptMaterialPointResolution;
 
 
 PetscErrorCode pTatinModelCreate(pTatinModel *model)
@@ -61,21 +62,21 @@ PetscErrorCode pTatinModelCreate(pTatinModel *model)
   m->disable_initial_stokes_variables  = PETSC_FALSE;
   m->disable_apply_bc                  = PETSC_FALSE;
   m->disable_apply_bc_mg               = PETSC_FALSE;
-  m->disable_apply_material_bc         = PETSC_FALSE;
   m->disable_initial_mesh_geometry     = PETSC_FALSE;
   m->disable_initial_material_geometry = PETSC_FALSE;
   m->disable_update_mesh_geometry      = PETSC_FALSE;
   m->disable_output                    = PETSC_FALSE;
+  m->disable_adapt_mp_resolution       = PETSC_FALSE;
 
   ierr = PetscOptionsGetBool(NULL,NULL,"-ptatin_model_intial_solution_disable",&m->disable_initial_solution,0);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,NULL,"-ptatin_model_initial_stokes_variables_disable",&m->disable_initial_stokes_variables,0);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,NULL,"-ptatin_model_apply_bc_disable",&m->disable_apply_bc,0);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,NULL,"-ptatin_model_apply_bc_mg_disable",&m->disable_apply_bc_mg,0);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL,NULL,"-ptatin_model_apply_material_bc_disable",&m->disable_apply_material_bc,0);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,NULL,"-ptatin_model_initial_mesh_geometry_disable",&m->disable_initial_mesh_geometry,0);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,NULL,"-ptatin_model_initial_material_geometry_disable",&m->disable_initial_material_geometry,0);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,NULL,"-ptatin_model_update_mesh_geometry_disable",&m->disable_update_mesh_geometry,0);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,NULL,"-ptatin_model_output_disable",&m->disable_output,0);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL,NULL,"-ptatin_model_adapt_mp_resolution_disable",&m->disable_adapt_mp_resolution,0);CHKERRQ(ierr);
 
   *model = m;
   PetscFunctionReturn(0);
@@ -136,8 +137,9 @@ PetscErrorCode pTatinModelGetModelData(pTatinModel ctx,const char name[],void **
   PetscContainer container;
 
   PetscFunctionBegin;
+  if (!ctx->data) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_SUP,"The PetscContainer in pTatinModel(\"%s\") is NULL",ctx->model_name);
   ierr = PetscObjectQuery((PetscObject)ctx->data,name,(PetscObject*)&container);CHKERRQ(ierr);
-  if (!container) SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_ARG_WRONG,"No data with name \"%s\" was composed with model->model_data",name);
+  if (!container) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"No data with name \"%s\" was composed with pTatinModel(\"%s\")",name,ctx->model_name);
   ierr = PetscContainerGetPointer(container,data);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
@@ -149,7 +151,13 @@ PetscErrorCode pTatinModelSetModelData(pTatinModel ctx,const char name[],void *d
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  ierr = PetscContainerCreate(PETSC_COMM_WORLD,&container);CHKERRQ(ierr);
+  if (!ctx->data) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_SUP,"The PetscContainer in pTatinModel(\"%s\") is NULL",ctx->model_name);
+  {
+    PetscObject obj = NULL;
+    ierr = PetscObjectQuery((PetscObject)ctx->model_data,name,&obj);CHKERRQ(ierr);
+    if (obj) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"A data object with name \"%s\" was already composed with pTatinModel(\"%s\"). Textual names must be unique",name,ctx->model_name);
+  }
+  ierr = PetscContainerCreate(PETSC_COMM_SELF,&container);CHKERRQ(ierr);
   ierr = PetscContainerSetPointer(container,(void*)data);CHKERRQ(ierr);
 
   ierr = PetscObjectCompose((PetscObject)ctx->data,name,(PetscObject)container);CHKERRQ(ierr);
@@ -170,10 +178,7 @@ PetscErrorCode pTatinModelSetFunctionPointer(pTatinModel model,pTatinModelOperat
       model->FP_pTatinModel_ApplyBoundaryCondition = ( PetscErrorCode(*)(pTatinCtx,void*) )func;
       break;
     case PTATIN_MODEL_APPLY_BCMG:
-      model->FP_pTatinModel_ApplyBoundaryConditionMG = ( PetscErrorCode(*)(PetscInt,BCList*,DM*,pTatinCtx,void*) )func;
-      break;
-    case PTATIN_MODEL_APPLY_MAT_BC:
-      model->FP_pTatinModel_ApplyMaterialBoundaryCondition = ( PetscErrorCode(*)(pTatinCtx,void*) )func;
+      model->FP_pTatinModel_ApplyBoundaryConditionMG = ( PetscErrorCode(*)(PetscInt,BCList*,SurfBCList*,DM*,pTatinCtx,void*) )func;
       break;
     case PTATIN_MODEL_APPLY_INIT_SOLUTION:
       model->FP_pTatinModel_ApplyInitialSolution = ( PetscErrorCode(*)(pTatinCtx,Vec,void*) )func;
@@ -196,6 +201,9 @@ PetscErrorCode pTatinModelSetFunctionPointer(pTatinModel model,pTatinModelOperat
     case PTATIN_MODEL_DESTROY:
       model->FP_pTatinModel_Destroy = ( PetscErrorCode(*)(pTatinCtx,void*) )func;
       break;
+    case PTATIN_MODEL_ADAPT_MP_RESOLUTION:
+      model->FP_pTatinModel_AdaptMaterialPointResolution = ( PetscErrorCode(*)(pTatinCtx,void*) )func;
+	  break;
     default:
       SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"  [pTatinModel]: unknown operation specified");
       break;
@@ -508,7 +516,7 @@ PetscErrorCode pTatinModel_ApplyBoundaryCondition(pTatinModel model,pTatinCtx ct
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode pTatinModel_ApplyBoundaryConditionMG(PetscInt nl,BCList bclist[],DM dav[],pTatinModel model,pTatinCtx ctx)
+PetscErrorCode pTatinModel_ApplyBoundaryConditionMG(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[],pTatinModel model,pTatinCtx ctx)
 {
   PetscErrorCode ierr;
   PetscFunctionBegin;
@@ -516,7 +524,7 @@ PetscErrorCode pTatinModel_ApplyBoundaryConditionMG(PetscInt nl,BCList bclist[],
   ierr = PetscLogEventBegin(PTATIN_ModelApplyBoundaryConditionMG,0,0,0,0);CHKERRQ(ierr);
   if (!model->disable_apply_bc_mg) {
     if (model->FP_pTatinModel_ApplyBoundaryConditionMG) {
-      ierr = model->FP_pTatinModel_ApplyBoundaryConditionMG(nl,bclist,dav,ctx,model->model_data);CHKERRQ(ierr);
+      ierr = model->FP_pTatinModel_ApplyBoundaryConditionMG(nl,bclist,surf_bclist,dav,ctx,model->model_data);CHKERRQ(ierr);
     } else {
       SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_SUP,"  [pTatinModel]: -ptatin_model \"%s\" wasn't prodivided with the operation \"ApplyBoundaryConditionMG\"",model->model_name );
     }
@@ -526,18 +534,22 @@ PetscErrorCode pTatinModel_ApplyBoundaryConditionMG(PetscInt nl,BCList bclist[],
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode pTatinModel_ApplyMaterialBoundaryCondition(pTatinModel model,pTatinCtx ctx)
+PetscErrorCode pTatinModel_AdaptMaterialPointResolution(pTatinModel model,pTatinCtx ctx)
 {
   PetscErrorCode ierr;
   PetscFunctionBegin;
-
-  ierr = PetscLogEventBegin(PTATIN_ModelApplyMaterialBoundaryCondition,0,0,0,0);CHKERRQ(ierr);
-  if (!model->disable_apply_material_bc) {
-    if (model->FP_pTatinModel_ApplyMaterialBoundaryCondition) {
-      ierr = model->FP_pTatinModel_ApplyMaterialBoundaryCondition(ctx,model->model_data);CHKERRQ(ierr);
+  
+  ierr = PetscLogEventBegin(PTATIN_ModelAdaptMaterialPointResolution,0,0,0,0);CHKERRQ(ierr);
+  if (!model->disable_adapt_mp_resolution) {
+    if (model->FP_pTatinModel_AdaptMaterialPointResolution) {
+      ierr = model->FP_pTatinModel_AdaptMaterialPointResolution(ctx,model->model_data);CHKERRQ(ierr);
+    } else {
+      ierr = MaterialPointPopulationControl_v1(ctx);CHKERRQ(ierr);
     }
+  } else {
+    PetscPrintf(PETSC_COMM_WORLD,"  [pTatinModel]: pTatinModel_AdaptMaterialPointResolution deactivated for model \"%s\"\n",model->model_name );
   }
-  ierr = PetscLogEventEnd(PTATIN_ModelApplyMaterialBoundaryCondition,0,0,0,0);CHKERRQ(ierr);
+  ierr = PetscLogEventEnd(PTATIN_ModelAdaptMaterialPointResolution,0,0,0,0);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }

@@ -20,7 +20,7 @@ struct _p_PhysCompEnergyFV {
   Vec                     Xold; /* <ALE> previous coordinate vector */
   FVDA                    fv; /* finite volume context */
   SNES                    snes; /* solver context for the discrete energy equation */
-  Vec                     T,F; /* T solution and residual */
+  Vec                     T,F,G; /* T solution and residual */
   Mat                     J;
 };
 

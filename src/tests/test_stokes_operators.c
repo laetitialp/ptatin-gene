@@ -103,9 +103,9 @@ PetscErrorCode _GenerateTestVectorDAP(DM da,PetscInt dofs,PetscInt index,Vec x)
 
 
   ierr = DMDAGetInfo(da,0,&M,&N,&P,0,0,0, 0,0,0,0,0,0);CHKERRQ(ierr);
-  dx = 2.0/(PetscReal)(M-1);
-  dy = 2.0/(PetscReal)(N-1);
-  dz = 2.0/(PetscReal)(P-1);
+  dx = 2.0/(PetscReal)(M);
+  dy = 2.0/(PetscReal)(N);
+  dz = 2.0/(PetscReal)(P);
 
 
   ierr = DMGetLocalToGlobalMapping(da, &ltog);CHKERRQ(ierr);
@@ -159,7 +159,7 @@ PetscErrorCode ass_A11(PhysCompStokes stk)
     ierr = MatSetOption(B,MAT_IGNORE_LOWER_TRIANGULAR,PETSC_TRUE);CHKERRQ(ierr);
   }
 
-  ierr = MatAssemble_StokesA_AUU(B,da,stk->u_bclist,stk->volQ);CHKERRQ(ierr);
+  ierr = MatAssemble_StokesA_AUU(B,da,stk->u_bclist,stk->volQ,stk->surf_bclist);CHKERRQ(ierr);
 
   ierr = DMCreateGlobalVector(da,&x);CHKERRQ(ierr);
   ierr = VecDuplicate(x,&y);CHKERRQ(ierr);
@@ -272,7 +272,7 @@ PetscErrorCode compare_mf_A11(PhysCompStokes user)
   ierr = DMSetMatType(da,MATAIJ);CHKERRQ(ierr);
   ierr = DMCreateMatrix(da,&B);CHKERRQ(ierr);
   PetscTime(&t0);
-  ierr = MatAssemble_StokesA_AUU(B,da,user->u_bclist,user->volQ);CHKERRQ(ierr);
+  ierr = MatAssemble_StokesA_AUU(B,da,user->u_bclist,user->volQ,user->surf_bclist);CHKERRQ(ierr);
   PetscTime(&t1);
   tl = (double)(t1 - t0);
   ierr = MPI_Allreduce(&tl,&timeMIN,1,MPI_DOUBLE,MPI_MIN,PETSC_COMM_WORLD);CHKERRQ(ierr);
@@ -356,7 +356,8 @@ PetscErrorCode compare_mf_A21(PhysCompStokes user)
   ierr = VecDuplicate(y,&y2);CHKERRQ(ierr);
 
   ierr = StokesQ2P1CreateMatrix_A21(user,&B);CHKERRQ(ierr);
-  ierr = MatAssemble_StokesA_A21(B,dav,dap,user->u_bclist,user->p_bclist,user->volQ);CHKERRQ(ierr);
+  ierr = PetscObjectSetName((PetscObject)B,"div");CHKERRQ(ierr);
+  ierr = MatAssemble_StokesA_A21(B,dav,dap,user->u_bclist,user->p_bclist,user->volQ,user->surf_bclist);CHKERRQ(ierr);
 
   ierr = MatMult(B,x,y2);CHKERRQ(ierr);
 
@@ -425,7 +426,8 @@ PetscErrorCode compare_mf_A12(PhysCompStokes user)
   ierr = VecDuplicate(y,&y2);CHKERRQ(ierr);
 
   ierr = StokesQ2P1CreateMatrix_A12(user,&B);CHKERRQ(ierr);
-  ierr = MatAssemble_StokesA_A12(B,dav,dap,user->u_bclist,user->p_bclist,user->volQ);CHKERRQ(ierr);
+  ierr = PetscObjectSetName((PetscObject)B,"grad");CHKERRQ(ierr);
+  ierr = MatAssemble_StokesA_A12(B,dav,dap,user->u_bclist,user->p_bclist,user->volQ,user->surf_bclist);CHKERRQ(ierr);
 
   ierr = MatMult(B,x,y2);CHKERRQ(ierr);
 
@@ -475,7 +477,8 @@ PetscErrorCode compare_mf_A(PhysCompStokes user)
   ierr = DMCompositeGetAccess(pack,x,&xu,&xp);CHKERRQ(ierr);
   ierr = VecSetRandom(xu,NULL);CHKERRQ(ierr);
   ierr = VecSetRandom(xp,NULL);CHKERRQ(ierr);
-  //    ierr = VecZeroEntries(xp);CHKERRQ(ierr);
+  //ierr = VecZeroEntries(xu);CHKERRQ(ierr);
+  //ierr = VecZeroEntries(xp);CHKERRQ(ierr);
   ierr = DMCompositeRestoreAccess(pack,x,&xu,&xp);CHKERRQ(ierr);
 
   ierr = VecDuplicate(x,&y);CHKERRQ(ierr);
@@ -552,7 +555,7 @@ PetscErrorCode compare_mf_diagA11(PhysCompStokes user)
 
   ierr = DMSetMatType(da,MATAIJ);CHKERRQ(ierr);
   ierr = DMCreateMatrix(da,&B);CHKERRQ(ierr);
-  ierr = MatAssemble_StokesA_AUU(B,da,user->u_bclist,user->volQ);CHKERRQ(ierr);
+  ierr = MatAssemble_StokesA_AUU(B,da,user->u_bclist,user->volQ,user->surf_bclist);CHKERRQ(ierr);
 
   ierr = MatGetDiagonal(B,y2);CHKERRQ(ierr);
 
@@ -670,7 +673,7 @@ PetscErrorCode apply_asm_A11(PhysCompStokes user)
   ierr = DMSetMatType(da,MATAIJ);CHKERRQ(ierr);
   ierr = DMCreateMatrix(da,&B);CHKERRQ(ierr);
   PetscTime(&t0);
-  ierr = MatAssemble_StokesA_AUU(B,da,user->u_bclist,user->volQ);CHKERRQ(ierr);
+  ierr = MatAssemble_StokesA_AUU(B,da,user->u_bclist,user->volQ,user->surf_bclist);CHKERRQ(ierr);
   PetscTime(&t1);
   tl = (double)(t1 - t0);
   ierr = MPI_Allreduce(&tl,&timeMIN,1,MPI_DOUBLE,MPI_MIN,PETSC_COMM_WORLD);CHKERRQ(ierr);
@@ -736,7 +739,7 @@ PetscErrorCode perform_viscous_solve(PhysCompStokes user)
   ierr = DMSetMatType(da,MATAIJ);CHKERRQ(ierr);
   ierr = DMCreateMatrix(da,&B);CHKERRQ(ierr);
   PetscTime(&t0);
-  ierr = MatAssemble_StokesA_AUU(B,da,user->u_bclist,user->volQ);CHKERRQ(ierr);
+  ierr = MatAssemble_StokesA_AUU(B,da,user->u_bclist,user->volQ,user->surf_bclist);CHKERRQ(ierr);
   PetscTime(&t1);
   tl = (double)(t1 - t0);
   ierr = MPI_Allreduce(&tl,&timeMIN,1,MPI_DOUBLE,MPI_MIN,PETSC_COMM_WORLD);CHKERRQ(ierr);
@@ -850,10 +853,7 @@ PetscErrorCode pTatin3d_assemble_stokes(int argc,char **argv)
   ierr = pTatinModel_ApplyInitialMeshGeometry(user->model,user);CHKERRQ(ierr);
 
   /* interpolate point coordinates (needed if mesh was modified) */
-  //ierr = QuadratureStokesCoordinateSetUp(user->stokes_ctx->Q,dav);CHKERRQ(ierr);
-  //for (e=0; e<QUAD_EDGES; e++) {
-  //  ierr = SurfaceQuadratureStokesGeometrySetUp(user->stokes_ctx->surfQ[e],dav);CHKERRQ(ierr);
-  //}
+  ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(user->stokes_ctx);CHKERRQ(ierr);
   /* interpolate material point coordinates (needed if mesh was modified) */
   ierr = MaterialPointCoordinateSetUp(user,dav);CHKERRQ(ierr);
 
@@ -879,7 +879,7 @@ PetscErrorCode pTatin3d_assemble_stokes(int argc,char **argv)
     mp_std    = PField_std->data; /* should write a function to do this */
     mp_stokes = PField_stokes->data; /* should write a function to do this */
 
-    ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes(npoints,mp_std,mp_stokes,user->stokes_ctx->dav,user->stokes_ctx->volQ);CHKERRQ(ierr);
+    ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes(npoints,mp_std,mp_stokes,user->stokes_ctx->dav,user->stokes_ctx->volQ,user->stokes_ctx->surfQ,user->stokes_ctx->mfi);CHKERRQ(ierr);
   }
 
   /* perform tests */

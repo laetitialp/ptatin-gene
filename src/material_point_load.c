@@ -811,6 +811,21 @@ PetscErrorCode SwarmDataWriteToPetscVec_MPntPEnergy(DataBucket db,const char suf
         ierr = VecRestoreArray(point_field_data,&LA_point_field_data);CHKERRQ(ierr);
         ierr = DMDAWriteVectorToFile(point_field_data,filename,write_to_tgz);CHKERRQ(ierr);
         break;
+
+      case MPPEgy_heat_source_init:
+        
+        ierr = VecGetArray(point_field_data,&LA_point_field_data);CHKERRQ(ierr);
+        for (p=0; p<n_points; p++) {
+          double val;
+          PetscScalar pval;
+
+          MPntPEnergyGetField_heat_source_init(&points[p],&val);
+          pval = _PackDoubleToPetscScalar(val);
+          LA_point_field_data[p] = pval;
+        }
+        ierr = VecRestoreArray(point_field_data,&LA_point_field_data);CHKERRQ(ierr);
+        ierr = DMDAWriteVectorToFile(point_field_data,filename,write_to_tgz);CHKERRQ(ierr);
+        break;
     }
   }
 
@@ -1199,6 +1214,24 @@ PetscErrorCode SwarmDataLoadFromPetscVec_MPntPEnergy(DataBucket db,const char su
           pval = LA_point_field_data[p];
           val = _UnPackPetscScalarToDouble(pval);
           MPntPEnergySetField_heat_source(&points[p],val);
+        }
+        ierr = VecRestoreArray(point_field_data,&LA_point_field_data);CHKERRQ(ierr);
+        break;
+
+      case MPPEgy_heat_source_init:
+
+        ierr = VecLoadFromFile(point_field_data,filename);CHKERRQ(ierr);
+        ierr = VecGetLocalSize(point_field_data,&n_points);CHKERRQ(ierr);
+        DataBucketSetSizes(db,(int)n_points,-1);
+
+        ierr = VecGetArray(point_field_data,&LA_point_field_data);CHKERRQ(ierr);
+        for (p=0; p<n_points; p++) {
+          double      val;
+          PetscScalar pval;
+
+          pval = LA_point_field_data[p];
+          val = _UnPackPetscScalarToDouble(pval);
+          MPntPEnergySetField_heat_source_init(&points[p],val);
         }
         ierr = VecRestoreArray(point_field_data,&LA_point_field_data);CHKERRQ(ierr);
         break;

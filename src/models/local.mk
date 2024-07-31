@@ -28,4 +28,8 @@ libptatin3dmodels-y.c += $(call thisdir, \
   static_box/static_box.c \
   static_box_thermomech/static_box_tm.c \
   analytics_vv/SolKxSolution.c analytics_vv/SolCxSolution.c analytics_vv/analytics_vv.c \
+  nitsche_demo/model.c \
+  oblique_rift_nitsche/model_oblique_rift_nitsche.c \
+  Steady_TFV/model_steady_TFV.c \
+  poisson_pressure_model/model_poisson_pressure.c \
 )
