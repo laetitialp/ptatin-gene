@@ -208,7 +208,7 @@ PetscErrorCode ModelInitialize_MultilayerFolding(pTatinCtx c,void *ctx)
   for (n=0; n<data->n_interfaces-1; n++) {
     if (data->visco_plastic) {
       ierr = MaterialConstantsSetValues_MaterialType(materialconstants,   n ,VISCOUS_CONSTANT,PLASTIC_MISES,SOFTENING_NONE,DENSITY_CONSTANT);CHKERRQ(ierr);
-      ierr = MaterialConstantsSetValues_PlasticMises(materialconstants,   n, data->cohesion[n],data->cohesion[n]);CHKERRQ(ierr);
+      ierr = MaterialConstantsSetValues_PlasticMises(materialconstants,   n, data->cohesion[n],data->cohesion[n],0.0);CHKERRQ(ierr);
     } else {
       ierr = MaterialConstantsSetValues_MaterialType(materialconstants,   n ,VISCOUS_CONSTANT,PLASTIC_NONE,SOFTENING_NONE,DENSITY_CONSTANT);CHKERRQ(ierr);
     }

@@ -1550,6 +1550,7 @@ PetscErrorCode MaterialConstantsSetDefault_PlasticMises(DataBucket db)
   for (r=0; r<nregions; r++) {
     data[r].tau_yield     = 1.0e32;
     data[r].tau_yield_inf = 1.0e32;
+    data[r].healing_rate  = 0.0;
   }
 
   PetscFunctionReturn(0);
@@ -1595,6 +1596,17 @@ PetscErrorCode MaterialConstantsSetFromOptions_PlasticMises(DataBucket db,const 
     ierr = MaterialConstantsReportParseError(model_name,field_name,region_id);CHKERRQ(ierr);
   }
 
+  /* healing_rate */
+  value      = 0.0; /* default - not required is nothing happens if option not found */
+  field_name = (char*)MaterialConst_PlasticMises_member_names[2];
+  PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%s_%d",field_name,region_id);
+  ierr = PetscOptionsGetReal(NULL,model_name,opt_name,&value,&found);CHKERRQ(ierr);
+  if (found) {
+    MaterialConst_PlasticMisesSetField_healing_rate(data,value); /* use setter */
+  } else if ( (!found)  && (essential) ) {
+    ierr = MaterialConstantsReportParseError(model_name,field_name,region_id);CHKERRQ(ierr);
+  }
+
   DataFieldRestoreAccess(PField);
 
   PetscFunctionReturn(0);
@@ -1626,12 +1638,17 @@ PetscErrorCode MaterialConstantsPrintValues_PlasticMises(DataBucket db,const int
   MaterialConst_PlasticMisesGetField_yield_stress_inf(data,&value); /* use setter */
   PetscPrintf(PETSC_COMM_WORLD,"Current Value %s   :  %1.4e  \n", opt_name ,value);
 
+  field_name = (char*)MaterialConst_PlasticMises_member_names[2];
+  PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%s_%d",field_name,region_id);
+  MaterialConst_PlasticMisesGetField_healing_rate(data,&value); /* use setter */
+  PetscPrintf(PETSC_COMM_WORLD,"Current Value %s   :  %1.4e  \n", opt_name ,value);
+
   DataFieldRestoreAccess(PField);
 
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MaterialConstantsSetValues_PlasticMises(DataBucket db,const int region_id,PetscReal yield_stress,PetscReal yield_stress_inf)
+PetscErrorCode MaterialConstantsSetValues_PlasticMises(DataBucket db,const int region_id,PetscReal yield_stress,PetscReal yield_stress_inf,PetscReal healing_rate)
 {
   DataField                    PField;
   MaterialConst_PlasticMises   *data;
@@ -1649,17 +1666,20 @@ PetscErrorCode MaterialConstantsSetValues_PlasticMises(DataBucket db,const int r
   if (yield_stress_inf != PETSC_DEFAULT) {
     MaterialConst_PlasticMisesSetField_yield_stress_inf(data,yield_stress_inf); /* use setter */
   }
+  if (healing_rate != PETSC_DEFAULT) {
+    MaterialConst_PlasticMisesSetField_healing_rate(data,healing_rate); /* use setter */
+  }
 
   DataFieldRestoreAccess(PField);
 
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MaterialConstantsScaleValues_PlasticMises(DataBucket db,const int region_id,PetscReal stress_star)
+PetscErrorCode MaterialConstantsScaleValues_PlasticMises(DataBucket db,const int region_id,PetscReal stress_star,PetscReal strainrate_star)
 {
   DataField                    PField;
   MaterialConst_PlasticMises   *data;
-  PetscReal                    yield_stress, yield_stress_inf;
+  PetscReal                    yield_stress, yield_stress_inf, healing_rate;
   PetscFunctionBegin;
 
   DataBucketGetDataFieldByName(db,MaterialConst_PlasticMises_classname,&PField);
@@ -1674,6 +1694,10 @@ PetscErrorCode MaterialConstantsScaleValues_PlasticMises(DataBucket db,const int
   MaterialConst_PlasticMisesGetField_yield_stress_inf(data,&yield_stress_inf);
   yield_stress_inf = yield_stress_inf / stress_star;
   MaterialConst_PlasticMisesSetField_yield_stress_inf(data,yield_stress_inf);
+
+  MaterialConst_PlasticMisesGetField_healing_rate(data,&healing_rate);
+  healing_rate = healing_rate / strainrate_star;
+  MaterialConst_PlasticMisesSetField_healing_rate(data,healing_rate);
 
   DataFieldRestoreAccess(PField);
 
@@ -1695,12 +1719,13 @@ PetscErrorCode MaterialConstantsSetDefault_PlasticDP(DataBucket db)
 
   data = (MaterialConst_PlasticDP*)PField->data; /* should write a function to do this */
   for (r=0; r<nregions; r++) {
-    data[r].Co      = 1.0e32;
-    data[r].Co_inf  = 1.0e32;
-    data[r].phi     = 0.6;
-    data[r].phi_inf = 0.6;
-    data[r].tens_cutoff = 1.0;
-    data[r].hst_cutoff = 1.0e32;
+    data[r].Co           = 1.0e32;
+    data[r].Co_inf       = 1.0e32;
+    data[r].phi          = 0.6;
+    data[r].phi_inf      = 0.6;
+    data[r].tens_cutoff  = 1.0;
+    data[r].hst_cutoff   = 1.0e32;
+    data[r].healing_rate = 0.0;
   }
 
   PetscFunctionReturn(0);
@@ -1789,6 +1814,17 @@ PetscErrorCode MaterialConstantsSetFromOptions_PlasticDP(DataBucket db,const cha
     ierr = MaterialConstantsReportParseError(model_name,field_name,region_id);CHKERRQ(ierr);
   }
 
+  /* healing rate */
+  value      = 0.0; /* default - not required as nothing happens if option not found */
+  field_name = (char*)MaterialConst_PlasticDP_member_names[6];
+  PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%s_%d",field_name,region_id);
+  ierr = PetscOptionsGetReal(NULL,model_name,opt_name,&value,&found);CHKERRQ(ierr);
+  if (found) {
+    MaterialConst_PlasticDPSetField_healing_rate(data,value); /* use setter */
+  } else if ( (!found)  && (essential) ) {
+    ierr = MaterialConstantsReportParseError(model_name,field_name,region_id);CHKERRQ(ierr);
+  }
+
   DataFieldRestoreAccess(PField);
 
   PetscFunctionReturn(0);
@@ -1844,12 +1880,18 @@ PetscErrorCode MaterialConstantsPrintValues_PlasticDP(DataBucket db,const int re
   MaterialConst_PlasticDPGetField_hst_cutoff(data,&value); /* use setter */
   PetscPrintf(PETSC_COMM_WORLD,"Current Value %s   :  %1.4e  \n", opt_name ,value);
 
+  /* healing rate */
+  field_name = (char*)MaterialConst_PlasticDP_member_names[6];
+  PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-%s_%d",field_name,region_id);
+  MaterialConst_PlasticDPGetField_healing_rate(data,&value); /* use setter */
+  PetscPrintf(PETSC_COMM_WORLD,"Current Value %s   :  %1.4e  \n", opt_name ,value);
+
   DataFieldRestoreAccess(PField);
 
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MaterialConstantsSetValues_PlasticDP(DataBucket db,const int region_id,PetscReal friction,PetscReal friction_inf,PetscReal cohesion,PetscReal cohesion_inf,PetscReal tens_cutoff,PetscReal hst_cutoff)
+PetscErrorCode MaterialConstantsSetValues_PlasticDP(DataBucket db,const int region_id,PetscReal friction,PetscReal friction_inf,PetscReal cohesion,PetscReal cohesion_inf,PetscReal tens_cutoff,PetscReal hst_cutoff, PetscReal healing_rate)
 {
   DataField                    PField;
   MaterialConst_PlasticDP      *data;
@@ -1889,6 +1931,9 @@ PetscErrorCode MaterialConstantsSetValues_PlasticDP(DataBucket db,const int regi
   if (hst_cutoff != PETSC_DEFAULT) {
     MaterialConst_PlasticDPSetField_hst_cutoff(data,hst_cutoff); /* use setter */
   }
+  if (healing_rate != PETSC_DEFAULT) {
+    MaterialConst_PlasticDPSetField_healing_rate(data,healing_rate); /* use setter */
+  }
 
   DataFieldRestoreAccess(PField);
 
@@ -1896,11 +1941,11 @@ PetscErrorCode MaterialConstantsSetValues_PlasticDP(DataBucket db,const int regi
 }
 
 
-PetscErrorCode MaterialConstantsScaleValues_PlasticDP(DataBucket db,const int region_id, PetscReal stress_star)
+PetscErrorCode MaterialConstantsScaleValues_PlasticDP(DataBucket db,const int region_id, PetscReal stress_star, PetscReal strainrate_star)
 {
   DataField                    PField;
   MaterialConst_PlasticDP      *data;
-  PetscReal                    cohesion,cohesion_inf,tens_cutoff,hst_cutoff;
+  PetscReal                    cohesion,cohesion_inf,tens_cutoff,hst_cutoff,healing_rate;
   PetscFunctionBegin;
 
   DataBucketGetDataFieldByName(db,MaterialConst_PlasticDP_classname,&PField);
@@ -1923,6 +1968,10 @@ PetscErrorCode MaterialConstantsScaleValues_PlasticDP(DataBucket db,const int re
   MaterialConst_PlasticDPGetField_hst_cutoff(data,&hst_cutoff); /* use setter */
   hst_cutoff = hst_cutoff/stress_star;
   MaterialConst_PlasticDPSetField_hst_cutoff(data,hst_cutoff); /* use setter */
+
+  MaterialConst_PlasticDPGetField_healing_rate(data,&healing_rate); /* use setter */
+  healing_rate = healing_rate/strainrate_star;
+  MaterialConst_PlasticDPSetField_healing_rate(data,healing_rate); /* use setter */
 
   DataFieldRestoreAccess(PField);
 
@@ -2356,16 +2405,16 @@ PetscErrorCode MaterialConstantsScaleAll(DataBucket db,const int region_id,Petsc
     case PLASTIC_NONE:
       break;
     case PLASTIC_MISES:
-      ierr = MaterialConstantsScaleValues_PlasticMises(db,region_id,P_star);CHKERRQ(ierr);
+      ierr = MaterialConstantsScaleValues_PlasticMises(db,region_id,P_star,1.0/t_star);CHKERRQ(ierr);
       break;
     case PLASTIC_MISES_H:
-      ierr = MaterialConstantsScaleValues_PlasticMises(db,region_id,P_star);CHKERRQ(ierr);
+      ierr = MaterialConstantsScaleValues_PlasticMises(db,region_id,P_star,1.0/t_star);CHKERRQ(ierr);
       break;
     case PLASTIC_DP:
-      ierr = MaterialConstantsScaleValues_PlasticDP(db,region_id,P_star);CHKERRQ(ierr);
+      ierr = MaterialConstantsScaleValues_PlasticDP(db,region_id,P_star,1.0/t_star);CHKERRQ(ierr);
       break;
     case PLASTIC_DP_H:
-      ierr = MaterialConstantsScaleValues_PlasticDP(db,region_id,P_star);CHKERRQ(ierr);
+      ierr = MaterialConstantsScaleValues_PlasticDP(db,region_id,P_star,1.0/t_star);CHKERRQ(ierr);
       break;
     default:
       SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"PLASTIC TYPE UNDEFINED");

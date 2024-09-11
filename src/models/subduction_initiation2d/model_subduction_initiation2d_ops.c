@@ -156,8 +156,8 @@ PetscErrorCode ModelInitialize_Subduction_Initiation2d(pTatinCtx c,void *ctx)
   MaterialConstantsSetValues_DensityBoussinesq(materialconstants,0,data->rho[0],data->alpha[0],0.0);
   MaterialConstantsSetValues_DensityConst(materialconstants,0,data->rho[0]);
 #if 1
-  MaterialConstantsSetValues_PlasticDP(materialconstants,0,data->mu[0],data->mu_inf[0],data->C0[0],data->C0_inf[0],data->C0_inf[0],3.5*data->C0[0]);
-  //       MaterialConstantsSetValues_PlasticMises(materialconstants,0,10.0*data->C0[0],10.0*data->C0[0]);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,0,data->mu[0],data->mu_inf[0],data->C0[0],data->C0_inf[0],data->C0_inf[0],3.5*data->C0[0],0.0);
+  //       MaterialConstantsSetValues_PlasticMises(materialconstants,0,10.0*data->C0[0],10.0*data->C0[0],0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,0,0.1,0.6);
 #endif
   MaterialConstantsSetValues_MaterialType(materialconstants,1,VISCOUS_FRANKK,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_BOUSSINESQ);
@@ -167,7 +167,7 @@ PetscErrorCode ModelInitialize_Subduction_Initiation2d(pTatinCtx c,void *ctx)
   MaterialConstantsSetValues_DensityConst(materialconstants,1,data->rho[0]);
 
 #if 1
-  MaterialConstantsSetValues_PlasticDP(materialconstants,1,data->mu[0],data->mu_inf[0],0.1*data->C0[0],0.1*data->C0_inf[0],0.1*data->C0_inf[0],0.1*data->C0[0]);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,1,data->mu[0],data->mu_inf[0],0.1*data->C0[0],0.1*data->C0_inf[0],0.1*data->C0_inf[0],0.1*data->C0[0],0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,1,0.0,0.2);
 #endif
 
@@ -177,7 +177,7 @@ PetscErrorCode ModelInitialize_Subduction_Initiation2d(pTatinCtx c,void *ctx)
   MaterialConstantsSetValues_DensityBoussinesq(materialconstants,2,data->rho[0],data->alpha[0],0.0);
   MaterialConstantsSetValues_DensityConst(materialconstants,2,data->rho[0]);
 #if 1
-  MaterialConstantsSetValues_PlasticDP(materialconstants,2,data->mu[0],data->mu_inf[0],0.1*data->C0[0],0.1*data->C0_inf[0],0.1*data->C0_inf[0],0.1*data->C0[0]);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,2,data->mu[0],data->mu_inf[0],0.1*data->C0[0],0.1*data->C0_inf[0],0.1*data->C0_inf[0],0.1*data->C0[0],0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,2,0.0,0.2);
 #endif
 
@@ -187,7 +187,7 @@ PetscErrorCode ModelInitialize_Subduction_Initiation2d(pTatinCtx c,void *ctx)
   MaterialConstantsSetValues_DensityBoussinesq(materialconstants,3,data->rho[0],data->alpha[0],0.0);
   MaterialConstantsSetValues_DensityConst(materialconstants,3,data->rho[0]);
 #if 1
-  MaterialConstantsSetValues_PlasticDP(materialconstants,3,data->mu[0],data->mu_inf[0],0.1*data->C0[0],0.1*data->C0_inf[0],0.1*data->C0_inf[0],0.1*data->C0[0]);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,3,data->mu[0],data->mu_inf[0],0.1*data->C0[0],0.1*data->C0_inf[0],0.1*data->C0_inf[0],0.1*data->C0[0],0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,3,0.0,0.2);
 #endif
 

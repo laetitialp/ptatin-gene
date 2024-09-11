@@ -217,8 +217,8 @@ PetscErrorCode ModelInitialize_Riftrh(pTatinCtx c,void *ctx)
   //PLASTICITY PARAMETERS
   phi1_rad=M_PI*15./180.;
   phi2_rad=M_PI*2./180.;
-  MaterialConstantsSetValues_PlasticDP(materialconstants,regionidx,phi1_rad,phi2_rad,2.e7,2.e7,1.e7,1e20);
-  MaterialConstantsSetValues_PlasticMises(materialconstants,regionidx,1.e8,1.e8);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,regionidx,phi1_rad,phi2_rad,2.e7,2.e7,1.e7,1e20,0.0);
+  MaterialConstantsSetValues_PlasticMises(materialconstants,regionidx,1.e8,1.e8,0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,regionidx,0.1,0.5);
 
   /* PHASE 1, MANTLE LITHOSPHERE */
@@ -249,8 +249,8 @@ PetscErrorCode ModelInitialize_Riftrh(pTatinCtx c,void *ctx)
   //PLASTICITY PARAMETERS
   phi1_rad=M_PI*15./180.;
   phi2_rad=M_PI*2./180.;
-  MaterialConstantsSetValues_PlasticDP(materialconstants,regionidx,phi1_rad,phi2_rad,2.e7,2.e7,1.e7,1e20);
-  MaterialConstantsSetValues_PlasticMises(materialconstants,regionidx,1.e8,1.e8);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,regionidx,phi1_rad,phi2_rad,2.e7,2.e7,1.e7,1e20,0.0);
+  MaterialConstantsSetValues_PlasticMises(materialconstants,regionidx,1.e8,1.e8,0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,regionidx,0.1,0.5);
 
   /* PHASE 2, CRUST / UPPER LITHOSPHERE */
@@ -281,8 +281,8 @@ PetscErrorCode ModelInitialize_Riftrh(pTatinCtx c,void *ctx)
   //PLASTICITY PARAMETERS
   phi1_rad=M_PI*15./180.;
   phi2_rad=M_PI*2./180.;
-  MaterialConstantsSetValues_PlasticDP(materialconstants,regionidx,phi1_rad,phi2_rad,2.e7,2.e7,1.e7,1e20);
-  MaterialConstantsSetValues_PlasticMises(materialconstants,regionidx,1.e8,1.e8);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,regionidx,phi1_rad,phi2_rad,2.e7,2.e7,1.e7,1e20,0.0);
+  MaterialConstantsSetValues_PlasticMises(materialconstants,regionidx,1.e8,1.e8,0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,regionidx,0.1,0.5);
 
 

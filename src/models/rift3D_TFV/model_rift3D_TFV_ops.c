@@ -125,8 +125,8 @@ static PetscErrorCode ModelSetMaterialConstants_FK(DataBucket materialconstants,
   MaterialConstantsSetValues_ViscosityFK(materialconstants,0,1.0e27,0.025);
   MaterialConstantsSetValues_DensityBoussinesq(materialconstants,0,2700,2.e-5,0.0);
   MaterialConstantsSetValues_DensityConst(materialconstants,0,2700);
-  MaterialConstantsSetValues_PlasticDP(materialconstants,0,0.6,0.1,2.e7,2.e7,1.e7,2.e8);
-  MaterialConstantsSetValues_PlasticMises(materialconstants,0,1.e8,1.e8);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,0,0.6,0.1,2.e7,2.e7,1.e7,2.e8,0.0);
+  MaterialConstantsSetValues_PlasticMises(materialconstants,0,1.e8,1.e8,0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,0,0.0,0.3);
 
   MaterialConstantsSetValues_MaterialType(materialconstants,1,VISCOUS_FRANKK,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_BOUSSINESQ);
@@ -134,8 +134,8 @@ static PetscErrorCode ModelSetMaterialConstants_FK(DataBucket materialconstants,
   MaterialConstantsSetValues_ViscosityFK(materialconstants,1,1.0e27,0.03);
   MaterialConstantsSetValues_DensityBoussinesq(materialconstants,1,2800,2.e-5,3.e-12);
   MaterialConstantsSetValues_DensityConst(materialconstants,1,2800);
-  MaterialConstantsSetValues_PlasticDP(materialconstants,1,0.6,0.1,2.e7,2.e7,1.e7,2.e8);
-  MaterialConstantsSetValues_PlasticMises(materialconstants,1,1.e8,1.e8);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,1,0.6,0.1,2.e7,2.e7,1.e7,2.e8,0.0);
+  MaterialConstantsSetValues_PlasticMises(materialconstants,1,1.e8,1.e8,0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,1,0.0,0.3);
 
   ierr = MaterialConstantsSetValues_EnergyMaterialConstants(1,matconstants_e,0.0,0.0,rho_ref,Cp,ENERGYDENSITY_CONSTANT,ENERGYCONDUCTIVITY_CONSTANT,NULL);CHKERRQ(ierr);
@@ -147,8 +147,8 @@ static PetscErrorCode ModelSetMaterialConstants_FK(DataBucket materialconstants,
   MaterialConstantsSetValues_ViscosityFK(materialconstants,2,1.0e30,0.018);
   MaterialConstantsSetValues_DensityBoussinesq(materialconstants,2,3300,2.e-5,3.e-12);
   MaterialConstantsSetValues_DensityConst(materialconstants,2,3300);
-  MaterialConstantsSetValues_PlasticDP(materialconstants,2,0.6,0.1,2.e7,2.e7,2.e7,3.e8);
-  MaterialConstantsSetValues_PlasticMises(materialconstants,2,3.e8,3.e8);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,2,0.6,0.1,2.e7,2.e7,2.e7,3.e8,0.0);
+  MaterialConstantsSetValues_PlasticMises(materialconstants,2,3.e8,3.e8,0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,2,0.0,0.3);
 
   ierr = MaterialConstantsSetValues_EnergyMaterialConstants(2,matconstants_e,0.0,0.0,rho_ref,Cp,ENERGYDENSITY_CONSTANT,ENERGYCONDUCTIVITY_CONSTANT,NULL);CHKERRQ(ierr);
@@ -159,8 +159,8 @@ static PetscErrorCode ModelSetMaterialConstants_FK(DataBucket materialconstants,
   MaterialConstantsSetValues_ViscosityFK(materialconstants,3,1.0e30,0.018);
   MaterialConstantsSetValues_DensityBoussinesq(materialconstants,3,3300,2.e-5,3.e-12);
   MaterialConstantsSetValues_DensityConst(materialconstants,3,3300);
-  MaterialConstantsSetValues_PlasticDP(materialconstants,3,0.6,0.1,2.e7,2.e7,2.e7,3.e8);
-  MaterialConstantsSetValues_PlasticMises(materialconstants,3,3.e8,3.e8);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,3,0.6,0.1,2.e7,2.e7,2.e7,3.e8,0.0);
+  MaterialConstantsSetValues_PlasticMises(materialconstants,3,3.e8,3.e8,0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,3,0.0,0.3);
 
   ierr = MaterialConstantsSetValues_EnergyMaterialConstants(3,matconstants_e,0.0,0.0,rho_ref,Cp,ENERGYDENSITY_CONSTANT,ENERGYCONDUCTIVITY_CONSTANT,NULL);CHKERRQ(ierr);

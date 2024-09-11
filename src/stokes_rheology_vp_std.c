@@ -160,6 +160,23 @@ static inline void ComputeSecondInvariant3d(double A[NSD][NSD],double *A2)
  }
  */
 
+PetscErrorCode HealPlasticStrainMarker(pTatinCtx ptatin, MPntPStokesPl *mpprop_pls, double healing_rate)
+{
+  PetscReal      dt;
+  float          eplastic;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = pTatinGetTimestep(ptatin,&dt);CHKERRQ(ierr);
+  MPntPStokesPlGetField_plastic_strain(mpprop_pls,&eplastic);
+  eplastic = eplastic - dt * healing_rate;
+  /* Ensure plastic strain cannot be negative */
+  if (eplastic < 0.0) { eplastic = 0.0; }
+  MPntPStokesPlSetField_plastic_strain(mpprop_pls,eplastic);
+        
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx user,DM dau,PetscScalar ufield[],DM dap,PetscScalar pfield[],DM daT,PetscScalar Tfield[])
 {
   PetscErrorCode ierr;
@@ -533,6 +550,7 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
         {
           double tau_yield_mp  = PlasticMises_data[ region_idx ].tau_yield;
           double tau_yield_inf = PlasticMises_data[ region_idx ].tau_yield_inf;
+          double healing_rate  = PlasticMises_data[ region_idx ].healing_rate;
 
           switch (softening_type) {
             case SOFTENING_NONE: 
@@ -582,6 +600,7 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
             npoints_yielded++;
             MPntPStokesPlSetField_yield_indicator(mpprop_pls,YTYPE_MISES);
           }
+          ierr = HealPlasticStrainMarker(user,mpprop_pls,healing_rate);CHKERRQ(ierr);
         }
         break;
 
@@ -589,6 +608,7 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
         {
           double tau_yield_mp  = PlasticMises_data[ region_idx ].tau_yield;
           double tau_yield_inf = PlasticMises_data[ region_idx ].tau_yield;
+          double healing_rate  = PlasticMises_data[ region_idx ].healing_rate;
           double eta_flow_mp,eta_yield_mp;
 
           switch (MatType_data[ region_idx ].softening_type) {
@@ -633,6 +653,7 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
           eta_mp = 1.0/ (  1.0/eta_flow_mp + 1.0/eta_yield_mp );
 
           npoints_yielded++;
+          ierr = HealPlasticStrainMarker(user,mpprop_pls,healing_rate);CHKERRQ(ierr);
         }
         break;
 
@@ -640,11 +661,11 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
         {
           double    tau_yield_mp;
           short     yield_type;
-          PetscReal phi     = PlasticDP_data[ region_idx ].phi;
-          PetscReal Co      = PlasticDP_data[ region_idx ].Co;
-          PetscReal phi_inf = PlasticDP_data[ region_idx ].phi_inf;
-          PetscReal Co_inf  = PlasticDP_data[ region_idx ].Co_inf;
-
+          PetscReal phi          = PlasticDP_data[ region_idx ].phi;
+          PetscReal Co           = PlasticDP_data[ region_idx ].Co;
+          PetscReal phi_inf      = PlasticDP_data[ region_idx ].phi_inf;
+          PetscReal Co_inf       = PlasticDP_data[ region_idx ].Co_inf;
+          PetscReal healing_rate = PlasticDP_data[ region_idx ].healing_rate;
 
           switch (MatType_data[ region_idx ].softening_type) {
 
@@ -714,6 +735,7 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
             npoints_yielded++;
             MPntPStokesPlSetField_yield_indicator(mpprop_pls,yield_type);
           }
+          ierr = HealPlasticStrainMarker(user,mpprop_pls,healing_rate);CHKERRQ(ierr);
         }
         break;
 
@@ -1193,6 +1215,7 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
       {
         double tau_yield_mp  = PlasticMises_data[ region_idx ].tau_yield;
         double tau_yield_inf = PlasticMises_data[ region_idx ].tau_yield_inf;
+        double healing_rate  = PlasticMises_data[ region_idx ].healing_rate;
         
         switch (softening_type) {
           case SOFTENING_NONE:
@@ -1242,6 +1265,8 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
           npoints_yielded++;
           MPntPStokesPlSetField_yield_indicator(mpprop_pls,YTYPE_MISES);
         }
+        /* healing */
+        ierr = HealPlasticStrainMarker(user,mpprop_pls,healing_rate);CHKERRQ(ierr);
       }
         break;
         
@@ -1249,6 +1274,7 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
       {
         double tau_yield_mp  = PlasticMises_data[ region_idx ].tau_yield;
         double tau_yield_inf = PlasticMises_data[ region_idx ].tau_yield;
+        double healing_rate  = PlasticMises_data[ region_idx ].healing_rate;
         double eta_flow_mp,eta_yield_mp;
         
         switch (MatType_data[ region_idx ].softening_type) {
@@ -1293,6 +1319,7 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
         eta_mp = 1.0/ (  1.0/eta_flow_mp + 1.0/eta_yield_mp );
         
         npoints_yielded++;
+        ierr = HealPlasticStrainMarker(user,mpprop_pls,healing_rate);CHKERRQ(ierr);
       }
         break;
         
@@ -1300,11 +1327,11 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
       {
         double    tau_yield_mp;
         short     yield_type;
-        PetscReal phi     = PlasticDP_data[ region_idx ].phi;
-        PetscReal Co      = PlasticDP_data[ region_idx ].Co;
-        PetscReal phi_inf = PlasticDP_data[ region_idx ].phi_inf;
-        PetscReal Co_inf  = PlasticDP_data[ region_idx ].Co_inf;
-        
+        PetscReal phi          = PlasticDP_data[ region_idx ].phi;
+        PetscReal Co           = PlasticDP_data[ region_idx ].Co;
+        PetscReal phi_inf      = PlasticDP_data[ region_idx ].phi_inf;
+        PetscReal Co_inf       = PlasticDP_data[ region_idx ].Co_inf;
+        PetscReal healing_rate = PlasticDP_data[ region_idx ].healing_rate;
         
         switch (MatType_data[ region_idx ].softening_type) {
             
@@ -1374,6 +1401,7 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
           npoints_yielded++;
           MPntPStokesPlSetField_yield_indicator(mpprop_pls,yield_type);
         }
+        ierr = HealPlasticStrainMarker(user,mpprop_pls,healing_rate);CHKERRQ(ierr);
       }
         break;
         

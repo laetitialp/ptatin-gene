@@ -162,9 +162,9 @@ PetscErrorCode ModelInitialize_PD(pTatinCtx ptatinctx,void *modelctx)
     MaterialConstantsSetValues_MaterialType(materialconstants,regionidx,VISCOUS_CONSTANT,PLASTIC_MISES,SOFTENING_NONE,DENSITY_CONSTANT);
     ierr = MaterialConstantsSetValues_ViscosityConst(materialconstants,regionidx,1.0e24);CHKERRQ(ierr);
 
-    ierr = MaterialConstantsSetValues_PlasticMises(materialconstants,regionidx,1.000000e+08,1.000000e+8);CHKERRQ(ierr);
+    ierr = MaterialConstantsSetValues_PlasticMises(materialconstants,regionidx,1.000000e+08,1.000000e+8,0.0);CHKERRQ(ierr);
 
-    ierr = MaterialConstantsSetValues_PlasticDP(materialconstants,regionidx,30.0*M_PI/180.0,30.0*M_PI/180.0,1.000000e+08,1.000000e+08,1.000000e+07,1.000000e+10);CHKERRQ(ierr);
+    ierr = MaterialConstantsSetValues_PlasticDP(materialconstants,regionidx,30.0*M_PI/180.0,30.0*M_PI/180.0,1.000000e+08,1.000000e+08,1.000000e+07,1.000000e+10,0.0);CHKERRQ(ierr);
 
     MaterialConstantsSetValues_DensityConst(materialconstants,regionidx,2.700000e+03);
   }

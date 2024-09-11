@@ -845,10 +845,10 @@ def Generate_pTatin_MaterialConst_ViscosityConst():
 def Generate_pTatin_MaterialConst_PlasticMises():
 	ClassName      = 'MaterialConst_PlasticMises'
 	ClassNameShort = 'PlasticMises'
-	variable_names =          [ 'tau_yield'   , 'tau_yield_inf'    ]
-	variable_types =          [ 'double'      , 'double'           ]
-	variable_extents        = [ 1             , 1                  ]
-	variable_textural_names = [ 'yield_stress', 'yield_stress_inf' ]
+	variable_names =          [ 'tau_yield'   , 'tau_yield_inf',    'healing_rate'    ]
+	variable_types =          [ 'double'      , 'double'       ,    'double'          ]
+	variable_extents        = [ 1             , 1              ,    1                 ]
+	variable_textural_names = [ 'yield_stress', 'yield_stress_inf', 'healing_rate'    ]
 
 	PARTICLE_CLASS_GENERATOR( ClassName, ClassNameShort, variable_names, variable_types, variable_extents, variable_textural_names )
 
@@ -865,10 +865,10 @@ def Generate_pTatin_MaterialConst_ViscosityZ():
 def Generate_pTatin_MaterialConst_PlasticDP():
 	ClassName      = 'MaterialConst_PlasticDP'
 	ClassNameShort = 'PlasticDP'
-	variable_names =          [ 'phi'       ,'Co'       ,'phi_inf'      ,'Co_inf'       ,'tens_cutoff'  ,'hst_cutoff']
-	variable_types =          [ 'double'    ,'double'   ,'double'       ,'double'       ,'double'       ,'double'    ]
-	variable_extents        = [ 1           , 1         ,1              ,1              , 1             ,   1        ]
-	variable_textural_names = [ 'friction'  ,'cohesion' ,'friction_inf' ,'cohesion_inf' ,'tens_cutoff'  ,'hst_cutoff']
+	variable_names =          [ 'phi'       ,'Co'       ,'phi_inf'      ,'Co_inf'       ,'tens_cutoff'  ,'hst_cutoff', 'healing_rate']
+	variable_types =          [ 'double'    ,'double'   ,'double'       ,'double'       ,'double'       ,'double'    , 'double'      ]
+	variable_extents        = [ 1           , 1         ,1              ,1              , 1             ,   1        , 1						 ]
+	variable_textural_names = [ 'friction'  ,'cohesion' ,'friction_inf' ,'cohesion_inf' ,'tens_cutoff'  ,'hst_cutoff', 'healing_rate']
 	PARTICLE_CLASS_GENERATOR( ClassName, ClassNameShort, variable_names, variable_types, variable_extents, variable_textural_names )
 
 def Generate_pTatin_MaterialConst_MaterialType():
@@ -974,7 +974,7 @@ def Generate_pTatin_MaterialConst_SoftExpo():
 # Generate_pTatin3d_MaterialPointStandard()
 # Generate_pTatin_MaterialPointStokesData()
 # Generate_pTatin_MaterialPointStokesPlastic()
-Generate_pTatin_MaterialPointEnergy()
+# Generate_pTatin_MaterialPointEnergy()
 # Generate_pTatin_MaterialPointViscoElasticity()
 
 # ## material constants ##
@@ -988,8 +988,8 @@ Generate_pTatin_MaterialPointEnergy()
 # Generate_pTatin_MaterialConst_DensityBoussinesq()
 # Generate_pTatin_MaterialConst_DensityTable()
 
-# Generate_pTatin_MaterialConst_PlasticMises()
-# Generate_pTatin_MaterialConst_PlasticDP()
+Generate_pTatin_MaterialConst_PlasticMises()
+Generate_pTatin_MaterialConst_PlasticDP()
 # Generate_pTatin_MaterialConst_SoftLin()
 # Generate_pTatin_MaterialConst_SoftExpo()
 # Generate_pTatin_MaterialConst_MaterialType()

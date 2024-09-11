@@ -141,38 +141,38 @@ PetscErrorCode ModelInitialize_GeoMod2008(pTatinCtx c,void *ctx)
   MaterialConstantsSetValues_MaterialType(materialconstants,  RegionQuartz, VISCOUS_CONSTANT,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_CONSTANT);
   MaterialConstantsSetValues_ViscosityConst(materialconstants,RegionQuartz, data->quartz_eta);
   MaterialConstantsSetValues_DensityConst(materialconstants,  RegionQuartz, data->quartz_rho);
-  MaterialConstantsSetValues_PlasticDP(materialconstants,     RegionQuartz, data->quartz_mu,data->quartz_mu_inf, data->quartz_C0,data->quartz_C0_inf, one_third*data->quartz_C0,1.0e20);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,     RegionQuartz, data->quartz_mu,data->quartz_mu_inf, data->quartz_C0,data->quartz_C0_inf, one_third*data->quartz_C0,1.0e20,0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,       RegionQuartz, 0.5,1.0);
 
   MaterialConstantsSetValues_MaterialType(materialconstants,  RegionQuartzBdy, VISCOUS_CONSTANT,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_CONSTANT);
   MaterialConstantsSetValues_ViscosityConst(materialconstants,RegionQuartzBdy, data->quartz_eta);
   MaterialConstantsSetValues_DensityConst(materialconstants,  RegionQuartzBdy, data->quartz_rho);
-  MaterialConstantsSetValues_PlasticDP(materialconstants,     RegionQuartzBdy, data->quartz_bdy_mu,data->quartz_bdy_mu_inf, data->quartz_bdy_C0,data->quartz_bdy_C0_inf, one_third*data->quartz_bdy_C0,1.0e20);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,     RegionQuartzBdy, data->quartz_bdy_mu,data->quartz_bdy_mu_inf, data->quartz_bdy_C0,data->quartz_bdy_C0_inf, one_third*data->quartz_bdy_C0,1.0e20,0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,       RegionQuartzBdy, 0.5,1.0);
 
   MaterialConstantsSetValues_MaterialType(materialconstants,  RegionQuartzBdySkin, VISCOUS_CONSTANT,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_CONSTANT);
   MaterialConstantsSetValues_ViscosityConst(materialconstants,RegionQuartzBdySkin, data->quartz_eta);
   MaterialConstantsSetValues_DensityConst(materialconstants,  RegionQuartzBdySkin, data->quartz_rho);
-  MaterialConstantsSetValues_PlasticDP(materialconstants,     RegionQuartzBdySkin, data->quartz_bdy_mu,data->quartz_bdy_mu_inf, data->quartz_bdy_C0,data->quartz_bdy_C0_inf, one_third*data->quartz_bdy_C0,1.0e20);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,     RegionQuartzBdySkin, data->quartz_bdy_mu,data->quartz_bdy_mu_inf, data->quartz_bdy_C0,data->quartz_bdy_C0_inf, one_third*data->quartz_bdy_C0,1.0e20,0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,       RegionQuartzBdySkin, 0.5,1.0);
 
   /* Corundum */
   MaterialConstantsSetValues_MaterialType(materialconstants,  RegionCorundum, VISCOUS_CONSTANT,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_CONSTANT);
   MaterialConstantsSetValues_ViscosityConst(materialconstants,RegionCorundum, data->corundum_eta);
   MaterialConstantsSetValues_DensityConst(materialconstants,  RegionCorundum, data->corundum_rho);
-  MaterialConstantsSetValues_PlasticDP(materialconstants,     RegionCorundum, data->corundum_mu,data->corundum_mu_inf, data->corundum_C0,data->corundum_C0_inf, one_third*data->corundum_C0,1.0e20);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,     RegionCorundum, data->corundum_mu,data->corundum_mu_inf, data->corundum_C0,data->corundum_C0_inf, one_third*data->corundum_C0,1.0e20,0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,       RegionCorundum, 0.5,1.0);
 
   MaterialConstantsSetValues_MaterialType(materialconstants,  RegionCorundumBdy, VISCOUS_CONSTANT,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_CONSTANT);
   MaterialConstantsSetValues_ViscosityConst(materialconstants,RegionCorundumBdy, data->corundum_eta);
   MaterialConstantsSetValues_DensityConst(materialconstants,  RegionCorundumBdy, data->corundum_rho);
-  MaterialConstantsSetValues_PlasticDP(materialconstants,     RegionCorundumBdy, data->corundum_bdy_mu,data->corundum_bdy_mu_inf, data->corundum_bdy_C0,data->corundum_bdy_C0_inf, one_third*data->corundum_bdy_C0,1.0e20);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,     RegionCorundumBdy, data->corundum_bdy_mu,data->corundum_bdy_mu_inf, data->corundum_bdy_C0,data->corundum_bdy_C0_inf, one_third*data->corundum_bdy_C0,1.0e20,0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,       RegionCorundumBdy, 0.5,1.0);
 
   MaterialConstantsSetValues_MaterialType(materialconstants,  RegionCorundumBdySkin, VISCOUS_CONSTANT,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_CONSTANT);
   MaterialConstantsSetValues_ViscosityConst(materialconstants,RegionCorundumBdySkin, data->corundum_eta);
   MaterialConstantsSetValues_DensityConst(materialconstants,  RegionCorundumBdySkin, data->corundum_rho);
-  MaterialConstantsSetValues_PlasticDP(materialconstants,     RegionCorundumBdySkin, data->corundum_bdy_mu,data->corundum_bdy_mu_inf, data->corundum_bdy_C0,data->corundum_bdy_C0_inf, one_third*data->corundum_bdy_C0,1.0e20);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,     RegionCorundumBdySkin, data->corundum_bdy_mu,data->corundum_bdy_mu_inf, data->corundum_bdy_C0,data->corundum_bdy_C0_inf, one_third*data->corundum_bdy_C0,1.0e20,0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,       RegionCorundumBdySkin, 0.5,1.0);
 
   rheology                = &c->rheology_constants;

@@ -308,8 +308,8 @@ CHKERRQ(ierr);
   //PLASTICITY PARAMETERS
   phi1_rad = M_PI * data->phi1/180.0;
   phi2_rad = M_PI * data->phi2/180.0;
-  MaterialConstantsSetValues_PlasticDP(materialconstants,regionidx,phi1_rad,phi2_rad,data->coe1,data->coe2,1.0e7,1.0e20);
-  MaterialConstantsSetValues_PlasticMises(materialconstants,regionidx,1.0e8,1.0e8);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,regionidx,phi1_rad,phi2_rad,data->coe1,data->coe2,1.0e7,1.0e20,0.0);
+  MaterialConstantsSetValues_PlasticMises(materialconstants,regionidx,1.0e8,1.0e8,0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,regionidx,data->eps1,data->eps2);
 
   // ENERGY //
@@ -355,8 +355,8 @@ CHKERRQ(ierr);
   //PLASTICITY PARAMETERS
   phi1_rad = M_PI * data->phi1/180.0;
   phi2_rad = M_PI * data->phi2/180.0;
-  MaterialConstantsSetValues_PlasticDP(materialconstants,regionidx,phi1_rad,phi2_rad,data->coe1,data->coe2,1.0e7,1.0e20);
-  MaterialConstantsSetValues_PlasticMises(materialconstants,regionidx,1.0e8,1.0e8);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,regionidx,phi1_rad,phi2_rad,data->coe1,data->coe2,1.0e7,1.0e20,0.0);
+  MaterialConstantsSetValues_PlasticMises(materialconstants,regionidx,1.0e8,1.0e8,0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,regionidx,data->eps1,data->eps2);
 
 
@@ -401,8 +401,8 @@ CHKERRQ(ierr);
   //PLASTICITY PARAMETERS
   phi1_rad = M_PI * data->phi1/180.0;
   phi2_rad = M_PI * data->phi2/180.0;
-  MaterialConstantsSetValues_PlasticDP(materialconstants,regionidx,phi1_rad,phi2_rad,data->coe1,data->coe2,1.0e7,1.0e20);
-  MaterialConstantsSetValues_PlasticMises(materialconstants,regionidx,1.0e8,1.0e8);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,regionidx,phi1_rad,phi2_rad,data->coe1,data->coe2,1.0e7,1.0e20,0.0);
+  MaterialConstantsSetValues_PlasticMises(materialconstants,regionidx,1.0e8,1.0e8,0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,regionidx,data->eps1,data->eps2);
 
   //-------------------------------------//
@@ -432,8 +432,8 @@ CHKERRQ(ierr);
   //PLASTICITY PARAMETERS
   phi1_rad = M_PI * data->phi1/180.0;
   phi2_rad = M_PI * data->phi2/180.0;
-  MaterialConstantsSetValues_PlasticDP(materialconstants,regionidx,phi1_rad,phi2_rad,data->coe1,data->coe2,1.0e7,1.0e20);
-  MaterialConstantsSetValues_PlasticMises(materialconstants,regionidx,1.0e8,1.0e8);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,regionidx,phi1_rad,phi2_rad,data->coe1,data->coe2,1.0e7,1.0e20,0.0);
+  MaterialConstantsSetValues_PlasticMises(materialconstants,regionidx,1.0e8,1.0e8,0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,regionidx,data->eps1,data->eps2);
 
   //-------------------------------------//
@@ -463,8 +463,8 @@ CHKERRQ(ierr);
   //PLASTICITY PARAMETERS
   phi1_rad = M_PI * data->phi1/180.0;
   phi2_rad = M_PI * data->phi2/180.0;
-  MaterialConstantsSetValues_PlasticDP(materialconstants,regionidx,phi1_rad,phi2_rad,data->coe1,data->coe2,1.0e7,1.0e20);
-  MaterialConstantsSetValues_PlasticMises(materialconstants,regionidx,1.0e8,1.0e8);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,regionidx,phi1_rad,phi2_rad,data->coe1,data->coe2,1.0e7,1.0e20,0.0);
+  MaterialConstantsSetValues_PlasticMises(materialconstants,regionidx,1.0e8,1.0e8,0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,regionidx,data->eps1,data->eps2);
 
   //-------------------------------------//
@@ -494,8 +494,8 @@ CHKERRQ(ierr);
   //PLASTICITY PARAMETERS
   phi1_rad = M_PI * data->phi1/180.0;
   phi2_rad = M_PI * data->phi2/180.0;
-  MaterialConstantsSetValues_PlasticDP(materialconstants,regionidx,phi1_rad,phi2_rad,data->coe1,data->coe2,1.0e7,1.0e20);
-  MaterialConstantsSetValues_PlasticMises(materialconstants,regionidx,1.0e8,1.0e8);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,regionidx,phi1_rad,phi2_rad,data->coe1,data->coe2,1.0e7,1.0e20,0.0);
+  MaterialConstantsSetValues_PlasticMises(materialconstants,regionidx,1.0e8,1.0e8,0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,regionidx,data->eps1,data->eps2);
 
 
