@@ -160,20 +160,45 @@ static inline void ComputeSecondInvariant3d(double A[NSD][NSD],double *A2)
  }
  */
 
-PetscErrorCode HealPlasticStrainMarker(pTatinCtx ptatin, MPntPStokesPl *mpprop_pls, double healing_rate)
+PetscErrorCode HealPlasticStrainMarker(
+  MaterialConst_MaterialType *MatType_data, 
+  MaterialConst_PlasticMises *PlasticMises_data,
+  MaterialConst_PlasticDP    *PlasticDP_data,
+  MPntStd *mpprop_std, 
+  MPntPStokesPl *mpprop_pls, 
+  PetscReal dt)
 {
-  PetscReal      dt;
-  float          eplastic;
-  PetscErrorCode ierr;
+  int region_idx, plastic_type;
+  double healing_rate;
+  float eplastic;
   PetscFunctionBegin;
-
-  ierr = pTatinGetTimestep(ptatin,&dt);CHKERRQ(ierr);
+  
+  MPntStdGetField_phase_index(mpprop_std,&region_idx);
+  
+  plastic_type = MatType_data[ region_idx ].plastic_type;
+  switch (plastic_type) {
+    case PLASTIC_DP:
+      healing_rate = PlasticDP_data[ region_idx ].healing_rate;
+      break;
+    
+    case PLASTIC_MISES:
+      healing_rate = PlasticMises_data[ region_idx ].healing_rate;
+      break;
+    
+    case PLASTIC_MISES_H:
+      healing_rate = PlasticMises_data[ region_idx ].healing_rate;
+      break;
+    
+    default:
+      healing_rate = 0.0;
+      break;
+  }
   MPntPStokesPlGetField_plastic_strain(mpprop_pls,&eplastic);
   eplastic = eplastic - dt * healing_rate;
   /* Ensure plastic strain cannot be negative */
   if (eplastic < 0.0) { eplastic = 0.0; }
   MPntPStokesPlSetField_plastic_strain(mpprop_pls,eplastic);
-        
+  
   PetscFunctionReturn(0);
 }
 
@@ -550,7 +575,6 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
         {
           double tau_yield_mp  = PlasticMises_data[ region_idx ].tau_yield;
           double tau_yield_inf = PlasticMises_data[ region_idx ].tau_yield_inf;
-          double healing_rate  = PlasticMises_data[ region_idx ].healing_rate;
 
           switch (softening_type) {
             case SOFTENING_NONE: 
@@ -600,7 +624,6 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
             npoints_yielded++;
             MPntPStokesPlSetField_yield_indicator(mpprop_pls,YTYPE_MISES);
           }
-          ierr = HealPlasticStrainMarker(user,mpprop_pls,healing_rate);CHKERRQ(ierr);
         }
         break;
 
@@ -608,7 +631,6 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
         {
           double tau_yield_mp  = PlasticMises_data[ region_idx ].tau_yield;
           double tau_yield_inf = PlasticMises_data[ region_idx ].tau_yield;
-          double healing_rate  = PlasticMises_data[ region_idx ].healing_rate;
           double eta_flow_mp,eta_yield_mp;
 
           switch (MatType_data[ region_idx ].softening_type) {
@@ -653,7 +675,6 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
           eta_mp = 1.0/ (  1.0/eta_flow_mp + 1.0/eta_yield_mp );
 
           npoints_yielded++;
-          ierr = HealPlasticStrainMarker(user,mpprop_pls,healing_rate);CHKERRQ(ierr);
         }
         break;
 
@@ -665,7 +686,6 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
           PetscReal Co           = PlasticDP_data[ region_idx ].Co;
           PetscReal phi_inf      = PlasticDP_data[ region_idx ].phi_inf;
           PetscReal Co_inf       = PlasticDP_data[ region_idx ].Co_inf;
-          PetscReal healing_rate = PlasticDP_data[ region_idx ].healing_rate;
 
           switch (MatType_data[ region_idx ].softening_type) {
 
@@ -735,7 +755,6 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
             npoints_yielded++;
             MPntPStokesPlSetField_yield_indicator(mpprop_pls,yield_type);
           }
-          ierr = HealPlasticStrainMarker(user,mpprop_pls,healing_rate);CHKERRQ(ierr);
         }
         break;
 
@@ -1215,7 +1234,6 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
       {
         double tau_yield_mp  = PlasticMises_data[ region_idx ].tau_yield;
         double tau_yield_inf = PlasticMises_data[ region_idx ].tau_yield_inf;
-        double healing_rate  = PlasticMises_data[ region_idx ].healing_rate;
         
         switch (softening_type) {
           case SOFTENING_NONE:
@@ -1265,8 +1283,6 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
           npoints_yielded++;
           MPntPStokesPlSetField_yield_indicator(mpprop_pls,YTYPE_MISES);
         }
-        /* healing */
-        ierr = HealPlasticStrainMarker(user,mpprop_pls,healing_rate);CHKERRQ(ierr);
       }
         break;
         
@@ -1274,7 +1290,6 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
       {
         double tau_yield_mp  = PlasticMises_data[ region_idx ].tau_yield;
         double tau_yield_inf = PlasticMises_data[ region_idx ].tau_yield;
-        double healing_rate  = PlasticMises_data[ region_idx ].healing_rate;
         double eta_flow_mp,eta_yield_mp;
         
         switch (MatType_data[ region_idx ].softening_type) {
@@ -1319,7 +1334,6 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
         eta_mp = 1.0/ (  1.0/eta_flow_mp + 1.0/eta_yield_mp );
         
         npoints_yielded++;
-        ierr = HealPlasticStrainMarker(user,mpprop_pls,healing_rate);CHKERRQ(ierr);
       }
         break;
         
@@ -1331,7 +1345,6 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
         PetscReal Co           = PlasticDP_data[ region_idx ].Co;
         PetscReal phi_inf      = PlasticDP_data[ region_idx ].phi_inf;
         PetscReal Co_inf       = PlasticDP_data[ region_idx ].Co_inf;
-        PetscReal healing_rate = PlasticDP_data[ region_idx ].healing_rate;
         
         switch (MatType_data[ region_idx ].softening_type) {
             
@@ -1401,7 +1414,6 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
           npoints_yielded++;
           MPntPStokesPlSetField_yield_indicator(mpprop_pls,yield_type);
         }
-        ierr = HealPlasticStrainMarker(user,mpprop_pls,healing_rate);CHKERRQ(ierr);
       }
         break;
         
@@ -1648,8 +1660,8 @@ PetscErrorCode StokesCoefficient_UpdateTimeDependentQuantities_VPSTD(pTatinCtx u
   Vec            gcoords;
   PetscScalar    *LA_gcoords;
   int            pidx,n_mp_points;
-  DataBucket     db;
-  DataField      PField_std,PField;
+  DataBucket     db,material_constants;
+  DataField      PField_std,PField,PField_MatTypes,PField_PlasticMises,PField_PlasticDP;
   float          strain_mp;
   PetscInt       nel,nen_u,k;
   const PetscInt *elnidx_u;
@@ -1664,6 +1676,10 @@ PetscErrorCode StokesCoefficient_UpdateTimeDependentQuantities_VPSTD(pTatinCtx u
   double         inv2_D_mp;
   short          yield_type;
   PetscReal      dt;
+
+  MaterialConst_MaterialType *MatType_data;
+  MaterialConst_PlasticMises *PlasticMises_data;
+  MaterialConst_PlasticDP    *PlasticDP_data;
   PetscFunctionBegin;
 
   /* access current time step */
@@ -1676,6 +1692,18 @@ PetscErrorCode StokesCoefficient_UpdateTimeDependentQuantities_VPSTD(pTatinCtx u
   DataFieldGetAccess(PField_std);
   DataBucketGetDataFieldByName(db,MPntPStokesPl_classname,&PField);
   DataFieldGetAccess(PField);
+
+  /* access material constants */
+  ierr = pTatinGetMaterialConstants(user,&material_constants);CHKERRQ(ierr);
+
+  DataBucketGetDataFieldByName(material_constants,MaterialConst_MaterialType_classname,  &PField_MatTypes);
+  MatType_data           = (MaterialConst_MaterialType*)PField_MatTypes->data;
+
+  DataBucketGetDataFieldByName(material_constants,MaterialConst_PlasticMises_classname,  &PField_PlasticMises);
+  PlasticMises_data      = (MaterialConst_PlasticMises*)  PField_PlasticMises->data;
+
+  DataBucketGetDataFieldByName(material_constants,MaterialConst_PlasticDP_classname,  &PField_PlasticDP);
+  PlasticDP_data         = (MaterialConst_PlasticDP*)  PField_PlasticDP->data;
 
   DataBucketGetSizes(db,&n_mp_points,0,0);
 
@@ -1694,7 +1722,6 @@ PetscErrorCode StokesCoefficient_UpdateTimeDependentQuantities_VPSTD(pTatinCtx u
 
     DataFieldAccessPoint(PField_std, pidx,(void**)&mpprop_std);
     DataFieldAccessPoint(PField,     pidx,(void**)&mpprop);
-
 
     MPntPStokesPlGetField_yield_indicator(mpprop,&yield_type);
     if (yield_type > 0) {
@@ -1729,6 +1756,7 @@ PetscErrorCode StokesCoefficient_UpdateTimeDependentQuantities_VPSTD(pTatinCtx u
       strain_mp = strain_mp + dt * inv2_D_mp;
       MPntPStokesPlSetField_plastic_strain(mpprop,strain_mp);
     }
+    ierr = HealPlasticStrainMarker(MatType_data,PlasticMises_data,PlasticDP_data,mpprop_std,mpprop,dt);CHKERRQ(ierr);
   }
 
   DataFieldRestoreAccess(PField_std);
