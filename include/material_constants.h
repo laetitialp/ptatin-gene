@@ -65,7 +65,8 @@ typedef enum {
 typedef enum {
   SOFTENING_NONE=0,
   SOFTENING_LINEAR,
-  SOFTENING_EXPONENTIAL
+  SOFTENING_EXPONENTIAL,
+  SOFTENING_LINEAR_THERMAL
 } SofteningType;
 
 typedef enum {

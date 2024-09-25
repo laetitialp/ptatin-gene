@@ -2284,6 +2284,9 @@ PetscErrorCode MaterialConstantsSetFromOptions(DataBucket db,const char model_na
     case SOFTENING_EXPONENTIAL:
       ierr = MaterialConstantsSetFromOptions_SoftExpo(db,model_name,region_id,essential);CHKERRQ(ierr);
       break;
+    case SOFTENING_LINEAR_THERMAL:
+      ierr = MaterialConstantsSetFromOptions_SoftLin(db,model_name,region_id,essential);CHKERRQ(ierr);
+      break;
     default:
       SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"SOFTENING TYPE UNDEFINED");
       break;
@@ -2379,6 +2382,8 @@ PetscErrorCode MaterialConstantsScaleAll(DataBucket db,const int region_id,Petsc
     case SOFTENING_LINEAR:
       break;
     case SOFTENING_EXPONENTIAL:
+      break;
+    case SOFTENING_LINEAR_THERMAL:
       break;
     default:
       SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"SOFTENING TYPE UNDEFINED");
@@ -2477,6 +2482,9 @@ PetscErrorCode MaterialConstantsPrintAll(DataBucket db,const int region_id)
       break;
     case SOFTENING_EXPONENTIAL:
       ierr = MaterialConstantsPrintValues_SoftExpo(db,region_id);CHKERRQ(ierr);
+      break;
+    case SOFTENING_LINEAR_THERMAL:
+      ierr = MaterialConstantsPrintValues_SoftLin(db,region_id);CHKERRQ(ierr);
       break;
     default:
       SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"DENSITY TYPE UNDEFINED");
