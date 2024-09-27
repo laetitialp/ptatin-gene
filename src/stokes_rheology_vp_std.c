@@ -54,6 +54,37 @@
 
 typedef enum { YTYPE_NONE=0, YTYPE_MISES=1, YTYPE_DP=2, YTYPE_TENSILE_FAILURE=3 } YieldTypeDefinition;
 
+typedef struct {
+  MaterialConst_MaterialType           *MatType_data;
+  MaterialConst_DensityConst           *DensityConst_data;
+  MaterialConst_DensityBoussinesq      *DensityBoussinesq_data;
+  MaterialConst_DensityTable           *DensityTable_data;
+  MaterialConst_ViscosityConst         *ViscConst_data;
+  MaterialConst_ViscosityZ             *ViscZ_data;
+  MaterialConst_ViscosityFK            *ViscFK_data;
+  MaterialConst_ViscosityArrh          *ViscArrh_data;
+  MaterialConst_ViscosityArrh_DislDiff *ViscArrhDislDiff_data;
+  MaterialConst_PlasticMises           *PlasticMises_data;
+  MaterialConst_PlasticDP              *PlasticDP_data;
+  MaterialConst_SoftLin                *SoftLin_data;
+  MaterialConst_SoftExpo               *SoftExpo_data;
+} MaterialData;
+
+typedef struct {
+  MPntStd       *std;
+  MPntPStokes   *stokes;
+  MPntPStokesPl *pls;
+} MaterialPointData;
+
+typedef struct {
+  MaterialData      *material_data;
+  MaterialPointData *mp_data;
+  PetscReal         *ux,*uy,*uz;
+  PetscReal         *dNudx,*dNudy,*dNudz;
+  PetscReal         *T,*pressure,*viscosity;
+} RheologyData;
+
+
 static inline void ComputeLinearSoft(float eplast,PetscReal emin,PetscReal emax, PetscReal X0, PetscReal Xinf, PetscReal *Xeff)
 {
   *Xeff = X0;
@@ -159,6 +190,219 @@ static inline void ComputeSecondInvariant3d(double A[NSD][NSD],double *A2)
 
  }
  */
+
+static inline PetscReal ViscosityArrhenius2D(
+  PetscReal Ascale, 
+  PetscReal sr, 
+  PetscReal nexp, 
+  PetscReal preexpA, 
+  PetscReal entalpy, 
+  PetscReal T, 
+  PetscReal viscosity_scale)
+{
+  PetscReal viscosity;
+  PetscReal R = 8.31440;
+  PetscFunctionBegin;
+
+  viscosity  = Ascale*0.25*pow(sr,1.0/nexp - 1.0)*pow(0.75*preexpA,-1.0/nexp)*exp(entalpy/(nexp*R*T));
+  viscosity /= viscosity_scale;
+
+  PetscFunctionReturn(viscosity);
+}
+
+static inline PetscReal ViscosityArrhenius(
+  PetscReal Ascale, 
+  PetscReal sr, 
+  PetscReal nexp, 
+  PetscReal preexpA, 
+  PetscReal entalpy, 
+  PetscReal T, 
+  PetscReal viscosity_scale)
+{
+  PetscReal viscosity;
+  PetscReal R = 8.31440;
+  PetscFunctionBegin;
+
+  viscosity  = Ascale*pow(sr,1.0/nexp - 1.0)*pow(preexpA,-1.0/nexp)*exp(entalpy/(nexp*R*T));
+  viscosity /= viscosity_scale;
+
+  PetscFunctionReturn(viscosity);
+}
+
+static inline PetscErrorCode ViscosityArrheniusDislocationCreep(
+  MaterialConst_ViscosityArrh ViscArrh_data,
+  PetscReal T,
+  int viscous_type,
+  PetscReal *viscosity)
+{
+  PetscReal R = 8.31440;
+  PetscReal nexp      = ViscArrh_data.nexp;
+  PetscReal entalpy   = ViscArrh_data.entalpy;
+  PetscReal preexpA   = ViscArrh_data.preexpA;
+  PetscReal Vmol      = ViscArrh_data.Vmol;
+  PetscReal Tref      = ViscArrh_data.Tref;
+  PetscReal Ascale    = ViscArrh_data.Ascale;
+  PetscReal T_arrh    = T + Tref ;
+  PetscReal sr, eta, pressure;
+  double    D_mp[NSD][NSD], inv2_D_mp, eta;
+
+
+  PetscFunctionBegin;
+
+  ComputeStrainRate3d(ux,uy,uz,dNudx,dNudy,dNudz,D_mp);
+  ComputeSecondInvariant3d(D_mp,&inv2_D_mp);
+
+  sr = inv2_D_mp/ViscArrh_data.Eta_scale*ViscArrh_data.P_scale;
+  if (sr < 1.0e-17) { sr = 1.0e-17; }
+
+  pressure = *data->pressure * ViscArrh_data.P_scale;
+  if (pressure >= 0.0) { entalpy = entalpy + pressure*Vmol; }
+
+  if (viscous_type == VISCOUS_ARRHENIUS) {
+    eta = Ascale*0.25*pow(sr,1.0/nexp - 1.0)*pow(0.75*preexpA,-1.0/nexp)*exp(entalpy/(nexp*R*T));
+  } else if (viscous_type == VISCOUS_ARRHENIUS_2) {
+    eta = Ascale*pow(sr,1.0/nexp - 1.0)*pow(preexpA,-1.0/nexp)*exp(entalpy/(nexp*R*T));
+  } else { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"viscous_type can only be VISCOUS_ARRHENIUS, VISCOUS_ARRHENIUS_2"); }
+  
+  *viscosity /= viscosity_scale;
+  
+  PetscFunctionReturn(0);
+}
+
+static inline PetscErrorCode EvaluateViscosityOnMarker_Viscous(int viscous_type, int region_idx, RheologyData *data)
+{
+  PetscFunctionBegin;
+  
+  switch (viscous_type) {
+
+  case VISCOUS_CONSTANT: 
+  {
+    *data->viscosity = data->material_data->ViscConst_data[ region_idx ].eta0;
+  }
+  break;
+
+  case VISCOUS_Z: 
+  {
+    MaterialConst_ViscosityZ ViscZ_data = data->material_data->ViscZ_data[ region_idx ];
+    double y = data->mp_data->std->coor[1];
+    *data->viscosity = ViscZ_data.eta0*exp(-(ViscZ_data.zref-y)/ViscZ_data.zeta);
+  }
+  break;
+
+  case VISCOUS_FRANKK: 
+  {
+    MaterialConst_ViscosityFK ViscFK_data = data->material_data->ViscFK_data[ region_idx ];
+    PetscReal T = *data->T;
+    *data->viscosity = ViscFK_data.eta0*exp(-ViscFK_data.theta*T);
+  }
+  break;
+
+  case VISCOUS_ARRHENIUS: 
+  {
+    MaterialConst_ViscosityArrh ViscArrh_data = data->material_data->ViscArrh_data[ region_idx ];
+    PetscReal nexp      = ViscArrh_data.nexp;
+    PetscReal entalpy   = ViscArrh_data.entalpy;
+    PetscReal preexpA   = ViscArrh_data.preexpA;
+    PetscReal Vmol      = ViscArrh_data.Vmol;
+    PetscReal Tref      = ViscArrh_data.Tref;
+    PetscReal Ascale    = ViscArrh_data.Ascale;
+    PetscReal T_arrh    = *data->T + Tref ;
+    PetscReal sr, eta, pressure;
+    double    D_mp[NSD][NSD], inv2_D_mp;
+
+    ComputeStrainRate3d(data->ux,data->uy,data->uz,data->dNudx,data->dNudy,data->dNudz,D_mp);
+    ComputeSecondInvariant3d(D_mp,&inv2_D_mp);
+
+    sr = inv2_D_mp/ViscArrh_data.Eta_scale*ViscArrh_data.P_scale;
+    if (sr < 1.0e-17) { sr = 1.0e-17; }
+
+    pressure = *data->pressure * ViscArrh_data.P_scale;
+    if (pressure >= 0.0) { entalpy = entalpy + pressure*Vmol; }
+    
+    *data->viscosity = ViscosityArrhenius2D(Ascale,sr,nexp,preexpA,entalpy,T_arrh,ViscArrh_data.Eta_scale);
+  }
+    break;
+
+  case VISCOUS_ARRHENIUS_2: 
+  {
+    PetscScalar R       = 8.31440;
+    PetscReal nexp      = ViscArrh_data[ region_idx ].nexp;
+    PetscReal entalpy   = ViscArrh_data[ region_idx ].entalpy;
+    PetscReal preexpA   = ViscArrh_data[ region_idx ].preexpA;
+    PetscReal Vmol      = ViscArrh_data[ region_idx ].Vmol;
+    PetscReal Tref      = ViscArrh_data[ region_idx ].Tref;
+    PetscReal Ascale    = ViscArrh_data[ region_idx ].Ascale;
+    PetscReal T_arrh    = T_mp + Tref ;
+    PetscReal sr, eta, pressure;
+
+    ComputeStrainRate3d(ux,uy,uz,dNudx,dNudy,dNudz,D_mp);
+    ComputeSecondInvariant3d(D_mp,&inv2_D_mp);
+
+    sr = inv2_D_mp/ViscArrh_data[ region_idx ].Eta_scale*ViscArrh_data[ region_idx ].P_scale;
+    if (sr < 1.0e-17) {
+      sr = 1.0e-17;
+    }
+
+    pressure = ViscArrh_data[ region_idx ].P_scale*pressure_mp;
+
+    if (pressure >= 0.0) {
+      entalpy = entalpy + pressure*Vmol;
+    }
+
+    eta  = Ascale*pow(sr,1.0/nexp - 1.0)*pow(preexpA,-1.0/nexp)*exp(entalpy/(nexp*R*T_arrh));
+    eta_mp = eta/ViscArrh_data[ region_idx ].Eta_scale;
+  }
+    break;
+
+  case VISCOUS_ARRHENIUS_DISLDIFF:
+  {
+    PetscScalar R          = 8.31440;
+    PetscReal preexpA_disl = ViscArrhDislDiff_data[region_idx].preexpA_disl;
+    PetscReal Ascale_disl  = ViscArrhDislDiff_data[region_idx].Ascale_disl;
+    PetscReal entalpy_disl = ViscArrhDislDiff_data[region_idx].entalpy_disl;
+    PetscReal Vmol_disl    = ViscArrhDislDiff_data[region_idx].Vmol_disl;
+    PetscReal nexp_disl    = ViscArrhDislDiff_data[region_idx].nexp_disl;
+    PetscReal preexpA_diff = ViscArrhDislDiff_data[region_idx].preexpA_diff;
+    PetscReal Ascale_diff  = ViscArrhDislDiff_data[region_idx].Ascale_diff;
+    PetscReal entalpy_diff = ViscArrhDislDiff_data[region_idx].entalpy_diff;
+    PetscReal Vmol_diff    = ViscArrhDislDiff_data[region_idx].Vmol_diff;
+    PetscReal pexp_diff    = ViscArrhDislDiff_data[region_idx].pexp_diff;
+    PetscReal gsize        = ViscArrhDislDiff_data[region_idx].gsize;
+    PetscReal Tref         = ViscArrhDislDiff_data[ region_idx ].Tref;
+    PetscReal T_arrh       = T_mp + Tref ;
+    PetscReal sr, eta_disl, eta_diff, eta, pressure;
+
+    ComputeStrainRate3d(ux,uy,uz,dNudx,dNudy,dNudz,D_mp);
+    ComputeSecondInvariant3d(D_mp,&inv2_D_mp);
+    
+    sr = inv2_D_mp/ViscArrhDislDiff_data[ region_idx ].Eta_scale*ViscArrhDislDiff_data[ region_idx ].P_scale;
+    if (sr < 1.0e-17) {
+      sr = 1.0e-17;
+    }
+    
+    pressure = ViscArrhDislDiff_data[ region_idx ].P_scale*pressure_mp;
+    
+    if (pressure >= 0.0) {
+      entalpy_disl += pressure*Vmol_disl;
+      entalpy_diff += pressure*Vmol_diff;
+    }
+    /* dislocation creep viscosity */
+    eta_disl = Ascale_disl*pow(sr,1.0/nexp_disl - 1.0)*pow(preexpA_disl,-1.0/nexp_disl)*exp(entalpy_disl/(nexp_disl*R*T_arrh));
+    /* diffusion creep viscosity */
+    eta_diff = Ascale_diff*1.0/(preexpA_diff)*pow(gsize,pexp_diff)*exp(entalpy_diff/(R*T_arrh));
+    /* Combine the two viscosities */
+    eta      = 1.0/(1.0/eta_disl + 1.0/eta_diff);
+    /* Scale and set on marker */
+    eta_mp   = eta/ViscArrhDislDiff_data[ region_idx ].Eta_scale;
+  }
+    break;
+
+  default:
+    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"No default ViscousType specified. Valid choices are VISCOUS_CONSTANT, VISCOUS_Z, VISCOUS_FRANKK, VISCOUS_ARRHENIUS, VISCOUS_ARRHENIUS_2");
+  }
+  PetscFunctionReturn(0);
+}
+
 
 PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx user,DM dau,PetscScalar ufield[],DM dap,PetscScalar pfield[],DM daT,PetscScalar Tfield[])
 {
