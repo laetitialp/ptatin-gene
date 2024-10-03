@@ -60,7 +60,10 @@ typedef struct {
   PetscBool eta_cutoff;
   /* surface processes */
   PetscBool surface_diffusion;
-  PetscReal diffusivity_spm;
+  PetscBool varying_diffusivity;
+  PetscInt  n_spm_diffusivities;
+  PetscReal *spm_diffusivity;
+  PetscReal spm_baselevel;
   /* passive markers */
   PetscBool passive_markers;
   PSwarm    pswarm;

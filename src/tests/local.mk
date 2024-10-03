@@ -30,4 +30,5 @@ ptatin-tests-y.c += $(call thisdir, \
   test_ptatin_driver_checkpoint_fv.c \
   test_ptatin_driver_pressure_poisson.c \
   test_gmsh_to_material_points.c \
+  test_surface_diffusion_spm.c \
 )

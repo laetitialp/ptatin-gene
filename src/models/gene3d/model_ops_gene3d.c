@@ -394,16 +394,46 @@ static PetscErrorCode ModelSetSPMParametersFromOptions(ModelGENE3DCtx *data)
   char           prefix[PETSC_MAX_PATH_LEN],option_name[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
   PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
 
   ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"spm_");CHKERRQ(ierr);
 
   data->surface_diffusion = PETSC_FALSE;
   ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sapply_surface_diffusion",prefix);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME,option_name,&data->surface_diffusion,&found);CHKERRQ(ierr);
+
   if (found) {
-    ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sdiffusivity",prefix);CHKERRQ(ierr);
-    ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&data->diffusivity_spm,&flg);CHKERRQ(ierr);
-    if (!flg) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface diffusion activated but no diffusivity provided. Use %s to set it.\n",option_name); }
+    ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%svarying_diffusivity",prefix);CHKERRQ(ierr);
+    ierr = PetscOptionsGetBool(NULL,MODEL_NAME,option_name,&data->varying_diffusivity,NULL);CHKERRQ(ierr);
+    if (data->varying_diffusivity) {
+      /* 
+      Diffusivity: 
+      0: below baselevel, 
+      1: above baselevel  
+      */
+      data->n_spm_diffusivities = 2;
+      ierr = PetscCalloc1(data->n_spm_diffusivities,&data->spm_diffusivity);CHKERRQ(ierr);
+      
+      ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sdiffusivity",prefix);CHKERRQ(ierr);
+      ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME,option_name,data->spm_diffusivity,&data->n_spm_diffusivities,&flg);CHKERRQ(ierr);
+      if (!flg) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface diffusion activated but no diffusivity provided. Use %s to set it.\n",option_name); }
+
+      ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sbaselevel",prefix);CHKERRQ(ierr);
+      ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&data->spm_baselevel,&flg);CHKERRQ(ierr);
+      if (!flg) { PetscPrintf(PETSC_COMM_WORLD,"[[ WARNING ]]: No value provided for baselevel of the surface diffusion. Default is %1.4e [m]\n",data->spm_baselevel); }
+      
+      PetscPrintf(PETSC_COMM_WORLD,"[[ Surface Diffusion ]]: diffusivity = [%1.4e, %1.4e], baselevel = %1.4e\n",data->spm_diffusivity[0],data->spm_diffusivity[1],data->spm_baselevel);
+    } else {
+      /* Constant diffusivity */
+      data->n_spm_diffusivities = 1;
+      ierr = PetscCalloc1(data->n_spm_diffusivities,&data->spm_diffusivity);CHKERRQ(ierr);
+      
+      ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sdiffusivity",prefix);CHKERRQ(ierr);
+      ierr = PetscOptionsGetReal(NULL,MODEL_NAME,option_name,&data->spm_diffusivity[0],&flg);CHKERRQ(ierr);
+      if (!flg) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Surface diffusion activated but no diffusivity provided. Use %s to set it.\n",option_name); }
+    
+      PetscPrintf(PETSC_COMM_WORLD,"[[ Surface Diffusion ]]: diffusivity = %1.4e\n",data->spm_diffusivity[0]);
+    }
   }
   PetscFunctionReturn(0);
 }
@@ -574,7 +604,10 @@ static PetscErrorCode ModelScaleParameters(DataBucket materialconstants, ModelGE
     data->O[i] /= data->scale->length_bar;
   }
 
-  data->diffusivity_spm /= (data->scale->length_bar*data->scale->length_bar/data->scale->time_bar);
+  for (i=0; i<data->n_spm_diffusivities; i++) {
+    data->spm_diffusivity[i] /= (data->scale->length_bar*data->scale->length_bar/data->scale->time_bar);
+  }
+  data->spm_baselevel /= data->scale->length_bar;
 
   data->surface_pressure /= data->scale->pressure_bar;
 
@@ -821,9 +854,11 @@ static PetscErrorCode ModelApplySurfaceRemeshing(DM dav, PetscReal dt, ModelGENE
     SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"No boundary conditions provided for the surface diffusion (spm)! Use at least one of -%sspm_diffusion_dirichlet_{xmin,xmax,zmin,zmax}",MODEL_NAME);
   }
 
-  /* Dirichlet velocity imposed on z normal faces so we do the same here */
-  ierr = UpdateMeshGeometry_ApplyDiffusionJMAX(dav,data->diffusivity_spm,dt,dirichlet_xmin,dirichlet_xmax,dirichlet_zmin,dirichlet_zmax,PETSC_FALSE);CHKERRQ(ierr);
-
+  if (data->varying_diffusivity) {
+    ierr = UpdateMeshGeometry_ApplyDiffusionJMAX_BaseLevel(dav,data->spm_diffusivity,data->spm_baselevel,dt,dirichlet_xmin,dirichlet_xmax,dirichlet_zmin,dirichlet_zmax,PETSC_FALSE);CHKERRQ(ierr);
+  } else {
+    ierr = UpdateMeshGeometry_ApplyDiffusionJMAX(dav,data->spm_diffusivity[0],dt,dirichlet_xmin,dirichlet_xmax,dirichlet_zmin,dirichlet_zmax,PETSC_FALSE);CHKERRQ(ierr);
+  }
   PetscFunctionReturn(0);
 }
 
@@ -3012,6 +3047,7 @@ PetscErrorCode ModelDestroy_Gene3D(pTatinCtx ptatin,void *ctx)
     data->poisson_Jacobian = NULL;
   }
   if (data->scale) { ierr = PetscFree(data->scale);CHKERRQ(ierr); }
+  if (data->spm_diffusivity) { ierr = PetscFree(data->spm_diffusivity);CHKERRQ(ierr); }
   /* Free structure */
   ierr = PetscFree(data);CHKERRQ(ierr);
 
