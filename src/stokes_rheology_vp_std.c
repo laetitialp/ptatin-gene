@@ -561,8 +561,18 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
                 ComputeExponentialSoft(eplastic,emin,efold,tau_yield_mp, tau_yield_inf, &tau_yield_mp);
               }
               break;
+            
+            case SOFTENING_LINEAR_THERMAL:
+              {
+                PetscReal Tmin = SoftLin_data[ region_idx ].eps_min;
+                PetscReal Tmax = SoftLin_data[ region_idx ].eps_max;
+
+                ComputeLinearSoft(T_mp,Tmin,Tmax,tau_yield_mp, tau_yield_inf, &tau_yield_mp);
+              }
+              break;
+            
             default:
-              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"No default SofteningType set. Valid choices are SOFTENING_NONE, SOFTENING_LINEAR, SOFTENING_EXPONENTIAL");
+              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"No default SofteningType set. Valid choices are SOFTENING_NONE, SOFTENING_LINEAR, SOFTENING_EXPONENTIAL, SOFTENING_LINEAR_THERMAL");
           }
 
           /* mark all markers as not yielding */
@@ -618,8 +628,18 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
                 ComputeExponentialSoft(eplastic,emin,efold,tau_yield_mp,tau_yield_inf,&tau_yield_mp);
               }
               break;
+            
+            case SOFTENING_LINEAR_THERMAL:
+              {
+                PetscReal Tmin = SoftLin_data[ region_idx ].eps_min;
+                PetscReal Tmax = SoftLin_data[ region_idx ].eps_max;
+
+                ComputeLinearSoft(T_mp,Tmin,Tmax,tau_yield_mp,tau_yield_inf,&tau_yield_mp);
+              }
+              break;
+
             default:
-              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"No default SofteningType set. Valid choices are SOFTENING_NONE, SOFTENING_LINEAR, SOFTENING_EXPONENTIAL");
+              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"No default SofteningType set. Valid choices are SOFTENING_NONE, SOFTENING_LINEAR, SOFTENING_EXPONENTIAL, SOFTENING_LINEAR_THERMAL");
           }
 
           eta_flow_mp = eta_mp;
@@ -677,8 +697,19 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
                 ComputeExponentialSoft(eplastic,emin,efold,phi, phi_inf, &phi);
               }
               break;
+
+            case SOFTENING_LINEAR_THERMAL: 
+              {
+                PetscReal Tmin = SoftLin_data[ region_idx ].eps_min;
+                PetscReal Tmax = SoftLin_data[ region_idx ].eps_max;
+
+                ComputeLinearSoft(T_mp,Tmin,Tmax,Co , Co_inf,  &Co);
+                ComputeLinearSoft(T_mp,Tmin,Tmax,phi, phi_inf, &phi);
+              }
+              break;
+
             default:
-              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"No default SofteningType set. Valid choices are SOFTENING_NONE, SOFTENING_LINEAR, SOFTENING_EXPONENTIAL");
+              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"No default SofteningType set. Valid choices are SOFTENING_NONE, SOFTENING_LINEAR, SOFTENING_EXPONENTIAL, SOFTENING_LINEAR_THERMAL");
           }
 
           /* mark all markers as not yielding */
@@ -1221,8 +1252,18 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
             ComputeExponentialSoft(eplastic,emin,efold,tau_yield_mp, tau_yield_inf, &tau_yield_mp);
           }
             break;
+          
+          case SOFTENING_LINEAR_THERMAL:
+          {
+            PetscReal Tmin = SoftLin_data[ region_idx ].eps_min;
+            PetscReal Tmax = SoftLin_data[ region_idx ].eps_max;
+            
+            ComputeLinearSoft(T_mp,Tmin,Tmax,tau_yield_mp, tau_yield_inf, &tau_yield_mp);
+          }
+            break;
+
           default:
-            SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"No default SofteningType set. Valid choices are SOFTENING_NONE, SOFTENING_LINEAR, SOFTENING_EXPONENTIAL");
+            SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"No default SofteningType set. Valid choices are SOFTENING_NONE, SOFTENING_LINEAR, SOFTENING_EXPONENTIAL, SOFTENING_LINEAR_THERMAL");
         }
         
         /* mark all markers as not yielding */
@@ -1278,8 +1319,18 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
             ComputeExponentialSoft(eplastic,emin,efold,tau_yield_mp,tau_yield_inf,&tau_yield_mp);
           }
             break;
+          
+          case SOFTENING_LINEAR_THERMAL:
+          {
+            PetscReal Tmin = SoftLin_data[ region_idx ].eps_min;
+            PetscReal Tmax = SoftLin_data[ region_idx ].eps_max;
+            
+            ComputeLinearSoft(T_mp,Tmin,Tmax,tau_yield_mp,tau_yield_inf,&tau_yield_mp);
+          }
+            break;
+
           default:
-            SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"No default SofteningType set. Valid choices are SOFTENING_NONE, SOFTENING_LINEAR, SOFTENING_EXPONENTIAL");
+            SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"No default SofteningType set. Valid choices are SOFTENING_NONE, SOFTENING_LINEAR, SOFTENING_EXPONENTIAL, SOFTENING_LINEAR_THERMAL");
         }
         
         eta_flow_mp = eta_mp;
@@ -1337,8 +1388,19 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
             ComputeExponentialSoft(eplastic,emin,efold,phi, phi_inf, &phi);
           }
             break;
+          
+          case SOFTENING_LINEAR_THERMAL:
+          {
+            PetscReal Tmin = SoftLin_data[ region_idx ].eps_min;
+            PetscReal Tmax = SoftLin_data[ region_idx ].eps_max;
+            
+            ComputeLinearSoft(T_mp,Tmin,Tmax,Co , Co_inf,  &Co);
+            ComputeLinearSoft(T_mp,Tmin,Tmax,phi, phi_inf, &phi);
+          }
+            break;
+
           default:
-            SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"No default SofteningType set. Valid choices are SOFTENING_NONE, SOFTENING_LINEAR, SOFTENING_EXPONENTIAL");
+            SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"No default SofteningType set. Valid choices are SOFTENING_NONE, SOFTENING_LINEAR, SOFTENING_EXPONENTIAL, SOFTENING_LINEAR_THERMAL");
         }
         
         /* mark all markers as not yielding */
