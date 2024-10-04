@@ -406,7 +406,7 @@ static inline PetscErrorCode ViscosityPlasticMises(int softening_type, int regio
   if (inv2_Tpred_mp > tau_yield_mp) {
     ComputeSecondInvariant3d(D_mp,&inv2_D_mp);
     *data->viscosity = 0.5 * tau_yield_mp / inv2_D_mp;
-    *data->npoints_yielded++;
+    *data->npoints_yielded += 1;
     MPntPStokesPlSetField_yield_indicator(data->mp_data->pls,YTYPE_MISES);
   }
   PetscFunctionReturn(0);
@@ -429,7 +429,7 @@ static inline PetscErrorCode ViscosityPlasticMisesH(int softening_type, int regi
 
   eta_yield_mp     = 0.5 * tau_yield_mp / inv2_D_mp;
   *data->viscosity = 1.0 / (  1.0/eta_flow_mp + 1.0/eta_yield_mp );
-  *data->npoints_yielded++;
+  *data->npoints_yielded += 1;
   PetscFunctionReturn(0);
 }
 
@@ -472,7 +472,7 @@ static inline PetscErrorCode ViscosityPlasticDruckerPrager(int softening_type, i
   if (inv2_Tpred_mp > tau_yield_mp) {
     ComputeSecondInvariant3d(D_mp,&inv2_D_mp);
     *data->viscosity = 0.5 * tau_yield_mp / inv2_D_mp;
-    *data->npoints_yielded++;
+    *data->npoints_yielded += 1;
     MPntPStokesPlSetField_yield_indicator(data->mp_data->pls,yield_type);
   }
   PetscFunctionReturn(0);
@@ -1190,7 +1190,7 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
     /* Global cutoffs for viscosity */
     /* Here should I store these? */
   }
-  
+
   DataFieldRestoreAccess(PField_std);
   DataFieldRestoreAccess(PField_stokes);
   DataFieldRestoreAccess(PField_pls);
