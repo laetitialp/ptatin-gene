@@ -41,6 +41,7 @@
 #include "dmda_iterator.h"
 #include "dmda_element_q2p1.h"
 #include "dmda_element_q1.h"
+#include "dmda_update_coords.h"
 #include "mesh_update.h"
 #include "data_bucket.h"
 #include "MPntStd_def.h"
@@ -679,6 +680,37 @@ PetscErrorCode ModelInitialize_Gene3D(pTatinCtx ptatin, void *ctx)
 =       Initial Mesh and Mesh Update functions       =
 ======================================================
 */
+static PetscErrorCode SetCoordinatesParallelogramX(pTatinCtx ptatin, PetscReal angle, ModelGENE3DCtx *data)
+{
+  DM             dav,cda;
+  Vec            coordinates;
+  DMDACoor3d     ***LA_coords;
+  PetscInt       i,j,k,si,sj,sk,nx,ny,nz;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  if (PetscAbsReal(angle) <= 1.0e-6) { PetscFunctionReturn(0); }
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+
+  dav  = ptatin->stokes_ctx->dav;
+  ierr = DMDAGetCorners(dav,&si,&sj,&sk,&nx,&ny,&nz);CHKERRQ(ierr);
+  ierr = DMGetCoordinates(dav,&coordinates);CHKERRQ(ierr);
+  ierr = DMGetCoordinateDM(dav,&cda);CHKERRQ(ierr);
+  ierr = DMDAVecGetArray(cda,coordinates,&LA_coords);CHKERRQ(ierr);
+
+  for (k=sk; k<sk+nz; k++) {
+    for (j=sj; j<sj+ny; j++) {
+      for (i=si; i<si+nx; i++) {
+        /* Translate every point in x of z*tan(alpha) */
+        LA_coords[k][j][i].x += LA_coords[k][j][i].z * PetscTanReal(angle);
+      }
+    }
+  }
+  ierr = DMDAVecRestoreArray(cda,coordinates,&LA_coords);CHKERRQ(ierr);
+  ierr = DMDAUpdateGhostedCoordinates(dav);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
 
 static PetscErrorCode ModelApplyMeshRefinement(DM dav)
 {
@@ -760,8 +792,9 @@ PetscErrorCode ModelApplyInitialMeshGeometry_Gene3D(pTatinCtx ptatin,void *ctx)
 {
   ModelGENE3DCtx *data = (ModelGENE3DCtx*)ctx;
   PetscReal      gvec[] = { 0.0, -9.8, 0.0 };
+  PetscReal      angle;
   PetscInt       nn;
-  PetscBool      refine,found;
+  PetscBool      refine,found,deformed_mesh;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -769,6 +802,13 @@ PetscErrorCode ModelApplyInitialMeshGeometry_Gene3D(pTatinCtx ptatin,void *ctx)
 
   ierr = DMDASetUniformCoordinates(ptatin->stokes_ctx->dav, data->O[0], data->L[0], data->O[1], data->L[1], data->O[2], data->L[2]); CHKERRQ(ierr);
   
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-deformed_mesh_x",&deformed_mesh,NULL);CHKERRQ(ierr);
+  if (deformed_mesh) { 
+    angle = 0.0;
+    ierr = PetscOptionsGetReal(NULL,MODEL_NAME,"-deformed_mesh_angle",&angle,&found);CHKERRQ(ierr);
+    ierr = SetCoordinatesParallelogramX(ptatin,angle,data);CHKERRQ(ierr);
+  }
+
   refine = PETSC_FALSE;
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-refinement_apply",&refine,NULL);CHKERRQ(ierr);
   if (refine) { 
