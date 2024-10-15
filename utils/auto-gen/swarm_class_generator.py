@@ -797,10 +797,10 @@ def Generate_pTatin_MaterialPointStokesData():
 def Generate_pTatin_MaterialPointStokesPlastic():
 	ParticleClass      = 'MPntPStokesPl'
 	ParticleClassShort = 'MPPStkPl'
-	variable_name_list = [ 'e_plastic', 'is_yielding'    ]
-	variable_type_list = [ 'float',   'short' ]
-	variable_extend_list        = [ 1, 1 ]
-	variable_textural_name_list = [ 'plastic_strain', 'yield_indicator' ]
+	variable_name_list = [ 'e_plastic', 'is_yielding', 'damage' ]
+	variable_type_list = [ 'float',   'short', 'float' ]
+	variable_extend_list        = [ 1, 1, 1 ]
+	variable_textural_name_list = [ 'plastic_strain', 'yield_indicator', 'damage' ]
 
 
 	PARTICLE_CLASS_GENERATOR( ParticleClass, ParticleClassShort, variable_name_list, variable_type_list, variable_extend_list, variable_textural_name_list )
@@ -973,7 +973,7 @@ def Generate_pTatin_MaterialConst_SoftExpo():
 # ## material point fields ##
 # Generate_pTatin3d_MaterialPointStandard()
 # Generate_pTatin_MaterialPointStokesData()
-# Generate_pTatin_MaterialPointStokesPlastic()
+Generate_pTatin_MaterialPointStokesPlastic()
 # Generate_pTatin_MaterialPointEnergy()
 # Generate_pTatin_MaterialPointViscoElasticity()
 
@@ -988,8 +988,8 @@ def Generate_pTatin_MaterialConst_SoftExpo():
 # Generate_pTatin_MaterialConst_DensityBoussinesq()
 # Generate_pTatin_MaterialConst_DensityTable()
 
-Generate_pTatin_MaterialConst_PlasticMises()
-Generate_pTatin_MaterialConst_PlasticDP()
+# Generate_pTatin_MaterialConst_PlasticMises()
+# Generate_pTatin_MaterialConst_PlasticDP()
 # Generate_pTatin_MaterialConst_SoftLin()
 # Generate_pTatin_MaterialConst_SoftExpo()
 # Generate_pTatin_MaterialConst_MaterialType()

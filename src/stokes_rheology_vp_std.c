@@ -200,25 +200,25 @@ static inline PetscErrorCode EvaluateLinearSoftening(
   int       plastic_type = data->material_data->MatType_data[ region_idx ].plastic_type;
   PetscReal emin         = data->material_data->SoftLin_data[ region_idx ].eps_min;
   PetscReal emax         = data->material_data->SoftLin_data[ region_idx ].eps_max;
-  float     eplastic;
+  float     damage;
   PetscFunctionBegin;
 
-  MPntPStokesPlGetField_plastic_strain(data->mp_data->pls,&eplastic);
+  MPntPStokesPlGetField_damage(data->mp_data->pls,&damage);
   
   switch (plastic_type) {
     case PLASTIC_MISES:
     case PLASTIC_MISES_H:
     {
       MaterialConst_PlasticMises Mises_data = data->material_data->PlasticMises_data[ region_idx ];
-      ComputeLinearSoft(eplastic,emin,emax,Mises_data.tau_yield,Mises_data.tau_yield_inf,Co_mp);
+      ComputeLinearSoft(damage,emin,emax,Mises_data.tau_yield,Mises_data.tau_yield_inf,Co_mp);
     }
       break;
     case PLASTIC_DP:
     case PLASTIC_DP_H:
     {
       MaterialConst_PlasticDP DP_data = data->material_data->PlasticDP_data[ region_idx ];
-      ComputeLinearSoft(eplastic,emin,emax,DP_data.Co,DP_data.Co_inf,Co_mp);
-      ComputeLinearSoft(eplastic,emin,emax,DP_data.phi,DP_data.phi_inf,phi_mp);
+      ComputeLinearSoft(damage,emin,emax,DP_data.Co,DP_data.Co_inf,Co_mp);
+      ComputeLinearSoft(damage,emin,emax,DP_data.phi,DP_data.phi_inf,phi_mp);
     }  
       break;
     
@@ -238,17 +238,17 @@ static inline PetscErrorCode EvaluateExponentialSoftening(
   int       plastic_type = data->material_data->MatType_data[ region_idx ].plastic_type;
   PetscReal emin         = data->material_data->SoftExpo_data[ region_idx ].eps_min;
   PetscReal efold        = data->material_data->SoftExpo_data[ region_idx ].eps_fold;
-  float     eplastic;
+  float     damage;
   PetscFunctionBegin;
 
-  MPntPStokesPlGetField_plastic_strain(data->mp_data->pls,&eplastic);
+  MPntPStokesPlGetField_damage(data->mp_data->pls,&damage);
 
   switch (plastic_type) {
     case PLASTIC_MISES:
     case PLASTIC_MISES_H:
     {
       MaterialConst_PlasticMises Mises_data = data->material_data->PlasticMises_data[ region_idx ];
-      ComputeExponentialSoft(eplastic,emin,efold,Mises_data.tau_yield,Mises_data.tau_yield_inf,Co_mp);
+      ComputeExponentialSoft(damage,emin,efold,Mises_data.tau_yield,Mises_data.tau_yield_inf,Co_mp);
     }
       break;
 
@@ -256,8 +256,8 @@ static inline PetscErrorCode EvaluateExponentialSoftening(
     case PLASTIC_DP_H:
     {
       MaterialConst_PlasticDP DP_data = data->material_data->PlasticDP_data[ region_idx ];
-      ComputeExponentialSoft(eplastic,emin,efold,DP_data.Co,DP_data.Co_inf,Co_mp);
-      ComputeExponentialSoft(eplastic,emin,efold,DP_data.phi,DP_data.phi_inf,phi_mp);
+      ComputeExponentialSoft(damage,emin,efold,DP_data.Co,DP_data.Co_inf,Co_mp);
+      ComputeExponentialSoft(damage,emin,efold,DP_data.phi,DP_data.phi_inf,phi_mp);
     }
       break;
     
@@ -647,7 +647,7 @@ PetscErrorCode HealPlasticStrainMarker(
 {
   int region_idx, plastic_type;
   double healing_rate;
-  float eplastic;
+  float damage;
   PetscFunctionBegin;
   
   MPntStdGetField_phase_index(mpprop_std,&region_idx);
@@ -670,11 +670,11 @@ PetscErrorCode HealPlasticStrainMarker(
       healing_rate = 0.0;
       break;
   }
-  MPntPStokesPlGetField_plastic_strain(mpprop_pls,&eplastic);
-  eplastic = eplastic - dt * healing_rate;
+  MPntPStokesPlGetField_damage(mpprop_pls,&damage);
+  damage = damage - dt * healing_rate;
   /* Ensure plastic strain cannot be negative */
-  if (eplastic < 0.0) { eplastic = 0.0; }
-  MPntPStokesPlSetField_plastic_strain(mpprop_pls,eplastic);
+  if (damage < 0.0) { damage = 0.0; }
+  MPntPStokesPlSetField_damage(mpprop_pls,damage);
   
   PetscFunctionReturn(0);
 }
@@ -1390,7 +1390,7 @@ PetscErrorCode StokesCoefficient_UpdateTimeDependentQuantities_VPSTD(pTatinCtx u
   int            pidx,n_mp_points;
   DataBucket     db,material_constants;
   DataField      PField_std,PField,PField_MatTypes,PField_PlasticMises,PField_PlasticDP;
-  float          strain_mp;
+  float          strain_mp,damage_mp;
   PetscInt       nel,nen_u,k;
   const PetscInt *elnidx_u;
   PetscReal      elcoords[3*Q2_NODES_PER_EL_3D];
@@ -1479,10 +1479,14 @@ PetscErrorCode StokesCoefficient_UpdateTimeDependentQuantities_VPSTD(pTatinCtx u
       ComputeStrainRate3d(ux,uy,uz,dNudx,dNudy,dNudz,D_mp);
       /* second inv stress */
       ComputeSecondInvariant3d(D_mp,&inv2_D_mp);
-
+      /* Plastic strain */
       MPntPStokesPlGetField_plastic_strain(mpprop,&strain_mp);
       strain_mp = strain_mp + dt * inv2_D_mp;
       MPntPStokesPlSetField_plastic_strain(mpprop,strain_mp);
+      /* Damage */
+      MPntPStokesPlGetField_damage(mpprop,&damage_mp);
+      damage_mp = damage_mp + dt * inv2_D_mp;
+      MPntPStokesPlSetField_damage(mpprop,damage_mp);
     }
     ierr = HealPlasticStrainMarker(MatType_data,PlasticMises_data,PlasticDP_data,mpprop_std,mpprop,dt);CHKERRQ(ierr);
   }

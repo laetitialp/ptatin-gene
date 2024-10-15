@@ -1053,6 +1053,7 @@ static PetscErrorCode ModelApplyInitialVariables_FromExpr(pTatinCtx ptatin, Mode
     }
     MPntPStokesPlSetField_yield_indicator(mpprop_pls,0);
     MPntPStokesPlSetField_plastic_strain(mpprop_pls,pls);
+    MPntPStokesPlSetField_damage(mpprop_pls,pls);
 
     MPntStdGetField_phase_index(material_point,&region_idx);
     /* Get the density from options */
