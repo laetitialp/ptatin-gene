@@ -2911,21 +2911,98 @@ static PetscErrorCode ModelOutputEnergyFV_Gene3D(pTatinCtx ptatin, const char pr
   PetscFunctionReturn(0);
 }
 
+static inline PetscErrorCode ModelOutput_DefaultFields(MaterialPointVariable varlist[], PetscInt *_nvars)
+{
+  PetscInt              i,nvars;
+  MaterialPointVariable MPV[] = { 
+    MPV_region, 
+    MPV_viscosity, 
+    MPV_density, 
+    MPV_plastic_strain 
+  };
+  PetscFunctionBegin;
+  nvars = sizeof(MPV)/sizeof(MaterialPointVariable);
+  *_nvars = nvars;
+  for (i=0; i<nvars; i++) { varlist[i] = MPV[i]; }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelOutput_GetFieldsFromOptions(MaterialPointVariable varlist[], PetscInt *_nvars)
+{
+  PetscBool      found;
+  char           prefix[PETSC_MAX_PATH_LEN],option_name[PETSC_MAX_PATH_LEN];
+  int            i,n,nvars;
+  PetscErrorCode ierr;
+  /* names for fields to ouput, MUST ALWAYS end with 0 or NULL, if new names are inserted, they have to be inserted before that last NULL entry */
+  const char *MPVName[] =  {
+    "region",
+    "viscosity",
+    "density",
+    "plastic_strain",
+    "yield_indicator",
+    "diffusivity",
+    "heat_source",
+    "damage",
+    0
+  };
+  MaterialPointVariable MPV[] = { /* corresponding variable (they MUST match) */
+    MPV_region,
+    MPV_viscosity,
+    MPV_density,
+    MPV_plastic_strain,
+    MPV_yield_indicator,
+    MPV_diffusivity,
+    MPV_heat_source,
+    MPV_damage
+  }
+  PetscFunctionBegin;
+
+  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"output_markercellp0_");CHKERRQ(ierr);
+  n     = 0; // index for the names
+  nvars = 0; // index for the variables
+  while (MPVName[n] != NULL) {
+    ierr  = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%s%s",prefix,MPVName[n]);CHKERRQ(ierr);
+    /* search for the option corresponding to the current field */
+    found = PETSC_FALSE; 
+    ierr  = PetscOptionsGetBool(NULL,MODEL_NAME,option_name,&found,NULL);
+    if (found) {
+      varlist[nvars] = MPV[n]; // fill the variable array from the list
+      nvars++; 
+    }
+    n++;
+  }
+  if (nvars == 0) { 
+    PetscPrintf(PETSC_COMM_WORLD,"[[ WARNING ]]: Found no fields to output, use one (or several) of the command line arguments:\n");
+    for (i=0; i<n; i++) {
+      ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%s%s",prefix,MPVName[i]);CHKERRQ(ierr);
+      PetscPrintf(PETSC_COMM_WORLD,"  %s\n",option_name);
+    }
+    PetscPrintf(PETSC_COMM_WORLD,"Using the default fields: region, viscosity, density, plastic_strain\n");
+    ierr = ModelOutput_DefaultFields(varlist,&nvars);CHKERRQ(ierr); 
+  }
+  *_nvars = nvars;
+
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode ModelOutput_Gene3D(pTatinCtx ptatin,Vec X,const char prefix[],void *ctx)
 {
-  ModelGENE3DCtx              *data = (ModelGENE3DCtx*)ctx;
-  const MaterialPointVariable mp_prop_list[] = { MPV_region, MPV_viscosity, MPV_density, MPV_plastic_strain, MPV_damage };
-  static PetscBool            been_here = PETSC_FALSE;
-  PetscBool                   active_energy;
-  PetscErrorCode              ierr;
+  ModelGENE3DCtx        *data = (ModelGENE3DCtx*)ctx;
+  MaterialPointVariable mp_prop_list[10];
+  PetscInt              nvars;
+  static PetscBool      been_here = PETSC_FALSE;
+  PetscBool             active_energy;
+  PetscErrorCode        ierr;
 
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD, "[[%s]]\n", PETSC_FUNCTION_NAME);
 
+  ierr = ModelOutput_GetFieldsFromOptions(mp_prop_list,&nvars);CHKERRQ(ierr);
+
   /* Output Velocity and pressure */
   ierr = pTatin3d_ModelOutputPetscVec_VelocityPressure_Stokes(ptatin,X,prefix);CHKERRQ(ierr);
   /* Output markers cell fields (for production runs) */
-  ierr = pTatin3dModelOutput_MarkerCellFieldsP0_PetscVec(ptatin,PETSC_FALSE,sizeof(mp_prop_list)/sizeof(MaterialPointVariable),mp_prop_list,prefix);CHKERRQ(ierr);
+  ierr = pTatin3dModelOutput_MarkerCellFieldsP0_PetscVec(ptatin,PETSC_FALSE,nvars,mp_prop_list,prefix);CHKERRQ(ierr);
   
   /* Output raw markers and vtu velocity and pressure (for testing and debugging) */
   if (data->output_markers) {
