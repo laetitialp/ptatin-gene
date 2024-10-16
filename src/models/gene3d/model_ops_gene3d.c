@@ -2914,7 +2914,7 @@ static PetscErrorCode ModelOutputEnergyFV_Gene3D(pTatinCtx ptatin, const char pr
 PetscErrorCode ModelOutput_Gene3D(pTatinCtx ptatin,Vec X,const char prefix[],void *ctx)
 {
   ModelGENE3DCtx              *data = (ModelGENE3DCtx*)ctx;
-  const MaterialPointVariable mp_prop_list[] = { MPV_region, MPV_viscosity, MPV_density, MPV_plastic_strain };
+  const MaterialPointVariable mp_prop_list[] = { MPV_region, MPV_viscosity, MPV_density, MPV_plastic_strain, MPV_damage };
   static PetscBool            been_here = PETSC_FALSE;
   PetscBool                   active_energy;
   PetscErrorCode              ierr;

@@ -532,6 +532,9 @@ PetscErrorCode pTatinLoadFromCheckpointWriteToVTS_MarkerCellFieldsP0(void)
   hasfield = PETSC_FALSE; PetscOptionsGetBool(NULL,NULL,"-markercellp0_heat_source",&hasfield,NULL);
   if (hasfield) { varlist[nvars] = MPV_heat_source; nvars++; }
 
+  hasfield = PETSC_FALSE; PetscOptionsGetBool(NULL,NULL,"-markercellp0_damage",&hasfield,NULL);
+  if (hasfield) { varlist[nvars] = MPV_damage; nvars++; }
+
   if (nvars == 0) {
     PetscPrintf(PETSC_COMM_WORLD,"No marker fields to project were specified. Use one (or several) of the following command line arguments:"
                 "  -markercellp0_region\n"
@@ -540,7 +543,8 @@ PetscErrorCode pTatinLoadFromCheckpointWriteToVTS_MarkerCellFieldsP0(void)
                 "  -markercellp0_plastic_strain\n"
                 "  -markercellp0_yield_indicator\n"
                 "  -markercellp0_diffusivity\n"
-                "  -markercellp0_heat_source\n");
+                "  -markercellp0_heat_source\n"
+                "  -markercellp0_damage\n");
 
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"You must specify at least one marker field to project");
   }

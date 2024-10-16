@@ -60,6 +60,7 @@ const char *MaterialPointVariableName[] =  {
   "yield_indicator",
   "diffusivity",
   "energy_source",
+  "damage",
   0
 };
 
@@ -71,6 +72,7 @@ const char *MaterialPointVariableParaviewDataType[] =  {
   "Int16",
   "Float64",
   "Float64",
+  "Float32",
   0
 };
 
@@ -363,6 +365,9 @@ PetscErrorCode _compute_cell_value_double(DataBucket db,MaterialPointVariable va
       case MPV_yield_indicator:
         SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"MPV_yield_indicator is not of type \"double\"");
         break;
+      case MPV_damage:
+        SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"MPV_damage is not of type \"double\"");
+        break;
 
       default:
                 SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Unknown material point variable type (MPV_type)");
@@ -433,6 +438,9 @@ PetscErrorCode _compute_cell_value_float(DataBucket db,MaterialPointVariable var
     switch (variable) {
       case MPV_plastic_strain:
         ierr = MaterialPointGet_plastic_strain(X,p,&var);CHKERRQ(ierr);
+        break;
+      case MPV_damage:
+        ierr = MaterialPointGet_damage(X,p,&var);CHKERRQ(ierr);
         break;
 
       case MPV_viscosity:
@@ -1142,10 +1150,20 @@ PetscErrorCode pTatinOutputParaViewMarkerFields_VTS(DM dau,DataBucket material_p
 
           ierr = PetscFree(d_LA_cell);CHKERRQ(ierr);
           break;
+        
+        case MPV_damage:
+          ierr = PetscMalloc(sizeof(float)*2*mx*2*my*2*mz,&f_LA_cell);CHKERRQ(ierr);
+          ierr = PetscMemzero(f_LA_cell,sizeof(float)*2*mx*2*my*2*mz);CHKERRQ(ierr);
 
-                default:
-                    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Unknown material point variable type (MPV_type)");
-                    break;
+          ierr = _compute_cell_value_float(material_points,MPV_damage,2*mx,2*my,2*mz,f_LA_cell);CHKERRQ(ierr);
+          ierr = _write_float(vtk_fp,2*mx,2*my,2*mz,f_LA_cell);CHKERRQ(ierr);
+
+          ierr = PetscFree(f_LA_cell);CHKERRQ(ierr);
+          break;
+
+        default:
+          SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Unknown material point variable type (MPV_type)");
+          break;
       }
 
       fprintf( vtk_fp, "      </DataArray>\n");
@@ -1234,13 +1252,22 @@ PetscErrorCode pTatinOutputParaViewMarkerFields_VTS(DM dau,DataBucket material_p
 
           ierr = PetscFree(d_LA_cell);CHKERRQ(ierr);
           break;
+        
+        case MPV_damage:
+          ierr = PetscMalloc(sizeof(float)*2*mx*2*my*2*mz,&f_LA_cell);CHKERRQ(ierr);
+          ierr = PetscMemzero(f_LA_cell,sizeof(float)*2*mx*2*my*2*mz);CHKERRQ(ierr);
 
-                default:
-                    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Unknown material point variable type (MPV_type)");
-                    break;
+          ierr = _compute_cell_value_float(material_points,MPV_damage,2*mx,2*my,2*mz,f_LA_cell);CHKERRQ(ierr);
+          ierr = _write_float(vtk_fp,2*mx,2*my,2*mz,f_LA_cell);CHKERRQ(ierr);
+
+          ierr = PetscFree(f_LA_cell);CHKERRQ(ierr);
+          break;
+
+        default:
+          SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Unknown material point variable type (MPV_type)");
+          break;
       }
-
-
+      
       fprintf( vtk_fp, "      </DataArray>\n");
     }
   }

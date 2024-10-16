@@ -3262,6 +3262,30 @@ PetscErrorCode MaterialPointSet_yield_indicator(MPAccess X,const int p,short var
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode MaterialPointGet_damage(MPAccess X,const int p,float *var)
+{
+  MPntPStokesPl  *point;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = _get_field_MPntPStokesPl(X,p,&point);CHKERRQ(ierr);
+  MPntPStokesPlGetField_damage(point,var);
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode MaterialPointSet_damage(MPAccess X,const int p,float var)
+{
+  MPntPStokesPl  *point;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = _get_field_MPntPStokesPl(X,p,&point);CHKERRQ(ierr);
+  MPntPStokesPlSetField_damage(point,var);
+
+  PetscFunctionReturn(0);
+}
+
 /* energy */
 PetscErrorCode MaterialPointGet_diffusivity(MPAccess X,const int p,double *var)
 {
