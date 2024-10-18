@@ -443,13 +443,17 @@ static inline PetscErrorCode ViscosityPlasticMisesH(RheologyData *data)
 static inline PetscErrorCode ViscosityPlasticDruckerPrager(RheologyData *data)
 {
   int            region_idx = data->mp_data->std->phase;
-  PetscReal      phi        = data->material_data->PlasticDP_data[ region_idx ].phi;
+  MaterialConst_PlasticDP *DP_data = &data->material_data->PlasticDP_data[ region_idx ];
+  PetscReal      phi;//        = DP_data->phi;
   PetscReal      Co         = data->material_data->PlasticDP_data[ region_idx ].Co;
   double         Tpred_mp[NSD][NSD], D_mp[NSD][NSD];
   double         tau_yield_mp, inv2_Tpred_mp, inv2_D_mp;
   short          yield_type;
   PetscErrorCode ierr;
   PetscFunctionBegin;
+
+  if (!DP_data) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"No PlasticDP data for region %d",region_idx); }
+  phi = DP_data->phi; 
 
   ierr = EvaluateSofteningOnMarker(data,&Co,&phi);CHKERRQ(ierr);
 
