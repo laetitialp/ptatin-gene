@@ -302,7 +302,7 @@ static inline PetscErrorCode EvaluateLinearSoftening(
   emin = SoftLin_data->eps_min;
   emax = SoftLin_data->eps_max;
 
-  MPntPStokesPlGetField_plastic_strain(mp_data->pls,&damage);
+  MPntPStokesPlGetField_damage(mp_data->pls,&damage);
   
   switch (plastic_type) {
     case PLASTIC_MISES:
@@ -350,7 +350,7 @@ static inline PetscErrorCode EvaluateExponentialSoftening(
   emin  = SoftExpo_data->eps_min;
   efold = SoftExpo_data->eps_fold;
 
-  MPntPStokesPlGetField_plastic_strain(mp_data->pls,&damage);
+  MPntPStokesPlGetField_damage(mp_data->pls,&damage);
 
   switch (plastic_type) {
     case PLASTIC_MISES:
@@ -833,7 +833,7 @@ PetscErrorCode HealPlasticStrainMarker(
   }
   MPntPStokesPlGetField_damage(mpprop_pls,&damage);
   damage = damage - dt * healing_rate;
-  /* Ensure plastic strain cannot be negative */
+  /* Ensure damage cannot be negative */
   if (damage < 0.0) { damage = 0.0; }
   MPntPStokesPlSetField_damage(mpprop_pls,damage);
   
