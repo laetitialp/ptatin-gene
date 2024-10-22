@@ -41,6 +41,7 @@
 #include "dmda_iterator.h"
 #include "dmda_element_q2p1.h"
 #include "dmda_element_q1.h"
+#include "dmda_update_coords.h"
 #include "mesh_update.h"
 #include "data_bucket.h"
 #include "MPntStd_def.h"
@@ -57,6 +58,7 @@
 #include "output_paraview.h"
 #include "surface_constraint.h"
 #include "ptatin_utils.h"
+#include "mesh_deformation.h"
 
 #include "ptatin3d_energy.h"
 #include <ptatin3d_energyfv.h>
@@ -679,6 +681,29 @@ PetscErrorCode ModelInitialize_Gene3D(pTatinCtx ptatin, void *ctx)
 =       Initial Mesh and Mesh Update functions       =
 ======================================================
 */
+static PetscErrorCode ModelSetDeformedMeshCoordinates(DM dav, ModelGENE3DCtx *data)
+{
+  PetscReal      vertices[24];
+  PetscInt       d,p,nn;
+  PetscBool      found;
+  char           prefix[PETSC_MAX_PATH_LEN],option_name[PETSC_MAX_PATH_LEN];
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+
+  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"mesh_deform_");CHKERRQ(ierr);
+  /* get the coordinates of the 8 vertices */
+  for (p=0; p<8; p++) {
+    ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%svertex_%d",prefix,p);CHKERRQ(ierr);
+    nn = 3;
+    ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME,option_name,&vertices[p*3],&nn,&found);CHKERRQ(ierr);
+    if (!found) {  SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s not found!",option_name); }
+    if (nn != 3) { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s must have 3 entries, found %d!",option_name,nn); }
+    for (d=0; d<3; d++) { vertices[p*3+d] /= data->scale->length_bar; }
+  }
+  ierr = DMDASetStructuredArbitraryHexahedronCoordinates(dav,vertices);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
 
 static PetscErrorCode ModelApplyMeshRefinement(DM dav)
 {
@@ -760,8 +785,9 @@ PetscErrorCode ModelApplyInitialMeshGeometry_Gene3D(pTatinCtx ptatin,void *ctx)
 {
   ModelGENE3DCtx *data = (ModelGENE3DCtx*)ctx;
   PetscReal      gvec[] = { 0.0, -9.8, 0.0 };
+  PetscReal      angle;
   PetscInt       nn;
-  PetscBool      refine,found;
+  PetscBool      refine,found,deformed_mesh;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -769,6 +795,10 @@ PetscErrorCode ModelApplyInitialMeshGeometry_Gene3D(pTatinCtx ptatin,void *ctx)
 
   ierr = DMDASetUniformCoordinates(ptatin->stokes_ctx->dav, data->O[0], data->L[0], data->O[1], data->L[1], data->O[2], data->L[2]); CHKERRQ(ierr);
   
+  deformed_mesh = PETSC_FALSE;
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-mesh_deform",&deformed_mesh,NULL);CHKERRQ(ierr);
+  if (deformed_mesh) { ierr = ModelSetDeformedMeshCoordinates(ptatin->stokes_ctx->dav,data);CHKERRQ(ierr); }
+
   refine = PETSC_FALSE;
   ierr = PetscOptionsGetBool(NULL,MODEL_NAME,"-refinement_apply",&refine,NULL);CHKERRQ(ierr);
   if (refine) { 

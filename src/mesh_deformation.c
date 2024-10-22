@@ -463,3 +463,64 @@ PetscErrorCode DMDASetCoordinatesCentralSqueeze1D(DM da,PetscInt dir,PetscReal f
   PetscFunctionReturn(0);
 }
 
+/* 
+Providing the 8 vertices of the hexahedron, compute the coordinates of the nodes using parametric equations.
+The hexahedron is defined by the 8 vertices:
+  2 ------ 3  6 ------ 7     y
+  |        |  |        |     |__ x
+  |        |  |        |    /
+  |        |  |        |   z
+  0 ------ 1  4 ------ 5  
+vertices[] is expected to be of the form { x0,y0,z0, x1,y1,z1, ..., x7,y7,z7 }
+Faces of the hexahedron are assumed to be planar.
+*/
+PetscErrorCode DMDASetStructuredArbitraryHexahedronCoordinates(DM da, PetscReal vertices[])
+{
+  DM             cda;
+  Vec            xcoor;
+  PetscScalar   *coors;
+  PetscReal      hu,hv,hw;
+  PetscInt       M,N,P,istart,jstart,kstart,isize,jsize,ksize;
+  PetscInt       cnt,i,j,k;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = DMDAGetInfo(da,NULL,&M,&N,&P,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL);CHKERRQ(ierr);
+  ierr = DMDAGetCorners(da, &istart, &jstart, &kstart, &isize, &jsize, &ksize);CHKERRQ(ierr);
+  ierr = DMGetCoordinateDM(da, &cda);CHKERRQ(ierr);
+  ierr = DMCreateGlobalVector(cda, &xcoor);CHKERRQ(ierr);
+  ierr = VecGetArray(xcoor, &coors);CHKERRQ(ierr);
+
+  /* step in each direction */
+  hu = 1.0 / (M - 1);
+  hv = 1.0 / (N - 1);
+  hw = 1.0 / (P - 1);
+  
+  cnt = 0;
+  for (k=0; k<ksize; k++) {
+    for (j=0; j<jsize; j++) {
+      for (i=0; i<isize; i++) {
+        PetscInt  d;
+        PetscReal u,v,w;
+        /* parameters */
+        u = hu * (i + istart);
+        v = hv * (j + jstart);
+        w = hw * (k + kstart);
+        /* coordinates */
+        for (d=0; d<3; d++) {
+          coors[cnt++] = (1-w)*( 
+            (1-v) * ( (1-u)*vertices[d]   + u*vertices[3+d] ) // 0 1
+            +  v  * ( (1-u)*vertices[6+d] + u*vertices[9+d] ) // 2 3
+          ) + w*(
+            (1-v) * ( (1-u)*vertices[12+d] + u*vertices[15+d] ) // 4 5
+            +  v  * ( (1-u)*vertices[18+d] + u*vertices[21+d] ) // 6 7
+          );
+        }
+      }
+    }
+  }
+  ierr = VecRestoreArray(xcoor, &coors);CHKERRQ(ierr);
+  ierr = DMSetCoordinates(da, xcoor);CHKERRQ(ierr);
+  ierr = VecDestroy(&xcoor);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
