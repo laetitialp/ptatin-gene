@@ -342,6 +342,44 @@ PetscErrorCode test_DMDACoordinateRefinementTransferFunction_b(PetscInt nx,Petsc
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode test_DMDASetStructuredArbitraryHexahedronCoordinates(PetscInt nx, PetscInt ny, PetscInt nz)
+{
+  DM             da;
+  Vec            x;
+  PetscViewer    vv;
+  PetscReal      vertices[24];
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  
+  ierr = DMDACreate3d(PETSC_COMM_WORLD,DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,DMDA_STENCIL_BOX,nx,ny,nz, PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE,3,1,NULL,NULL,NULL,&da);CHKERRQ(ierr);
+  ierr = DMSetUp(da);CHKERRQ(ierr);
+
+  vertices[0] = 0.0;   vertices[1] = 0.0;   vertices[2] = 0.0;   // 0
+  vertices[3] = 1.0;   vertices[4] = -0.2;  vertices[5] = 0.1;   // 1
+  vertices[6] = -0.3;   vertices[7] = 1.0;   vertices[8] = -0.1;  // 2
+  vertices[9] = 0.95;  vertices[10] = 1.1;  vertices[11] = 0.0;  // 3
+  vertices[12] = 0.2;  vertices[13] = 0.0;  vertices[14] = 1.0;  // 4
+  vertices[15] = 1.1; vertices[16] = -0.1;  vertices[17] = 1.2;  // 5
+  vertices[18] = 0.0;  vertices[19] = 0.92; vertices[20] = 1.05; // 6
+  vertices[21] = 1.05; vertices[22] = 1.0;  vertices[23] = 1.1; // 7
+
+  ierr = DMDASetStructuredArbitraryHexahedronCoordinates(da,vertices);CHKERRQ(ierr);
+
+  /* output */
+  ierr = PetscViewerASCIIOpen(PetscObjectComm((PetscObject)da),"test_dmda_arbitrary_hex.vtk",&vv);CHKERRQ(ierr);
+  ierr = PetscViewerPushFormat(vv,PETSC_VIEWER_ASCII_VTK);CHKERRQ(ierr);
+  ierr = DMCreateGlobalVector(da,&x);CHKERRQ(ierr);
+  ierr = PetscObjectSetName((PetscObject)x,"phi");CHKERRQ(ierr);
+  ierr = DMView(da,vv);CHKERRQ(ierr);
+  ierr = VecView(x,vv);CHKERRQ(ierr);
+  ierr = PetscViewerPopFormat(vv);CHKERRQ(ierr);
+  ierr = PetscViewerDestroy(&vv);CHKERRQ(ierr);
+  ierr = VecDestroy(&x);CHKERRQ(ierr);
+  ierr = DMDestroy(&da);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
 int main( int argc,char **argv )
 {
   PetscErrorCode ierr;
@@ -369,6 +407,9 @@ int main( int argc,char **argv )
       break;
     case 4:
       ierr = test_DMDACoordinateRefinementTransferFunction_b(mx,my,mz);CHKERRQ(ierr);
+      break;
+    case 5:
+      ierr = test_DMDASetStructuredArbitraryHexahedronCoordinates(mx,my,mz);CHKERRQ(ierr);
       break;
     default:
       break;
