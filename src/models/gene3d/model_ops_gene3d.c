@@ -2461,7 +2461,7 @@ static PetscErrorCode ModelApplyMaterialBoundaryCondition_Gene3D(pTatinCtx ptati
   MPAccess        mpX;
   DataBucket      material_point_db,material_point_face_db;
   DM              stokes_pack,dav,dap;
-  PetscInt        f,Nxp[2];
+  PetscInt        f,Nxp[2],mx,my,mz;
   PetscReal       perturb, epsilon;
   int             p,n_mp_points;
   PetscErrorCode  ierr;
@@ -2482,18 +2482,48 @@ static PetscErrorCode ModelApplyMaterialBoundaryCondition_Gene3D(pTatinCtx ptati
   /* create face storage for markers */
   DataBucketDuplicateFields(material_point_db,&material_point_face_db);
   
+  /* Get markers layout */
+  mx = 4;
+  ierr = PetscOptionsGetInt(NULL,NULL,"-lattice_layout_Nx",&mx,NULL);CHKERRQ(ierr);
+  my = 4;
+  ierr = PetscOptionsGetInt(NULL,NULL,"-lattice_layout_Ny",&my,NULL);CHKERRQ(ierr);
+  mz = 4;
+  ierr = PetscOptionsGetInt(NULL,NULL,"-lattice_layout_Nz",&mz,NULL);CHKERRQ(ierr);
+
   /* traverse */
   for (f=0; f<n_face_list; f++) {
-    PetscPrintf(PETSC_COMM_WORLD,"Markers injection on face %d\n",face_list[f]);
+    PetscInt face = face_list[f];
     /* [0,1/east,west] ; [2,3/north,south] ; [4,5/front,back] */
-    Nxp[0]  = 4;
-    Nxp[1]  = 4;
-    perturb = 0.1;
+    switch (face) {
+      case 0:
+      case 1:
+        Nxp[0] = my;
+        Nxp[1] = mz;
+        break;
+      
+      case 2:
+      case 3:
+        Nxp[0] = mx;
+        Nxp[1] = mz;
+        break;
+
+      case 4:
+      case 5:
+        Nxp[0] = mx;
+        Nxp[1] = my;
+        break;
+
+      default:
+        SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Face %d is not a valid face, only 0, 1, 2, 3, 4, 5 are.",face);
+        break;
+    }
+    PetscPrintf(PETSC_COMM_WORLD,"Markers injection on face %d, Nxp = [%d, %d]\n",face,Nxp[0],Nxp[1]);
+    perturb = 0.0;
     /* reset size */
     DataBucketSetSizes(material_point_face_db,0,-1);
     /* assign coords */
     epsilon = 1.0e-6;
-    ierr = SwarmMPntStd_CoordAssignment_FaceLatticeLayout3d_epsilon(dav,Nxp,perturb,epsilon,face_list[f],material_point_face_db);CHKERRQ(ierr);
+    ierr = SwarmMPntStd_CoordAssignment_FaceLatticeLayout3d_epsilon(dav,Nxp,perturb,epsilon,face,material_point_face_db);CHKERRQ(ierr);
     /* assign values */
     DataBucketGetSizes(material_point_face_db,&n_mp_points,0,0);
     ierr = MaterialPointGetAccess(material_point_face_db,&mpX);CHKERRQ(ierr);
