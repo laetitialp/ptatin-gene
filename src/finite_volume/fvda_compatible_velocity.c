@@ -599,7 +599,7 @@ PetscErrorCode _FVPostProcessCompatibleVelocity_v2_MPI(FVDA fv,const char name_v
     ierr = MPI_Comm_rank(PetscObjectComm((PetscObject)fv->dm_fv),&commrank);CHKERRQ(ierr);
     ierr = PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"fvpp-compat-r%d.dat",(int)commrank);CHKERRQ(ierr);
     fpi = fopen(fname,"w");
-    if (!fpi) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open file: %s",fname);
+    if (!fpi) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open file: %s",fname);
   }
   fprintf(fpi,"#edge <coor> <v.n (input)> <correction> <v.n (output)>\n");
 #endif

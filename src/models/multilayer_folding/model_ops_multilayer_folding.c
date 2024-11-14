@@ -96,7 +96,7 @@ PetscErrorCode ModelInitialize_MultilayerFolding(pTatinCtx c,void *ctx)
   }
   if (n_int != data->n_interfaces) {
     //printf("------>%d %f   %f    %f\n",n_int, data->interface_heights[0], data->interface_heights[1], data->interface_heights[2]);
-    SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_SUP,"User must provide %d back interface heights relative from the base of the model including the top and bottom boundaries (-model_multilayer_folding_interface_heights)",data->n_interfaces);
+    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"User must provide %d back interface heights relative from the base of the model including the top and bottom boundaries (-model_multilayer_folding_interface_heights)",data->n_interfaces);
   }
 
   PetscOptionsGetIntArray(NULL,NULL,"-model_multilayer_folding_layer_res_j",data->layer_res_j,&n_int,&flg);
@@ -104,7 +104,7 @@ PetscErrorCode ModelInitialize_MultilayerFolding(pTatinCtx c,void *ctx)
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"User must provide layer resolution list (-model_multilayer_folding_layer_res_j)");
   }
   if (n_int != data->n_interfaces-1) {
-    SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_SUP,"User must provide %d layer resolutions (-model_multilayer_folding_layer_res_j)",data->n_interfaces-1);
+    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"User must provide %d layer resolutions (-model_multilayer_folding_layer_res_j)",data->n_interfaces-1);
   }
   n_int = data->max_layers;
   PetscOptionsGetRealArray(NULL,NULL,"-model_multilayer_folding_layer_eta",data->eta,&n_int,&flg);
@@ -112,7 +112,7 @@ PetscErrorCode ModelInitialize_MultilayerFolding(pTatinCtx c,void *ctx)
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"User must provide layer viscosity list.(-model_multilayer_folding_layer_eta)");
   }
   if (n_int != data->n_interfaces-1) {
-    SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_SUP,"User must provide %d layer viscosity. (-model_multilayer_folding_layer_eta)",data->n_interfaces-1);
+    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"User must provide %d layer viscosity. (-model_multilayer_folding_layer_eta)",data->n_interfaces-1);
   }
 
   n_int=data->n_interfaces-1;
@@ -127,7 +127,7 @@ PetscErrorCode ModelInitialize_MultilayerFolding(pTatinCtx c,void *ctx)
       SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"User must provide layer viscosity list.(-model_multilayer_folding_layer_cohesion)");
     }
     if (n_int != data->n_interfaces-1) {
-      SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_SUP,"User must provide %d layer cohesion. (-model_multilayer_folding_layer_cohesion)",data->n_interfaces-1);
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"User must provide %d layer cohesion. (-model_multilayer_folding_layer_cohesion)",data->n_interfaces-1);
     }
   }
 
@@ -137,7 +137,7 @@ PetscErrorCode ModelInitialize_MultilayerFolding(pTatinCtx c,void *ctx)
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"User must provide layer density list. (-model_multilayer_folding_layer_rho)");
   }
   if (n_int != data->n_interfaces-1) {
-    SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_SUP,"User must provide %d layer density. (-model_multilayer_folding_layer_rho)",data->n_interfaces-1);
+    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"User must provide %d layer density. (-model_multilayer_folding_layer_rho)",data->n_interfaces-1);
   }
 
   n_int=data->n_interfaces-1;
@@ -721,7 +721,7 @@ PetscErrorCode MultilayerFolding_InitialMaterialGeometry_DamageMP(pTatinCtx c,Mo
       SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"InitialDamage: Cannot set a layer index to be less than 0");
     }
     if (damagelist[p] >= data->n_interfaces-1) {
-      SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"InitialDamage: Cannot set a layer index greater than max layers (%D)",data->n_interfaces-2);
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"InitialDamage: Cannot set a layer index greater than max layers (%D)",data->n_interfaces-2);
     }
 
     layer2damge[ damagelist[p] ] = PETSC_TRUE;
@@ -985,7 +985,7 @@ PetscErrorCode _InitialMaterialGeometryQuadraturePoints_MultilayerFolding(pTatin
       layer++;
     }
     if (phase == -1) {
-      SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot locate the phase element %D is associated with",e);
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot locate the phase element %D is associated with",e);
     }
 
     ierr = VolumeQuadratureGetCellData_Stokes(stokes->volQ,all_gausspoints,e,&cell_gausspoints);CHKERRQ(ierr);
@@ -1057,7 +1057,7 @@ PetscErrorCode MultilayerFolding_SetMaterialPointPropertiesFromLayer(pTatinCtx c
       ei = ei + data->layer_res_j[layer];
     }
     if (phase == -1) {
-      SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Couldn't identify marker %D in any layer",p);
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Couldn't identify marker %D in any layer",p);
     }
 
     ierr = MaterialPointSet_viscosity(  mpX,p, data->eta[phase]);CHKERRQ(ierr);
@@ -1448,7 +1448,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_MultilayerFolding(pTatinCtx c,Vec X,
       } else if (data->bc_type == 2) {
         SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Unsupported boundary condition type <move base down to accomodate pure thickening : case 2>");
       } else {
-        SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Unsupported boundary condition type %D",data->bc_type);
+        SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Unsupported boundary condition type %D",data->bc_type);
       }
 
       /* [B] Advect surface with fluid velocity, internal mesh geometry in x-z is advected with background strain-rate */
@@ -1533,7 +1533,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_MultilayerFolding(pTatinCtx c,Vec X,
       } else if (data->bc_type == 2) {
         SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Unsupported boundary condition type <move base down to accomodate pure thickening : case 2>");
       } else {
-        SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Unsupported boundary condition type %D",data->bc_type);
+        SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Unsupported boundary condition type %D",data->bc_type);
       }
 
       /* [B] Advect surface with fluid velocity, internal mesh geometry in x-z is advected with background strain-rate */

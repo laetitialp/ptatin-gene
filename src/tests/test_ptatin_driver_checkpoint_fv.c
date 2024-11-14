@@ -133,13 +133,13 @@ PetscErrorCode MatAssembleMFGalerkin(DM dav_fine,BCList u_bclist_fine,Quadrature
   
   /* check nlocal_elements_i is divisible by ref_i: I don't want to build any off proc elements needed for the cell problem */
   ierr = DMDAGetCornersElementQ2(dav_fine,&sei,&sej,&sek,&lmi,&lmj,&lmk);CHKERRQ(ierr);
-  if (sei%refi != 0) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Start element (i) must be divisible by %D",refi); }
-  if (sej%refj != 0) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Start element (j) must be divisible by %D",refj); }
-  if (sek%refk != 0) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Start element (k) must be divisible by %D",refk); }
+  if (sei%refi != 0) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Start element (i) must be divisible by %D",refi); }
+  if (sej%refj != 0) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Start element (j) must be divisible by %D",refj); }
+  if (sek%refk != 0) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Start element (k) must be divisible by %D",refk); }
   
-  if (lmi%refi != 0) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Local element size (i) must be divisible by %D",refi); }
-  if (lmj%refj != 0) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Local element size (j) must be divisible by %D",refj); }
-  if (lmk%refk != 0) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Local element size (k) must be divisible by %D",refk); }
+  if (lmi%refi != 0) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Local element size (i) must be divisible by %D",refi); }
+  if (lmj%refj != 0) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Local element size (j) must be divisible by %D",refj); }
+  if (lmk%refk != 0) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Local element size (k) must be divisible by %D",refk); }
   
   ierr = DMSetMatType(daf,MATSEQAIJ);CHKERRQ(ierr);
   ierr = DMCreateMatrix(daf,&Acell);CHKERRQ(ierr); // ==> What goes in Acell ? 
@@ -782,7 +782,7 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
           SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_ARG_OUTOFRANGE,"Cannot use mf-galerkin coarse grid on the finest level");
         }
         if (level_type[k+1] != OP_TYPE_REDISC_MF) {
-          SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_ARG_OUTOFRANGE,"Cannot use mf-galerkin. Next finest level[%D] must be of type OP_TYPE_REDISC_MF",k+1);
+          SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_ARG_OUTOFRANGE,"Cannot use mf-galerkin. Next finest level[%D] must be of type OP_TYPE_REDISC_MF",k+1);
         }
         
         ierr = DMSetMatType(dav_hierarchy[k],MATAIJ);CHKERRQ(ierr);
@@ -1184,7 +1184,7 @@ PetscErrorCode HMG_SetUp(AuuMultiLevelCtx *mlctx, pTatinCtx user)
 
   nlevels = 1;
   ierr = PetscOptionsGetInt(NULL,NULL,"-dau_nlevels",&nlevels,NULL);CHKERRQ(ierr);
-  if (nlevels >= MAX_MG_LEVELS) SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Maximum number of multi-grid levels is set by #define MAX_MG_LEVELS %D",MAX_MG_LEVELS);
+  if (nlevels >= MAX_MG_LEVELS) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Maximum number of multi-grid levels is set by #define MAX_MG_LEVELS %D",MAX_MG_LEVELS);
 
   PetscPrintf(PETSC_COMM_WORLD,"Mesh size (%D x %D x %D) : MG levels %D  \n",user->mx,user->my,user->mz,nlevels);
   ierr = pTatin3dStokesBuildMeshHierarchy(dav,nlevels,dav_hierarchy);CHKERRQ(ierr);
@@ -1699,7 +1699,7 @@ PetscErrorCode CheckpointWrite_EnergyFV(PhysCompEnergyFV energyfv,PetscBool writ
       char *jbuff = cJSON_Print(jso_file);
 
       fp = fopen(jfilename,"w");
-      if (!fp) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Unable to open file %s",jfilename);
+      if (!fp) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Unable to open file %s",jfilename);
       fprintf(fp,"%s\n",jbuff);
       fclose(fp);
       free(jbuff);
@@ -1731,7 +1731,7 @@ PetscErrorCode PhysCompLoad_EnergyFV(pTatinCtx user,DM dav,const char jfilename[
 
   if (rank == 0) {
     cJSON_FileView(jfilename,&jfile);
-    if (!jfile) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open JSON file \"%s\"",jfilename);
+    if (!jfile) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open JSON file \"%s\"",jfilename);
     jphys = cJSON_GetObjectItem(jfile,"PhysCompEnergyFV");
   }
   
@@ -1813,7 +1813,7 @@ PetscErrorCode pTatinPhysCompActivate_EnergyFV_FromFile(pTatinCtx ctx)
   PetscSNPrintf(jfilename,PETSC_MAX_PATH_LEN-1,"%s/ptatin3dctx.json",ctx->restart_dir);
   if (commrank == 0) {
     cJSON_FileView(jfilename,&jfile);
-    if (!jfile) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open JSON file \"%s\"",jfilename);
+    if (!jfile) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open JSON file \"%s\"",jfilename);
     jptat = cJSON_GetObjectItem(jfile,"pTatinCtx");
   }
 
@@ -2057,7 +2057,7 @@ PetscErrorCode pTatinCtxCheckpointWriteFV(pTatinCtx ctx,const char path[],const 
       char *jbuff = cJSON_Print(jso_file);
 
       fp = fopen(jfilename,"w");
-      if (!fp) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Unable to open file %s",jfilename);
+      if (!fp) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Unable to open file %s",jfilename);
       fprintf(fp,"%s\n",jbuff);
       fclose(fp);
       free(jbuff);
@@ -2085,7 +2085,7 @@ PetscErrorCode pTatin3dLoadState_FromFile_FV(pTatinCtx ctx,DM dmstokes,DM dmener
   PetscSNPrintf(jfilename,PETSC_MAX_PATH_LEN-1,"%s/ptatin3dctx.json",ctx->restart_dir);
   if (commrank == 0) {
     cJSON_FileView(jfilename,&jfile);
-    if (!jfile) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open JSON file \"%s\"",jfilename);
+    if (!jfile) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open JSON file \"%s\"",jfilename);
     jptat = cJSON_GetObjectItem(jfile,"pTatinCtx");
   }
 

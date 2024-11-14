@@ -184,7 +184,7 @@ PetscErrorCode FVDAView_CellGeom_local(FVDA fv)
   ierr = MPI_Comm_rank(fv->comm,&rank);CHKERRQ(ierr);
   ierr = PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"fv-cellgeom-r%d.vtu",(int)rank);CHKERRQ(ierr);
   if ((fp = fopen (name,"w")) == NULL)  {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open new VTU file %s",name);
+    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open new VTU file %s",name);
   }
   
   ierr = DMDAGetElements(fv->dm_geometry,&dm_nel,&dm_nen,&dm_element);CHKERRQ(ierr);
@@ -298,7 +298,7 @@ PetscErrorCode FVDAView_BFaceGeom_local(FVDA fv)
   ierr = MPI_Comm_rank(fv->comm,&rank);CHKERRQ(ierr);
   ierr = PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"fv-bfacegeom-r%d.vtu",(int)rank);CHKERRQ(ierr);
   if ((fp = fopen (name,"w")) == NULL)  {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open new VTU file %s",name);
+    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open new VTU file %s",name);
   }
   
   ierr = DMDAGetElements(fv->dm_geometry,&dm_nel,&dm_nen,&dm_element);CHKERRQ(ierr);
@@ -437,7 +437,7 @@ PetscErrorCode FVDAView_FaceGeom_local(FVDA fv)
   ierr = MPI_Comm_rank(fv->comm,&rank);CHKERRQ(ierr);
   ierr = PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"fv-facegeom-r%d.vtu",(int)rank);CHKERRQ(ierr);
   if ((fp = fopen (name,"w")) == NULL)  {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open new VTU file %s",name);
+    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open new VTU file %s",name);
   }
   
   ierr = DMDAGetElements(fv->dm_geometry,&dm_nel,&dm_nen,&dm_element);CHKERRQ(ierr);
@@ -570,7 +570,7 @@ PetscErrorCode FVDAView_FaceData_local(FVDA fv,const char prefix[])
   ierr = MPI_Comm_rank(fv->comm,&rank);CHKERRQ(ierr);
   ierr = PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"%s-r%d.vtu",prefix,(int)rank);CHKERRQ(ierr);
   if ((fp = fopen (name,"w")) == NULL)  {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open new VTU file %s",name);
+    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open new VTU file %s",name);
   }
   
   ierr = DMDAGetElements(fv->dm_geometry,&dm_nel,&dm_nen,&dm_element);CHKERRQ(ierr);
@@ -728,7 +728,7 @@ PetscErrorCode FVDAView_CellData_local(FVDA fv,Vec field,PetscBool view_cell_pro
   ierr = MPI_Comm_rank(fv->comm,&rank);CHKERRQ(ierr);
   ierr = PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"%s-r%d.vtu",prefix,(int)rank);CHKERRQ(ierr);
   if ((fp = fopen (name,"w")) == NULL)  {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open new VTU file %s",name);
+    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open new VTU file %s",name);
   }
   
   ierr = DMDAGetElements(fv->dm_geometry,&dm_nel,&dm_nen,&dm_element);CHKERRQ(ierr);
@@ -875,7 +875,7 @@ PetscErrorCode FVDAView_CellData(FVDA fv,Vec field,PetscBool view_cell_prop,cons
   ierr = MPI_Comm_rank(fv->comm,&rank);CHKERRQ(ierr);
   if (rank == 0) {
     if ((vtk_fp = fopen(pvtu_fname,"w")) == NULL)  {
-      SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Cannot open PVTU file %s",pvtu_fname);
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Cannot open PVTU file %s",pvtu_fname);
     }
   }
   
@@ -1120,7 +1120,7 @@ PetscErrorCode FVDAView_JSON(FVDA fv,const char path[],const char prefix[])
       }
 
       fp = fopen(jfilename,"w");
-      if (!fp) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Unable to open file %s",jfilename);
+      if (!fp) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Unable to open file %s",jfilename);
       fprintf(fp,"%s\n",jbuff);
       fclose(fp);
       free(jbuff);
@@ -1157,14 +1157,14 @@ PetscErrorCode PetscVecWriteJSON(Vec x,PetscInt format,const char suffix[])
   else if (format == 1) { PetscSNPrintf(x_filename,PETSC_MAX_PATH_LEN-1,"%s.pbvec",suffix_tail); }
   else if (format == 2) { PetscSNPrintf(x_filename,PETSC_MAX_PATH_LEN-1,"%s.h5",suffix_tail); }
   else if (format == 3) { PetscSNPrintf(x_filename,PETSC_MAX_PATH_LEN-1,"%s.pbvec.gz",suffix_tail); }
-  else SETERRQ1(comm,PETSC_ERR_SUP,"Format %D is not recognized and not supported",format);
+  else SETERRQ(comm,PETSC_ERR_SUP,"Format %D is not recognized and not supported",format);
   */
    
   if      (format == 0) { PetscSNPrintf(x_filename,PETSC_MAX_PATH_LEN-1,"%s.pbvec",suffix); }
   else if (format == 1) { PetscSNPrintf(x_filename,PETSC_MAX_PATH_LEN-1,"%s.pbvec",suffix); }
   else if (format == 2) { PetscSNPrintf(x_filename,PETSC_MAX_PATH_LEN-1,"%s.h5",suffix); }
   else if (format == 3) { PetscSNPrintf(x_filename,PETSC_MAX_PATH_LEN-1,"%s.pbvec.gz",suffix); }
-  else SETERRQ1(comm,PETSC_ERR_SUP,"Format %D is not recognized and not supported",format);
+  else SETERRQ(comm,PETSC_ERR_SUP,"Format %D is not recognized and not supported",format);
   
   if (format == 0 || format == 3) {
     ierr = PetscViewerCreate(comm,&viewer);CHKERRQ(ierr);
@@ -1248,7 +1248,7 @@ PetscErrorCode PetscVecWriteJSON(Vec x,PetscInt format,const char suffix[])
       
       PetscSNPrintf(jfilename,PETSC_MAX_PATH_LEN-1,"%s.json",suffix);
       fp = fopen(jfilename,"w");
-      if (!fp) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Unable to open file %s",jfilename);
+      if (!fp) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Unable to open file %s",jfilename);
       fprintf(fp,"%s\n",jbuff);
       fclose(fp);
       free(jbuff);
@@ -1321,7 +1321,7 @@ static PetscErrorCode _FVDAOutputParaView_VTS_binary(FVDA fv,Vec field,PetscBool
   
   PetscFunctionBegin;
   if ((vtk_fp = fopen(name,"w")) == NULL)  {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Cannot open file %s",name);
+    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Cannot open file %s",name);
   }
 
   da = fv->dm_geometry;
@@ -1483,7 +1483,7 @@ static PetscErrorCode _FVDAOutputParaView_PVTS(FVDA fv,Vec field,PetscBool view_
   vtk_fp = NULL;
   if (rank == 0) {
     if ((vtk_fp = fopen (name, "w")) == NULL)  {
-      SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name);
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name);
     }
   }
   

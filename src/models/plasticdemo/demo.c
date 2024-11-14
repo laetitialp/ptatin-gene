@@ -112,7 +112,7 @@ PetscErrorCode ModelInitialize_PD(pTatinCtx ptatinctx,void *modelctx)
     PetscOptionsGetRealArray(NULL,NULL,"-model_domain_size",modeldata->domain,&nd,&flg);
     if (flg) {
       if (nd != 3) {
-        SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"param:\"model domain size\" - status:\"missing entry\" => expected 3 entries, only found %D",nd);
+        SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"param:\"model domain size\" - status:\"missing entry\" => expected 3 entries, only found %D",nd);
       }
     }
   }

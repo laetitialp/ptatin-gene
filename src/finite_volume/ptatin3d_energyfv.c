@@ -127,7 +127,7 @@ PetscErrorCode PhysCompEnergyFVSetUp(PhysCompEnergyFV energy,pTatinCtx pctx)
   ierr = DMDAGetElementsSizes(energy->dmv,&mi[0],&mi[1],&mi[2]);CHKERRQ(ierr);
   /* check mi[] == fv_mi[] */
   for (d=0; d<3; d++) {
-    if (mi[d] != fv_mi[d]) SETERRQ1(energy->fv->comm,PETSC_ERR_USER,"DMDA for FV has inconsistent number of elements (direction %D)",d);
+    if (mi[d] != fv_mi[d]) SETERRQ(energy->fv->comm,PETSC_ERR_USER,"DMDA for FV has inconsistent number of elements (direction %D)",d);
   }
   
   /* Set the sizes for the FV mesh */
@@ -607,9 +607,9 @@ PetscErrorCode _ijk_get_ownership_ranges_3d(MPI_Comm comm,const PetscInt mp[],co
       if (rijk[1] > mp[1]) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"rijk[1] conversion failed");
       if (rijk[2] > mp[2]) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"rijk[2] conversion failed");
       
-      if (li[ rijk[0] ] != 0 && li[ rijk[0] ] != mxr[0]) SETERRQ4(PETSC_COMM_SELF,PETSC_ERR_USER,"Input in i-direction is inconsistent. Ranks mapping to same i-decomp slot define different values. i-decomp[%d] had value %D received value %D from rank %d",(int)rijk[0],li[ rijk[0] ],mxr[0],(int)r);
-      if (lj[ rijk[1] ] != 0 && lj[ rijk[1] ] != mxr[1]) SETERRQ4(PETSC_COMM_SELF,PETSC_ERR_USER,"Input in j-direction is inconsistent. Ranks mapping to same j-decomp slot define different values. j-decomp[%d] had value %D received value %D from rank %d",(int)rijk[1],lj[ rijk[1] ],mxr[1],(int)r);
-      if (lk[ rijk[2] ] != 0 && lk[ rijk[2] ] != mxr[2]) SETERRQ4(PETSC_COMM_SELF,PETSC_ERR_USER,"Input in k-direction is inconsistent. Ranks mapping to same k-decomp slot define different values. k-decomp[%d] had value %D received value %D from rank %d",(int)rijk[2],lk[ rijk[2] ],mxr[2],(int)r);
+      if (li[ rijk[0] ] != 0 && li[ rijk[0] ] != mxr[0]) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Input in i-direction is inconsistent. Ranks mapping to same i-decomp slot define different values. i-decomp[%d] had value %D received value %D from rank %d",(int)rijk[0],li[ rijk[0] ],mxr[0],(int)r);
+      if (lj[ rijk[1] ] != 0 && lj[ rijk[1] ] != mxr[1]) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Input in j-direction is inconsistent. Ranks mapping to same j-decomp slot define different values. j-decomp[%d] had value %D received value %D from rank %d",(int)rijk[1],lj[ rijk[1] ],mxr[1],(int)r);
+      if (lk[ rijk[2] ] != 0 && lk[ rijk[2] ] != mxr[2]) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Input in k-direction is inconsistent. Ranks mapping to same k-decomp slot define different values. k-decomp[%d] had value %D received value %D from rank %d",(int)rijk[2],lk[ rijk[2] ],mxr[2],(int)r);
       
       li[ rijk[0] ] = mxr[0];
       lj[ rijk[1] ] = mxr[1];
@@ -1000,7 +1000,7 @@ PetscErrorCode EnergyFVEvaluateCoefficients_MaterialPoints(pTatinCtx user,PetscR
         break;
         
       case ENERGYDENSITY_USE_MATERIALPOINT_VALUE:
-        SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_SUP,"[region %D] ENERGYDENSITY_USE_MATERIALPOINT_VALUE is not available",region_idx);
+        SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"[region %D] ENERGYDENSITY_USE_MATERIALPOINT_VALUE is not available",region_idx);
         break;
         
       case ENERGYDENSITY_CONSTANT:
@@ -1008,7 +1008,7 @@ PetscErrorCode EnergyFVEvaluateCoefficients_MaterialPoints(pTatinCtx user,PetscR
         break;
         
       case ENERGYDENSITY_BOUSSINESQ:
-        SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_SUP,"[region %D] ENERGYDENSITY_BOUSSINESQ is not available - sorry email GD for help",region_idx);
+        SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"[region %D] ENERGYDENSITY_BOUSSINESQ is not available - sorry email GD for help",region_idx);
         break;
     }
     
@@ -1016,7 +1016,7 @@ PetscErrorCode EnergyFVEvaluateCoefficients_MaterialPoints(pTatinCtx user,PetscR
     conductivity_mp = 1.0;
     switch (conductivity_type) {
       case ENERGYCONDUCTIVITY_NONE:
-        SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_SUP,"[region %D] A valid conductivity type must be specified",region_idx);
+        SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"[region %D] A valid conductivity type must be specified",region_idx);
         break;
         
       case ENERGYCONDUCTIVITY_USE_MATERIALPOINT_VALUE:
@@ -1209,7 +1209,7 @@ PetscErrorCode MaterialPointOrderingCreate_Cellwise(int nkeys,
     int _key = point[i].wil;
     
 #if defined(PETSC_USE_DEBUG)
-    if (_key < 0 || _key >= nkeys) SETERRQ3(PETSC_COMM_SELF,PETSC_ERR_USER,"key[%d] = %d outside range [0,%d]",i,point[i].wil,nkeys-1);
+    if (_key < 0 || _key >= nkeys) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"key[%d] = %d outside range [0,%d]",i,point[i].wil,nkeys-1);
 #endif
     cnt[_key]++;
   }

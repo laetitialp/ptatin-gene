@@ -170,7 +170,7 @@ PetscErrorCode PhysCompEnergyFVSetUp_SteadyState(PhysCompEnergyFV energy,pTatinC
   ierr = DMDAGetElementsSizes(energy->dmv,&mi[0],&mi[1],&mi[2]);CHKERRQ(ierr);
   /* check mi[] == fv_mi[] */
   for (d=0; d<3; d++) {
-    if (mi[d] != fv_mi[d]) SETERRQ1(energy->fv->comm,PETSC_ERR_USER,"DMDA for FV has inconsistent number of elements (direction %D)",d);
+    if (mi[d] != fv_mi[d]) SETERRQ(energy->fv->comm,PETSC_ERR_USER,"DMDA for FV has inconsistent number of elements (direction %D)",d);
   }
   
   /* Set the sizes for the FV mesh */

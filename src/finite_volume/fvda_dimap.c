@@ -200,13 +200,13 @@ PetscErrorCode DIMapApply(DIMap map,PetscInt i,PetscInt *j)
   if ((i < 0) && (map->negative_input_ignored)) { *j = i; PetscFunctionReturn(0); }
 
 #if defined(PETSC_USE_DEBUG)
-  if (i < map->input_range[0]) SETERRQ3(PETSC_COMM_SELF,PETSC_ERR_SUP,"i %D outside range [%D,%D)",i,map->input_range[0],map->input_range[1]);
-  if (i >= map->input_range[1]) SETERRQ3(PETSC_COMM_SELF,PETSC_ERR_SUP,"i %D outside range [%D,%D)",i,map->input_range[0],map->input_range[1]);
+  if (i < map->input_range[0]) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"i %D outside range [%D,%D)",i,map->input_range[0],map->input_range[1]);
+  if (i >= map->input_range[1]) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"i %D outside range [%D,%D)",i,map->input_range[0],map->input_range[1]);
 #endif
 
   *j = map->idx[i];
   
-  if ((*j < 0) && (!map->negative_output_allowed)) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_SUP,"i %D maps to negative value %D : DIMap config does not allow negative output",i,*j);
+  if ((*j < 0) && (!map->negative_output_allowed)) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"i %D maps to negative value %D : DIMap config does not allow negative output",i,*j);
   
   PetscFunctionReturn(0);
 }
@@ -221,18 +221,18 @@ PetscErrorCode DIMapApplyN(DIMap map,PetscInt N,PetscInt i[],PetscInt j[])
       if (i[k] < 0) j[k] = i[k];
       else {
 #if defined(PETSC_USE_DEBUG)
-        if (i[k] < map->input_range[0]) SETERRQ3(PETSC_COMM_SELF,PETSC_ERR_SUP,"i %D outside range [%D,%D)",i[k],map->input_range[0],map->input_range[1]);
+        if (i[k] < map->input_range[0]) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"i %D outside range [%D,%D)",i[k],map->input_range[0],map->input_range[1]);
         
-        if (i[k] >= map->input_range[1]) SETERRQ3(PETSC_COMM_SELF,PETSC_ERR_SUP,"i %D outside range [%D,%D)",i[k],map->input_range[0],map->input_range[1]);
+        if (i[k] >= map->input_range[1]) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"i %D outside range [%D,%D)",i[k],map->input_range[0],map->input_range[1]);
 #endif
       }
     }
   } else {
 #if defined(PETSC_USE_DEBUG)
     for (k=0; k<N; k++) {
-      if (i[k] < map->input_range[0]) SETERRQ4(PETSC_COMM_SELF,PETSC_ERR_SUP,"i[%D] %D outside range [%D,%D)",k,i[k],map->input_range[0],map->input_range[1]);
+      if (i[k] < map->input_range[0]) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"i[%D] %D outside range [%D,%D)",k,i[k],map->input_range[0],map->input_range[1]);
       
-      if (i[k] >= map->input_range[1]) SETERRQ4(PETSC_COMM_SELF,PETSC_ERR_SUP,"i[%D] %D outside range [%D,%D)",k,i[k],map->input_range[0],map->input_range[1]);
+      if (i[k] >= map->input_range[1]) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"i[%D] %D outside range [%D,%D)",k,i[k],map->input_range[0],map->input_range[1]);
     }
 #endif
   }
@@ -242,7 +242,7 @@ PetscErrorCode DIMapApplyN(DIMap map,PetscInt N,PetscInt i[],PetscInt j[])
   }
 
   if (!map->negative_output_allowed) {
-    if (j[k] < 0) SETERRQ3(PETSC_COMM_SELF,PETSC_ERR_SUP,"i[%D] %D maps to negative value %D : DIMap config does not allow negative output",k,i,j[k]);
+    if (j[k] < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"i[%D] %D maps to negative value %D : DIMap config does not allow negative output",k,i,j[k]);
   }
   
   PetscFunctionReturn(0);

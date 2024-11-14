@@ -74,7 +74,7 @@ static PetscErrorCode ModelInitialGeometryPoissonPressure(ModelPoissonPressureCt
   ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME_R,"-y_continent",data->y_continent,&nn,&found);CHKERRQ(ierr);
   if (found) {
     if (nn != 3) {
-      SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 3 values for -y_continent. Found %d",nn);
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 3 values for -y_continent. Found %d",nn);
     }
   }
 
@@ -403,7 +403,7 @@ static PetscErrorCode ModelSetInitialMaterialLayeringPoissonPressure(MPntStd *ma
       break; 
 
     default:
-      SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Unreconnized value for geometry_type. Only 1 and 2 are available, you provided %d",data->geometry_type);
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Unreconnized value for geometry_type. Only 1 and 2 are available, you provided %d",data->geometry_type);
       break;
   }
   PetscFunctionReturn(0);

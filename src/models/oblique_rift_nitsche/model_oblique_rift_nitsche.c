@@ -75,15 +75,15 @@ static PetscErrorCode ModelInitialGeometry_RiftNitsche(ModelRiftNitscheCtx *data
 
   nn = 3;
   ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME_R,"-O",data->O,&nn,&found);CHKERRQ(ierr);
-  if (found) { if (nn != 3) { SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 3 values for -O. Found %d",nn); } }
+  if (found) { if (nn != 3) { SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 3 values for -O. Found %d",nn); } }
 
   nn = 3;
   ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME_R,"-L",data->L,&nn,&found);CHKERRQ(ierr);
-  if (found) { if (nn != 3) { SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 3 values for -L. Found %d",nn); } }
+  if (found) { if (nn != 3) { SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 3 values for -L. Found %d",nn); } }
 
   nn = 3;
   ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME_R,"-y_continent",data->y_continent,&nn,&found);CHKERRQ(ierr);
-  if (found) { if (nn != 3) { SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 3 values for -y_continent. Found %d",nn); } }
+  if (found) { if (nn != 3) { SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 3 values for -y_continent. Found %d",nn); } }
 
   /* reports before scaling */
   PetscPrintf(PETSC_COMM_WORLD,"************ Box Geometry ************\n",NULL);
@@ -296,7 +296,7 @@ static PetscErrorCode ModelSetGeneralSlipBoundaryValues_ObliqueExtensionZ(ModelR
   data->H[5] = 0; // H_12 = H_21
   nn = 6;
   ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME_R,"-mathcalH",data->H,&nn,&found);CHKERRQ(ierr);
-  if (found) {if (nn != 6) { SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Wrong number of entries for -mathcalH, expected 6, passed %d",nn); } }
+  if (found) {if (nn != 6) { SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Wrong number of entries for -mathcalH, expected 6, passed %d",nn); } }
   PetscFunctionReturn(0);
 }
 
@@ -365,7 +365,7 @@ static PetscErrorCode ModelSetGeneralSlipBoundaryValues_RotatedVelocityField(Mod
   data->H[5] = 0; // H_12 = H_21
   nn = 6;
   ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME_R,"-mathcalH",data->H,&nn,&found);CHKERRQ(ierr);
-  if (found) {if (nn != 6) { SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Wrong number of entries for -mathcalH, expected 6, passed %d",nn); } }
+  if (found) {if (nn != 6) { SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Wrong number of entries for -mathcalH, expected 6, passed %d",nn); } }
   PetscFunctionReturn(0);
 }
 // TODO: Modify this function because there is too much redundant code
@@ -596,7 +596,7 @@ static PetscErrorCode ModelSetWeakZoneParameters_RiftNitsche(ModelRiftNitscheCtx
   ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME_R,"-wz_sigma",data->wz_sigma,&nn,&found);CHKERRQ(ierr);
   if (found) {
     if (nn != 2) {
-      SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 2 values for -wz_sigma. Found %d",nn);
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 2 values for -wz_sigma. Found %d",nn);
     }
   }
 
@@ -770,14 +770,14 @@ static PetscErrorCode ModelSetBCType_RiftNitsche(ModelRiftNitscheCtx *data)
   ierr = PetscOptionsGetRealArray(NULL, MODEL_NAME_R,"-bc_split_face_min",data->split_face_min,&nn,&found);CHKERRQ(ierr);
   if (found) {
     if (nn != 2) {
-      SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 2 values for -split_face_min. Found %d",nn);
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 2 values for -split_face_min. Found %d",nn);
     }
   }
   nn = 2;
   ierr = PetscOptionsGetRealArray(NULL, MODEL_NAME_R,"-bc_split_face_max",data->split_face_max,&nn,&found);CHKERRQ(ierr);
   if (found) {
     if (nn != 2) {
-      SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 2 values for -split_face_max. Found %d",nn);
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 2 values for -split_face_max. Found %d",nn);
     }
   }
 
@@ -1072,7 +1072,7 @@ static PetscErrorCode ComputeWeakZonesCentreEquallySpaced(PetscReal *notch_centr
     L = data->L[2] - data->O[2];
     O = data->O[2];
   } else {
-    SETERRQ2(PETSC_COMM_WORLD,PETSC_ERR_USER,"[[%s]] dim must be 0, or 1 dim = %d was given\n",PETSC_FUNCTION_NAME,dim);
+    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"[[%s]] dim must be 0, or 1 dim = %d was given\n",PETSC_FUNCTION_NAME,dim);
   }
   
   for (i=0; i<data->n_notches; i++) {
@@ -1108,7 +1108,7 @@ static PetscErrorCode WeakZonesCentreOffsetFromAngle(PetscReal *notch_centre, Pe
     centre[0] = 0.5 * (data->O[0] + data->L[0]);
     centre[1] = 0.5 * (data->O[2] + data->L[2]);
   } else {
-    SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"dim can only be 0 or 1. Given %d",dim);
+    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"dim can only be 0 or 1. Given %d",dim);
   }
 
   for (i=0; i<data->n_notches; i++) {
@@ -1134,10 +1134,10 @@ static PetscErrorCode WeakZoneCentreFromOptions(PetscReal *notch_centre, ModelRi
     ierr = PetscOptionsGetRealArray(NULL, MODEL_NAME_R, option_name, centre, &nn, &found);CHKERRQ(ierr);
     if (found) {
       if (nn != 2) {
-        SETERRQ2(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 2 values for -wz_centre%d. Found %d",i,nn);
+        SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 2 values for -wz_centre%d. Found %d",i,nn);
       }
     } else {
-      SETERRQ2(PETSC_COMM_WORLD,PETSC_ERR_USER,"In function [[%s]] No options found for weak zone centre coordinates. Use -wz_centre%d x,z to set it.",PETSC_FUNCTION_NAME,i);
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"In function [[%s]] No options found for weak zone centre coordinates. Use -wz_centre%d x,z to set it.",PETSC_FUNCTION_NAME,i);
     }
     free (option_name);
     /* Set centre coordinates, don't forget the length scalling */

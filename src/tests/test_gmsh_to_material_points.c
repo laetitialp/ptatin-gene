@@ -339,11 +339,11 @@ static PetscErrorCode SurfaceConstaintCreateFromOptions(pTatinCtx ptatin, PetscB
 
     ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-sc_name_%d",tag);CHKERRQ(ierr);
     ierr = PetscOptionsGetString(NULL,NULL,opt_name,sc_name,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
-    if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Providing a name to -sc_name_%d is mandatory!",data->tag_table[f]); }
+    if (!found) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Providing a name to -sc_name_%d is mandatory!",data->tag_table[f]); }
 
     ierr = PetscSNPrintf(opt_name,PETSC_MAX_PATH_LEN-1,"-sc_type_%d",tag);CHKERRQ(ierr);
     ierr = PetscOptionsGetInt(NULL,NULL,opt_name,&sc_type,&found);CHKERRQ(ierr);
-    if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Providing a type to -sc_type_%d is mandatory!",data->tag_table[f]); }
+    if (!found) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Providing a type to -sc_type_%d is mandatory!",data->tag_table[f]); }
 
     ierr = SurfBCListGetConstraint(stokes->surf_bclist,sc_name,&data->sc[f]);CHKERRQ(ierr);
     if (!data->sc[f]) {
@@ -375,11 +375,11 @@ static PetscErrorCode ModelInitialize(pTatinCtx ptatin, GMSHCtx *data)
 
   nn = 3;
   ierr = PetscOptionsGetRealArray(NULL,NULL,"-O",data->O,&nn,&found);CHKERRQ(ierr);
-  if (found) { if (nn != 3) { SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 3 values for -O. Found %d",nn); } }
+  if (found) { if (nn != 3) { SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 3 values for -O. Found %d",nn); } }
 
   nn = 3;
   ierr = PetscOptionsGetRealArray(NULL,NULL,"-L",data->L,&nn,&found);CHKERRQ(ierr);
-  if (found) { if (nn != 3) { SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 3 values for -L. Found %d",nn); } }
+  if (found) { if (nn != 3) { SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 3 values for -L. Found %d",nn); } }
 
   ierr = PetscOptionsGetInt(NULL,NULL,"-mx",&ptatin->mx,NULL);
   ierr = PetscOptionsGetInt(NULL,NULL,"-my",&ptatin->my,NULL);
@@ -398,7 +398,7 @@ static PetscErrorCode ModelInitialize(pTatinCtx ptatin, GMSHCtx *data)
   ierr = PetscOptionsGetIntArray(NULL,NULL,"-regions_list",data->region_table,&nn,&found);CHKERRQ(ierr);
   if (found) {
     if (nn != data->n_regions) {
-      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"n_regions (%d) and the number of entries in regions_list (%d) mismatch!\n",data->n_regions,nn);
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"n_regions (%d) and the number of entries in regions_list (%d) mismatch!\n",data->n_regions,nn);
     }
   }
 
@@ -413,7 +413,7 @@ static PetscErrorCode ModelInitialize(pTatinCtx ptatin, GMSHCtx *data)
   ierr = PetscOptionsGetIntArray(NULL,NULL,"-bc_tag_list",data->tag_table,&nn,&found);CHKERRQ(ierr);
   if (found) {
     if (nn != data->n_bcfaces) {
-      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"n_bc_subfaces (%d) and the number of entries in bc_tag_list (%d) mismatch!\n",data->n_bcfaces,nn);
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"n_bc_subfaces (%d) and the number of entries in bc_tag_list (%d) mismatch!\n",data->n_bcfaces,nn);
     }
   }
 

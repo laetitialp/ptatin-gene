@@ -241,7 +241,7 @@ int main(int argc,char **argv)
       break;
 
     default:
-      SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Undefined test id %d\n",test_id);
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Undefined test id %d\n",test_id);
       break;
   }
 

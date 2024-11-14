@@ -199,13 +199,13 @@ PetscErrorCode FVDASetSizes(FVDA fv,const PetscInt mi[],const PetscInt Mi[])
   PetscFunctionBegin;
   if (mi) {
     for (d=0; d<fv->dim; d++) {
-      if (fv->mi[d] != PETSC_DECIDE) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Cannot change local cell size (direction %D)",d);
+      if (fv->mi[d] != PETSC_DECIDE) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Cannot change local cell size (direction %D)",d);
       fv->mi[d] = mi[d];
     }
   }
   if (Mi) {
     for (d=0; d<fv->dim; d++) {
-      if (fv->Mi[d] != PETSC_DECIDE) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Cannot change global cell size (direction %D)",d);
+      if (fv->Mi[d] != PETSC_DECIDE) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Cannot change global cell size (direction %D)",d);
       fv->Mi[d] = Mi[d];
     }
   }
@@ -692,7 +692,7 @@ PetscErrorCode FVDAFaceIterator(FVDA fv,DACellFace face,PetscBool require_normal
   for (f=0; f<len; f++) {
     PetscInt fid = indices[f];
     cell[f] = fv->face_element_map[2*fid + 0];
-    if (cell[f] < 0) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_SUP,"Boundary facet [%D -> %D] is missing cell-. A boundary facet should always have a cell- living on the sub-domain",f,fid);
+    if (cell[f] < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Boundary facet [%D -> %D] is missing cell-. A boundary facet should always have a cell- living on the sub-domain",f,fid);
   }
   
   ierr = PetscCalloc1(len,&bc_type);CHKERRQ(ierr);
@@ -708,7 +708,7 @@ PetscErrorCode FVDAFaceIterator(FVDA fv,DACellFace face,PetscBool require_normal
   /* pack everything the user set */
   for (f=0; f<len; f++) {
     if (bc_type[f] != FVFLUX_DIRICHLET_CONSTRAINT && bc_type[f] != FVFLUX_NEUMANN_CONSTRAINT) {
-      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Boundary facet [%d] must have a value of FVFLUX_DIRICHLET_CONSTRAINT or FVFLUX_NEUMANN_CONSTRAINT. Found %D",f,bc_type[f]);
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Boundary facet [%d] must have a value of FVFLUX_DIRICHLET_CONSTRAINT or FVFLUX_NEUMANN_CONSTRAINT. Found %D",f,bc_type[f]);
     }
     
     fv->boundary_flux[s + f]  = bc_type[f];
@@ -761,7 +761,7 @@ PetscErrorCode FVDAFaceIteratorPointwise(FVDA fv,DACellFace face,PetscBool requi
     }
 
     cell = fv->face_element_map[2*fid + 0];
-    if (cell < 0) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_SUP,"Boundary facet [%D -> %D] is missing cell-. A boundary facet should always have a cell- living on the sub-domain",f,fid);
+    if (cell < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Boundary facet [%D -> %D] is missing cell-. A boundary facet should always have a cell- living on the sub-domain",f,fid);
 
     fv->boundary_flux[fid] = FVFLUX_UN_INITIALIZED;
     bc_type = FVFLUX_UN_INITIALIZED;
@@ -770,7 +770,7 @@ PetscErrorCode FVDAFaceIteratorPointwise(FVDA fv,DACellFace face,PetscBool requi
     
     /* pack everything the user set */
     if (bc_type != FVFLUX_DIRICHLET_CONSTRAINT && bc_type != FVFLUX_NEUMANN_CONSTRAINT) {
-      SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Boundary facet [%d] must have a value of FVFLUX_DIRICHLET_CONSTRAINT or FVFLUX_NEUMANN_CONSTRAINT. Found %D",f,bc_type);
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Boundary facet [%d] must have a value of FVFLUX_DIRICHLET_CONSTRAINT or FVFLUX_NEUMANN_CONSTRAINT. Found %D",f,bc_type);
     }
     
     fv->boundary_flux[s + f]  = bc_type;
@@ -1507,7 +1507,7 @@ static PetscErrorCode private_FVDACreateFaceLabels2d(DM dm,PetscInt *ne,PetscInt
   
   if (e != nedges) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Number of faces is incorrect");
   for (e=0; e<nedges; e++) {
-    if (((PetscInt)face_type[e] >= DACELL2D_NFACES) || ((PetscInt)face_type[e] < 0)) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_SUP,"Face %D contains out-of-range face type value %D",e,(PetscInt)face_type[e]);
+    if (((PetscInt)face_type[e] >= DACELL2D_NFACES) || ((PetscInt)face_type[e] < 0)) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Face %D contains out-of-range face type value %D",e,(PetscInt)face_type[e]);
   }
   
 #ifdef FVDA_DEBUG
@@ -1711,7 +1711,7 @@ static PetscErrorCode private_FVDACreateFaceLabels3d(DM dm,PetscInt *ne,PetscInt
   
   if (e != nedges) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Number of faces is incorrect");
   for (e=0; e<nedges; e++) {
-    if (((PetscInt)face_type[e] >= DACELL3D_NFACES) || ((PetscInt)face_type[e] < 0)) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_SUP,"Face %D contains out-of-range face type value %D",e,(PetscInt)face_type[e]);
+    if (((PetscInt)face_type[e] >= DACELL3D_NFACES) || ((PetscInt)face_type[e] < 0)) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Face %D contains out-of-range face type value %D",e,(PetscInt)face_type[e]);
   }
 
 #ifdef FVDA_DEBUG
@@ -1790,7 +1790,7 @@ static PetscErrorCode private_FVDACreateElementFaceLabels3d(FVDA fv)
   
   for (c=0; c<fv->ncells; c++) {
     PetscBool throwerror = PETSC_FALSE;
-    if (ncnt[c] != DACELL3D_NFACES) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_SUP,"face count = %D for cell %D. Expected face count = 6",ncnt[c],c);
+    if (ncnt[c] != DACELL3D_NFACES) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"face count = %D for cell %D. Expected face count = 6",ncnt[c],c);
     for (f=0; f<DACELL3D_NFACES; f++) {
       if (e2f[DACELL3D_NFACES*c + f] == -1) throwerror = PETSC_TRUE;
       if (e2f[DACELL3D_NFACES*c + f] > fv->nfaces) throwerror = PETSC_TRUE;
@@ -1801,7 +1801,7 @@ static PetscErrorCode private_FVDACreateElementFaceLabels3d(FVDA fv)
         if (e2f[DACELL3D_NFACES*c + f] == -1)    PetscPrintf(PETSC_COMM_SELF,"Uninitialized data detected. cell %D: face_index[%D]=%D\n",c,f,e2f[DACELL3D_NFACES*c + f]);
         if (e2f[DACELL3D_NFACES*c + f] > fv->nfaces) PetscPrintf(PETSC_COMM_SELF,"Out-of-range-data detected. cell %D: face_index[%D]=%D\n",c,f,e2f[DACELL3D_NFACES*c + f]);
       }
-      SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_SUP,"cell %D contains uninitialized or out-of-range-data face index",c);
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"cell %D contains uninitialized or out-of-range-data face index",c);
     }
   }
   PetscFunctionReturn(0);
@@ -1975,18 +1975,18 @@ static PetscErrorCode private_FVDASetUpLocalFVIndices2d(FVDA fv,DM dmfv)
   /* check all entries of face_fv_map[] have been initialized */
   for (f=0; f<fv->nfaces; f++) {
     if (fv->face_location[f] != DAFACE_BOUNDARY) {
-      if ((fv->face_fv_map[2*f+0] <= -1) || (fv->face_fv_map[2*f+1] <= -1)) SETERRQ3(PETSC_COMM_SELF,PETSC_ERR_SUP,"interior face[%D]->fv_local_space[%D,%D] invalid (un-initialized)",f,fv->face_fv_map[2*f+0],fv->face_fv_map[2*f+1]);
+      if ((fv->face_fv_map[2*f+0] <= -1) || (fv->face_fv_map[2*f+1] <= -1)) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"interior face[%D]->fv_local_space[%D,%D] invalid (un-initialized)",f,fv->face_fv_map[2*f+0],fv->face_fv_map[2*f+1]);
     } else {
-      if (fv->face_fv_map[2*f+0] <= -1) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_SUP,"boundary face[%D]->fv_local_space[%D,***] invalid (un-initialized)",f,fv->face_fv_map[2*f+0]);
+      if (fv->face_fv_map[2*f+0] <= -1) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"boundary face[%D]->fv_local_space[%D,***] invalid (un-initialized)",f,fv->face_fv_map[2*f+0]);
     }
   }
   
   /* check all entries of face_fv_map[] are valid */
   for (f=0; f<fv->nfaces; f++) {
     if (fv->face_location[f] != DAFACE_BOUNDARY) {
-      if ((fv->face_fv_map[2*f+0] >= max_local_size) || (fv->face_fv_map[2*f+1] >= max_local_size)) SETERRQ3(PETSC_COMM_SELF,PETSC_ERR_SUP,"interior face[%D]->fv_local_space[%D,%D] invalid (out-of-bounds)",f,fv->face_fv_map[2*f+0],fv->face_fv_map[2*f+1]);
+      if ((fv->face_fv_map[2*f+0] >= max_local_size) || (fv->face_fv_map[2*f+1] >= max_local_size)) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"interior face[%D]->fv_local_space[%D,%D] invalid (out-of-bounds)",f,fv->face_fv_map[2*f+0],fv->face_fv_map[2*f+1]);
     } else {
-      if (fv->face_fv_map[2*f+0] <= -1) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_SUP,"boundary face[%D]->fv_local_space[%D,***] invalid (un-initialized)",f,fv->face_fv_map[2*f+0]);
+      if (fv->face_fv_map[2*f+0] <= -1) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"boundary face[%D]->fv_local_space[%D,***] invalid (un-initialized)",f,fv->face_fv_map[2*f+0]);
     }
   }
   
@@ -2176,18 +2176,18 @@ static PetscErrorCode private_FVDASetUpLocalFVIndices3d(FVDA fv,DM dmfv)
   /* check all entries of face_fv_map[] have been initialized */
   for (f=0; f<fv->nfaces; f++) {
     if (fv->face_location[f] != DAFACE_BOUNDARY) {
-      if ((fv->face_fv_map[2*f+0] <= -1) || (fv->face_fv_map[2*f+1] <= -1)) SETERRQ3(PETSC_COMM_SELF,PETSC_ERR_SUP,"interior face[%D]->fv_local_space[%D,%D] invalid (un-initialized)",f,fv->face_fv_map[2*f+0],fv->face_fv_map[2*f+1]);
+      if ((fv->face_fv_map[2*f+0] <= -1) || (fv->face_fv_map[2*f+1] <= -1)) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"interior face[%D]->fv_local_space[%D,%D] invalid (un-initialized)",f,fv->face_fv_map[2*f+0],fv->face_fv_map[2*f+1]);
     } else {
-      if (fv->face_fv_map[2*f+0] <= -1) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_SUP,"boundary face[%D]->fv_local_space[%D,***] invalid (un-initialized)",f,fv->face_fv_map[2*f+0]);
+      if (fv->face_fv_map[2*f+0] <= -1) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"boundary face[%D]->fv_local_space[%D,***] invalid (un-initialized)",f,fv->face_fv_map[2*f+0]);
     }
   }
   
   /* check all entries of face_fv_map[] are valid */
   for (f=0; f<fv->nfaces; f++) {
     if (fv->face_location[f] != DAFACE_BOUNDARY) {
-      if ((fv->face_fv_map[2*f+0] >= max_local_size) || (fv->face_fv_map[2*f+1] >= max_local_size)) SETERRQ3(PETSC_COMM_SELF,PETSC_ERR_SUP,"interior face[%D]->fv_local_space[%D,%D] invalid (out-of-bounds)",f,fv->face_fv_map[2*f+0],fv->face_fv_map[2*f+1]);
+      if ((fv->face_fv_map[2*f+0] >= max_local_size) || (fv->face_fv_map[2*f+1] >= max_local_size)) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"interior face[%D]->fv_local_space[%D,%D] invalid (out-of-bounds)",f,fv->face_fv_map[2*f+0],fv->face_fv_map[2*f+1]);
     } else {
-      if (fv->face_fv_map[2*f+0] <= -1) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_SUP,"boundary face[%D]->fv_local_space[%D,***] invalid (un-initialized)",f,fv->face_fv_map[2*f+0]);
+      if (fv->face_fv_map[2*f+0] <= -1) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"boundary face[%D]->fv_local_space[%D,***] invalid (un-initialized)",f,fv->face_fv_map[2*f+0]);
     }
   }
   
@@ -2307,7 +2307,7 @@ static PetscErrorCode private_FVDASetUpBoundaryLabels(FVDA fv)
   for (f=0; f<fv->nfaces_boundary; f++) {
     PetscInt fid = fv->face_idx_boundary[f];
     PetscInt cell_minus = fv->face_element_map[2*fid + 0];
-    if (cell_minus < 0) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_SUP,"Boundary facet [%D -> %D] is missing cell-. A boundary facet should always have a cell- living on the sub-domain",f,fid);
+    if (cell_minus < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Boundary facet [%D -> %D] is missing cell-. A boundary facet should always have a cell- living on the sub-domain",f,fid);
   }
 
 #ifdef FVDA_DEBUG
