@@ -696,11 +696,11 @@ PetscErrorCode SNESStokes_ConvergenceTest_UPstol(SNES snes,PetscInt it,PetscReal
     alpha[1] = 0.0;
     if ( snormUP[0] < alpha[0] * stol * xnormUP[0] ) {
       *reason = SNES_CONVERGED_SNORM_RELATIVE;
-      ierr = PetscInfo3(snes,"Converged due to small update length (U): %14.12e < %14.12e * %14.12e\n",(double)snormUP[0],(double)stol,(double)xnormUP[0]);CHKERRQ(ierr);
+      ierr = PetscInfo(snes,"Converged due to small update length (U): %14.12e < %14.12e * %14.12e\n",(double)snormUP[0],(double)stol,(double)xnormUP[0]);CHKERRQ(ierr);
     }
     if ( snormUP[1] < alpha[1] * stol * xnormUP[1] ) {
       *reason = SNES_CONVERGED_SNORM_RELATIVE;
-      ierr = PetscInfo3(snes,"Converged due to small update length (P): %14.12e < %14.12e * %14.12e\n",(double)snormUP[1],(double)stol,(double)xnormUP[1]);CHKERRQ(ierr);
+      ierr = PetscInfo(snes,"Converged due to small update length (P): %14.12e < %14.12e * %14.12e\n",(double)snormUP[1],(double)stol,(double)xnormUP[1]);CHKERRQ(ierr);
     }
 
     if (fnorm <= snes->ttol) {
