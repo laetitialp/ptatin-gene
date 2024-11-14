@@ -680,16 +680,16 @@ PetscErrorCode SNESStokes_ConvergenceTest_UPstol(SNES snes,PetscInt it,PetscReal
 
   if (fnorm < atol) {
     *reason = SNES_CONVERGED_FNORM_ABS;
-        ierr = PetscInfo2(snes,"Converged due to function norm %14.12e < %14.12e\n",(double)fnorm,(double)atol);CHKERRQ(ierr);
+        ierr = PetscInfo(snes,"Converged due to function norm %14.12e < %14.12e\n",(double)fnorm,(double)atol);CHKERRQ(ierr);
   }
 
   if (it>0 && !*reason) {
-        ierr = PetscInfo2(snes,"ConvergenceTest : function norm %14.12e ?<? %14.12e\n",(double)fnorm,(double)atol);CHKERRQ(ierr);
+        ierr = PetscInfo(snes,"ConvergenceTest : function norm %14.12e ?<? %14.12e\n",(double)fnorm,(double)atol);CHKERRQ(ierr);
 
-    ierr = PetscInfo2(snes,"ConvergenceTest : small update length (U): %14.12e ?<? %14.12e \n",(double)snormUP[0]/(double)xnormUP[0],(double)stol);CHKERRQ(ierr);
-    ierr = PetscInfo2(snes,"ConvergenceTest : small update length (P): %14.12e ?<? %14.12e \n",(double)snormUP[1]/(double)xnormUP[1],(double)stol);CHKERRQ(ierr);
+    ierr = PetscInfo(snes,"ConvergenceTest : small update length (U): %14.12e ?<? %14.12e \n",(double)snormUP[0]/(double)xnormUP[0],(double)stol);CHKERRQ(ierr);
+    ierr = PetscInfo(snes,"ConvergenceTest : small update length (P): %14.12e ?<? %14.12e \n",(double)snormUP[1]/(double)xnormUP[1],(double)stol);CHKERRQ(ierr);
 
-    ierr = PetscInfo2(snes,"ConvergenceTest : function norm %14.12e ?<? %14.12e (relative tolerance)\n",(double)fnorm,(double)snes->ttol);CHKERRQ(ierr);
+    ierr = PetscInfo(snes,"ConvergenceTest : function norm %14.12e ?<? %14.12e (relative tolerance)\n",(double)fnorm,(double)snes->ttol);CHKERRQ(ierr);
 
     // ||dX|| < eps ||X||
     alpha[0] = 1.0;
@@ -705,7 +705,7 @@ PetscErrorCode SNESStokes_ConvergenceTest_UPstol(SNES snes,PetscInt it,PetscReal
 
     if (fnorm <= snes->ttol) {
       *reason = SNES_CONVERGED_FNORM_RELATIVE;
-      ierr = PetscInfo2(snes,"Converged due to function norm %14.12e < %14.12e (relative tolerance)\n",(double)fnorm,(double)snes->ttol);CHKERRQ(ierr);
+      ierr = PetscInfo(snes,"Converged due to function norm %14.12e < %14.12e (relative tolerance)\n",(double)fnorm,(double)snes->ttol);CHKERRQ(ierr);
     }
 
   }

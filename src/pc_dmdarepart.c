@@ -482,7 +482,7 @@ static PetscErrorCode PCSetUp_DMDARepart(PC pc)
     ierr = MPI_Comm_size(comm,&comm_size);CHKERRQ(ierr);
     ierr = MPI_Comm_size(subcomm->sub_comm,&nsubcomm_size);CHKERRQ(ierr);
 
-    PetscInfo2(pc,"Creating PetscMPISubComm. Restricting from %d to %d ranks\n",(int)comm_size,(int)nsubcomm_size);
+    PetscInfo(pc,"Creating PetscMPISubComm. Restricting from %d to %d ranks\n",(int)comm_size,(int)nsubcomm_size);
     red->nsubcomm_size = nsubcomm_size;
     red->subcomm       = subcomm;
 

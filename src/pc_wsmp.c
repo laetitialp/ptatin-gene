@@ -658,7 +658,7 @@ static PetscErrorCode PCSetUp_WSMP(PC pc)
       ierr = xxx_PCWSMP_ExtractUpperTriangularIJ_MatMPIAIJ(B,&wsmp->nnz,&wsmp->IA,&wsmp->JA);CHKERRQ(ierr);
     }
     PetscTime(&t1);
-    PetscInfo1(pc,"CSR extraction --- %1.2e sec\n",t1-t0);
+    PetscInfo(pc,"CSR extraction --- %1.2e sec\n",t1-t0);
 
     {
       PetscBool view = PETSC_FALSE;
@@ -675,7 +675,7 @@ static PetscErrorCode PCSetUp_WSMP(PC pc)
     ierr = WSMPSetFromOptions_Ordering(pc,wsmp);CHKERRQ(ierr);
     ierr = PCWSMP_call_wsmp(comm,wsmp);CHKERRQ(ierr);
     PetscTime(&t1);
-    PetscInfo1(pc,"Ordering --- %1.2e sec\n",t1-t0);
+    PetscInfo(pc,"Ordering --- %1.2e sec\n",t1-t0);
 
     /* -- [wsmp] : symbolic factorization -- */
     wsmp->IPARM[2 -1] = 2;
@@ -684,7 +684,7 @@ static PetscErrorCode PCSetUp_WSMP(PC pc)
     ierr = WSMPSetFromOptions_SymbolicFactorization(pc,wsmp);CHKERRQ(ierr);
     ierr = PCWSMP_call_wsmp(comm,wsmp);CHKERRQ(ierr);
     PetscTime(&t1);
-    PetscInfo1(pc,"Symbolic factorization --- %1.2e sec\n",t1-t0);
+    PetscInfo(pc,"Symbolic factorization --- %1.2e sec\n",t1-t0);
   } else {
 
     /* Determine if matrix is symmetric (either due to non-zero pattern or changing aij values */
@@ -705,7 +705,7 @@ static PetscErrorCode PCSetUp_WSMP(PC pc)
         ierr = xxx_PCWSMP_ExtractUpperTriangularIJ_MatMPIAIJ(B,&wsmp->nnz,&wsmp->IA,&wsmp->JA);CHKERRQ(ierr);
       }
       PetscTime(&t1);
-      PetscInfo1(pc,"CSR extraction --- %1.2e sec\n",t1-t0);
+      PetscInfo(pc,"CSR extraction --- %1.2e sec\n",t1-t0);
 
       /* -- [wsmp] : ordering -- */
       PetscTime(&t0);
@@ -713,7 +713,7 @@ static PetscErrorCode PCSetUp_WSMP(PC pc)
       wsmp->IPARM[3 -1] = 1;
       ierr = PCWSMP_call_wsmp(comm,wsmp);CHKERRQ(ierr);
       PetscTime(&t1);
-      PetscInfo1(pc,"Symmetric ordering --- %1.2e sec\n",t1-t0);
+      PetscInfo(pc,"Symmetric ordering --- %1.2e sec\n",t1-t0);
 
       /* -- [wsmp] : symbolic factorization -- */
       wsmp->IPARM[2 -1] = 2;
@@ -721,7 +721,7 @@ static PetscErrorCode PCSetUp_WSMP(PC pc)
       PetscTime(&t0);
       ierr = PCWSMP_call_wsmp(comm,wsmp);CHKERRQ(ierr);
       PetscTime(&t1);
-      PetscInfo1(pc,"Symbolic factorization --- %1.2e sec\n",t1-t0);
+      PetscInfo(pc,"Symbolic factorization --- %1.2e sec\n",t1-t0);
     }
   }
 
@@ -744,7 +744,7 @@ static PetscErrorCode PCSetUp_WSMP(PC pc)
     }
   }
   PetscTime(&t1);
-  PetscInfo1(pc,"CSR extraction --- %1.2e sec\n",t1-t0);
+  PetscInfo(pc,"CSR extraction --- %1.2e sec\n",t1-t0);
 
   {
     PetscBool view = PETSC_FALSE;
@@ -769,7 +769,7 @@ static PetscErrorCode PCSetUp_WSMP(PC pc)
   ierr = WSMPSetFromOptions_NumericFactorization(pc,wsmp);CHKERRQ(ierr);
   ierr = PCWSMP_call_wsmp(comm,wsmp);CHKERRQ(ierr);
   PetscTime(&t1);
-  PetscInfo1(pc,"Numerical factorization --- %1.2e sec\n",t1-t0);
+  PetscInfo(pc,"Numerical factorization --- %1.2e sec\n",t1-t0);
 
   PetscFunctionReturn(0);
 }
