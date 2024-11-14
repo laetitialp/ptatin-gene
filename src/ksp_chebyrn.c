@@ -216,27 +216,23 @@ EXTERN_C_END
 
 PetscErrorCode  KSPChebychevRNSetEigenvalues(KSP ksp,PetscReal emax,PetscReal emin)
 {
-  PetscErrorCode ierr;
-
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp,KSP_CLASSID,1);
   PetscValidLogicalCollectiveReal(ksp,emax,2);
   PetscValidLogicalCollectiveReal(ksp,emin,3);
-  ierr = PetscTryMethod(ksp,"KSPChebychevRNSetEigenvalues_C",(KSP,PetscReal,PetscReal),(ksp,emax,emin));CHKERRQ(ierr);
+  PetscTryMethod(ksp,"KSPChebychevRNSetEigenvalues_C",(KSP,PetscReal,PetscReal),(ksp,emax,emin));
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode KSPChebychevRNSetEstimateEigenvalues(KSP ksp,PetscReal a,PetscReal b,PetscReal c,PetscReal d)
 {
-  PetscErrorCode ierr;
-
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp,KSP_CLASSID,1);
   PetscValidLogicalCollectiveReal(ksp,a,2);
   PetscValidLogicalCollectiveReal(ksp,b,3);
   PetscValidLogicalCollectiveReal(ksp,c,4);
   PetscValidLogicalCollectiveReal(ksp,d,5);
-  ierr = PetscTryMethod(ksp,"KSPChebychevRNSetEstimateEigenvalues_C",(KSP,PetscReal,PetscReal,PetscReal,PetscReal),(ksp,a,b,c,d));CHKERRQ(ierr);
+  PetscTryMethod(ksp,"KSPChebychevRNSetEstimateEigenvalues_C",(KSP,PetscReal,PetscReal,PetscReal,PetscReal),(ksp,a,b,c,d));
   PetscFunctionReturn(0);
 }
 
