@@ -1,5 +1,5 @@
 /*
-This file has been copied from the PETSc 3.13.3 source tree
+This file has been copied from the PETSc 3.17.5 source tree
   $PETSC_DIR/src/mat/impls/mffd/mffdimpl.h
 */
 /*
@@ -13,8 +13,8 @@ This file has been copied from the PETSc 3.13.3 source tree
                             h
 */
 
-#if !defined(__PTATIN_MFFD_H__)
-#define __PTATIN_MFFD_H__
+#if !defined(__MFFD_H__)
+#define __MFFD_H__
 
 #include <petscmat.h>         /*I  "petscmat.h"   I*/
 #include <petsc/private/petscimpl.h>
