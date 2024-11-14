@@ -1203,17 +1203,17 @@ PetscErrorCode PSwarmSetUpCoords_FromUserList(PSwarm ps)
   nlist = nlistsize;
   PetscOptionsGetRealArray(NULL,prefix,"-pswarm_coor_x",coorx,&nlist,&found);
   if (!found) SETERRQ(comm,PETSC_ERR_USER,"Must specify x coordinates via -pswarm_coor_x");
-  if (nlist != nlistsize) SETERRQ1(comm,PETSC_ERR_USER,"Must specify %D x coordinates",nlistsize);
+  if (nlist != nlistsize) SETERRQ(comm,PETSC_ERR_USER,"Must specify %D x coordinates",nlistsize);
 
   nlist = nlistsize;
   PetscOptionsGetRealArray(NULL,prefix,"-pswarm_coor_y",coory,&nlist,&found);
   if (!found) SETERRQ(comm,PETSC_ERR_USER,"Must specify y coordinates via -pswarm_coor_y");
-  if (nlist != nlistsize) SETERRQ1(comm,PETSC_ERR_USER,"Must specify %D y coordinates",nlistsize);
+  if (nlist != nlistsize) SETERRQ(comm,PETSC_ERR_USER,"Must specify %D y coordinates",nlistsize);
 
   nlist = nlistsize;
   PetscOptionsGetRealArray(NULL,prefix,"-pswarm_coor_z",coorz,&nlist,&found);
   if (!found) SETERRQ(comm,PETSC_ERR_USER,"Must specify z coordinates via -pswarm_coor_z");
-  if (nlist != nlistsize) SETERRQ1(comm,PETSC_ERR_USER,"Must specify %D z coordinates",nlistsize);
+  if (nlist != nlistsize) SETERRQ(comm,PETSC_ERR_USER,"Must specify %D z coordinates",nlistsize);
 
   for (i=0; i<nlistsize; i++) {
     coorlist[3*i+0] = coorx[i];
@@ -1431,7 +1431,7 @@ PetscErrorCode PSwarmLoad_FromFile(pTatinCtx ptatin, DM dmv)
   PetscSNPrintf(jfilename,PETSC_MAX_PATH_LEN-1,"%s/ptatin3dctx.json",ptatin->restart_dir);
   if (commrank == 0) {
     cJSON_FileView(jfilename,&jfile);
-    if (!jfile) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open JSON file \"%s\"",jfilename);
+    if (!jfile) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open JSON file \"%s\"",jfilename);
     jptat = cJSON_GetObjectItem(jfile,"pTatinCtx");
   }
 
@@ -1666,7 +1666,7 @@ PetscErrorCode PSwarmView_VTUXML_binary_appended(PSwarm ps,const char name[])
   ierr = PetscTime(&t0);CHKERRQ(ierr);
 
   if ((vtk_fp = fopen (name,"w")) == NULL)  {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
+    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
   }
 
   db = ps->db;
@@ -1835,7 +1835,7 @@ PetscErrorCode __PSwarmViewParaview_PVTU(DataBucket db,const char filename[],con
   PetscFunctionBegin;
 
   if ((vtk_fp = fopen (filename,"w")) == NULL)  {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",filename);
+    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",filename);
   }
 
   /* (VTK) generate pvts header */
@@ -2044,7 +2044,7 @@ PetscErrorCode pSwarmParaViewMeshDeformationBaseVTS(PetscReal xmin[],PetscReal d
 
   PetscFunctionBegin;
   if ((vtk_fp = fopen (name,"w")) == NULL)  {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
+    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
   }
 
   /* VTS HEADER - OPEN */
@@ -2263,7 +2263,7 @@ PetscErrorCode PSwarmViewSingleton_VTUXML_binary_appended(PSwarm ps,const char n
   vtk_fp = NULL;
   if (rank == 0) {
     if ((vtk_fp = fopen (name,"w")) == NULL)  {
-      SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
     }
   }
 

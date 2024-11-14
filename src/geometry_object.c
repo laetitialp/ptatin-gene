@@ -226,7 +226,7 @@ PetscErrorCode GeomTypeNameGetId(const char name[],int *id)
     i++;
     item = GeomTypeNames[i];
   }
-  SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"GeomType %s not located in list of available GeomTypes",name);
+  SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"GeomType %s not located in list of available GeomTypes",name);
   PetscFunctionReturn(0);
 }
 

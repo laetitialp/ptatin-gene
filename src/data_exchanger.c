@@ -624,7 +624,7 @@ PetscErrorCode DataExAddToSendCount(DataEx de,const PetscMPIInt proc_id,const Pe
 
   ierr = _DataExConvertProcIdToLocalIndex( de, proc_id, &local_val );CHKERRQ(ierr);
   if (local_val == -1) {
-    SETERRQ1( PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG,"Proc %d is not a valid neighbour rank", (int)proc_id );
+    SETERRQ( PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG,"Proc %d is not a valid neighbour rank", (int)proc_id );
   }
 
   de->messages_to_be_sent[local_val] = de->messages_to_be_sent[local_val] + count;
@@ -714,7 +714,7 @@ PetscErrorCode DataExPackInitialize(DataEx de,size_t unit_message_size)
   for (i=0; i<np; i++) {
     if (de->messages_to_be_sent[i] == -1) {
       PetscMPIInt proc_neighour = de->neighbour_procs[i];
-      SETERRQ1( PETSC_COMM_SELF, PETSC_ERR_ORDER, "Messages_to_be_sent[neighbour_proc=%d] is un-initialised. Call DataExSetSendCount() first", (int)proc_neighour );
+      SETERRQ( PETSC_COMM_SELF, PETSC_ERR_ORDER, "Messages_to_be_sent[neighbour_proc=%d] is un-initialised. Call DataExSetSendCount() first", (int)proc_neighour );
     }
     total = total + de->messages_to_be_sent[i];
   }
@@ -769,11 +769,11 @@ PetscErrorCode DataExPackData(DataEx de,PetscMPIInt proc_id,PetscInt n,void *dat
 
   ierr = _DataExConvertProcIdToLocalIndex( de, proc_id, &local );CHKERRQ(ierr);
   if (local == -1) {
-    SETERRQ1( PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "proc_id %d is not registered neighbour", (int)proc_id );
+    SETERRQ( PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "proc_id %d is not registered neighbour", (int)proc_id );
   }
 
   if (n+de->pack_cnt[local] > de->messages_to_be_sent[local]) {
-    SETERRQ3( PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Trying to pack too many entries to be sent to proc %d. Space requested = %D: Attempt to insert %D",
+    SETERRQ( PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Trying to pack too many entries to be sent to proc %d. Space requested = %D: Attempt to insert %D",
         (int)proc_id, de->messages_to_be_sent[local], n+de->pack_cnt[local] );
 
     /* don't need this - the catch for too many messages will pick this up. Gives us more info though */
@@ -812,7 +812,7 @@ PetscErrorCode DataExPackFinalize(DataEx de)
 
   for (i=0; i<np; i++) {
     if (de->pack_cnt[i] != de->messages_to_be_sent[i]) {
-      SETERRQ3( PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "Not all messages for neighbour[%d] have been packed. Expected %D : Inserted %D",
+      SETERRQ( PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "Not all messages for neighbour[%d] have been packed. Expected %D : Inserted %D",
           (int)de->neighbour_procs[i], de->messages_to_be_sent[i], de->pack_cnt[i] );
     }
   }

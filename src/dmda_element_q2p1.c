@@ -483,7 +483,7 @@ PetscErrorCode DMDAGetElements_DA_Q2(DM dm,PetscInt *nel,PetscInt *nen,const Pet
   } else if (dim==3) {
     ierr = DMDAGetElements_DA_Q2_3D(dm,nel,nen,e);CHKERRQ(ierr);
   } else {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_ARG_CORRUPT,"DMDA dimension not 1, 2, or 3, it is %D\n",dim);
+    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_CORRUPT,"DMDA dimension not 1, 2, or 3, it is %D\n",dim);
   }
   PetscFunctionReturn(0);
 }
@@ -560,7 +560,7 @@ PetscErrorCode DMDAGetElements_DA_P1(DM dm,PetscInt *nel,PetscInt *nen,const Pet
   } else if (dim==3) {
     ierr = DMDAGetElements_DA_P0MD_3D(dm,nel,nen,e);CHKERRQ(ierr);
   } else {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_ARG_CORRUPT,"DMDA dimension not 1, 2, or 3, it is %D\n",dim);
+    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_CORRUPT,"DMDA dimension not 1, 2, or 3, it is %D\n",dim);
   }
   PetscFunctionReturn(0);
 }

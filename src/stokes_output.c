@@ -65,7 +65,7 @@ PetscErrorCode _SurfaceQuadratureViewParaviewVTU_Stokes(SurfaceQuadrature surfQ,
 
   PetscFunctionBegin;
   if ((fp = fopen ( name, "w")) == NULL)  {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
+    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
   }
 
   da = mfi->dm;
@@ -258,7 +258,7 @@ PetscErrorCode _SurfaceQuadratureViewParaviewPVTU_Stokes(const char prefix[],con
 
   PetscFunctionBegin;
   if ((fp = fopen ( name, "w")) == NULL)  {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
+    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
   }
 
   /* PVTU HEADER - OPEN */

@@ -355,7 +355,7 @@ PetscErrorCode DMDACheckpointWrite(DM da,const char jprefix[])
       char *jbuff = cJSON_Print(jso_file);
 
       fp = fopen(jfilename,"w");
-      if (!fp) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Unable to open file %s",jfilename);
+      if (!fp) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Unable to open file %s",jfilename);
       fprintf(fp,"%s\n",jbuff);
       fclose(fp);
       free(jbuff);
@@ -518,7 +518,7 @@ PetscErrorCode DMDACheckpointLoad(MPI_Comm comm,const char jfilename[],DM *_da)
 
   if (rank == 0) {
     cJSON_FileView(jfilename,&jfile);
-    if (!jfile) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to open JSON file \"%s\"",jfilename);
+    if (!jfile) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to open JSON file \"%s\"",jfilename);
     jdmda = cJSON_GetObjectItem(jfile,"DMDA");
   }
 

@@ -194,7 +194,7 @@ PetscErrorCode MPIRead_Blocking(FILE *fp,void **data,long int len,size_t size,in
   if (!skip_header) {
     ierr = MPI_Bcast(&len_total_bytes,1,MPI_LONG,root,comm);CHKERRQ(ierr);
     if (len_total_bytes != len_total_bytes_est) {
-      if (!rank) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"[MPIRead_Blocking] File error: Sizes don't match. File contains %ld bytes, your lengths sum to %ld bytes",len_total_bytes,len_total_bytes_est);
+      if (!rank) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"[MPIRead_Blocking] File error: Sizes don't match. File contains %ld bytes, your lengths sum to %ld bytes",len_total_bytes,len_total_bytes_est);
     }
   }
 

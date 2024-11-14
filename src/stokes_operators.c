@@ -151,7 +151,7 @@ PetscErrorCode MatA11MFCreate(MatA11MF *B)
   ierr = PetscFunctionListFind(MatMult_flist,optype,&A11->SpMVOp_MatMult);CHKERRQ(ierr);
   ierr = PetscFunctionListFind(SetUp_flist,optype,&A11->SpMVOp_SetUp);CHKERRQ(ierr);
   ierr = PetscFunctionListFind(Destroy_flist,optype,&A11->SpMVOp_Destroy);CHKERRQ(ierr);
-  if (!A11->SpMVOp_MatMult) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_SUP,"No -a11_op %s",optype);
+  if (!A11->SpMVOp_MatMult) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"No -a11_op %s",optype);
   ierr = PetscFunctionListDestroy(&MatMult_flist);CHKERRQ(ierr);
   ierr = PetscFunctionListDestroy(&SetUp_flist);CHKERRQ(ierr);
   ierr = PetscFunctionListDestroy(&Destroy_flist);CHKERRQ(ierr);

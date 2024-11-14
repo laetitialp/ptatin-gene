@@ -729,7 +729,7 @@ PetscErrorCode pTatinCtxGetModelData(pTatinCtx ctx,const char name[],void **data
   PetscFunctionBegin;
   if (!ctx->model_data) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"The PetscContainer in pTatinCtx is NULL");
   ierr = PetscObjectQuery((PetscObject)ctx->model_data,name,(PetscObject*)&container);CHKERRQ(ierr);
-  if (!container) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"No data with name \"%s\" was composed with pTatinCtx",name);
+  if (!container) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"No data with name \"%s\" was composed with pTatinCtx",name);
   ierr = PetscContainerGetPointer(container,data);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
@@ -745,7 +745,7 @@ PetscErrorCode pTatinCtxAttachModelData(pTatinCtx ctx,const char name[],void *da
   {
     PetscObject obj = NULL;
     ierr = PetscObjectQuery((PetscObject)ctx->model_data,name,&obj);CHKERRQ(ierr);
-    if (obj) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"A data object with name \"%s\" was already composed with pTatinCtx. Textual names must be unique",name);
+    if (obj) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"A data object with name \"%s\" was already composed with pTatinCtx. Textual names must be unique",name);
   }
   ierr = PetscContainerCreate(PETSC_COMM_SELF,&container);CHKERRQ(ierr);
   ierr = PetscContainerSetPointer(container,(void*)data);CHKERRQ(ierr);
@@ -764,7 +764,7 @@ PetscErrorCode pTatinCtxGetModelDataPetscObject(pTatinCtx ctx,const char name[],
   PetscFunctionBegin;
   if (!ctx->model_data) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"The PetscContainer in pTatinCtx is NULL");
   ierr = PetscObjectQuery((PetscObject)ctx->model_data,name,&obj);CHKERRQ(ierr);
-  if (!obj) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"No PETSc object with name \"%s\" was composed with pTatinCtx",name);
+  if (!obj) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"No PETSc object with name \"%s\" was composed with pTatinCtx",name);
   *data = obj;
   PetscFunctionReturn(0);
 }
@@ -777,7 +777,7 @@ PetscErrorCode pTatinCtxAttachModelDataPetscObject(pTatinCtx ctx,const char name
   {
     PetscObject obj = NULL;
     ierr = PetscObjectQuery((PetscObject)ctx->model_data,name,&obj);CHKERRQ(ierr);
-    if (obj) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"A PETSc object with name \"%s\" was already composed with pTatinCtx. Textual names must be unique",name);
+    if (obj) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"A PETSc object with name \"%s\" was already composed with pTatinCtx. Textual names must be unique",name);
   }
   ierr = PetscObjectCompose((PetscObject)ctx->model_data,name,data);CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -1394,7 +1394,7 @@ PetscErrorCode pTatinCtxCheckpointWrite(pTatinCtx ctx,const char path[],const ch
       char *jbuff = cJSON_Print(jso_file);
 
       fp = fopen(jfilename,"w");
-      if (!fp) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Unable to open file %s",jfilename);
+      if (!fp) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Unable to open file %s",jfilename);
       fprintf(fp,"%s\n",jbuff);
       fclose(fp);
       free(jbuff);
@@ -1436,7 +1436,7 @@ PetscErrorCode pTatin3dLoadContext_FromFile(pTatinCtx *_ctx)
   PetscPrintf(PETSC_COMM_WORLD,"[pTatin] Using checkpoint file: %s\n",jfilename);
   if (commrank == 0) {
     cJSON_FileView(jfilename,&jfile);
-    if (!jfile) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open JSON file \"%s\"",jfilename);
+    if (!jfile) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open JSON file \"%s\"",jfilename);
     jptat = cJSON_GetObjectItem(jfile,"pTatinCtx");
   }
 
@@ -1524,7 +1524,7 @@ PetscErrorCode pTatin3dLoadState_FromFile(pTatinCtx ctx,DM dmstokes,DM dmenergy,
   PetscSNPrintf(jfilename,PETSC_MAX_PATH_LEN-1,"%s/ptatin3dctx.json",ctx->restart_dir);
   if (commrank == 0) {
     cJSON_FileView(jfilename,&jfile);
-    if (!jfile) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open JSON file \"%s\"",jfilename);
+    if (!jfile) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open JSON file \"%s\"",jfilename);
     jptat = cJSON_GetObjectItem(jfile,"pTatinCtx");
   }
 
@@ -1590,7 +1590,7 @@ PetscErrorCode pTatin3d_PhysCompStokesLoad_FromFile(pTatinCtx ctx)
   PetscSNPrintf(jfilename,PETSC_MAX_PATH_LEN-1,"%s/ptatin3dctx.json",ctx->restart_dir);
   if (commrank == 0) {
     cJSON_FileView(jfilename,&jfile);
-    if (!jfile) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open JSON file \"%s\"",jfilename);
+    if (!jfile) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open JSON file \"%s\"",jfilename);
     jptat = cJSON_GetObjectItem(jfile,"pTatinCtx");
   }
 
@@ -1697,7 +1697,7 @@ PetscErrorCode pTatin3dLoadMaterialPoints_FromFile(pTatinCtx ctx,DM dmv)
   PetscSNPrintf(jfilename,PETSC_MAX_PATH_LEN-1,"%s/ptatin3dctx.json",ctx->restart_dir);
   if (commrank == 0) {
     cJSON_FileView(jfilename,&jfile);
-    if (!jfile) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open JSON file \"%s\"",jfilename);
+    if (!jfile) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open JSON file \"%s\"",jfilename);
     jptat = cJSON_GetObjectItem(jfile,"pTatinCtx");
   }
 
@@ -1786,7 +1786,7 @@ PetscErrorCode pTatinPhysCompActivate_Energy_FromFile(pTatinCtx ctx)
   PetscSNPrintf(jfilename,PETSC_MAX_PATH_LEN-1,"%s/ptatin3dctx.json",ctx->restart_dir);
   if (commrank == 0) {
     cJSON_FileView(jfilename,&jfile);
-    if (!jfile) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open JSON file \"%s\"",jfilename);
+    if (!jfile) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open JSON file \"%s\"",jfilename);
     jptat = cJSON_GetObjectItem(jfile,"pTatinCtx");
   }
 

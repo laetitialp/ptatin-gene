@@ -83,7 +83,7 @@ PetscErrorCode MaterialPointStd_AdvectEuler(DM da,Vec velocity,PetscReal step,in
 
     wil   = marker_p->wil;
     e     = wil;
-    if (wil < 0) { SETERRQ1(PetscObjectComm((PetscObject)da),PETSC_ERR_SUP,"Point[%d] has wil_e < 0", wil ); }
+    if (wil < 0) { SETERRQ(PetscObjectComm((PetscObject)da),PETSC_ERR_SUP,"Point[%d] has wil_e < 0", wil ); }
 
     ierr = StokesVelocity_GetElementLocalIndices(vel_el_lidx,(PetscInt*)&elnidx_u[nen_u*e]);CHKERRQ(ierr);
     ierr = DMDAGetVectorElementFieldQ2_3D(el_velocity,(PetscInt*)&elnidx_u[nen_u*e],LA_velocity);CHKERRQ(ierr);
@@ -205,7 +205,7 @@ PetscErrorCode SwarmUpdateProperties_MPntStd(DataBucket db,pTatinCtx ctx,Vec X)
   PetscFunctionBegin;
   DataBucketQueryDataFieldByName(db,MPntStd_classname,&found);
   if (found == BFALSE) {
-    SETERRQ1(PetscObjectComm((PetscObject)X),PETSC_ERR_USER,"Cannot find DataField with name %s \n", MPntStd_classname );
+    SETERRQ(PetscObjectComm((PetscObject)X),PETSC_ERR_USER,"Cannot find DataField with name %s \n", MPntStd_classname );
   }
   PetscFunctionReturn(0);
 }

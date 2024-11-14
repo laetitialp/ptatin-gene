@@ -1089,7 +1089,7 @@ PetscErrorCode SwarmView_MPntStd_VTKascii(DataBucket db,const char name[])
   ierr = PetscTime(&t0);CHKERRQ(ierr);
 
   if ((vtk_fp = fopen ( name, "w")) == NULL)  {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
+    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
   }
 
   fprintf( vtk_fp, "<?xml version=\"1.0\"?>\n");
@@ -1216,7 +1216,7 @@ PetscErrorCode SwarmView_MPntStd_VTKappended_binary(DataBucket db,const char nam
   ierr = PetscTime(&t0);CHKERRQ(ierr);
 
   if ((vtk_fp = fopen ( name, "w")) == NULL)  {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
+    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
   }
 
   DataBucketGetDataFieldByName(db, MPntStd_classname ,&PField);
@@ -1366,7 +1366,7 @@ PetscErrorCode __SwarmView_MPntStd_PVTU(const char prefix[],const char name[])
   PetscFunctionBegin;
 
   if ((vtk_fp = fopen ( name, "w")) == NULL)  {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
+    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
   }
 
   /* (VTK) generate pvts header */

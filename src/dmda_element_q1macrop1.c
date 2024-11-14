@@ -75,7 +75,7 @@ PetscErrorCode DMDAEQ1Macro_FetchContext(DM da,DMDAEQ1MacroCtx *ctx)
 
   container = NULL;
   ierr = PetscObjectQuery((PetscObject)da,DMDAEQ1MacroCtxName,(PetscObject*)&container);CHKERRQ(ierr);
-  if (!container) SETERRQ1(PetscObjectComm((PetscObject)da),PETSC_ERR_ARG_WRONG,"No data with name \"%s\" was composed with this DAE",DMDAEQ1MacroCtxName);
+  if (!container) SETERRQ(PetscObjectComm((PetscObject)da),PETSC_ERR_ARG_WRONG,"No data with name \"%s\" was composed with this DAE",DMDAEQ1MacroCtxName);
   ierr = PetscContainerGetPointer(container,(void**)ctx);CHKERRQ(ierr);
 
 

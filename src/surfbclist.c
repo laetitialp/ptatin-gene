@@ -77,7 +77,7 @@ PetscErrorCode SurfBCListAddConstraint(SurfBCList sl, const char name[], Surface
   if (!sl->surfQ) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"SurfBCList requires a non-NULL SurfaceQuadrature object");
   
   found = _find_name_and_index(sl,name,&index);
-  if (found) SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_SUP,"SurfaceConstraint with name %s already registered",name);
+  if (found) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"SurfaceConstraint with name %s already registered",name);
   
   ierr = SurfaceConstraintCreateWithFacetInfo(sl->mfi,&sc);CHKERRQ(ierr);
   ierr = SurfaceConstraintSetQuadrature(sc,sl->surfQ);CHKERRQ(ierr);
@@ -101,7 +101,7 @@ PetscErrorCode SurfBCListGetConstraint(SurfBCList sl, const char name[], Surface
   
   *_sc = NULL;
   found = _find_name_and_index(sl,name,&index);
-  //if (!found) SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_SUP,"SurfaceConstraint with name %s has not been registered",name);
+  //if (!found) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"SurfaceConstraint with name %s has not been registered",name);
   if (found) { *_sc = sl->sc_list[index]; }
   PetscFunctionReturn(0);
 }
@@ -119,7 +119,7 @@ PetscErrorCode SurfBCListInsertConstraint(SurfBCList sl, SurfaceConstraint sc, P
   if (!sl->surfQ) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"SurfBCList requires a non-NULL SurfaceQuadrature object");
   
   found = _find_name_and_index(sl,sc->name,&index);
-  if (found) SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_SUP,"SurfaceConstraint with name %s already registered",sc->name);
+  if (found) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"SurfaceConstraint with name %s already registered",sc->name);
   
   /* append to list */
   ierr = PetscRealloc(sizeof(SurfaceConstraint)*(sl->sc_nreg + 1),&sl->sc_list);CHKERRQ(ierr);

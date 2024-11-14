@@ -254,7 +254,7 @@ PetscErrorCode SwarmViewGeneric_VTUXML_binary_appended(DataBucket db,const int n
   ierr = PetscTime(&t0);CHKERRQ(ierr);
 
   if ((vtk_fp = fopen ( name, "w")) == NULL)  {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
+    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
   }
 
   DataBucketGetDataFieldByName(db, MPntStd_classname ,&PField);
@@ -401,7 +401,7 @@ PetscErrorCode SwarmViewGeneric_PVTUXML(const int nfields,const MaterialPointFie
   PetscFunctionBegin;
 
   if ((vtk_fp = fopen ( name, "w")) == NULL)  {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
+    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
   }
 
   /* (VTK) generate pvts header */
@@ -1417,7 +1417,7 @@ PetscErrorCode SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierar
       break;
 
     default:
-      SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Unrecognized coefficient projection provided (%D)",coefficient_projection_type);
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Unrecognized coefficient projection provided (%D)",coefficient_projection_type);
       break;
   }
 
@@ -3042,7 +3042,7 @@ PetscErrorCode _get_field_MPntStd(MPAccess X,const int p,MPntStd **point)
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Material point field MPntStd must be registered");
   }
   if (X == NULL) { SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Must call MaterialPointGetAccess() first"); }
-  if (p < 0 || p >= X->db->L) SETERRQ2(PETSC_COMM_WORLD,PETSC_ERR_USER,"MPntStd.AccessPoint() index %d is invalid. Must be in range [0,%d)",p,X->db->L);
+  if (p < 0 || p >= X->db->L) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"MPntStd.AccessPoint() index %d is invalid. Must be in range [0,%d)",p,X->db->L);
   PField = X->PField[ X->mp_std_field_idx ];
   DataFieldAccessPoint(PField,p,(void**)point);
 
@@ -3056,7 +3056,7 @@ PetscErrorCode _get_field_MPntPStokes(MPAccess X,const int p,MPntPStokes **point
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Material point field MPntPStokes must be registered");
   }
   if (X == NULL) { SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Must call MaterialPointGetAccess() first"); }
-  if (p < 0 || p >= X->db->L) SETERRQ2(PETSC_COMM_WORLD,PETSC_ERR_USER,"MPntPStokes.AccessPoint() index %d is invalid. Must be in range [0,%d)",p,X->db->L);
+  if (p < 0 || p >= X->db->L) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"MPntPStokes.AccessPoint() index %d is invalid. Must be in range [0,%d)",p,X->db->L);
   PField = X->PField[ X->mp_stokes_field_idx ];
   DataFieldAccessPoint(PField,p,(void**)point);
 
@@ -3070,7 +3070,7 @@ PetscErrorCode _get_field_MPntPStokesPl(MPAccess X,const int p,MPntPStokesPl **p
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Material point field MPntPStokesPl must be registered");
   }
   if (X == NULL) { SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Must call MaterialPointGetAccess() first"); }
-  if (p < 0 || p >= X->db->L) SETERRQ2(PETSC_COMM_WORLD,PETSC_ERR_USER,"MPntPStokesPl.AccessPoint() index %d is invalid. Must be in range [0,%d)",p,X->db->L);
+  if (p < 0 || p >= X->db->L) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"MPntPStokesPl.AccessPoint() index %d is invalid. Must be in range [0,%d)",p,X->db->L);
   PField = X->PField[ X->mp_stokespl_field_idx ];
   DataFieldAccessPoint(PField,p,(void**)point);
 
@@ -3084,7 +3084,7 @@ PetscErrorCode _get_field_MPntPEnergy(MPAccess X,const int p,MPntPEnergy **point
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Material point field MPntPEnergy must be registered");
   }
   if (X == NULL) { SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Must call MaterialPointGetAccess() first"); }
-  if (p < 0 || p >= X->db->L) SETERRQ2(PETSC_COMM_WORLD,PETSC_ERR_USER,"MPntPEnergy.AccessPoint() index %d is invalid. Must be in range [0,%d)",p,X->db->L);
+  if (p < 0 || p >= X->db->L) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"MPntPEnergy.AccessPoint() index %d is invalid. Must be in range [0,%d)",p,X->db->L);
   PField = X->PField[ X->mp_energy_field_idx ];
   DataFieldAccessPoint(PField,p,(void**)point);
 

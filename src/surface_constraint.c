@@ -260,7 +260,7 @@ PetscErrorCode SurfaceConstraintSetType(SurfaceConstraint sc, SurfaceConstraintT
       break;
 
     default:
-      SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_SUP,"SurfaceConstraint type %d not implemented",(int)type);
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"SurfaceConstraint type %d not implemented",(int)type);
       break;
   }
   
@@ -409,7 +409,7 @@ PetscErrorCode _sc_check_sizes(SurfaceConstraint sc)
   DataBucketGetDataFields(sc->properties_db,&nfields,NULL);
   if (nfields) {
     DataBucketGetSizes(sc->properties_db,&nquadpoints,NULL,NULL);
-    if ( (PetscInt)(nquadpoints / sc->nqp_facet) != nfacets) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Must call SurfaceConstraintSetValues(). Found %D facets and %D quadrature points.",nfacets,nquadpoints);
+    if ( (PetscInt)(nquadpoints / sc->nqp_facet) != nfacets) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Must call SurfaceConstraintSetValues(). Found %D facets and %D quadrature points.",nfacets,nquadpoints);
   }
   PetscFunctionReturn(0);
 }
@@ -424,7 +424,7 @@ PetscErrorCode SurfaceConstraintOps_EvaluateF(SurfaceConstraint sc,
     ierr = _sc_check_sizes(sc);CHKERRQ(ierr);
     ierr = sc->ops.residual_F(sc,dau,ufield,dap,pfield,Ru);CHKERRQ(ierr);
   } else {
-    if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_EvaluateF[name %s]: residual_F = NULL",sc->name);
+    if (error_if_null) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_EvaluateF[name %s]: residual_F = NULL",sc->name);
   }
   PetscFunctionReturn(0);
 }
@@ -438,7 +438,7 @@ PetscErrorCode SurfaceConstraintOps_EvaluateFu(SurfaceConstraint sc,
     ierr = _sc_check_sizes(sc);CHKERRQ(ierr);
     ierr = sc->ops.residual_Fu(sc,dau,ufield,dap,pfield,Ru);CHKERRQ(ierr);
   } else {
-    if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_EvaluateF[name %s]: residual_Fu = NULL",sc->name);
+    if (error_if_null) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_EvaluateF[name %s]: residual_Fu = NULL",sc->name);
   }
   PetscFunctionReturn(0);
 }
@@ -452,7 +452,7 @@ PetscErrorCode SurfaceConstraintOps_EvaluateFp(SurfaceConstraint sc,
     ierr = _sc_check_sizes(sc);CHKERRQ(ierr);
     ierr = sc->ops.residual_Fp(sc,dau,ufield,dap,pfield,Ru);CHKERRQ(ierr);
   } else {
-    if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_EvaluateF[name %s]: residual_Fp = NULL",sc->name);
+    if (error_if_null) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_EvaluateF[name %s]: residual_Fp = NULL",sc->name);
   }
   PetscFunctionReturn(0);
 }
@@ -469,7 +469,7 @@ PetscErrorCode SurfaceConstraintOps_ActionA(SurfaceConstraint sc,
     ierr = _sc_check_sizes(sc);CHKERRQ(ierr);
     ierr = sc->ops.action_A(sc,dau,ufield,dap,pfield,Yu,Yp);CHKERRQ(ierr);
   } else {
-    if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_ActionA[name %s]: action_A = NULL",sc->name);
+    if (error_if_null) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_ActionA[name %s]: action_A = NULL",sc->name);
   }
   PetscFunctionReturn(0);
 }
@@ -484,7 +484,7 @@ PetscErrorCode SurfaceConstraintOps_ActionA11(SurfaceConstraint sc,
     ierr = _sc_check_sizes(sc);CHKERRQ(ierr);
     ierr = sc->ops.action_Auu(sc,dau,ufield,Yu);CHKERRQ(ierr);
   } else {
-    if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_ActionAuu[name %s]: action_Auu = NULL",sc->name);
+    if (error_if_null) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_ActionAuu[name %s]: action_Auu = NULL",sc->name);
   }
   PetscFunctionReturn(0);
 }
@@ -500,7 +500,7 @@ PetscErrorCode SurfaceConstraintOps_ActionA12(SurfaceConstraint sc,
     ierr = _sc_check_sizes(sc);CHKERRQ(ierr);
     ierr = sc->ops.action_Aup(sc,dau,dap,pfield,Yu);CHKERRQ(ierr);
   } else {
-    if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_ActionAup[name %s]: action_Aup = NULL",sc->name);
+    if (error_if_null) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_ActionAup[name %s]: action_Aup = NULL",sc->name);
   }
   PetscFunctionReturn(0);
 }
@@ -516,7 +516,7 @@ PetscErrorCode SurfaceConstraintOps_ActionA21(SurfaceConstraint sc,
     ierr = _sc_check_sizes(sc);CHKERRQ(ierr);
     ierr = sc->ops.action_Apu(sc,dau,ufield,dap,Yp);CHKERRQ(ierr);
   } else {
-    if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_ActionA21[name %s]: action_A21 = NULL",sc->name);
+    if (error_if_null) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_ActionA21[name %s]: action_A21 = NULL",sc->name);
   }
   PetscFunctionReturn(0);
 }
@@ -531,7 +531,7 @@ PetscErrorCode SurfaceConstraintOps_AssembleA11(SurfaceConstraint sc,
     ierr = _sc_check_sizes(sc);CHKERRQ(ierr);
     ierr = sc->ops.asmb_Auu(sc,dau,A);CHKERRQ(ierr);
   } else {
-    if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_AssembleAuu[name %s]: asmb_Auu = NULL",sc->name);
+    if (error_if_null) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_AssembleAuu[name %s]: asmb_Auu = NULL",sc->name);
   }
   PetscFunctionReturn(0);
 }
@@ -547,7 +547,7 @@ PetscErrorCode SurfaceConstraintOps_AssembleA12(SurfaceConstraint sc,
     ierr = _sc_check_sizes(sc);CHKERRQ(ierr);
     ierr = sc->ops.asmb_Aup(sc,dau,dap,A);CHKERRQ(ierr);
   } else {
-    if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_AssembleAup[name %s]: asmb_Aup = NULL",sc->name);
+    if (error_if_null) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_AssembleAup[name %s]: asmb_Aup = NULL",sc->name);
   }
   PetscFunctionReturn(0);
 }
@@ -563,7 +563,7 @@ PetscErrorCode SurfaceConstraintOps_AssembleA21(SurfaceConstraint sc,
     ierr = _sc_check_sizes(sc);CHKERRQ(ierr);
     ierr = sc->ops.asmb_Apu(sc,dau,dap,A);CHKERRQ(ierr);
   } else {
-    if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_AseembleA21[name %s]: asmb_Apu = NULL",sc->name);
+    if (error_if_null) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_AseembleA21[name %s]: asmb_Apu = NULL",sc->name);
   }
   PetscFunctionReturn(0);
 }
@@ -578,7 +578,7 @@ PetscErrorCode SurfaceConstraintOps_AssembleDiagA11(SurfaceConstraint sc,
     ierr = _sc_check_sizes(sc);CHKERRQ(ierr);
     ierr = sc->ops.diag_Auu(sc,dau,diagA);CHKERRQ(ierr);
   } else {
-    if (error_if_null) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_DiagAuu[name %s]: diag_Auu = NULL",sc->name);
+    if (error_if_null) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"SurfaceConstraintOps_DiagAuu[name %s]: diag_Auu = NULL",sc->name);
   }
   PetscFunctionReturn(0);
 }
@@ -984,7 +984,7 @@ PetscErrorCode _SurfaceConstraintViewParaviewVTU(SurfaceConstraint sc,const char
   
   PetscFunctionBegin;
   if ((fp = fopen(name,"w")) == NULL)  {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name);
+    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name);
   }
   
   surfQ = sc->quadrature;
@@ -1171,7 +1171,7 @@ static PetscErrorCode _SurfaceConstraintViewParaviewPVTU(SurfaceConstraint sc,co
   
   PetscFunctionBegin;
   if ((fp = fopen(name,"w")) == NULL)  {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name);
+    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name);
   }
   
   /* PVTU HEADER - OPEN */

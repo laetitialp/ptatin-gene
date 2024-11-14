@@ -232,7 +232,7 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
   max = nlevels;
   ierr = PetscOptionsGetIntArray(NULL,NULL,"-A11_operator_type",_level_type,&max,&flg);CHKERRQ(ierr);
   if (flg) {
-    if (max != nlevels) SETERRQ2(PetscObjectComm((PetscObject)dap),PETSC_ERR_USER,"Incorrect number of values provided to option -A11_operator_type. Expected %D values, found %D values",nlevels,max);
+    if (max != nlevels) SETERRQ(PetscObjectComm((PetscObject)dap),PETSC_ERR_USER,"Incorrect number of values provided to option -A11_operator_type. Expected %D values, found %D values",nlevels,max);
   }
   for (k=nlevels-1; k>=0; k--) {
     level_type[k] = (OperatorType)_level_type[k];
@@ -364,7 +364,7 @@ PetscErrorCode HMG_SetUp(AuuMultiLevelCtx *mlctx, pTatinCtx user)
 
   nlevels = 1;
   ierr = PetscOptionsGetInt(NULL,NULL,"-dau_nlevels",&nlevels,NULL);CHKERRQ(ierr);
-  if (nlevels >= MAX_MG_LEVELS) SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Maximum number of multi-grid levels is set by #define MAX_MG_LEVELS %D",MAX_MG_LEVELS);
+  if (nlevels >= MAX_MG_LEVELS) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Maximum number of multi-grid levels is set by #define MAX_MG_LEVELS %D",MAX_MG_LEVELS);
 
   PetscPrintf(PETSC_COMM_WORLD,"Mesh size (%D x %D x %D) : MG levels %D  \n",user->mx,user->my,user->mz,nlevels);
   ierr = pTatin3dStokesBuildMeshHierarchy(dav,nlevels,dav_hierarchy);CHKERRQ(ierr);

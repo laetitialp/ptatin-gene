@@ -47,7 +47,7 @@ PetscErrorCode GeometryObjectLoadJSON(const char filename[],PetscInt *n,Geometry
   /* open file in a cJSON object */
   cJSON_FileView(filename,&jfile);
   if (!jfile) {
-    SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"Failed to open JSON file: %s",filename);
+    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Failed to open JSON file: %s",filename);
   }
 
   /* parse file */
@@ -88,7 +88,7 @@ PetscErrorCode GeometryObjectLoadJSON(const char filename[],PetscInt *n,Geometry
         }
 
         if (!go) {
-          SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"JSON.GeometryObjectListFilter: Failed to locate object with name \"%s\"\n",name1);
+          SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"JSON.GeometryObjectListFilter: Failed to locate object with name \"%s\"\n",name1);
         }
         PetscPrintf(PETSC_COMM_WORLD,"    \"%s\"\n",name1);
 
@@ -345,7 +345,7 @@ PetscErrorCode GeometryObjectParseDetermineAxis(const char axisname[],GeomRotate
   same = PETSC_FALSE; PetscStrcmp(axisname,GeomRotateAxisNames[2],&same); if (same) { *a = ROTATE_AXIS_Z; }
 
   if (*a == ROTATE_AXIS_UNDEFINED) {
-    SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_SUP,"JSON.GeometryObject - unable to identify axis type from \"%s\"\n",axisname);
+    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"JSON.GeometryObject - unable to identify axis type from \"%s\"\n",axisname);
   }
 
 
@@ -367,7 +367,7 @@ PetscErrorCode GeometryObjectParseDetermineSign(const char name[],GeomSign *a)
   same = PETSC_FALSE; PetscStrcmp(name,GeomSignNames[1],&same); if (same) { *a = SIGN_NEGATIVE; }
 
   if (*a == SIGN_UNDEFINED) {
-    SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_SUP,"JSON.GeometryObject - unable to identify sign type from \"%s\"\n",name);
+    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"JSON.GeometryObject - unable to identify sign type from \"%s\"\n",name);
   }
 
   PetscFunctionReturn(0);
@@ -395,7 +395,7 @@ PetscErrorCode GeometryObjectParseDetermineSetOperatorType(const char name[],Geo
   same = PETSC_FALSE; PetscStrcmp(name,GeomTypeSetOperatorNames[(int)GeomSet_Complement],&same); if (same) { *a = GeomSet_Complement; }
 
   if (*a == GeomSet_Undefined) {
-    SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_SUP,"JSON.GeometryObject - unable to identify set operator type from \"%s\"\n",name);
+    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"JSON.GeometryObject - unable to identify set operator type from \"%s\"\n",name);
   }
 
   PetscFunctionReturn(0);
@@ -426,7 +426,7 @@ PetscErrorCode GeometryObjectPrimitiveLoadFromJSON(cJSON *obj,GeometryObject *g)
     }
   }
   if (gtype == GeomType_NULL) {
-    SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"JSON.GeometryObject: Failed to map \"type\" field (%s) to a valid GeomType",type);
+    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"JSON.GeometryObject: Failed to map \"type\" field (%s) to a valid GeomType",type);
   }
 
   if (gtype == GeomType_SetOperation) {

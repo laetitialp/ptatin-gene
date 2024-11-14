@@ -80,7 +80,7 @@ PetscErrorCode pTatinOutputMeshEnergyVTS_ascii(DM daT,Quadrature Q,Vec X,const c
 
   PetscFunctionBegin;
   if ((vtk_fp = fopen ( name, "w")) == NULL)  {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
+    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
   }
 
   ierr = DMDAGetGhostCorners(daT,&gsi,&gsj,&gsk,&gm,&gn,&gp);CHKERRQ(ierr);
@@ -246,7 +246,7 @@ PetscErrorCode pTatinOutputMeshEnergyVTS_binary(DM daT,Quadrature Q,Vec X,const 
 
   PetscFunctionBegin;
   if ((vtk_fp = fopen ( name, "w")) == NULL)  {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
+    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
   }
 
   ierr = DMDAGetGhostCorners(daT,&gsi,&gsj,&gsk,&gm,&gn,&gp);CHKERRQ(ierr);
@@ -499,7 +499,7 @@ PetscErrorCode pTatinOutputMeshEnergyPVTS(DM daT,Quadrature Q,const char prefix[
   vtk_fp = NULL;
   if (rank==0) {
     if ((vtk_fp = fopen ( name, "w")) == NULL)  {
-      SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
     }
   }
 

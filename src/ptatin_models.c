@@ -137,9 +137,9 @@ PetscErrorCode pTatinModelGetModelData(pTatinModel ctx,const char name[],void **
   PetscContainer container;
 
   PetscFunctionBegin;
-  if (!ctx->data) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_SUP,"The PetscContainer in pTatinModel(\"%s\") is NULL",ctx->model_name);
+  if (!ctx->data) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"The PetscContainer in pTatinModel(\"%s\") is NULL",ctx->model_name);
   ierr = PetscObjectQuery((PetscObject)ctx->data,name,(PetscObject*)&container);CHKERRQ(ierr);
-  if (!container) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"No data with name \"%s\" was composed with pTatinModel(\"%s\")",name,ctx->model_name);
+  if (!container) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"No data with name \"%s\" was composed with pTatinModel(\"%s\")",name,ctx->model_name);
   ierr = PetscContainerGetPointer(container,data);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
@@ -151,11 +151,11 @@ PetscErrorCode pTatinModelSetModelData(pTatinModel ctx,const char name[],void *d
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  if (!ctx->data) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_SUP,"The PetscContainer in pTatinModel(\"%s\") is NULL",ctx->model_name);
+  if (!ctx->data) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"The PetscContainer in pTatinModel(\"%s\") is NULL",ctx->model_name);
   {
     PetscObject obj = NULL;
     ierr = PetscObjectQuery((PetscObject)ctx->model_data,name,&obj);CHKERRQ(ierr);
-    if (obj) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"A data object with name \"%s\" was already composed with pTatinModel(\"%s\"). Textual names must be unique",name,ctx->model_name);
+    if (obj) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"A data object with name \"%s\" was already composed with pTatinModel(\"%s\"). Textual names must be unique",name,ctx->model_name);
   }
   ierr = PetscContainerCreate(PETSC_COMM_SELF,&container);CHKERRQ(ierr);
   ierr = PetscContainerSetPointer(container,(void*)data);CHKERRQ(ierr);
@@ -261,7 +261,7 @@ PetscErrorCode pTatinModelRegister(pTatinModel model)
   /* check model not already loaded with same name */
   ierr = ptatin_match_model_index(model->model_name,&index);CHKERRQ(ierr);
   if (index != -1) {
-    SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"  [pTatinModel]: Model with name \"%s\" has already been registered",model->model_name );
+    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"  [pTatinModel]: Model with name \"%s\" has already been registered",model->model_name );
   } else {
     PetscPrintf(PETSC_COMM_WORLD,"  [pTatinModel]: Registering model [%D] with name \"%s\"\n",list_length, model->model_name );
   }
@@ -290,7 +290,7 @@ PetscErrorCode pTatinModelDynamicRegister(const char modelname[],PetscErrorCode 
 
     ierr = PetscFunctionListFind(ptatin_registered_model_flist,modelname,&methodexists);CHKERRQ(ierr);
     if (methodexists) {
-      SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"  [pTatinModelDynamic]: Model with name \"%s\" has already been registered",modelname );
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"  [pTatinModelDynamic]: Model with name \"%s\" has already been registered",modelname );
     }
   }
 
@@ -309,7 +309,7 @@ PetscErrorCode pTatinModelStaticGetByName(const char name[],pTatinModel *model)
   *model = NULL;
   ierr = ptatin_match_model_index(name,&index);CHKERRQ(ierr);
   if (index == -1) {
-    //SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_SUP,"  [pTatinModel]: -ptatin_model \"%s\" wasn't identified in list registered_model_list[]",name );
+    //SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"  [pTatinModel]: -ptatin_model \"%s\" wasn't identified in list registered_model_list[]",name );
     PetscFunctionReturn(0);
   }
   (*model) = registered_model_list[index];
@@ -326,7 +326,7 @@ PetscErrorCode pTatinModelDynamicGetByName(const char modelname[],pTatinModel *m
   *model = NULL;
   ierr = PetscFunctionListFind(ptatin_registered_model_flist,modelname,&create);CHKERRQ(ierr);
   if (!create) {
-    //SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_SUP,"  [pTatinModelDynamic]: -ptatin_model \"%s\" wasn't identified in function pointer list ptatin_registered_model_flist[]",modelname );
+    //SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"  [pTatinModelDynamic]: -ptatin_model \"%s\" wasn't identified in function pointer list ptatin_registered_model_flist[]",modelname );
     PetscFunctionReturn(0);
   }
   ierr = pTatinModelCreate(model);CHKERRQ(ierr);
@@ -365,7 +365,7 @@ PetscErrorCode pTatinModelGetByName(const char name[],pTatinModel *model)
   }
   /* If a model of either static or dynamic was not found - error */
   if (!(*model)) {
-    SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_SUP,"  [pTatinModel(Static/Dynamic)]: -ptatin_model \"%s\" wasn't identified as a registered model",name );
+    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"  [pTatinModel(Static/Dynamic)]: -ptatin_model \"%s\" wasn't identified as a registered model",name );
   }
 
   PetscFunctionReturn(0);
@@ -526,7 +526,7 @@ PetscErrorCode pTatinModel_ApplyBoundaryConditionMG(PetscInt nl,BCList bclist[],
     if (model->FP_pTatinModel_ApplyBoundaryConditionMG) {
       ierr = model->FP_pTatinModel_ApplyBoundaryConditionMG(nl,bclist,surf_bclist,dav,ctx,model->model_data);CHKERRQ(ierr);
     } else {
-      SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_SUP,"  [pTatinModel]: -ptatin_model \"%s\" wasn't prodivided with the operation \"ApplyBoundaryConditionMG\"",model->model_name );
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"  [pTatinModel]: -ptatin_model \"%s\" wasn't prodivided with the operation \"ApplyBoundaryConditionMG\"",model->model_name );
     }
   }
   ierr = PetscLogEventEnd(PTATIN_ModelApplyBoundaryConditionMG,0,0,0,0);CHKERRQ(ierr);

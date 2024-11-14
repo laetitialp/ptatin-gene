@@ -297,7 +297,7 @@ static inline PetscErrorCode EvaluateLinearSoftening(
   plastic_type = material_data->MatType_data[ region_idx ].plastic_type;
   SoftLin_data = &material_data->SoftLin_data[ region_idx ];
 #ifdef PTAT3D_DBG_RheologyData
-  if (!SoftLin_data) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"No MaterialConst_SoftLin found for region %d",region_idx) }
+  if (!SoftLin_data) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"No MaterialConst_SoftLin found for region %d",region_idx) }
 #endif
   emin = SoftLin_data->eps_min;
   emax = SoftLin_data->eps_max;
@@ -345,7 +345,7 @@ static inline PetscErrorCode EvaluateExponentialSoftening(
   SoftExpo_data = &material_data->SoftExpo_data[ region_idx ];
   plastic_type  = material_data->MatType_data[ region_idx ].plastic_type;
 #ifdef PTAT3D_DBG_RheologyData
-  if (!SoftExpo_data) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"No MaterialConst_SoftExpo found for region %d",region_idx) }
+  if (!SoftExpo_data) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"No MaterialConst_SoftExpo found for region %d",region_idx) }
 #endif  
   emin  = SoftExpo_data->eps_min;
   efold = SoftExpo_data->eps_fold;
@@ -514,7 +514,7 @@ static inline PetscErrorCode ViscosityPlasticMises(RheologyData *data)
   region_idx = mp_data->std->phase;
   Mises_data = &data->material_data->PlasticMises_data[ region_idx ];
 #ifdef PTAT3D_DBG_RheologyData
-  if (!Mises_data) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"No MaterialConst_PlasticMises found for region %d",region_idx); }
+  if (!Mises_data) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"No MaterialConst_PlasticMises found for region %d",region_idx); }
 #endif
   tau_yield_mp = Mises_data->tau_yield;
 
@@ -552,7 +552,7 @@ static inline PetscErrorCode ViscosityPlasticMisesH(RheologyData *data)
   region_idx = mp_data->std->phase;
   Mises_data = &data->material_data->PlasticMises_data[ region_idx ];
 #ifdef PTAT3D_DBG_RheologyData
-  if (!Mises_data) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"No MaterialConst_PlasticMises found for region %d",region_idx); }
+  if (!Mises_data) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"No MaterialConst_PlasticMises found for region %d",region_idx); }
 #endif
   tau_yield_mp = Mises_data->tau_yield;
 
@@ -585,7 +585,7 @@ static inline PetscErrorCode ViscosityPlasticDruckerPrager(RheologyData *data)
   region_idx = mp_data->std->phase;
   DP_data    = &data->material_data->PlasticDP_data[ region_idx ];
 #ifdef PTAT3D_DBG_RheologyData
-  if (!DP_data) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"No MaterialConst_PlasticDP found for region %d",region_idx); }
+  if (!DP_data) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"No MaterialConst_PlasticDP found for region %d",region_idx); }
 #endif
   phi         = DP_data->phi; // friction
   Co          = DP_data->Co; // cohesion

@@ -69,7 +69,7 @@ struct _p_MFA11OpenCL {
 };
 
 /* OpenCL error checking */
-#define ERROR_CHECKER_CASE(ERRORCODE)  case ERRORCODE: SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_LIB,"OpenCL Error: %d",ERRORCODE)
+#define ERROR_CHECKER_CASE(ERRORCODE)  case ERRORCODE: SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_LIB,"OpenCL Error: %d",ERRORCODE)
 static PetscErrorCode checkError(cl_int err)
 {
   PetscFunctionBeginUser;

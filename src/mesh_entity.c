@@ -721,7 +721,7 @@ PetscErrorCode _MeshEntityView_Facet(MeshEntity me, PetscInt tag, PetscInt filei
   }
   
   if ((fp = fopen(filename,"w")) == NULL)  {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open new VTU file %s",filename);
+    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open new VTU file %s",filename);
   }
 
   fprintf(fp, "<?xml version=\"1.0\"?>\n");

@@ -791,8 +791,8 @@ PetscErrorCode DMDACoordinateRefinementTransferFunction_OrthogonalFaces(DM da,Pe
   ierr = DMDAGetCorners(da,&si,&sj,&sk,&nx,&ny,&nz);CHKERRQ(ierr);
   ierr = DMGetBoundingBox(da,gmin,gmax);CHKERRQ(ierr);
 
-  if (xnatural[0] < 0.0) SETERRQ1(comm,PETSC_ERR_USER,"xnatural[0] must be >= 0.0 (%1.4e)",xnatural[0]);
-  if (xnatural[npoints-1] > 1.0) SETERRQ1(comm,PETSC_ERR_USER,"mesh_xmax > xnatural[last] must be < 1.0 (%1.4e)",xnatural[npoints-1]);
+  if (xnatural[0] < 0.0) SETERRQ(comm,PETSC_ERR_USER,"xnatural[0] must be >= 0.0 (%1.4e)",xnatural[0]);
+  if (xnatural[npoints-1] > 1.0) SETERRQ(comm,PETSC_ERR_USER,"mesh_xmax > xnatural[last] must be < 1.0 (%1.4e)",xnatural[npoints-1]);
   if ((dir < 0) || (dir > 3)) SETERRQ(comm,PETSC_ERR_SUP,"Direction must be {0,1,2}");
 
 
@@ -822,13 +822,13 @@ PetscErrorCode DMDACoordinateRefinementTransferFunction_OrthogonalFaces(DM da,Pe
         if (region == -1) {
           switch (dir) {
             case 0:
-              SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index i=%D",i);
+              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index i=%D",i);
               break;
             case 1:
-              SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index j=%D",j);
+              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index j=%D",j);
               break;
             case 2:
-              SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index k=%D",k);
+              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index k=%D",k);
               break;
             default:
               break;
@@ -875,8 +875,8 @@ PetscErrorCode DMDACoordinateRefinementTransferFunction_PreserveFaceGeometry(DM 
   ierr = DMDAGetCorners(da,&si,&sj,&sk,&nx,&ny,&nz);CHKERRQ(ierr);
   ierr = DMGetBoundingBox(da,gmin,gmax);CHKERRQ(ierr);
 
-  if (xnatural[0] < 0.0) SETERRQ1(comm,PETSC_ERR_USER,"xnatural[0] must be >= 0.0 (%1.4e)",xnatural[0]);
-  if (xnatural[npoints-1] > 1.0) SETERRQ1(comm,PETSC_ERR_USER,"mesh_xmax > xnatural[last] must be < 1.0 (%1.4e)",xnatural[npoints-1]);
+  if (xnatural[0] < 0.0) SETERRQ(comm,PETSC_ERR_USER,"xnatural[0] must be >= 0.0 (%1.4e)",xnatural[0]);
+  if (xnatural[npoints-1] > 1.0) SETERRQ(comm,PETSC_ERR_USER,"mesh_xmax > xnatural[last] must be < 1.0 (%1.4e)",xnatural[npoints-1]);
 
   switch (dir) {
     case 0:
@@ -982,13 +982,13 @@ PetscErrorCode DMDACoordinateRefinementTransferFunction_PreserveFaceGeometry(DM 
         if (region == -1) {
           switch (dir) {
             case 0:
-              SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index i=%D",i);
+              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index i=%D",i);
               break;
             case 1:
-              SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index j=%D",j);
+              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index j=%D",j);
               break;
             case 2:
-              SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index k=%D",k);
+              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index k=%D",k);
               break;
             default:
               break;
@@ -1066,16 +1066,16 @@ PetscErrorCode _DMDACoordinateRefinementTransferFunction(DM da,PetscInt dir,Pets
 
   switch (dir) {
     case 0:
-      if (gmin[0] < xnatural[0]) SETERRQ2(comm,PETSC_ERR_USER,"mesh_xmin[0] < xnatural[0] (%1.4e < %1.4e)",gmin[0],xnatural[0]);
-      if (gmax[0] > xnatural[npoints-1]) SETERRQ2(comm,PETSC_ERR_USER,"mesh_xmax > xnatural[last] (%1.4e > %1.4e)",gmax[0],xnatural[npoints-1]);
+      if (gmin[0] < xnatural[0]) SETERRQ(comm,PETSC_ERR_USER,"mesh_xmin[0] < xnatural[0] (%1.4e < %1.4e)",gmin[0],xnatural[0]);
+      if (gmax[0] > xnatural[npoints-1]) SETERRQ(comm,PETSC_ERR_USER,"mesh_xmax > xnatural[last] (%1.4e > %1.4e)",gmax[0],xnatural[npoints-1]);
       break;
     case 1:
-      if (gmin[1] < xnatural[0]) SETERRQ2(comm,PETSC_ERR_USER,"mesh_xmin[0] < xnatural[0] (%1.4e < %1.4e)",gmin[1],xnatural[0]);
-      if (gmax[1] > xnatural[npoints-1]) SETERRQ2(comm,PETSC_ERR_USER,"mesh_xmax > xnatural[last] (%1.4e > %1.4e)",gmax[1],xnatural[npoints-1]);
+      if (gmin[1] < xnatural[0]) SETERRQ(comm,PETSC_ERR_USER,"mesh_xmin[0] < xnatural[0] (%1.4e < %1.4e)",gmin[1],xnatural[0]);
+      if (gmax[1] > xnatural[npoints-1]) SETERRQ(comm,PETSC_ERR_USER,"mesh_xmax > xnatural[last] (%1.4e > %1.4e)",gmax[1],xnatural[npoints-1]);
       break;
     case 2:
-      if (gmin[2] < xnatural[0]) SETERRQ2(comm,PETSC_ERR_USER,"mesh_xmin[0] < xnatural[0] (%1.4e < %1.4e)",gmin[2],xnatural[0]);
-      if (gmax[2] > xnatural[npoints-1]) SETERRQ2(comm,PETSC_ERR_USER,"mesh_xmax > xnatural[last] (%1.4e > %1.4e)",gmax[2],xnatural[npoints-1]);
+      if (gmin[2] < xnatural[0]) SETERRQ(comm,PETSC_ERR_USER,"mesh_xmin[0] < xnatural[0] (%1.4e < %1.4e)",gmin[2],xnatural[0]);
+      if (gmax[2] > xnatural[npoints-1]) SETERRQ(comm,PETSC_ERR_USER,"mesh_xmax > xnatural[last] (%1.4e > %1.4e)",gmax[2],xnatural[npoints-1]);
       break;
     default:
       SETERRQ(comm,PETSC_ERR_SUP,"Default direction no supported. dir must be [0,1,2]");
@@ -1108,13 +1108,13 @@ PetscErrorCode _DMDACoordinateRefinementTransferFunction(DM da,PetscInt dir,Pets
         if (region == -1) {
           switch (dir) {
             case 0:
-              SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index i=%D",i);
+              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index i=%D",i);
               break;
             case 1:
-              SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index j=%D",j);
+              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index j=%D",j);
               break;
             case 2:
-              SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index k=%D",k);
+              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index k=%D",k);
               break;
           }
         }

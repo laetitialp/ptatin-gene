@@ -211,7 +211,7 @@ PetscErrorCode CartGridSetUp_InMem(CartGrid map)
   PetscMemzero(map->data,map->bytes* map->mx * map->my * map->mz);
 
   fp_data = fopen(map->datafile_name,"r");
-  if (!fp_data) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open %s",map->datafile_name);
+  if (!fp_data) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open %s",map->datafile_name);
   if (fread(map->data,map->bytes,(size_t)(map->mx * map->my * map->mz),fp_data) != (size_t)(map->mx * map->my * map->mz)) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_READ,"fread() error");
   fclose(fp_data);
 
@@ -232,7 +232,7 @@ PetscErrorCode CartGridSetUp_OutOfCore(CartGrid map)
   map->end[2] = map->mz;
 
   fp_data = fopen(map->datafile_name,"r");
-  if (!fp_data) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open %s",map->datafile_name);
+  if (!fp_data) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open %s",map->datafile_name);
 
   map->data_fp = fp_data;
 
@@ -458,7 +458,7 @@ PetscErrorCode CartGridSetUp(CartGrid map)
   PetscFunctionBegin;
   /* open file to parse */
   fp = fopen(map->metadatafile_name,"r");
-  if (!fp) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open %s",map->metadatafile_name);
+  if (!fp) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open %s",map->metadatafile_name);
 
   /* header */
 ParseHeader:
@@ -579,7 +579,7 @@ PetscErrorCode CartGridViewMetaData(CartGrid map)
 
   PetscFunctionBegin;
   fp = fopen(map->metadatafile_name,"w");
-  if (!fp)  SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open %s",map->metadatafile_name);
+  if (!fp)  SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open %s",map->metadatafile_name);
 
   fprintf(fp,"%s\n",CartGridTypeNames[(int)map->type]);
   fprintf(fp,"%s\n",CartGridDataTypeNames[(int)map->data_type]);
@@ -611,7 +611,7 @@ PetscErrorCode CartGridViewPV(CartGrid map,const char filename[])
   PetscFunctionBegin;
   /* open file to parse */
   fp = fopen(filename,"w");
-  if (!fp) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open %s",filename);
+  if (!fp) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open %s",filename);
 
   fprintf(fp,"<?xml version=\"1.0\"?>\n");
 #ifdef WORDSIZE_BIGENDIAN

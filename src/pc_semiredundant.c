@@ -526,7 +526,7 @@ static PetscErrorCode PCView_SemiRedundant(PC pc,PetscViewer viewer)
   } else if (isstring) {
     ierr = PetscViewerStringSPrintf(viewer," SemiRedundant preconditioner");CHKERRQ(ierr);
   } else {
-    SETERRQ1(PetscObjectComm((PetscObject)pc),PETSC_ERR_SUP,"Viewer type %s not supported for PC SemiRedundant",((PetscObject)viewer)->type_name);
+    SETERRQ(PetscObjectComm((PetscObject)pc),PETSC_ERR_SUP,"Viewer type %s not supported for PC SemiRedundant",((PetscObject)viewer)->type_name);
   }
   PetscFunctionReturn(0);
 }

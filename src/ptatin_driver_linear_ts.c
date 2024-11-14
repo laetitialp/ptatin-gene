@@ -126,13 +126,13 @@ PetscErrorCode MatAssembleMFGalerkin(DM dav_fine,BCList u_bclist_fine,Quadrature
 
   /* check nlocal_elements_i is divisible by ref_i: I don't want to build any off proc elements needed for the cell problem */
   ierr = DMDAGetCornersElementQ2(dav_fine,&sei,&sej,&sek,&lmi,&lmj,&lmk);CHKERRQ(ierr);
-  if (sei%refi != 0) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Start element (i) must be divisible by %D",refi); }
-  if (sej%refj != 0) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Start element (j) must be divisible by %D",refj); }
-  if (sek%refk != 0) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Start element (k) must be divisible by %D",refk); }
+  if (sei%refi != 0) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Start element (i) must be divisible by %D",refi); }
+  if (sej%refj != 0) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Start element (j) must be divisible by %D",refj); }
+  if (sek%refk != 0) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Start element (k) must be divisible by %D",refk); }
 
-  if (lmi%refi != 0) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Local element size (i) must be divisible by %D",refi); }
-  if (lmj%refj != 0) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Local element size (j) must be divisible by %D",refj); }
-  if (lmk%refk != 0) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Local element size (k) must be divisible by %D",refk); }
+  if (lmi%refi != 0) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Local element size (i) must be divisible by %D",refi); }
+  if (lmj%refj != 0) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Local element size (j) must be divisible by %D",refj); }
+  if (lmk%refk != 0) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Local element size (k) must be divisible by %D",refk); }
 
   ierr = DMSetMatType(daf,MATSEQAIJ);CHKERRQ(ierr);
   ierr = DMCreateMatrix(daf,&Acell);CHKERRQ(ierr);
@@ -722,7 +722,7 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
           }
           if (!allow_galerkin){
             if (level_type[k+1] == OP_TYPE_REDISC_MF) {
-              SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_ARG_OUTOFRANGE,"Cannot use galerkin coarse grid. Finest level above must be of type OP_TYPE_REDISC_ASM, OP_TYPE_GALERKIN or OP_TYPE_MFGALERKIN, or provide the flag -A11_allow_galerkin_from_mf",k+1);
+              SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_ARG_OUTOFRANGE,"Cannot use galerkin coarse grid. Finest level above must be of type OP_TYPE_REDISC_ASM, OP_TYPE_GALERKIN or OP_TYPE_MFGALERKIN, or provide the flag -A11_allow_galerkin_from_mf",k+1);
             }
           } else {
             if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: Galerkin :: assembling operator A_%D to construct A_%D = Pt.A_%D.P \n", k,k+1,k,k+1);
@@ -773,7 +773,7 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
             SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_ARG_OUTOFRANGE,"Cannot use mf-galerkin coarse grid on the finest level");
           }
           if (level_type[k+1] != OP_TYPE_REDISC_MF) {
-            SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_ARG_OUTOFRANGE,"Cannot use mf-galerkin. Next finest level[%D] must be of type OP_TYPE_REDISC_MF",k+1);
+            SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_ARG_OUTOFRANGE,"Cannot use mf-galerkin. Next finest level[%D] must be of type OP_TYPE_REDISC_MF",k+1);
           }
 
           ierr = DMSetMatType(dav_hierarchy[k],MATAIJ);CHKERRQ(ierr);

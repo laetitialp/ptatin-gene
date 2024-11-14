@@ -208,9 +208,9 @@ PetscErrorCode pTatinModelGetOptionReal(const char option[],PetscReal *val,
   if (essential) {
     if (!flg) {
       if (!default_opt) {
-        SETERRQ2(PETSC_COMM_WORLD,PETSC_ERR_ARG_WRONG,"ModelOptionMissing(%s): \n\t\t%s ",option,error);
+        SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_ARG_WRONG,"ModelOptionMissing(%s): \n\t\t%s ",option,error);
       } else {
-        SETERRQ3(PETSC_COMM_WORLD,PETSC_ERR_ARG_WRONG,"ModelOptionMissing(%s): \n\t\t%s : Suggested default values %s ",option,error,default_opt);
+        SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_ARG_WRONG,"ModelOptionMissing(%s): \n\t\t%s : Suggested default values %s ",option,error,default_opt);
       }
     }
   }
@@ -551,7 +551,7 @@ PetscErrorCode DMDAFieldViewAscii(DM dm,Vec field,const char filename[])
   if (rank == 0) {
 
     PetscFOpen(PETSC_COMM_SELF,filename,"w",&fp);
-    if (fp == NULL) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Unable to open file %s on rank 0",filename); }
+    if (fp == NULL) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Unable to open file %s on rank 0",filename); }
 
     PetscFPrintf(PETSC_COMM_SELF,fp,"# DMDAFieldViewAscii\n");
     if (oname) {
@@ -1762,7 +1762,7 @@ PetscErrorCode pTatin_MPntStdSetRegionIndexFromMesh(pTatinCtx ptatin, const char
 
   /* Get user mesh from file */
   parse_mesh(PETSC_COMM_WORLD,mesh_file,&mesh);
-  if (!mesh) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"mesh from file %s = NULL. Aborting.\n",mesh_file); }
+  if (!mesh) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"mesh from file %s = NULL. Aborting.\n",mesh_file); }
   /* Get region index from file */
   parse_field(PETSC_COMM_WORLD,mesh,region_file,'c',(void**)&region_idx);
   /* Get material points data bucket */

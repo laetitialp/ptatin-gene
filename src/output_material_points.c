@@ -984,7 +984,7 @@ PetscErrorCode _compute_cell_value_short(DataBucket db,MaterialPointVariable var
       break;
 
     default:
-      SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Cannot convert material point variable type %D to short - consult typedef enum {} MaterialPointVariable in output_material_point.h to understand what the quantity is and whether _compute_cell_value_short() should be updated",(PetscInt)variable);
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Cannot convert material point variable type %D to short - consult typedef enum {} MaterialPointVariable in output_material_point.h to understand what the quantity is and whether _compute_cell_value_short() should be updated",(PetscInt)variable);
       break;
   }
   ierr = MaterialPointRestoreAccess(db,&X);CHKERRQ(ierr);
@@ -1011,7 +1011,7 @@ PetscErrorCode pTatinOutputParaViewMarkerFields_VTS(DM dau,DataBucket material_p
 
   PetscFunctionBegin;
   if ((vtk_fp = fopen ( name, "w")) == NULL)  {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
+    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
   }
 
 
@@ -1304,7 +1304,7 @@ PetscErrorCode pTatinOutputParaViewMarkerFields_PVTS(DM dau,const int nvars,cons
   vtk_fp = NULL;
   if (rank==0) {
     if ((vtk_fp = fopen ( name, "w")) == NULL)  {
-      SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
     }
   }
 

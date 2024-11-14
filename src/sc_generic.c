@@ -175,7 +175,7 @@ PetscErrorCode generic_facet_action(StokesForm *form,
   comm = PetscObjectComm((PetscObject)dm);
   if (!form->apply) SETERRQ(comm,PETSC_ERR_USER,"Form cannot be applied. form->apply() is NULL");
   
-  if (form->type != FORM_SPMV && form->type != FORM_RESIDUAL) SETERRQ1(comm,PETSC_ERR_USER,"Form type must be FORM_SPMV or FORM_RESIDUAL. Found %D",(PetscInt)form->type);
+  if (form->type != FORM_SPMV && form->type != FORM_RESIDUAL) SETERRQ(comm,PETSC_ERR_USER,"Form type must be FORM_SPMV or FORM_RESIDUAL. Found %D",(PetscInt)form->type);
   
   if (ufield && !dau) SETERRQ(comm,PETSC_ERR_USER,"ufield[] required non-NULL dau");
   if (pfield && !dap) SETERRQ(comm,PETSC_ERR_USER,"pfield[] required non-NULL dap");
@@ -461,7 +461,7 @@ PetscErrorCode generic_facet_assemble(StokesForm *form,
   comm = PetscObjectComm((PetscObject)dm);
   if (!form->apply) SETERRQ(comm,PETSC_ERR_USER,"Form cannot be applied. form->apply() is NULL");
   
-  if (form->type != FORM_ASSEMBLE) SETERRQ1(comm,PETSC_ERR_USER,"Form type must be FORM_ASSEMBLE. Found %D",(PetscInt)form->type);
+  if (form->type != FORM_ASSEMBLE) SETERRQ(comm,PETSC_ERR_USER,"Form type must be FORM_ASSEMBLE. Found %D",(PetscInt)form->type);
 
   if (test_function == &form->u) {
     if (!dau) SETERRQ(comm,PETSC_ERR_USER,"TestFunction[u]: FORM_ASSEMBLE requires dau be non-NULL");
@@ -735,7 +735,7 @@ PetscErrorCode generic_facet_assemble_diagonal(StokesForm *form,
   comm = PetscObjectComm((PetscObject)dm);
   if (!form->apply) SETERRQ(comm,PETSC_ERR_USER,"Form cannot be applied. form->apply() is NULL");
   
-  if (form->type != FORM_ASSEMBLE_DIAG) SETERRQ1(comm,PETSC_ERR_USER,"Form type must be FORM_ASSEMBLE_DIAG. Found %D",(PetscInt)form->type);
+  if (form->type != FORM_ASSEMBLE_DIAG) SETERRQ(comm,PETSC_ERR_USER,"Form type must be FORM_ASSEMBLE_DIAG. Found %D",(PetscInt)form->type);
   if (!dm) SETERRQ(comm,PETSC_ERR_USER,"Form ASSEMBLE_DIAG requires non-NULL dm");
   if (!dmX) SETERRQ(comm,PETSC_ERR_USER,"Form ASSEMBLE_DIAG requires non-NULL dmX");
 

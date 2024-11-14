@@ -60,7 +60,7 @@ PetscErrorCode MarkerCoordinatesLoadFromFile(const char name[],long int *length,
 
   fp = fopen(name,"rb");
   if (fp == NULL) {
-    SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"File %s not found",name);
+    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"File %s not found",name);
   }
 
   if (!fgets(line,255,fp)) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_READ,"fgets() failed");
@@ -95,7 +95,7 @@ PetscErrorCode MarkerScalarFieldLoadFromFile(const char name[],long int *length,
 
   fp = fopen(name,"rb");
   if (fp == NULL) {
-    SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_USER,"File %s not found",name);
+    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"File %s not found",name);
   }
 
   if (!fgets(line,255,fp)) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_READ,"fgets() failed");

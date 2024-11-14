@@ -89,9 +89,9 @@ PetscErrorCode _DMDARepartitionDetermineRankFromGlobalIJK(PetscInt i,PetscInt j,
       break;
     }
   }
-  if (pi == -1) { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"  [dmdarepart][pi] cannot be determined : range %D, val %D",Mp,i); }
-  if (pj == -1) { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"  [dmdarepart][pj] cannot be determined : range %D, val %D",Np,j); }
-  if (pk == -1) { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"  [dmdarepart][pk] cannot be determined : range %D, val %D",Pp,k); }
+  if (pi == -1) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"  [dmdarepart][pi] cannot be determined : range %D, val %D",Mp,i); }
+  if (pj == -1) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"  [dmdarepart][pj] cannot be determined : range %D, val %D",Np,j); }
+  if (pk == -1) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"  [dmdarepart][pk] cannot be determined : range %D, val %D",Pp,k); }
 
   *_pi = pi;
   *_pj = pj;
@@ -780,7 +780,7 @@ static PetscErrorCode PCView_DMDARepart(PC pc,PetscViewer viewer)
   } else if (isstring) {
     ierr = PetscViewerStringSPrintf(viewer," DMDARepart preconditioner");CHKERRQ(ierr);
   } else {
-    SETERRQ1(PetscObjectComm((PetscObject)pc),PETSC_ERR_SUP,"Viewer type %s not supported for PC DMDARepart",((PetscObject)viewer)->type_name);
+    SETERRQ(PetscObjectComm((PetscObject)pc),PETSC_ERR_SUP,"Viewer type %s not supported for PC DMDARepart",((PetscObject)viewer)->type_name);
   }
   PetscFunctionReturn(0);
 }

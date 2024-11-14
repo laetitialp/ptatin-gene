@@ -276,7 +276,7 @@ PetscErrorCode MarkerCellFieldsP0Write_ParaViewVTS(DM dmscalar,DM dmp0,Vec scala
   }
 
   if ((vtk_fp = fopen (vtkfilename,"w")) == NULL)  {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Cannot open file %s",vtkfilename);
+    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Cannot open file %s",vtkfilename);
   }
 
   ierr = DMDAGetGhostCorners(dmscalar,&gsi,&gsj,&gsk,&gm,&gn,&gp);CHKERRQ(ierr);
@@ -488,7 +488,7 @@ PetscErrorCode MarkerCellFieldsP0Write_ParaViewPVTS(DM dascalar,const int nvars,
   vtk_fp = NULL;
   if (rank==0) {
     if ((vtk_fp = fopen (name,"w")) == NULL)  {
-      SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Cannot open file %s",name);
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Cannot open file %s",name);
     }
   }
 

@@ -191,7 +191,7 @@ static PetscErrorCode PCWSMP_VecView(const char name[],PC_WSMP *wsmp)
   PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s_rank%D.dat",name,rank);
   fp = fopen(fname,"w");
   if (!fp) {
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",fname);
+    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",fname);
   }
 
   PetscFPrintf(PETSC_COMM_SELF,fp,"%D\n",wsmp->Nlocal);
@@ -530,7 +530,7 @@ static PetscErrorCode PCWSMP_call_wsmp(MPI_Comm comm,PC_WSMP *wsmp)
     } else if (wsmp->IPARM[64 -1] == -900) {
       SETERRQ(comm,PETSC_ERR_USER,"WSSMP generated the error code -900 indicating the file wsmp.lic was invalid/out-of-date or not found (file must reside in the directory where the job was launched)");
     } else {
-      SETERRQ1(comm,PETSC_ERR_USER,"WSSMP generated the following error code %d. See \"WSMP Users' Guide Part I - Symmetric Direct Solvers\", section 5.2.14:IPARM[64] to understand the meaning.",wsmp->IPARM[64 -1]);
+      SETERRQ(comm,PETSC_ERR_USER,"WSSMP generated the following error code %d. See \"WSMP Users' Guide Part I - Symmetric Direct Solvers\", section 5.2.14:IPARM[64] to understand the meaning.",wsmp->IPARM[64 -1]);
     }
   }
   PetscFunctionReturn(0);
@@ -1132,7 +1132,7 @@ static PetscErrorCode PCView_WSMP(PC pc,PetscViewer viewer)
   } else if (isstring) {
     ierr = PetscViewerStringSPrintf(viewer," WSMP preconditioner");CHKERRQ(ierr);
   } else {
-    SETERRQ1(PetscObjectComm((PetscObject)pc),PETSC_ERR_SUP,"Viewer type %s not supported for PC WSMP",((PetscObject)viewer)->type_name);
+    SETERRQ(PetscObjectComm((PetscObject)pc),PETSC_ERR_SUP,"Viewer type %s not supported for PC WSMP",((PetscObject)viewer)->type_name);
   }
 
   PetscFunctionReturn(0);

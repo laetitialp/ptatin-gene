@@ -30,7 +30,7 @@ PetscErrorCode cJSONGetPetscBool(MPI_Comm comm,cJSON *cj,const char name[],Petsc
 /*
 PetscErrorCode SETERRQ_JSONKEY(MPI_Comm comm,const char keyname[]);
 */
-#define SETERRQ_JSONKEY(comm,keyname) SETERRQ1((comm),PETSC_ERR_FILE_UNEXPECTED,"Failed to locate essential JSON key \"%s\"",(keyname));
+#define SETERRQ_JSONKEY(comm,keyname) SETERRQ((comm),PETSC_ERR_FILE_UNEXPECTED,"Failed to locate essential JSON key \"%s\"",(keyname));
 
 
 #endif
