@@ -201,7 +201,7 @@ def write_out_SetDefault( protoype, ClassName, ClassNameShort, variable_name_lis
 	print('  }\n')
 
 	print('  PetscFunctionReturn(0);')
-	print('} \n')
+	print('}\n')
 
 def write_out_SetDefaultAll( protoype, ClassName, ClassNameShort, variable_name_list, variable_type_list, variable_extend_list, variable_textural_name_list ):
 
@@ -349,7 +349,7 @@ def write_out_SetValues( protoype, ClassName, ClassNameShort, variable_name_list
 			print('  }')
 
 	print('  PetscFunctionReturn(0);')
-	print('} \n')
+	print('}\n')
 
 def write_out_ScaleValues( protoype, ClassName, ClassNameShort, variable_name_list, variable_type_list, variable_extend_list, variable_textural_name_list ):
 
@@ -401,7 +401,7 @@ def write_out_ScaleValues( protoype, ClassName, ClassNameShort, variable_name_li
 
 
 	print('  PetscFunctionReturn(0);')
-	print('} \n')
+	print('}\n')
 
 def write_out_SetFromOptions( protoype, ClassName, ClassNameShort, variable_name_list, variable_type_list, variable_extend_list, variable_textural_name_list ):
 
@@ -486,7 +486,7 @@ def write_out_SetFromOptions( protoype, ClassName, ClassNameShort, variable_name
 
 
 	print('  PetscFunctionReturn(0);')
-	print('} \n')
+	print('}\n')
 
 
 
@@ -531,7 +531,7 @@ def write_out_PrintValues( protoype, ClassName, ClassNameShort, variable_name_li
 
 
 	print('  PetscFunctionReturn(0);')
-	print('} \n')
+	print('}\n')
 
 
 def write_out_viewer( prototype, ParticleClass, ParticleClassShortName, variable_name_list, variable_type_list, variable_extend_list, variable_textural_name_list ):
