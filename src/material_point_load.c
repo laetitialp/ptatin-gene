@@ -334,7 +334,7 @@ PetscErrorCode SwarmDataWriteToPetscVec(DataBucket db,const char suffix[])
   /*
   DataBucketGetDataFields(db,&nfields,&fields);
   for (f=0; f<nfields; f++) {
-    sprintf(field_member_name,"%s.",fields[f]->name);
+    PetscSNPrintf(field_member_name,"%s.",fields[f]->name);
     printf("[%d] %s \n",f,field_member_name);
   }
   */
@@ -517,12 +517,12 @@ PetscErrorCode SwarmDataWriteToPetscVec_MPntStd(DataBucket db,const char suffix[
 
   for (m=0; m<MPntStd_nmembers; m++) {
 
-    sprintf(field_member_name,"%s.%s",pfield->name,MPntStd_member_names[m]);
+    PetscSNPrintf(field_member_name,PETSC_MAX_PATH_LEN-1,"%s.%s",pfield->name,MPntStd_member_names[m]);
     printf("[%s] %s \n",MPntStd_classname,field_member_name);
     if (suffix) {
-      sprintf(filename,"%s-%s.pvec",suffix,field_member_name);
+      PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"%s-%s.pvec",suffix,field_member_name);
     } else {
-      sprintf(filename,"swarm-%s.pvec",field_member_name);
+      PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"swarm-%s.pvec",field_member_name);
     }
 
     switch (m) {
@@ -545,12 +545,12 @@ PetscErrorCode SwarmDataWriteToPetscVec_MPntStd(DataBucket db,const char suffix[
       case MPStd_global_coord:
 
         for (d=0; d<3; d++) {
-          sprintf(field_member_name,"%s.%s%d",pfield->name,MPntStd_member_names[m],d);
+          PetscSNPrintf(field_member_name,PETSC_MAX_PATH_LEN-1,"%s.%s%d",pfield->name,MPntStd_member_names[m],d);
           printf("[%s] %s \n",MPntStd_classname,field_member_name);
           if (suffix) {
-            sprintf(filename,"%s-%s.pvec",suffix,field_member_name);
+            PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"%s-%s.pvec",suffix,field_member_name);
           } else {
-            sprintf(filename,"materialpoint-%s.pvec",field_member_name);
+            PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"materialpoint-%s.pvec",field_member_name);
           }
 
           ierr = VecGetArray(point_field_data,&LA_point_field_data);CHKERRQ(ierr);
@@ -571,12 +571,12 @@ PetscErrorCode SwarmDataWriteToPetscVec_MPntStd(DataBucket db,const char suffix[
       case MPStd_local_coord:
 
         for (d=0; d<3; d++) {
-          sprintf(field_member_name,"%s.%s%d",pfield->name,MPntStd_member_names[m],d);
+          PetscSNPrintf(field_member_name,PETSC_MAX_PATH_LEN-1,"%s.%s%d",pfield->name,MPntStd_member_names[m],d);
           printf("[%s] %s \n",MPntStd_classname,field_member_name);
           if (suffix) {
-            sprintf(filename,"%s-%s.pvec",suffix,field_member_name);
+            PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"%s-%s.pvec",suffix,field_member_name);
           } else {
-            sprintf(filename,"materialpoint-%s.pvec",field_member_name);
+            PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"materialpoint-%s.pvec",field_member_name);
           }
 
           ierr = VecGetArray(point_field_data,&LA_point_field_data);CHKERRQ(ierr);
@@ -648,12 +648,12 @@ PetscErrorCode SwarmDataWriteToPetscVec_MPntPStokes(DataBucket db,const char suf
 
   for (m=0; m<MPntPStokes_nmembers; m++) {
 
-    sprintf(field_member_name,"%s.%s",pfield->name,MPntPStokes_member_names[m]);
+    PetscSNPrintf(field_member_name,PETSC_MAX_PATH_LEN-1,"%s.%s",pfield->name,MPntPStokes_member_names[m]);
     printf("[%s] %s \n",MPntPStokes_classname,field_member_name);
     if (suffix) {
-      sprintf(filename,"%s-%s.pvec",suffix,field_member_name);
+      PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"%s-%s.pvec",suffix,field_member_name);
     } else {
-      sprintf(filename,"swarm-%s.pvec",field_member_name);
+      PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"swarm-%s.pvec",field_member_name);
     }
 
     switch (m) {
@@ -710,12 +710,12 @@ PetscErrorCode SwarmDataWriteToPetscVec_MPntPStokesPl(DataBucket db,const char s
 
   for (m=0; m<MPntPStokesPl_nmembers; m++) {
 
-    sprintf(field_member_name,"%s.%s",pfield->name,MPntPStokesPl_member_names[m]);
+    PetscSNPrintf(field_member_name,PETSC_MAX_PATH_LEN-1,"%s.%s",pfield->name,MPntPStokesPl_member_names[m]);
     printf("[%s] %s \n",MPntPStokesPl_classname,field_member_name);
     if (suffix) {
-      sprintf(filename,"%s-%s.pvec",suffix,field_member_name);
+      PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"%s-%s.pvec",suffix,field_member_name);
     } else {
-      sprintf(filename,"swarm-%s.pvec",field_member_name);
+      PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"swarm-%s.pvec",field_member_name);
     }
 
     switch (m) {
@@ -749,7 +749,7 @@ PetscErrorCode SwarmDataWriteToPetscVec_MPntPStokesPl(DataBucket db,const char s
         ierr = VecRestoreArray(point_field_data,&LA_point_field_data);CHKERRQ(ierr);
         ierr = DMDAWriteVectorToFile(point_field_data,filename,write_to_tgz);CHKERRQ(ierr);
         break;
-      
+
       case MPPStkPl_damage:
         ierr = VecGetArray(point_field_data,&LA_point_field_data);CHKERRQ(ierr);
         for (p=0; p<n_points; p++) {
@@ -786,12 +786,12 @@ PetscErrorCode SwarmDataWriteToPetscVec_MPntPEnergy(DataBucket db,const char suf
 
   for (m=0; m<MPntPEnergy_nmembers; m++) {
 
-    sprintf(field_member_name,"%s.%s",pfield->name,MPntPEnergy_member_names[m]);
+    PetscSNPrintf(field_member_name,PETSC_MAX_PATH_LEN-1,"%s.%s",pfield->name,MPntPEnergy_member_names[m]);
     printf("[%s] %s \n",MPntPEnergy_classname,field_member_name);
     if (suffix) {
-      sprintf(filename,"%s-%s.pvec",suffix,field_member_name);
+      PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"%s-%s.pvec",suffix,field_member_name);
     } else {
-      sprintf(filename,"swarm-%s.pvec",field_member_name);
+      PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"swarm-%s.pvec",field_member_name);
     }
 
     switch (m) {
@@ -827,7 +827,7 @@ PetscErrorCode SwarmDataWriteToPetscVec_MPntPEnergy(DataBucket db,const char suf
         break;
 
       case MPPEgy_heat_source_init:
-        
+
         ierr = VecGetArray(point_field_data,&LA_point_field_data);CHKERRQ(ierr);
         for (p=0; p<n_points; p++) {
           double val;
@@ -871,12 +871,12 @@ PetscErrorCode SwarmDataLoadFromPetscVec_MPntStd(DataBucket db,const char suffix
 
   for (m=0; m<field_n_members; m++) {
 
-    sprintf(field_member_name,"%s.%s",pfield->name,field_member_names[m]);
+    PetscSNPrintf(field_member_name,PETSC_MAX_PATH_LEN-1,"%s.%s",pfield->name,field_member_names[m]);
     printf("LOAD: [%s] %s \n",field_classname,field_member_name);
     if (suffix) {
-      sprintf(filename,"%s-%s.pvec",suffix,field_member_name);
+      PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"%s-%s.pvec",suffix,field_member_name);
     } else {
-      sprintf(filename,"swarm-%s.pvec",field_member_name);
+      PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"swarm-%s.pvec",field_member_name);
     }
 
     switch (m) {
@@ -902,12 +902,12 @@ PetscErrorCode SwarmDataLoadFromPetscVec_MPntStd(DataBucket db,const char suffix
       case MPStd_global_coord:
 
         for (d=0; d<3; d++) {
-          sprintf(field_member_name,"%s.%s%d",pfield->name,field_member_names[m],d);
+          PetscSNPrintf(field_member_name,PETSC_MAX_PATH_LEN-1,"%s.%s%d",pfield->name,field_member_names[m],d);
           printf("  ... [%s] %s \n",field_classname,field_member_name);
           if (suffix) {
-            sprintf(filename,"%s-%s.pvec",suffix,field_member_name);
+            PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"%s-%s.pvec",suffix,field_member_name);
           } else {
-            sprintf(filename,"materialpoint-%s.pvec",field_member_name);
+            PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"materialpoint-%s.pvec",field_member_name);
           }
 
           ierr = VecLoadFromFile(point_field_data,filename);CHKERRQ(ierr);
@@ -935,12 +935,12 @@ PetscErrorCode SwarmDataLoadFromPetscVec_MPntStd(DataBucket db,const char suffix
       case MPStd_local_coord:
 
         for (d=0; d<3; d++) {
-          sprintf(field_member_name,"%s.%s%d",pfield->name,field_member_names[m],d);
+          PetscSNPrintf(field_member_name,PETSC_MAX_PATH_LEN-1,"%s.%s%d",pfield->name,field_member_names[m],d);
           printf("  ... [%s] %s \n",field_classname,field_member_name);
           if (suffix) {
-            sprintf(filename,"%s-%s.pvec",suffix,field_member_name);
+            PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"%s-%s.pvec",suffix,field_member_name);
           } else {
-            sprintf(filename,"materialpoint-%s.pvec",field_member_name);
+            PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"materialpoint-%s.pvec",field_member_name);
           }
 
           ierr = VecLoadFromFile(point_field_data,filename);CHKERRQ(ierr);
@@ -1032,12 +1032,12 @@ PetscErrorCode SwarmDataLoadFromPetscVec_MPntPStokes(DataBucket db,const char su
 
   for (m=0; m<field_n_members; m++) {
 
-    sprintf(field_member_name,"%s.%s",pfield->name,field_member_names[m]);
+    PetscSNPrintf(field_member_name,PETSC_MAX_PATH_LEN-1,"%s.%s",pfield->name,field_member_names[m]);
     printf("LOAD: [%s] %s \n",field_classname,field_member_name);
     if (suffix) {
-      sprintf(filename,"%s-%s.pvec",suffix,field_member_name);
+      PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"%s-%s.pvec",suffix,field_member_name);
     } else {
-      sprintf(filename,"swarm-%s.pvec",field_member_name);
+      PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"swarm-%s.pvec",field_member_name);
     }
 
     switch (m) {
@@ -1110,12 +1110,12 @@ PetscErrorCode SwarmDataLoadFromPetscVec_MPntPStokesPl(DataBucket db,const char 
 
   for (m=0; m<field_n_members; m++) {
 
-    sprintf(field_member_name,"%s.%s",pfield->name,field_member_names[m]);
+    PetscSNPrintf(field_member_name,PETSC_MAX_PATH_LEN-1,"%s.%s",pfield->name,field_member_names[m]);
     printf("LOAD: [%s] %s \n",field_classname,field_member_name);
     if (suffix) {
-      sprintf(filename,"%s-%s.pvec",suffix,field_member_name);
+      PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"%s-%s.pvec",suffix,field_member_name);
     } else {
-      sprintf(filename,"swarm-%s.pvec",field_member_name);
+      PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"swarm-%s.pvec",field_member_name);
     }
 
     switch (m) {
@@ -1155,7 +1155,7 @@ PetscErrorCode SwarmDataLoadFromPetscVec_MPntPStokesPl(DataBucket db,const char 
         }
         ierr = VecRestoreArray(point_field_data,&LA_point_field_data);CHKERRQ(ierr);
         break;
-      
+
       case MPPStkPl_damage:
 
         ierr = VecLoadFromFile(point_field_data,filename);CHKERRQ(ierr);
@@ -1204,12 +1204,12 @@ PetscErrorCode SwarmDataLoadFromPetscVec_MPntPEnergy(DataBucket db,const char su
 
   for (m=0; m<field_n_members; m++) {
 
-    sprintf(field_member_name,"%s.%s",pfield->name,field_member_names[m]);
+    PetscSNPrintf(field_member_name,PETSC_MAX_PATH_LEN-1,"%s.%s",pfield->name,field_member_names[m]);
     printf("LOAD: [%s] %s \n",field_classname,field_member_name);
     if (suffix) {
-      sprintf(filename,"%s-%s.pvec",suffix,field_member_name);
+      PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"%s-%s.pvec",suffix,field_member_name);
     } else {
-      sprintf(filename,"swarm-%s.pvec",field_member_name);
+      PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"swarm-%s.pvec",field_member_name);
     }
 
     switch (m) {

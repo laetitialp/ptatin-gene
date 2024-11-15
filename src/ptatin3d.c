@@ -704,7 +704,7 @@ PetscErrorCode pTatin3dDestroyContext(pTatinCtx *ctx)
     char  logfile[PETSC_MAX_PATH_LEN];
     PetscViewer viewer;
 
-    sprintf(logfile,"%s/ptatin.petsc.log_summary-%s",user->outputpath,user->formatted_timestamp);
+    PetscSNPrintf(logfile,PETSC_MAX_PATH_LEN-1,"%s/ptatin.petsc.log_summary-%s",user->outputpath,user->formatted_timestamp);
 
     ierr = PetscViewerASCIIOpen(PETSC_COMM_WORLD,logfile,&viewer);CHKERRQ(ierr);
     ierr = PetscLogView(viewer);CHKERRQ(ierr);
@@ -760,7 +760,7 @@ PetscErrorCode pTatinCtxGetModelDataPetscObject(pTatinCtx ctx,const char name[],
 {
   PetscErrorCode ierr;
   PetscObject    obj = NULL;
-  
+
   PetscFunctionBegin;
   if (!ctx->model_data) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"The PetscContainer in pTatinCtx is NULL");
   ierr = PetscObjectQuery((PetscObject)ctx->model_data,name,&obj);CHKERRQ(ierr);
@@ -807,7 +807,7 @@ PetscErrorCode pTatin3dSetFromOptions(pTatinCtx ctx)
   flg = PETSC_FALSE;
   ierr = PetscOptionsGetString(NULL,NULL,"-output_path",ctx->outputpath,PETSC_MAX_PATH_LEN-1,&flg);CHKERRQ(ierr);
   if (flg == PETSC_FALSE) {
-    sprintf(ctx->outputpath,"./output");
+    PetscSNPrintf(ctx->outputpath,PETSC_MAX_PATH_LEN-1,"./output");
   }
   ierr = pTatinCreateDirectory(ctx->outputpath);CHKERRQ(ierr);
 
@@ -837,10 +837,10 @@ PetscErrorCode pTatin3dSetFromOptions(pTatinCtx ctx)
   ierr = pTatinLogOpenFile(ctx);CHKERRQ(ierr);
   ierr = pTatinLogHeader(ctx);CHKERRQ(ierr);
 
-  sprintf(optionsfile,"%s/ptatin.options-%s",ctx->outputpath,ctx->formatted_timestamp);
+  PetscSNPrintf(optionsfile,PETSC_MAX_PATH_LEN-1,"%s/ptatin.options-%s",ctx->outputpath,ctx->formatted_timestamp);
   ierr = pTatinWriteOptionsFile(optionsfile);CHKERRQ(ierr);
 
-  sprintf(optionsfile,"%s/ptatin.options",ctx->outputpath);
+  PetscSNPrintf(optionsfile,PETSC_MAX_PATH_LEN-1,"%s/ptatin.options",ctx->outputpath);
   ierr = pTatinWriteOptionsFile(optionsfile);CHKERRQ(ierr);
 
 //  ierr = pTatinModelLoad(ctx);CHKERRQ(ierr);
