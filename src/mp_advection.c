@@ -475,7 +475,7 @@ PetscErrorCode SwarmUpdatePosition_Communication_Generic(DataBucket db,DM da,Dat
   {
     PetscInt totalsent;
     ierr = MPI_Allreduce(&recv_length,&totalsent,1,MPIU_INT,MPI_SUM,de->comm);CHKERRQ(ierr);
-    PetscPrintf(PETSC_COMM_WORLD,"  DataEx: total points sent = %D \n", totalsent);
+    PetscPrintf(PETSC_COMM_WORLD,"  DataEx: total points sent = %" PetscInt_FMT " \n", totalsent);
   }
   */
   /* update the local coordinates and cell owner for all received points */

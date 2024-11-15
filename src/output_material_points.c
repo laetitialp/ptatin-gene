@@ -984,7 +984,7 @@ PetscErrorCode _compute_cell_value_short(DataBucket db,MaterialPointVariable var
       break;
 
     default:
-      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Cannot convert material point variable type %D to short - consult typedef enum {} MaterialPointVariable in output_material_point.h to understand what the quantity is and whether _compute_cell_value_short() should be updated",(PetscInt)variable);
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Cannot convert material point variable type %" PetscInt_FMT " to short - consult typedef enum {} MaterialPointVariable in output_material_point.h to understand what the quantity is and whether _compute_cell_value_short() should be updated",(PetscInt)variable);
       break;
   }
   ierr = MaterialPointRestoreAccess(db,&X);CHKERRQ(ierr);
@@ -1025,8 +1025,8 @@ PetscErrorCode pTatinOutputParaViewMarkerFields_VTS(DM dau,DataBucket material_p
 
   /* VTS HEADER - OPEN */
   fprintf( vtk_fp, "<VTKFile type=\"StructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n");
-  PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "  <StructuredGrid WholeExtent=\"%D %D %D %D %D %D\">\n", esi,esi+2*mx+1-1, esj,esj+2*my+1-1, esk,esk+2*mz+1-1);
-  PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "    <Piece Extent=\"%D %D %D %D %D %D\">\n", esi,esi+2*mx+1-1, esj,esj+2*my+1-1, esk,esk+2*mz+1-1);
+  PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "  <StructuredGrid WholeExtent=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\">\n", esi,esi+2*mx+1-1, esj,esj+2*my+1-1, esk,esk+2*mz+1-1);
+  PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "    <Piece Extent=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\">\n", esi,esi+2*mx+1-1, esj,esj+2*my+1-1, esk,esk+2*mz+1-1);
 
   /* VTS COORD DATA */
   fprintf( vtk_fp, "    <Points>\n");
@@ -1314,7 +1314,7 @@ PetscErrorCode pTatinOutputParaViewMarkerFields_PVTS(DM dau,const int nvars,cons
   if(vtk_fp) fprintf( vtk_fp, "<VTKFile type=\"PStructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n");
 
   DMDAGetInfo( dau, 0, &M,&N,&P, 0,0,0, 0,&swidth, 0,0,0, 0 );
-  if(vtk_fp) PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "  <PStructuredGrid GhostLevel=\"%D\" WholeExtent=\"%D %D %D %D %D %D\">\n", swidth, 0,M-1, 0,N-1, 0,P-1 ); /* note overlap = 1 for Q1 */
+  if(vtk_fp) PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "  <PStructuredGrid GhostLevel=\"%" PetscInt_FMT "\" WholeExtent=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\">\n", swidth, 0,M-1, 0,N-1, 0,P-1 ); /* note overlap = 1 for Q1 */
 
   /* VTS COORD DATA */
   if(vtk_fp) fprintf( vtk_fp, "    <PPoints>\n");
@@ -1414,7 +1414,7 @@ PetscErrorCode pTatin3d_ModelOutput_MarkerCellFields(pTatinCtx ctx,const int nva
   PetscFunctionBegin;
   ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s",ctx->outputpath);CHKERRQ(ierr);
 
-  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%D",root,ctx->step);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%" PetscInt_FMT "",root,ctx->step);CHKERRQ(ierr);
   ierr = pTatinTestDirectory(pvoutputdir,'w',&found);CHKERRQ(ierr);
   if (!found) { ierr = pTatinCreateDirectory(pvoutputdir);CHKERRQ(ierr); }
 
@@ -1425,7 +1425,7 @@ PetscErrorCode pTatin3d_ModelOutput_MarkerCellFields(pTatinCtx ctx,const int nva
   } else {      PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "mpoints_cell.pvts");           }
 
   if (!beenhere) { PetscPrintf(PETSC_COMM_WORLD,"  writing pvdfilename %s \n", pvdfilename ); }
-  PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%D",ctx->step);
+  PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%" PetscInt_FMT "",ctx->step);
   ierr = ParaviewPVDOpenAppend(beenhere,ctx->step,pvdfilename,ctx->time, vtkfilename, stepprefix);CHKERRQ(ierr);
   beenhere = PETSC_TRUE;
 

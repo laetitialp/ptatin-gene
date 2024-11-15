@@ -103,8 +103,8 @@ PetscErrorCode pTatinOutputMeshEnergyVTS_ascii(DM daT,Quadrature Q,Vec X,const c
   fprintf(vtk_fp, "<VTKFile type=\"StructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n");
 #endif
 
-  PetscFPrintf(PETSC_COMM_SELF,vtk_fp, "  <StructuredGrid WholeExtent=\"%D %D %D %D %D %D\">\n", esi,esi+mx, esj,esj+my, esk,esk+mz);
-  PetscFPrintf(PETSC_COMM_SELF,vtk_fp, "    <Piece Extent=\"%D %D %D %D %D %D\">\n", esi,esi+mx, esj,esj+my, esk,esk+mz);
+  PetscFPrintf(PETSC_COMM_SELF,vtk_fp, "  <StructuredGrid WholeExtent=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\">\n", esi,esi+mx, esj,esj+my, esk,esk+mz);
+  PetscFPrintf(PETSC_COMM_SELF,vtk_fp, "    <Piece Extent=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\">\n", esi,esi+mx, esj,esj+my, esk,esk+mz);
 
   /* VTS COORD DATA */
   fprintf(vtk_fp, "    <Points>\n");
@@ -269,8 +269,8 @@ PetscErrorCode pTatinOutputMeshEnergyVTS_binary(DM daT,Quadrature Q,Vec X,const 
   fprintf(vtk_fp, "<VTKFile type=\"StructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n");
 #endif
 
-  PetscFPrintf(PETSC_COMM_SELF,vtk_fp, "  <StructuredGrid WholeExtent=\"%D %D %D %D %D %D\">\n", esi,esi+mx, esj,esj+my, esk,esk+mz);
-  PetscFPrintf(PETSC_COMM_SELF,vtk_fp, "    <Piece Extent=\"%D %D %D %D %D %D\">\n", esi,esi+mx, esj,esj+my, esk,esk+mz);
+  PetscFPrintf(PETSC_COMM_SELF,vtk_fp, "  <StructuredGrid WholeExtent=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\">\n", esi,esi+mx, esj,esj+my, esk,esk+mz);
+  PetscFPrintf(PETSC_COMM_SELF,vtk_fp, "    <Piece Extent=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\">\n", esi,esi+mx, esj,esj+my, esk,esk+mz);
 
   offset = 0;
 
@@ -455,7 +455,7 @@ PetscErrorCode DAQ1PieceExtendForGhostLevelZero( FILE *vtk_fp, int indent_level,
           for( II=0; II<indent_level; II++ ) {
             if(vtk_fp) fprintf(vtk_fp,"  ");
           }
-          if(vtk_fp) PetscFPrintf(PETSC_COMM_SELF,vtk_fp, "<Piece Extent=\"%D %D %D %D %D %D\"      Source=\"%s\"/>\n",
+          if(vtk_fp) PetscFPrintf(PETSC_COMM_SELF,vtk_fp, "<Piece Extent=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\"      Source=\"%s\"/>\n",
                              olx[i],olx[i]+lmx[i],
                              oly[j],oly[j]+lmy[j],
                              olz[k],olz[k]+lmz[k],
@@ -476,7 +476,7 @@ PetscErrorCode DAQ1PieceExtendForGhostLevelZero( FILE *vtk_fp, int indent_level,
         for( II=0; II<indent_level; II++ ) {
           if(vtk_fp) fprintf(vtk_fp,"  ");
         }
-        if(vtk_fp) PetscFPrintf(PETSC_COMM_SELF,vtk_fp, "<Piece Extent=\"%D %D %D %D 0 0\"      Source=\"%s\"/>\n",
+        if(vtk_fp) PetscFPrintf(PETSC_COMM_SELF,vtk_fp, "<Piece Extent=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " 0 0\"      Source=\"%s\"/>\n",
                            olx[i],olx[i]+lmx[i],
                            oly[j],oly[j]+lmy[j],
                            name);
@@ -514,7 +514,7 @@ PetscErrorCode pTatinOutputMeshEnergyPVTS(DM daT,Quadrature Q,const char prefix[
 #endif
 
   DMDAGetInfo( daT, 0, &M,&N,&P, 0,0,0, 0,&swidth, 0,0,0, 0 );
-  if(vtk_fp) PetscFPrintf(PETSC_COMM_SELF,vtk_fp, "  <PStructuredGrid GhostLevel=\"%D\" WholeExtent=\"%D %D %D %D %D %D\">\n", swidth, 0,M-1, 0,N-1, 0,P-1 ); /* note overlap = 1 for Q1 */
+  if(vtk_fp) PetscFPrintf(PETSC_COMM_SELF,vtk_fp, "  <PStructuredGrid GhostLevel=\"%" PetscInt_FMT "\" WholeExtent=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\">\n", swidth, 0,M-1, 0,N-1, 0,P-1 ); /* note overlap = 1 for Q1 */
 
   /* VTS COORD DATA */
   if(vtk_fp) fprintf(vtk_fp, "    <PPoints>\n");
@@ -598,7 +598,7 @@ PetscErrorCode pTatin3d_ModelOutput_Temperature_Energy(pTatinCtx ctx,Vec X,const
 
   ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s",ctx->outputpath);CHKERRQ(ierr);
 
-  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%D",root,ctx->step);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%" PetscInt_FMT "",root,ctx->step);CHKERRQ(ierr);
   ierr = pTatinTestDirectory(pvoutputdir,'w',&found);CHKERRQ(ierr);
   if (!found) { ierr = pTatinCreateDirectory(pvoutputdir);CHKERRQ(ierr); }
 
@@ -609,7 +609,7 @@ PetscErrorCode pTatin3d_ModelOutput_Temperature_Energy(pTatinCtx ctx,Vec X,const
   } else {      PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "energy.pvts");           }
 
   if (!beenhere) { PetscPrintf(PETSC_COMM_WORLD,"  writing pvdfilename %s \n", pvdfilename ); }
-  PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%D",ctx->step);
+  PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%" PetscInt_FMT "",ctx->step);
   ierr = ParaviewPVDOpenAppend(beenhere,ctx->step,pvdfilename,ctx->time, vtkfilename, stepprefix);CHKERRQ(ierr);
   beenhere = PETSC_TRUE;
 
@@ -643,7 +643,7 @@ PetscErrorCode pTatin3dModelOutput_Energy_PetscVec(pTatinCtx ctx,PetscBool dm_ve
 
   ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s",ctx->outputpath);CHKERRQ(ierr);
 
-  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%D",root,ctx->step);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%" PetscInt_FMT "",root,ctx->step);CHKERRQ(ierr);
   ierr = pTatinTestDirectory(pvoutputdir,'w',&found);CHKERRQ(ierr);
   if (!found) { ierr = pTatinCreateDirectory(pvoutputdir);CHKERRQ(ierr); }
 
@@ -654,7 +654,7 @@ PetscErrorCode pTatin3dModelOutput_Energy_PetscVec(pTatinCtx ctx,PetscBool dm_ve
   } else {      PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "energy.pvts");           }
 
   if (!beenhere) { PetscPrintf(PETSC_COMM_WORLD,"  writing pvdfilename %s \n", pvdfilename ); }
-  PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%D",ctx->step);
+  PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%" PetscInt_FMT "",ctx->step);
   ierr = ParaviewPVDOpenAppend(beenhere,ctx->step,pvdfilename,ctx->time, vtkfilename, stepprefix);CHKERRQ(ierr);
   beenhere = PETSC_TRUE;
 

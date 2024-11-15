@@ -34,7 +34,7 @@
 #include "dmda_compare.h"
 
 
-#define __DMDACompareStructures(var,v1,v2)PetscSynchronizedPrintf( comm, "[%d]: DMDA->%s are different { %D , %D } \n", ((int)rank), (var), (int)((v1)),(int)((v2)) )
+#define __DMDACompareStructures(var,v1,v2)PetscSynchronizedPrintf( comm, "[%d]: DMDA->%s are different { %" PetscInt_FMT " , %" PetscInt_FMT " } \n", ((int)rank), (var), (int)((v1)),(int)((v2)) )
 
 PetscErrorCode DMDACompareStructures(DM da1,DM da2,PetscBool *flg)
 {
@@ -108,11 +108,11 @@ PetscErrorCode DMDA_CheckNodeIndex2d(DM da,PetscBool ghosted,PetscInt i,PetscInt
   if(ghosted==PETSC_TRUE) {
     ierr = DMDAGetGhostCorners(da,&si,&sj,0,&nx,&ny,0);CHKERRQ(ierr);
   }
-  if( i<si ) SETERRQ( PetscObjectComm((PetscObject)da), PETSC_ERR_USER, "i=%D < start_index_i(%D)", i,si );
-  if( j<sj ) SETERRQ( PetscObjectComm((PetscObject)da), PETSC_ERR_USER, "j=%D < start_index_j(%D)", j,sj );
+  if( i<si ) SETERRQ( PetscObjectComm((PetscObject)da), PETSC_ERR_USER, "i=%" PetscInt_FMT " < start_index_i(%" PetscInt_FMT ")", i,si );
+  if( j<sj ) SETERRQ( PetscObjectComm((PetscObject)da), PETSC_ERR_USER, "j=%" PetscInt_FMT " < start_index_j(%" PetscInt_FMT ")", j,sj );
 
-  if( i>=(si+nx) ) SETERRQ( PetscObjectComm((PetscObject)da), PETSC_ERR_USER, "i=%D >= end_index_i(%D)", i,si+nx );
-  if( j>=(sj+ny) ) SETERRQ( PetscObjectComm((PetscObject)da), PETSC_ERR_USER, "j=%D >= end_index_j(%D)", j,sj+ny );
+  if( i>=(si+nx) ) SETERRQ( PetscObjectComm((PetscObject)da), PETSC_ERR_USER, "i=%" PetscInt_FMT " >= end_index_i(%" PetscInt_FMT ")", i,si+nx );
+  if( j>=(sj+ny) ) SETERRQ( PetscObjectComm((PetscObject)da), PETSC_ERR_USER, "j=%" PetscInt_FMT " >= end_index_j(%" PetscInt_FMT ")", j,sj+ny );
 
   PetscFunctionReturn(0);
 }
@@ -128,13 +128,13 @@ PetscErrorCode DMDA_CheckNodeIndex3d(DM da,PetscBool ghosted,PetscInt i,PetscInt
   if(ghosted==PETSC_TRUE) {
     ierr = DMDAGetGhostCorners(da,&si,&sj,0,&nx,&ny,0);CHKERRQ(ierr);
   }
-  if( i<si ) SETERRQ( PetscObjectComm((PetscObject)da), PETSC_ERR_USER, "i=%D < start_index_i(%D)", i,si );
-  if( j<sj ) SETERRQ( PetscObjectComm((PetscObject)da), PETSC_ERR_USER, "j=%D < start_index_j(%D)", j,sj );
-  if( k<sk ) SETERRQ( PetscObjectComm((PetscObject)da), PETSC_ERR_USER, "k=%D < start_index_k(%D)", k,sk );
+  if( i<si ) SETERRQ( PetscObjectComm((PetscObject)da), PETSC_ERR_USER, "i=%" PetscInt_FMT " < start_index_i(%" PetscInt_FMT ")", i,si );
+  if( j<sj ) SETERRQ( PetscObjectComm((PetscObject)da), PETSC_ERR_USER, "j=%" PetscInt_FMT " < start_index_j(%" PetscInt_FMT ")", j,sj );
+  if( k<sk ) SETERRQ( PetscObjectComm((PetscObject)da), PETSC_ERR_USER, "k=%" PetscInt_FMT " < start_index_k(%" PetscInt_FMT ")", k,sk );
 
-  if( i>=(si+nx) ) SETERRQ( PetscObjectComm((PetscObject)da), PETSC_ERR_USER, "i=%D >= end_index_i(%D)", i,si+nx );
-  if( j>=(sj+ny) ) SETERRQ( PetscObjectComm((PetscObject)da), PETSC_ERR_USER, "j=%D >= end_index_j(%D)", j,sj+ny );
-  if( k>=(sk+nz) ) SETERRQ( PetscObjectComm((PetscObject)da), PETSC_ERR_USER, "k=%D >= end_index_k(%D)", k,sk+nz );
+  if( i>=(si+nx) ) SETERRQ( PetscObjectComm((PetscObject)da), PETSC_ERR_USER, "i=%" PetscInt_FMT " >= end_index_i(%" PetscInt_FMT ")", i,si+nx );
+  if( j>=(sj+ny) ) SETERRQ( PetscObjectComm((PetscObject)da), PETSC_ERR_USER, "j=%" PetscInt_FMT " >= end_index_j(%" PetscInt_FMT ")", j,sj+ny );
+  if( k>=(sk+nz) ) SETERRQ( PetscObjectComm((PetscObject)da), PETSC_ERR_USER, "k=%" PetscInt_FMT " >= end_index_k(%" PetscInt_FMT ")", k,sk+nz );
 
   PetscFunctionReturn(0);
 }

@@ -2230,9 +2230,9 @@ PetscErrorCode MaterialConstantsReportParseError(const char model_name[],const c
 {
   PetscFunctionBegin;
   if (model_name) {
-    PetscPrintf(PETSC_COMM_WORLD,"Expected user to provide option for field (%s) in region (%D) via -%s%s_%D \n",field_name,region,  model_name,field_name,region);
+    PetscPrintf(PETSC_COMM_WORLD,"Expected user to provide option for field (%s) in region (%" PetscInt_FMT ") via -%s%s_%" PetscInt_FMT " \n",field_name,region,  model_name,field_name,region);
   } else {
-    PetscPrintf(PETSC_COMM_WORLD,"Expected user to provide option for field (%s) in region (%D) via -%s_%D \n",field_name,region,    field_name,region);
+    PetscPrintf(PETSC_COMM_WORLD,"Expected user to provide option for field (%s) in region (%" PetscInt_FMT ") via -%s_%" PetscInt_FMT " \n",field_name,region,    field_name,region);
   }
   SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Option not found");
   PetscFunctionReturn(0);

@@ -148,7 +148,7 @@ PetscErrorCode ass_A11(PhysCompStokes stk)
 
   PetscFunctionBegin;
 
-  PetscPrintf(PETSC_COMM_WORLD,"+  Test [%s]: Mesh %D x %D x %D \n", PETSC_FUNCTION_NAME,stk->mx,stk->my,stk->mz );
+  PetscPrintf(PETSC_COMM_WORLD,"+  Test [%s]: Mesh %" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT " \n", PETSC_FUNCTION_NAME,stk->mx,stk->my,stk->mz );
   da = stk->dav;
 
   ierr = DMSetMatType(da,MATAIJ);CHKERRQ(ierr);
@@ -189,7 +189,7 @@ PetscErrorCode ass_B22(PhysCompStokes stk)
 
   PetscFunctionBegin;
 
-  PetscPrintf(PETSC_COMM_WORLD,"+  Test [%s]: Mesh %D x %D x %D \n", PETSC_FUNCTION_NAME,stk->mx,stk->my,stk->mz );
+  PetscPrintf(PETSC_COMM_WORLD,"+  Test [%s]: Mesh %" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT " \n", PETSC_FUNCTION_NAME,stk->mx,stk->my,stk->mz );
   dau = stk->dav;
   dap = stk->dap;
 
@@ -238,7 +238,7 @@ PetscErrorCode compare_mf_A11(PhysCompStokes user)
 
   PetscFunctionBegin;
 
-  PetscPrintf(PETSC_COMM_WORLD,"\n+  Test [%s]: Mesh %D x %D x %D \n", PETSC_FUNCTION_NAME,user->mx,user->my,user->mz );
+  PetscPrintf(PETSC_COMM_WORLD,"\n+  Test [%s]: Mesh %" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT " \n", PETSC_FUNCTION_NAME,user->mx,user->my,user->mz );
 
   /* create the mf operators */
   da = user->dav;
@@ -331,7 +331,7 @@ PetscErrorCode compare_mf_A21(PhysCompStokes user)
 
   PetscFunctionBegin;
 
-  PetscPrintf(PETSC_COMM_WORLD,"\n+  Test [%s]: Mesh %D x %D x %D \n", PETSC_FUNCTION_NAME,user->mx,user->my,user->mz );
+  PetscPrintf(PETSC_COMM_WORLD,"\n+  Test [%s]: Mesh %" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT " \n", PETSC_FUNCTION_NAME,user->mx,user->my,user->mz );
 
   /* create the mf operators */
   dav = user->dav;
@@ -400,7 +400,7 @@ PetscErrorCode compare_mf_A12(PhysCompStokes user)
 
   PetscFunctionBegin;
 
-  PetscPrintf(PETSC_COMM_WORLD,"\n+  Test [%s]: Mesh %D x %D x %D \n", PETSC_FUNCTION_NAME,user->mx,user->my,user->mz );
+  PetscPrintf(PETSC_COMM_WORLD,"\n+  Test [%s]: Mesh %" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT " \n", PETSC_FUNCTION_NAME,user->mx,user->my,user->mz );
 
   /* create the mf operators */
   dav = user->dav;
@@ -467,7 +467,7 @@ PetscErrorCode compare_mf_A(PhysCompStokes user)
 
   PetscFunctionBegin;
 
-  PetscPrintf(PETSC_COMM_WORLD,"\n+  Test [%s]: Mesh %D x %D x %D \n", PETSC_FUNCTION_NAME,user->mx,user->my,user->mz );
+  PetscPrintf(PETSC_COMM_WORLD,"\n+  Test [%s]: Mesh %" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT " \n", PETSC_FUNCTION_NAME,user->mx,user->my,user->mz );
 
   /* create the mf operators */
   pack = user->stokes_pack;
@@ -535,7 +535,7 @@ PetscErrorCode compare_mf_diagA11(PhysCompStokes user)
 
   PetscFunctionBegin;
 
-  PetscPrintf(PETSC_COMM_WORLD,"\n+  Test [%s]: Mesh %D x %D x %D \n", PETSC_FUNCTION_NAME,user->mx,user->my,user->mz );
+  PetscPrintf(PETSC_COMM_WORLD,"\n+  Test [%s]: Mesh %" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT " \n", PETSC_FUNCTION_NAME,user->mx,user->my,user->mz );
 
   /* create the mf operators */
   da = user->dav;
@@ -597,7 +597,7 @@ PetscErrorCode apply_mf_A11(PhysCompStokes user)
 
   PetscFunctionBegin;
 
-  PetscPrintf(PETSC_COMM_WORLD,"\n+  Test [%s]: Mesh %D x %D x %D \n", PETSC_FUNCTION_NAME,user->mx,user->my,user->mz );
+  PetscPrintf(PETSC_COMM_WORLD,"\n+  Test [%s]: Mesh %" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT " \n", PETSC_FUNCTION_NAME,user->mx,user->my,user->mz );
   iterations = 5;
   ierr = PetscOptionsGetInt(NULL,NULL,"-iterations",&iterations,0);CHKERRQ(ierr);
 
@@ -654,7 +654,7 @@ PetscErrorCode apply_asm_A11(PhysCompStokes user)
 
   PetscFunctionBegin;
 
-  PetscPrintf(PETSC_COMM_WORLD,"\n+  Test [%s]: Mesh %D x %D x %D \n", PETSC_FUNCTION_NAME,user->mx,user->my,user->mz );
+  PetscPrintf(PETSC_COMM_WORLD,"\n+  Test [%s]: Mesh %" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT " \n", PETSC_FUNCTION_NAME,user->mx,user->my,user->mz );
   iterations = 5;
   ierr = PetscOptionsGetInt(NULL,NULL,"-iterations",&iterations,0);CHKERRQ(ierr);
 
@@ -719,7 +719,7 @@ PetscErrorCode perform_viscous_solve(PhysCompStokes user)
 
   PetscFunctionBegin;
 
-  PetscPrintf(PETSC_COMM_WORLD,"\n+  Test [%s]: Mesh %D x %D x %D \n", PETSC_FUNCTION_NAME,user->mx,user->my,user->mz );
+  PetscPrintf(PETSC_COMM_WORLD,"\n+  Test [%s]: Mesh %" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT " \n", PETSC_FUNCTION_NAME,user->mx,user->my,user->mz );
   iterations = 5;
   ierr = PetscOptionsGetInt(NULL,NULL,"-iterations",&iterations,0);CHKERRQ(ierr);
 
@@ -799,7 +799,7 @@ PetscErrorCode perform_viscous_solve(PhysCompStokes user)
 
   ierr = KSPGetIterationNumber(ksp,&its);CHKERRQ(ierr);
 
-  PetscPrintf(PETSC_COMM_WORLD,"KSPSolveA11(its = %D,cycles = %D)   time %1.4e (sec): ratio %1.4e%%: min/max %1.4e %1.4e (sec)\n",its,iterations,tl,100.0*(timeMIN/timeMAX),timeMIN,timeMAX);
+  PetscPrintf(PETSC_COMM_WORLD,"KSPSolveA11(its = %" PetscInt_FMT ",cycles = %" PetscInt_FMT ")   time %1.4e (sec): ratio %1.4e%%: min/max %1.4e %1.4e (sec)\n",its,iterations,tl,100.0*(timeMIN/timeMAX),timeMIN,timeMAX);
   PetscPrintf(PETSC_COMM_WORLD,"KSPSolveA11: average                time %1.4e (sec): ratio %1.4e%%: min/max %1.4e %1.4e (sec)\n",tl/((double)iterations),100.0*(timeMIN/timeMAX),timeMIN/((double)iterations),timeMAX/((double)iterations));
 
   ierr = KSPView(ksp,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);

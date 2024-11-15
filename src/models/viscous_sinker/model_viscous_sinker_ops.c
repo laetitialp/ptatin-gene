@@ -917,7 +917,7 @@ START_INCLUSION:
     pos[3*found+2] = zp;
     found++;
   }
-  PetscPrintf(PETSC_COMM_WORLD,"  inclusion generation performed %D loops: Made %D attempts and correctly defined %D of %D inclusions\n",loops,attempt,found,ninclusions);
+  PetscPrintf(PETSC_COMM_WORLD,"  inclusion generation performed %" PetscInt_FMT " loops: Made %" PetscInt_FMT " attempts and correctly defined %" PetscInt_FMT " of %" PetscInt_FMT " inclusions\n",loops,attempt,found,ninclusions);
 
   *_pos   = pos;
 

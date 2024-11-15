@@ -808,7 +808,7 @@ PetscErrorCode SNESStokesPCMGSetOptions(SNES snes,PetscInt maxits,PetscBool mglo
     ierr = KSPGetPC(split_ksp[0],&split_pc);CHKERRQ(ierr);
     ierr = PCMGGetLevels(split_pc,&nlevels);CHKERRQ(ierr);
 
-    PetscSNPrintf(opt,PETSC_MAX_PATH_LEN-1,"-fieldsplit_u_pc_mg_levels %D",nlevels);
+    PetscSNPrintf(opt,PETSC_MAX_PATH_LEN-1,"-fieldsplit_u_pc_mg_levels %" PetscInt_FMT "",nlevels);
     ierr = PetscOptionsInsertPrefixString(prefix,opt);CHKERRQ(ierr);
   }
 
@@ -820,7 +820,7 @@ PetscErrorCode SNESStokesPCMGSetOptions(SNES snes,PetscInt maxits,PetscBool mglo
   ierr = PetscOptionsInsertPrefixString(prefix,"-fieldsplit_u_mg_levels_ksp_type chebychev");CHKERRQ(ierr);
   ierr = PetscOptionsInsertPrefixString(prefix,"-fieldsplit_u_mg_levels_ksp_norm_type NONE");CHKERRQ(ierr);
 
-  PetscSNPrintf(opt,PETSC_MAX_PATH_LEN-1,"-fieldsplit_u_mg_levels_ksp_max_it %D",maxits);
+  PetscSNPrintf(opt,PETSC_MAX_PATH_LEN-1,"-fieldsplit_u_mg_levels_ksp_max_it %" PetscInt_FMT "",maxits);
   ierr = PetscOptionsInsertPrefixString(prefix,opt);CHKERRQ(ierr);
 
   ierr = PetscOptionsInsertPrefixString(prefix,"-fieldsplit_u_mg_levels_esteig_ksp_norm_type NONE");CHKERRQ(ierr);
@@ -843,7 +843,7 @@ PetscErrorCode SNESStokesPCMGCoarseSetOptions_IterativeASM(SNES snes,PetscReal r
 
   ierr = PetscOptionsInsertPrefixString(prefix,"-fieldsplit_u_mg_coarse_ksp_type gmres");CHKERRQ(ierr);
 
-  PetscSNPrintf(opt,PETSC_MAX_PATH_LEN-1,"-fieldsplit_u_mg_coarse_ksp_max_it %D",maxits);
+  PetscSNPrintf(opt,PETSC_MAX_PATH_LEN-1,"-fieldsplit_u_mg_coarse_ksp_max_it %" PetscInt_FMT "",maxits);
   ierr = PetscOptionsInsertPrefixString(prefix,opt);CHKERRQ(ierr);
 
   PetscSNPrintf(opt,PETSC_MAX_PATH_LEN-1,"-fieldsplit_u_mg_coarse_ksp_rtol %1.4e",rtol);
@@ -851,7 +851,7 @@ PetscErrorCode SNESStokesPCMGCoarseSetOptions_IterativeASM(SNES snes,PetscReal r
 
   ierr = PetscOptionsInsertPrefixString(prefix,"-fieldsplit_u_mg_coarse_pc_type asm");CHKERRQ(ierr);
 
-  PetscSNPrintf(opt,PETSC_MAX_PATH_LEN-1,"-fieldsplit_u_mg_coarse_pc_asm_overlap %D",overlap);
+  PetscSNPrintf(opt,PETSC_MAX_PATH_LEN-1,"-fieldsplit_u_mg_coarse_pc_asm_overlap %" PetscInt_FMT "",overlap);
   ierr = PetscOptionsInsertPrefixString(prefix,opt);CHKERRQ(ierr);
 
   ierr = PetscOptionsInsertPrefixString(prefix,"-fieldsplit_u_mg_coarse_sub_pc_type ilu");CHKERRQ(ierr);
@@ -870,7 +870,7 @@ PetscErrorCode SNESStokesPCMGCoarseSetOptions_NestedIterativeASM(SNES snes,Petsc
 
   ierr = PetscOptionsInsertPrefixString(prefix,"-fieldsplit_u_mg_coarse_ksp_type fgmres");CHKERRQ(ierr);
 
-  PetscSNPrintf(opt,PETSC_MAX_PATH_LEN-1,"-fieldsplit_u_mg_coarse_ksp_max_it %D",maxits);
+  PetscSNPrintf(opt,PETSC_MAX_PATH_LEN-1,"-fieldsplit_u_mg_coarse_ksp_max_it %" PetscInt_FMT "",maxits);
   ierr = PetscOptionsInsertPrefixString(prefix,opt);CHKERRQ(ierr);
 
   sprintf(opt,"-fieldsplit_u_mg_coarse_ksp_rtol %1.4e",rtol);
@@ -879,7 +879,7 @@ PetscErrorCode SNESStokesPCMGCoarseSetOptions_NestedIterativeASM(SNES snes,Petsc
   /* defined nested ksp solver on coarse grid */
   ierr = PetscOptionsInsertPrefixString(prefix,"-fieldsplit_u_mg_coarse_pc_type ksp");CHKERRQ(ierr);
 
-  PetscSNPrintf(opt,PETSC_MAX_PATH_LEN-1,"-fieldsplit_u_mg_coarse_ksp_ksp_max_it %D",maxitsnested);
+  PetscSNPrintf(opt,PETSC_MAX_PATH_LEN-1,"-fieldsplit_u_mg_coarse_ksp_ksp_max_it %" PetscInt_FMT "",maxitsnested);
   ierr = PetscOptionsInsertPrefixString(prefix,opt);CHKERRQ(ierr);
 
   ierr = PetscOptionsInsertPrefixString(prefix,"-fieldsplit_u_mg_coarse_ksp_ksp_type chebychev");CHKERRQ(ierr);
@@ -888,7 +888,7 @@ PetscErrorCode SNESStokesPCMGCoarseSetOptions_NestedIterativeASM(SNES snes,Petsc
   ierr = PetscOptionsInsertPrefixString(prefix,"-fieldsplit_u_mg_coarse_ksp_ksp_chebychev_estimate_eigenvalues 0,0.2,0,1.1");CHKERRQ(ierr);
 
   ierr = PetscOptionsInsertPrefixString(prefix,"-fieldsplit_u_mg_coarse_ksp_pc_type asm");CHKERRQ(ierr);
-  PetscSNPrintf(opt,PETSC_MAX_PATH_LEN-1,"-fieldsplit_u_coarse_ksp_pc_asm_overlap %D",overlap);
+  PetscSNPrintf(opt,PETSC_MAX_PATH_LEN-1,"-fieldsplit_u_coarse_ksp_pc_asm_overlap %" PetscInt_FMT "",overlap);
   ierr = PetscOptionsInsertPrefixString(prefix,opt);CHKERRQ(ierr);
   ierr = PetscOptionsInsertPrefixString(prefix,"-fieldsplit_u_mg_coarse_ksp_sub_pc_type ilu");CHKERRQ(ierr);
 
@@ -1070,7 +1070,7 @@ PetscErrorCode Stokes_KSPConvergenceTest_ScaledResiduals(KSP ksp,PetscInt it,Pet
 
     ierr = MPI_Allreduce(&fails,&fail_sum,1,MPIU_INT,MPI_SUM,PetscObjectComm((PetscObject)ksp));CHKERRQ(ierr);
 
-    PetscPrintf(PETSC_COMM_WORLD,"  *** Stokes_KSPConvergenceTest_ScaledResiduals: failed sum %D ***\n",fail_sum);
+    PetscPrintf(PETSC_COMM_WORLD,"  *** Stokes_KSPConvergenceTest_ScaledResiduals: failed sum %" PetscInt_FMT " ***\n",fail_sum);
 
     *reason = KSP_CONVERGED_ITERATING;
     if (fail_sum == 0) {

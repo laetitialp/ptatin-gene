@@ -210,9 +210,9 @@ PetscErrorCode ptatin_db_checkpoint(void)
     PetscReal diff;
     diff = PetscAbsReal(statsOrig[k]-statsCP[k]);
     if (diff < 1.0e-8) {
-      PetscPrintf(PETSC_COMM_WORLD,"  coord statistic %D PASSED\n",k);
+      PetscPrintf(PETSC_COMM_WORLD,"  coord statistic %" PetscInt_FMT " PASSED\n",k);
     } else {
-      PetscPrintf(PETSC_COMM_WORLD,"  coord statistic %D FAILED\n",k);
+      PetscPrintf(PETSC_COMM_WORLD,"  coord statistic %" PetscInt_FMT " FAILED\n",k);
     }
   }
 

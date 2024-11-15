@@ -59,12 +59,12 @@ PetscErrorCode _XDMFMeta_GridOpenClose_DMDA(PetscViewer v,DM da,const char suffi
     PetscViewerASCIIPrintf(v,"<Grid Name=\"%s\" GridType=\"Uniform\">\n",meshname);
     ierr = PetscViewerASCIIPushTab(v);CHKERRQ(ierr);
 
-    PetscViewerASCIIPrintf(v,"<Topology TopologyType=\"3DSMesh\" Dimensions=\"%D %D %D\"/>\n",P,N,M);
+    PetscViewerASCIIPrintf(v,"<Topology TopologyType=\"3DSMesh\" Dimensions=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\"/>\n",P,N,M);
 
     PetscViewerASCIIPrintf(v,"<Geometry GeometryType=\"XYZ\">\n");
     ierr = PetscViewerASCIIPushTab(v);CHKERRQ(ierr);
 
-    PetscViewerASCIIPrintf(v,"<DataItem Dimensions=\"%D %D %D 3\"\n",P,N,M);
+    PetscViewerASCIIPrintf(v,"<DataItem Dimensions=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " 3\"\n",P,N,M);
     PetscViewerASCIIPrintf(v," NumberType=\"Float\" Precision=\"8\"\n");
 
     switch (format) {
@@ -159,25 +159,25 @@ PetscErrorCode _XDMFMeta_AddAttributeField_DMDA(PetscViewer v,DM da,Vec x,
       PetscViewerASCIIPrintf(v,"<Attribute Name=\"%s\" AttributeType=\"%s\" Center=\"%s\">\n",fieldname,XDMFAttributeNames[attr_type],XDMFCenterNames[c_type]);
       ierr = PetscViewerASCIIPushTab(v);CHKERRQ(ierr);
 
-      PetscViewerASCIIPrintf(v,"<DataItem Dimensions=\"%D %D %D 1\"\n",P,N,M);
+      PetscViewerASCIIPrintf(v,"<DataItem Dimensions=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " 1\"\n",P,N,M);
       break;
     case XDMFVector:
       PetscViewerASCIIPrintf(v,"<Attribute Name=\"%s\" AttributeType=\"%s\" Center=\"%s\">\n",fieldname,XDMFAttributeNames[attr_type],XDMFCenterNames[c_type]);
       ierr = PetscViewerASCIIPushTab(v);CHKERRQ(ierr);
 
-      PetscViewerASCIIPrintf(v,"<DataItem Dimensions=\"%D %D %D 3\"\n",P,N,M);
+      PetscViewerASCIIPrintf(v,"<DataItem Dimensions=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " 3\"\n",P,N,M);
       break;
     case XDMFTensor6:
       PetscViewerASCIIPrintf(v,"<Attribute Name=\"%s\" AttributeType=\"%s\" Center=\"%s\">\n",fieldname,XDMFAttributeNames[attr_type],XDMFCenterNames[c_type]);
       ierr = PetscViewerASCIIPushTab(v);CHKERRQ(ierr);
 
-      PetscViewerASCIIPrintf(v,"<DataItem Dimensions=\"%D %D %D 6\"\n",P,N,M);
+      PetscViewerASCIIPrintf(v,"<DataItem Dimensions=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " 6\"\n",P,N,M);
       break;
     case XDMFTensor:
       PetscViewerASCIIPrintf(v,"<Attribute Name=\"%s\" AttributeType=\"%s\" Center=\"%s\">\n",fieldname,XDMFAttributeNames[attr_type],XDMFCenterNames[c_type]);
       ierr = PetscViewerASCIIPushTab(v);CHKERRQ(ierr);
 
-      PetscViewerASCIIPrintf(v,"<DataItem Dimensions=\"%D %D %D 9\"\n",P,N,M);
+      PetscViewerASCIIPrintf(v,"<DataItem Dimensions=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " 9\"\n",P,N,M);
       break;
     case XDMFMultiCompVector:
       break;
@@ -213,11 +213,11 @@ PetscErrorCode _XDMFMeta_AddAttributeField_DMDA(PetscViewer v,DM da,Vec x,
     for (d=0; d<ndof; d++) {
       char fieldname_comp[PETSC_MAX_PATH_LEN];
 
-      PetscSNPrintf(fieldname_comp,PETSC_MAX_PATH_LEN-1,"%s_%D",fieldname,d);
+      PetscSNPrintf(fieldname_comp,PETSC_MAX_PATH_LEN-1,"%s_%" PetscInt_FMT "",fieldname,d);
       PetscViewerASCIIPrintf(v,"<Attribute Name=\"%s\" AttributeType=\"%s\" Center=\"%s\">\n",fieldname_comp,XDMFAttributeNames[XDMFScalar],XDMFCenterNames[c_type]);
       ierr = PetscViewerASCIIPushTab(v);CHKERRQ(ierr);
 
-      PetscViewerASCIIPrintf(v,"<DataItem Dimensions=\"%D %D %D 1\"\n",P,N,M);
+      PetscViewerASCIIPrintf(v,"<DataItem Dimensions=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " 1\"\n",P,N,M);
       PetscViewerASCIIPrintf(v," NumberType=\"Float\" Precision=\"8\"\n");
 
       if (format == XDMFHDF5) {
@@ -225,12 +225,12 @@ PetscErrorCode _XDMFMeta_AddAttributeField_DMDA(PetscViewer v,DM da,Vec x,
 
         ierr = PetscObjectGetName((PetscObject)x,&vecname);CHKERRQ(ierr);
         PetscViewerASCIIPrintf(v," Format=\"HDF\">\n");
-        if (suffix) { PetscViewerASCIIPrintf(v,"   %s_%s_%s.h5:/%s_%D\n",suffix,meshname,fieldname,vecname,d); }
-        else {        PetscViewerASCIIPrintf(v,"   %s_%s.h5:/%s_%D\n",meshname,fieldname,vecname,d); }
+        if (suffix) { PetscViewerASCIIPrintf(v,"   %s_%s_%s.h5:/%s_%" PetscInt_FMT "\n",suffix,meshname,fieldname,vecname,d); }
+        else {        PetscViewerASCIIPrintf(v,"   %s_%s.h5:/%s_%" PetscInt_FMT "\n",meshname,fieldname,vecname,d); }
       } else {
         PetscViewerASCIIPrintf(v," Format=\"Binary\" Endian=\"Big\">\n");
-        if (suffix) { PetscViewerASCIIPrintf(v,"   %s_%s_%s_%D.pbvec\n",suffix,meshname,fieldname,d); }
-        else {        PetscViewerASCIIPrintf(v,"   %s_%s_%D.pbvec\n",meshname,fieldname,d); }
+        if (suffix) { PetscViewerASCIIPrintf(v,"   %s_%s_%s_%" PetscInt_FMT ".pbvec\n",suffix,meshname,fieldname,d); }
+        else {        PetscViewerASCIIPrintf(v,"   %s_%s_%" PetscInt_FMT ".pbvec\n",meshname,fieldname,d); }
       }
       PetscViewerASCIIPrintf(v,"</DataItem>\n");
       ierr = PetscViewerASCIIPopTab(v);CHKERRQ(ierr);
@@ -391,7 +391,7 @@ PetscErrorCode XDMFWriteDataItemByReference_DMDA(PetscViewer v,DM dm,const char 
 
   ierr = DMDAGetInfo(dm,0,&M,&N,&P,0,0,0,&ndof,0,0,0,0,0);CHKERRQ(ierr);
 
-  PetscViewerASCIIPrintf(v,"<DataItem Name=\"ref_%s\" Dimensions=\"%D %D %D %D\"\n",fieldname,P,N,M,ndof);
+  PetscViewerASCIIPrintf(v,"<DataItem Name=\"ref_%s\" Dimensions=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\"\n",fieldname,P,N,M,ndof);
   PetscViewerASCIIPrintf(v,"  NumberType=\"Float\" Precision=\"8\"\n");
 
   if (format == XDMFBinary) {
@@ -440,7 +440,7 @@ PetscErrorCode _XDMFMeta_AddAttributeFunctionField_DMDA(PetscViewer v,const char
   PetscViewerASCIIPrintf(v,"<Attribute Name=\"%s\" AttributeType=\"%s\" Center=\"%s\">\n",fieldname,XDMFAttributeNames[attr_type],XDMFCenterNames[c_type]);
   ierr = PetscViewerASCIIPushTab(v);CHKERRQ(ierr);
 
-  PetscViewerASCIIPrintf(v,"<DataItem ItemType=\"Function\" Function=\"%s\" Dimensions=\"%D %D %D %D\">\n",function,P,N,M,ndof);
+  PetscViewerASCIIPrintf(v,"<DataItem ItemType=\"Function\" Function=\"%s\" Dimensions=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\">\n",function,P,N,M,ndof);
   ierr = PetscViewerASCIIPushTab(v);CHKERRQ(ierr);
 
   PetscViewerASCIIPrintf(v,"<DataItem Reference=\"XML\">\n");
@@ -542,7 +542,7 @@ PetscErrorCode XDMFMetaWriteInformationString(PetscViewer v,const char name[],co
 PetscErrorCode XDMFMetaWriteInformationInt(PetscViewer v,const char name[],PetscInt value)
 {
   if (!v) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"XDMF file pointer is corrupt"); }
-  PetscViewerASCIIPrintf(v,"<Information Name=\"%s\" Value=\"%D\"/>\n",name,value);
+  PetscViewerASCIIPrintf(v,"<Information Name=\"%s\" Value=\"%" PetscInt_FMT "\"/>\n",name,value);
   PetscFunctionReturn(0);
 }
 
@@ -624,7 +624,7 @@ PetscErrorCode ptatin3d_StokesOutput_VelocityXDMF(pTatinCtx ctx,Vec X,const char
   ierr = DMCompositeGetEntries(dmstokes,&dmv,&dmp);CHKERRQ(ierr);
   ierr = DMCompositeGetAccess(dmstokes,X,&velocity,&pressure);CHKERRQ(ierr);
 
-  ierr = PetscSNPrintf(xmfoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%D",ctx->outputpath,ctx->step);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(xmfoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%" PetscInt_FMT "",ctx->outputpath,ctx->step);CHKERRQ(ierr);
   ierr = pTatinTestDirectory(xmfoutputdir,'w',&found);CHKERRQ(ierr);
   if (!found) { ierr = pTatinCreateDirectory(xmfoutputdir);CHKERRQ(ierr); }
 

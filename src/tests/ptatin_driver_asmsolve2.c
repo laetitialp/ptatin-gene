@@ -299,7 +299,7 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
         if (k==mlctx->nlevels-1) {
           SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_ARG_OUTOFRANGE,"Cannot use galerkin coarse grid on the finest level");
         }
-        PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: Galerkin :: assembled operator \n", k);
+        PetscPrintf(PETSC_COMM_WORLD,"Level [%" PetscInt_FMT "]: Coarse grid type :: Galerkin :: assembled operator \n", k);
 
         /* should move coarse grid assembly into jacobian */
         ierr = MatPtAP(mlctx->operatorA11[k+1],mlctx->interpolatation_v[k+1],MAT_INITIAL_MATRIX,1.0,&Auu_k);CHKERRQ(ierr);
@@ -420,7 +420,7 @@ PetscErrorCode pTatin3d_gmg2_material_points(int argc,char **argv)
 
   nlevels = 1;
   PetscOptionsGetInt(NULL,NULL,"-dau_nlevels",&nlevels,0);
-  PetscPrintf(PETSC_COMM_WORLD,"Mesh size (%D x %D x %D) : MG levels %D  \n", user->mx,user->my,user->mz,nlevels );
+  PetscPrintf(PETSC_COMM_WORLD,"Mesh size (%" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT ") : MG levels %" PetscInt_FMT "  \n", user->mx,user->my,user->mz,nlevels );
   dav_hierarchy[ nlevels-1 ] = dav;
   ierr = PetscObjectReference((PetscObject)dav);CHKERRQ(ierr);
 
@@ -447,7 +447,7 @@ PetscErrorCode pTatin3d_gmg2_material_points(int argc,char **argv)
   for (k=0; k<nlevels; k++) {
     PetscInt lmx,lmy,lmz;
     ierr = DMDAGetSizeElementQ2(dav_hierarchy[k],&lmx,&lmy,&lmz);CHKERRQ(ierr);
-    PetscPrintf(PETSC_COMM_WORLD,"         level [%2D]: global Q2 elements (%D x %D x %D) \n", k,lmx,lmy,lmz );
+    PetscPrintf(PETSC_COMM_WORLD,"         level [%2D]: global Q2 elements (%" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT ") \n", k,lmx,lmy,lmz );
   }
   for (k=0; k<nlevels; k++) {
     PetscInt nels,nen;
@@ -457,7 +457,7 @@ PetscErrorCode pTatin3d_gmg2_material_points(int argc,char **argv)
     ierr = DMDAGetElements_pTatinQ2P1(dav_hierarchy[k],&nels,&nen,&els);CHKERRQ(ierr);
     ierr = DMDAGetLocalSizeElementQ2(dav_hierarchy[k],&lmx,&lmy,&lmz);CHKERRQ(ierr);
     if (rank<10) {
-      PetscPrintf(PETSC_COMM_SELF,"[r%4D]: level [%2D]: local Q2 elements  (%D x %D x %D) \n", rank, k,lmx,lmy,lmz );
+      PetscPrintf(PETSC_COMM_SELF,"[r%4D]: level [%2D]: local Q2 elements  (%" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT ") \n", rank, k,lmx,lmy,lmz );
     }
 
     ierr = DMDAGetCornersElementQ2(dav_hierarchy[k],&si,&sj,&sk,&lmx,&lmy,&lmz);CHKERRQ(ierr);
@@ -465,7 +465,7 @@ PetscErrorCode pTatin3d_gmg2_material_points(int argc,char **argv)
     sj = sj/2;
     sk = sk/2;
     if (rank<10) {
-      PetscPrintf(PETSC_COMM_SELF,"[r%4D]: level [%2D]: element range [%D - %D] x [%D - %D] x [%D - %D] \n", rank, k,si,si+lmx-1,sj,sj+lmy-1,sk,sk+lmz-1 );
+      PetscPrintf(PETSC_COMM_SELF,"[r%4D]: level [%2D]: element range [%" PetscInt_FMT " - %" PetscInt_FMT "] x [%" PetscInt_FMT " - %" PetscInt_FMT "] x [%" PetscInt_FMT " - %" PetscInt_FMT "] \n", rank, k,si,si+lmx-1,sj,sj+lmy-1,sk,sk+lmz-1 );
     }
   }
 
@@ -613,7 +613,7 @@ PetscErrorCode pTatin3d_gmg2_material_points(int argc,char **argv)
         PetscBool same1 = PETSC_FALSE,same2 = PETSC_FALSE,same3 = PETSC_FALSE;
 
         /* use -stk_velocity_da_mat_type sbaij or -Buu_da_mat_type sbaij */
-        PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: Re-discretisation :: assembled operator \n", k);
+        PetscPrintf(PETSC_COMM_WORLD,"Level [%" PetscInt_FMT "]: Coarse grid type :: Re-discretisation :: assembled operator \n", k);
         ierr = DMSetMatType(dav_hierarchy[k],MATSBAIJ);CHKERRQ(ierr);
         ierr = DMCreateMatrix(dav_hierarchy[k],&Auu);CHKERRQ(ierr);
         ierr = MatSetOptionsPrefix(Auu,"Buu_");CHKERRQ(ierr);
@@ -640,7 +640,7 @@ PetscErrorCode pTatin3d_gmg2_material_points(int argc,char **argv)
         Mat Auu;
         MatA11MF mf,A11Ctx;
 
-        PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: Re-discretisation :: matrix free operator \n", k);
+        PetscPrintf(PETSC_COMM_WORLD,"Level [%" PetscInt_FMT "]: Coarse grid type :: Re-discretisation :: matrix free operator \n", k);
         ierr = MatA11MFCreate(&A11Ctx);CHKERRQ(ierr);
         ierr = MatA11MFSetup(A11Ctx,dav_hierarchy[k],volQ[k],u_bclist[k],NULL);CHKERRQ(ierr);
 
@@ -684,7 +684,7 @@ PetscErrorCode pTatin3d_gmg2_material_points(int argc,char **argv)
           SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_ARG_OUTOFRANGE,"Cannot use galerkin coarse grid on the finest level");
         }
 
-        PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: Galerkin :: assembled operator \n", k);
+        PetscPrintf(PETSC_COMM_WORLD,"Level [%" PetscInt_FMT "]: Coarse grid type :: Galerkin :: assembled operator \n", k);
 
         /* should move coarse grid assembly into jacobian */
         ierr = MatPtAP(operatorA11[k+1],interpolatation_v[k+1],MAT_INITIAL_MATRIX,1.0,&Auu);CHKERRQ(ierr);
@@ -959,7 +959,7 @@ PetscErrorCode pTatin3d_gmg2_material_points(int argc,char **argv)
 
 
 
-  PetscPrintf(PETSC_COMM_WORLD,"[Initial condition] Timestep[%D]: time %lf Myr \n", user->step, user->time );
+  PetscPrintf(PETSC_COMM_WORLD,"[Initial condition] Timestep[%" PetscInt_FMT "]: time %lf Myr \n", user->step, user->time );
   for (kk=0; kk<user->nsteps; kk++) {
     PetscInt tk = user->step+1;
 
@@ -971,7 +971,7 @@ PetscErrorCode pTatin3d_gmg2_material_points(int argc,char **argv)
 
     user->time += 0.12;
     user->step++;
-    PetscPrintf(PETSC_COMM_WORLD,"Timestep[%D] : Cycle[%D/%D] : time %lf Myr \n", tk, kk, user->nsteps-1, user->time );
+    PetscPrintf(PETSC_COMM_WORLD,"Timestep[%" PetscInt_FMT "] : Cycle[%" PetscInt_FMT "/%" PetscInt_FMT "] : time %lf Myr \n", tk, kk, user->nsteps-1, user->time );
 
 
     if ((kk+1)%5==0) {
@@ -984,7 +984,7 @@ PetscErrorCode pTatin3d_gmg2_material_points(int argc,char **argv)
     if ((kk+1)%10==0) {
       char name[PETSC_MAX_PATH_LEN];
 
-      PetscPrintf(PETSC_COMM_WORLD,"  checkpointing ptatin :: Model timestep %D : time %lf Myr : cycle[%D/%D] \n", tk,user->time,kk, user->nsteps-1 );
+      PetscPrintf(PETSC_COMM_WORLD,"  checkpointing ptatin :: Model timestep %" PetscInt_FMT " : time %lf Myr : cycle[%" PetscInt_FMT "/%" PetscInt_FMT "] \n", tk,user->time,kk, user->nsteps-1 );
       /* check point test */
       //  ierr = pTatin3dContextSave(user,"checkpoint.file");CHKERRQ(ierr);
       //  ierr = pTatin3dContextLoad(user,"checkpoint.file");CHKERRQ(ierr);

@@ -195,12 +195,12 @@ PetscErrorCode pTatin3d_ModelOutput_VelocityPressure_Stokes_per_dir(pTatinCtx ct
   PetscErrorCode ierr;
 
   // create a snapshot directory based on step
-  ierr = PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"%s/step%D",ctx->outputpath,ctx->step);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"%s/step%" PetscInt_FMT "",ctx->outputpath,ctx->step);CHKERRQ(ierr);
   ierr = pTatinTestDirectory(name,'w',&found);CHKERRQ(ierr);
   if (!found) {
     ierr = pTatinCreateDirectory(name);CHKERRQ(ierr);
   }
-  ierr = PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"step%D",ctx->step);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"step%" PetscInt_FMT "",ctx->step);CHKERRQ(ierr);
   ierr = _pTatin3d_ModelOutput_VelocityPressure_Stokes(ctx,X,ctx->outputpath,name,NULL);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -223,12 +223,12 @@ PetscErrorCode pTatin3d_ModelOutput_VelocityPressure_Stokes(pTatinCtx ctx,Vec X,
   PetscErrorCode ierr;
 
   // create a snapshot directory based on step
-  ierr = PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"%s/step%D",ctx->outputpath,ctx->step);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"%s/step%" PetscInt_FMT "",ctx->outputpath,ctx->step);CHKERRQ(ierr);
   ierr = pTatinTestDirectory(name,'w',&found);CHKERRQ(ierr);
   if (!found) {
     ierr = pTatinCreateDirectory(name);CHKERRQ(ierr);
   }
-  ierr = PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"step%D",ctx->step);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"step%" PetscInt_FMT "",ctx->step);CHKERRQ(ierr);
   ierr = _pTatin3d_ModelOutput_VelocityPressure_Stokes(ctx,X,ctx->outputpath,name,prefix);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
@@ -248,7 +248,7 @@ PetscErrorCode pTatin3d_ModelOutputLite_Velocity_Stokes(pTatinCtx ctx,Vec X,cons
   PetscFunctionBegin;
   ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s",ctx->outputpath);CHKERRQ(ierr);
 
-  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%D",root,ctx->step);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%" PetscInt_FMT "",root,ctx->step);CHKERRQ(ierr);
   ierr = pTatinTestDirectory(pvoutputdir,'w',&found);CHKERRQ(ierr);
   if (!found) { ierr = pTatinCreateDirectory(pvoutputdir);CHKERRQ(ierr); }
 
@@ -259,7 +259,7 @@ PetscErrorCode pTatin3d_ModelOutputLite_Velocity_Stokes(pTatinCtx ctx,Vec X,cons
   } else {      PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "v.pvts");           }
 
   if (!beenhere) { PetscPrintf(PETSC_COMM_WORLD,"  writing pvdfilename %s \n", pvdfilename ); }
-  PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%D",ctx->step);
+  PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%" PetscInt_FMT "",ctx->step);
   ierr = ParaviewPVDOpenAppend(beenhere,ctx->step,pvdfilename,ctx->time, vtkfilename, stepprefix);CHKERRQ(ierr);
   beenhere = PETSC_TRUE;
 
@@ -294,7 +294,7 @@ PetscErrorCode pTatin3d_ModelOutputPetscVec_VelocityPressure_Stokes(pTatinCtx ct
   // PVD
   ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s",ctx->outputpath);CHKERRQ(ierr);
 
-  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%D",root,ctx->step);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%" PetscInt_FMT "",root,ctx->step);CHKERRQ(ierr);
   ierr = pTatinTestDirectory(pvoutputdir,'w',&found);CHKERRQ(ierr);
   if (!found) { ierr = pTatinCreateDirectory(pvoutputdir);CHKERRQ(ierr); }
 
@@ -305,7 +305,7 @@ PetscErrorCode pTatin3d_ModelOutputPetscVec_VelocityPressure_Stokes(pTatinCtx ct
   } else {      PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "X.pvts");           }
 
   if (!beenhere) { PetscPrintf(PETSC_COMM_WORLD,"  writing pvdfilename %s \n", pvdfilename ); }
-  PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%D",ctx->step);
+  PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%" PetscInt_FMT "",ctx->step);
   ierr = ParaviewPVDOpenAppend(beenhere,ctx->step,pvdfilename,ctx->time, vtkfilename, stepprefix);CHKERRQ(ierr);
   beenhere = PETSC_TRUE;
 
@@ -577,7 +577,7 @@ PetscErrorCode pTatin3d_ModelOutput_MPntStd(pTatinCtx ctx,const char prefix[])
   PetscFunctionBegin;
   ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s",ctx->outputpath);CHKERRQ(ierr);
 
-  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%D",root,ctx->step);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%" PetscInt_FMT "",root,ctx->step);CHKERRQ(ierr);
   ierr = pTatinTestDirectory(pvoutputdir,'w',&found);CHKERRQ(ierr);
   if (!found) { ierr = pTatinCreateDirectory(pvoutputdir);CHKERRQ(ierr); }
 
@@ -588,7 +588,7 @@ PetscErrorCode pTatin3d_ModelOutput_MPntStd(pTatinCtx ctx,const char prefix[])
   } else {      PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "mpoints_std.pvtu");           }
 
   if (!beenhere) { PetscPrintf(PETSC_COMM_WORLD,"  writing pvdfilename %s \n", pvdfilename ); }
-  PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%D",ctx->step);
+  PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%" PetscInt_FMT "",ctx->step);
   ierr = ParaviewPVDOpenAppend(beenhere,ctx->step,pvdfilename,ctx->time, vtkfilename, stepprefix);CHKERRQ(ierr);
   beenhere = PETSC_TRUE;
 
@@ -1104,7 +1104,7 @@ PetscErrorCode  DMCoarsenHierarchy2_DA(DM da,PetscInt nlevels,DM dac[])
 
     ierr = DMDAViewPetscVTK(da,NULL,"dav_fine.vts");CHKERRQ(ierr);
     for (i=0; i<nlevels; i++) {
-      PetscSNPrintf(levelname,PETSC_MAX_PATH_LEN-1,"dav_level%D.vts",nlevels-1-i); /* do shift to make 0 named as the corsest */
+      PetscSNPrintf(levelname,PETSC_MAX_PATH_LEN-1,"dav_level%" PetscInt_FMT ".vts",nlevels-1-i); /* do shift to make 0 named as the corsest */
       ierr = DMDAViewPetscVTK(dac[i],NULL,levelname);CHKERRQ(ierr);
     }
   }

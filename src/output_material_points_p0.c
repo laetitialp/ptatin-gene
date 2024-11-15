@@ -293,8 +293,8 @@ PetscErrorCode MarkerCellFieldsP0Write_ParaViewVTS(DM dmscalar,DM dmp0,Vec scala
   fprintf(vtk_fp,"<VTKFile type=\"StructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n");
 #endif
 
-  PetscFPrintf(PETSC_COMM_SELF,vtk_fp,"  <StructuredGrid WholeExtent=\"%D %D %D %D %D %D\">\n",esi,esi+mx,esj,esj+my,esk,esk+mz);
-  PetscFPrintf(PETSC_COMM_SELF,vtk_fp,"    <Piece Extent=\"%D %D %D %D %D %D\">\n",esi,esi+mx,esj,esj+my,esk,esk+mz);
+  PetscFPrintf(PETSC_COMM_SELF,vtk_fp,"  <StructuredGrid WholeExtent=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\">\n",esi,esi+mx,esj,esj+my,esk,esk+mz);
+  PetscFPrintf(PETSC_COMM_SELF,vtk_fp,"    <Piece Extent=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\">\n",esi,esi+mx,esj,esj+my,esk,esk+mz);
 
   offset = 0;
 
@@ -502,7 +502,7 @@ PetscErrorCode MarkerCellFieldsP0Write_ParaViewPVTS(DM dascalar,const int nvars,
 #endif
 
   DMDAGetInfo(dascalar,0,&M,&N,&P,0,0,0,0,&swidth,0,0,0,0);
-  if (vtk_fp) PetscFPrintf(PETSC_COMM_SELF,vtk_fp,"  <PStructuredGrid GhostLevel=\"%D\" WholeExtent=\"%D %D %D %D %D %D\">\n",swidth,0,M-1,0,N-1,0,P-1); /* note overlap = 1 for Q1 */
+  if (vtk_fp) PetscFPrintf(PETSC_COMM_SELF,vtk_fp,"  <PStructuredGrid GhostLevel=\"%" PetscInt_FMT "\" WholeExtent=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\">\n",swidth,0,M-1,0,N-1,0,P-1); /* note overlap = 1 for Q1 */
 
   /* VTS COORD DATA */
   if (vtk_fp) fprintf(vtk_fp,"    <PPoints>\n");
@@ -621,7 +621,7 @@ PetscErrorCode pTatin3dModelOutput_MarkerCellFieldsP0_ParaView(pTatinCtx ctx,con
 
   ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s",ctx->outputpath);CHKERRQ(ierr);
 
-  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%D",root,ctx->step);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%" PetscInt_FMT "",root,ctx->step);CHKERRQ(ierr);
   ierr = pTatinTestDirectory(pvoutputdir,'w',&found);CHKERRQ(ierr);
   if (!found) { ierr = pTatinCreateDirectory(pvoutputdir);CHKERRQ(ierr); }
 
@@ -633,7 +633,7 @@ PetscErrorCode pTatin3dModelOutput_MarkerCellFieldsP0_ParaView(pTatinCtx ctx,con
   } else {      PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "mpoints_cell.pvts");           }
 
   if (!beenhere) { PetscPrintf(PETSC_COMM_WORLD,"  writing pvdfilename %s \n", pvdfilename ); }
-  PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%D",ctx->step);
+  PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%" PetscInt_FMT "",ctx->step);
   ierr = ParaviewPVDOpenAppend(beenhere,ctx->step,pvdfilename,ctx->time, vtkfilename, stepprefix);CHKERRQ(ierr);
   beenhere = PETSC_TRUE;
 
@@ -704,7 +704,7 @@ PetscErrorCode pTatin3dModelOutput_MarkerCellFieldsP0_PetscVec(pTatinCtx ctx,Pet
 
   ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s",ctx->outputpath);CHKERRQ(ierr);
 
-  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%D",root,ctx->step);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%" PetscInt_FMT "",root,ctx->step);CHKERRQ(ierr);
   ierr = pTatinTestDirectory(pvoutputdir,'w',&found);CHKERRQ(ierr);
   if (!found) { ierr = pTatinCreateDirectory(pvoutputdir);CHKERRQ(ierr); }
 
@@ -715,7 +715,7 @@ PetscErrorCode pTatin3dModelOutput_MarkerCellFieldsP0_PetscVec(pTatinCtx ctx,Pet
   } else {      PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "mpoints_cell.pvts");           }
 
   if (!beenhere) { PetscPrintf(PETSC_COMM_WORLD,"  writing pvdfilename %s \n", pvdfilename ); }
-  PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%D",ctx->step);
+  PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%" PetscInt_FMT "",ctx->step);
   ierr = ParaviewPVDOpenAppend(beenhere,ctx->step,pvdfilename,ctx->time, vtkfilename, stepprefix);CHKERRQ(ierr);
   beenhere = PETSC_TRUE;
 

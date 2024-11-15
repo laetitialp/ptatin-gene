@@ -2173,7 +2173,7 @@ PetscErrorCode StokesA12Preallocation_basic(Mat mat,DM dav,DM dap)
   onnz = 16;
   ierr = PetscOptionsGetInt(NULL,NULL,"-A12_preallocation_onnz",&onnz,&flg);CHKERRQ(ierr);
 
-  PetscPrintf(PetscObjectComm((PetscObject)mat),"StokesA12Preallocation_basic: using nnz = %D and onnz = %D \n", nnz,onnz );
+  PetscPrintf(PetscObjectComm((PetscObject)mat),"StokesA12Preallocation_basic: using nnz = %" PetscInt_FMT " and onnz = %" PetscInt_FMT " \n", nnz,onnz );
 
   ierr = MatSeqAIJSetPreallocation(mat,nnz,NULL);CHKERRQ(ierr);
   ierr = MatMPIAIJSetPreallocation(mat,nnz,NULL,onnz,NULL);CHKERRQ(ierr);
@@ -2305,7 +2305,7 @@ PetscErrorCode StokesA21Preallocation_basic(Mat mat,DM dav,DM dap)
   onnz = 30;
   ierr = PetscOptionsGetInt(NULL,NULL,"-A21_preallocation_onnz",&onnz,&flg);CHKERRQ(ierr);
 
-  PetscPrintf(PetscObjectComm((PetscObject)mat),"StokesA21Preallocation_basic: using nnz = %D and onnz = %D \n", nnz,onnz );
+  PetscPrintf(PetscObjectComm((PetscObject)mat),"StokesA21Preallocation_basic: using nnz = %" PetscInt_FMT " and onnz = %" PetscInt_FMT " \n", nnz,onnz );
 
   ierr = MatSeqAIJSetPreallocation(mat,nnz,NULL);CHKERRQ(ierr);
   ierr = MatMPIAIJSetPreallocation(mat,nnz,NULL,onnz,NULL);CHKERRQ(ierr);

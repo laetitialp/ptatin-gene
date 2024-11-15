@@ -238,7 +238,7 @@ PetscErrorCode test_mp_advection(int argc,char **argv)
 
   nlevels = 1;
   PetscOptionsGetInt(NULL,NULL,"-dau_nlevels",&nlevels,0);
-  PetscPrintf(PETSC_COMM_WORLD,"Mesh size (%D x %D x %D) : MG levels %D  \n", user->mx,user->my,user->mz,nlevels );
+  PetscPrintf(PETSC_COMM_WORLD,"Mesh size (%" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT ") : MG levels %" PetscInt_FMT "  \n", user->mx,user->my,user->mz,nlevels );
   dav_hierarchy[ nlevels-1 ] = dav;
   ierr = PetscObjectReference((PetscObject)dav);CHKERRQ(ierr);
 
@@ -271,11 +271,11 @@ PetscErrorCode test_mp_advection(int argc,char **argv)
 
 
     ierr = DMDAGetSizeElementQ2(dav_hierarchy[k],&lmx,&lmy,&lmz);CHKERRQ(ierr);
-    PetscPrintf(PETSC_COMM_WORLD,"         level [%2D]: global Q2 elements (%D x %D x %D) \n", k,lmx,lmy,lmz );
+    PetscPrintf(PETSC_COMM_WORLD,"         level [%2D]: global Q2 elements (%" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT ") \n", k,lmx,lmy,lmz );
 
     ierr = DMDAGetLocalSizeElementQ2(dav_hierarchy[k],&lmx,&lmy,&lmz);CHKERRQ(ierr);
     if (rank<10) {
-      PetscPrintf(PETSC_COMM_SELF,"[r%4D]: level [%2D]: local Q2 elements  (%D x %D x %D) \n", rank, k,lmx,lmy,lmz );
+      PetscPrintf(PETSC_COMM_SELF,"[r%4D]: level [%2D]: local Q2 elements  (%" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT ") \n", rank, k,lmx,lmy,lmz );
     }
 
     ierr = DMDAGetCornersElementQ2(dav_hierarchy[k],&si,&sj,&sk,&lmx,&lmy,&lmz);CHKERRQ(ierr);
@@ -283,7 +283,7 @@ PetscErrorCode test_mp_advection(int argc,char **argv)
     sj = sj/2;
     sk = sk/2;
     if (rank<10) {
-      PetscPrintf(PETSC_COMM_SELF,"[r%4D]: level [%2D]: element range [%D - %D] x [%D - %D] x [%D - %D] \n", rank, k,si,si+lmx-1,sj,sj+lmy-1,sk,sk+lmz-1 );
+      PetscPrintf(PETSC_COMM_SELF,"[r%4D]: level [%2D]: element range [%" PetscInt_FMT " - %" PetscInt_FMT "] x [%" PetscInt_FMT " - %" PetscInt_FMT "] x [%" PetscInt_FMT " - %" PetscInt_FMT "] \n", rank, k,si,si+lmx-1,sj,sj+lmy-1,sk,sk+lmz-1 );
     }
   }
 
@@ -428,7 +428,7 @@ PetscErrorCode test_mp_advection(int argc,char **argv)
           PetscBool same1 = PETSC_FALSE,same2 = PETSC_FALSE,same3 = PETSC_FALSE;
 
           /* use -stk_velocity_da_mat_type sbaij or -Buu_da_mat_type sbaij */
-          PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: Re-discretisation :: assembled operator \n", k);
+          PetscPrintf(PETSC_COMM_WORLD,"Level [%" PetscInt_FMT "]: Coarse grid type :: Re-discretisation :: assembled operator \n", k);
           ierr = DMSetMatType(dav_hierarchy[k],MATSBAIJ);CHKERRQ(ierr);
           ierr = DMCreateMatrix(dav_hierarchy[k],&Auu);CHKERRQ(ierr);
           ierr = MatSetOptionsPrefix(Auu,"Buu_");CHKERRQ(ierr);
@@ -455,7 +455,7 @@ PetscErrorCode test_mp_advection(int argc,char **argv)
           Mat Auu;
           MatA11MF mf,A11Ctx;
 
-          PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: Re-discretisation :: matrix free operator \n", k);
+          PetscPrintf(PETSC_COMM_WORLD,"Level [%" PetscInt_FMT "]: Coarse grid type :: Re-discretisation :: matrix free operator \n", k);
           ierr = MatA11MFCreate(&A11Ctx);CHKERRQ(ierr);
           ierr = MatA11MFSetup(A11Ctx,dav_hierarchy[k],volQ[k],u_bclist[k],NULL);CHKERRQ(ierr);
 
@@ -480,7 +480,7 @@ PetscErrorCode test_mp_advection(int argc,char **argv)
             SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_ARG_OUTOFRANGE,"Cannot use galerkin coarse grid on the finest level");
           }
 
-          PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: Galerkin :: assembled operator \n", k);
+          PetscPrintf(PETSC_COMM_WORLD,"Level [%" PetscInt_FMT "]: Coarse grid type :: Galerkin :: assembled operator \n", k);
 
           /* should move coarse grid assembly into jacobian */
           ierr = MatPtAP(operatorA11[k+1],interpolatation_v[k+1],MAT_INITIAL_MATRIX,1.0,&Auu);CHKERRQ(ierr);
@@ -567,7 +567,7 @@ PetscErrorCode test_mp_advection(int argc,char **argv)
   /* solve once, then advect */
   ierr = SNESSolve(snes,NULL,X);CHKERRQ(ierr);
 
-  PetscPrintf(PETSC_COMM_WORLD,"[Initial condition] Timestep[%D]: time %lf Myr \n", user->step, user->time );
+  PetscPrintf(PETSC_COMM_WORLD,"[Initial condition] Timestep[%" PetscInt_FMT "]: time %lf Myr \n", user->step, user->time );
   for (kk=0; kk<user->nsteps; kk++) {
     PetscInt tk = user->step+1;
     PetscReal timestep;
@@ -583,12 +583,12 @@ PetscErrorCode test_mp_advection(int argc,char **argv)
       ierr = SwarmUpdatePosition_ComputeCourantStep(dav_hierarchy[nlevels-1],velocity,&timestep);CHKERRQ(ierr);
 
       ierr = DMCompositeRestoreAccess(multipys_pack,X,&velocity,&pressure);CHKERRQ(ierr);
-      PetscPrintf(PETSC_COMM_WORLD,"  timestep[%D] dt_courant = %1.4e \n", tk, timestep );
+      PetscPrintf(PETSC_COMM_WORLD,"  timestep[%" PetscInt_FMT "] dt_courant = %1.4e \n", tk, timestep );
 
       user->dt = timestep;
       user->dt = 1.0e-1 * user->dt;
     }
-    PetscPrintf(PETSC_COMM_WORLD,"  timestep[%D] dt = %1.4e \n", tk, user->dt );
+    PetscPrintf(PETSC_COMM_WORLD,"  timestep[%" PetscInt_FMT "] dt = %1.4e \n", tk, user->dt );
 
     ierr = SwarmUpdateProperties_MPntStd(user->materialpoint_db,user,X);CHKERRQ(ierr);
 
@@ -612,7 +612,7 @@ PetscErrorCode test_mp_advection(int argc,char **argv)
 
     user->time += user->dt;
     user->step++;
-    PetscPrintf(PETSC_COMM_WORLD,"Timestep[%D] : Cycle[%D/%D] : time %lf Myr \n", tk, kk, user->nsteps-1, user->time );
+    PetscPrintf(PETSC_COMM_WORLD,"Timestep[%" PetscInt_FMT "] : Cycle[%" PetscInt_FMT "/%" PetscInt_FMT "] : time %lf Myr \n", tk, kk, user->nsteps-1, user->time );
 
 
     if ((kk+1)%user->output_frequency==0) {
@@ -625,7 +625,7 @@ PetscErrorCode test_mp_advection(int argc,char **argv)
     if ((kk+1)%user->output_frequency==0) {
       char name[PETSC_MAX_PATH_LEN];
 
-      PetscPrintf(PETSC_COMM_WORLD,"  checkpointing ptatin :: Model timestep %D : time %lf Myr : cycle[%D/%D] \n", tk,user->time,kk, user->nsteps-1 );
+      PetscPrintf(PETSC_COMM_WORLD,"  checkpointing ptatin :: Model timestep %" PetscInt_FMT " : time %lf Myr : cycle[%" PetscInt_FMT "/%" PetscInt_FMT "] \n", tk,user->time,kk, user->nsteps-1 );
 
       PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"step%.6D",tk);
       ierr = pTatin3dCheckpoint(user,X,name);CHKERRQ(ierr);
@@ -936,7 +936,7 @@ PetscErrorCode MaterialPointAdvectionTest2(void)
     char  stepname[PETSC_MAX_PATH_LEN];
 
     PetscPrintf(PETSC_COMM_WORLD,"<<----------------------------------------------------------------------------------------------->>\n");
-    PetscPrintf(PETSC_COMM_WORLD,"   [[ EXECUTING TIME STEP : %D ]]\n", step );
+    PetscPrintf(PETSC_COMM_WORLD,"   [[ EXECUTING TIME STEP : %" PetscInt_FMT " ]]\n", step );
     PetscPrintf(PETSC_COMM_WORLD,"     dt    : %1.4e \n", user->dt );
     PetscPrintf(PETSC_COMM_WORLD,"     time  : %1.4e \n", user->time );
 
@@ -998,7 +998,7 @@ PetscErrorCode MaterialPointAdvectionTest2(void)
 
     ierr = DMCompositeRestoreAccess(multipys_pack,X,&velocity,&pressure);CHKERRQ(ierr);
 
-    PetscPrintf(PETSC_COMM_WORLD,"  timestep_stokes[%D] dt_courant = %1.4e \n", step,user->dt );
+    PetscPrintf(PETSC_COMM_WORLD,"  timestep_stokes[%" PetscInt_FMT "] dt_courant = %1.4e \n", step,user->dt );
 
     /* Terminate time stepping */
     if (user->time >= user->time_max) {

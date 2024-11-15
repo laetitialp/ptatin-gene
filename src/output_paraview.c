@@ -326,8 +326,8 @@ PetscErrorCode pTatinOutputMeshVelocityPressureVTS_v0(DM pack,Vec X,const char n
   fprintf( vtk_fp, "<VTKFile type=\"StructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n");
 #endif
 
-  PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "  <StructuredGrid WholeExtent=\"%D %D %D %D %D %D\">\n", esi,esi+2*mx+1-1, esj,esj+2*my+1-1, esk,esk+2*mz+1-1);
-  PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "    <Piece Extent=\"%D %D %D %D %D %D\">\n", esi,esi+2*mx+1-1, esj,esj+2*my+1-1, esk,esk+2*mz+1-1);
+  PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "  <StructuredGrid WholeExtent=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\">\n", esi,esi+2*mx+1-1, esj,esj+2*my+1-1, esk,esk+2*mz+1-1);
+  PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "    <Piece Extent=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\">\n", esi,esi+2*mx+1-1, esj,esj+2*my+1-1, esk,esk+2*mz+1-1);
 
   /* VTS COORD DATA */
   fprintf( vtk_fp, "    <Points>\n");
@@ -456,8 +456,8 @@ PetscErrorCode pTatinOutputMeshVelocityPressureVTS_v0_binary(DM pack,Vec X,const
   fprintf( vtk_fp, "<VTKFile type=\"StructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n");
 #endif
 
-  PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "  <StructuredGrid WholeExtent=\"%D %D %D %D %D %D\">\n", esi,esi+2*mx+1-1, esj,esj+2*my+1-1, esk,esk+2*mz+1-1);
-  PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "    <Piece Extent=\"%D %D %D %D %D %D\">\n", esi,esi+2*mx+1-1, esj,esj+2*my+1-1, esk,esk+2*mz+1-1);
+  PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "  <StructuredGrid WholeExtent=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\">\n", esi,esi+2*mx+1-1, esj,esj+2*my+1-1, esk,esk+2*mz+1-1);
+  PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "    <Piece Extent=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\">\n", esi,esi+2*mx+1-1, esj,esj+2*my+1-1, esk,esk+2*mz+1-1);
 
   offset = 0;
 
@@ -603,8 +603,8 @@ PetscErrorCode pTatinOutputLiteMeshVelocityVTS_v0_binary(DM pack,Vec X,const cha
   fprintf( vtk_fp, "<VTKFile type=\"StructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n");
 #endif
 
-  PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "  <StructuredGrid WholeExtent=\"%D %D %D %D %D %D\">\n", esi,esi+2*mx+1-1, esj,esj+2*my+1-1, esk,esk+2*mz+1-1);
-  PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "    <Piece Extent=\"%D %D %D %D %D %D\">\n", esi,esi+2*mx+1-1, esj,esj+2*my+1-1, esk,esk+2*mz+1-1);
+  PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "  <StructuredGrid WholeExtent=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\">\n", esi,esi+2*mx+1-1, esj,esj+2*my+1-1, esk,esk+2*mz+1-1);
+  PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "    <Piece Extent=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\">\n", esi,esi+2*mx+1-1, esj,esj+2*my+1-1, esk,esk+2*mz+1-1);
 
   offset = 0;
 
@@ -711,7 +711,7 @@ PetscErrorCode pTatinOutputMeshVelocityPressurePVTS(DM pack,const char prefix[],
 #endif
 
   DMDAGetInfo( dau, 0, &M,&N,&P, 0,0,0, 0,&swidth, 0,0,0, 0 );
-  if(vtk_fp) PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "  <PStructuredGrid GhostLevel=\"%D\" WholeExtent=\"%D %D %D %D %D %D\">\n", swidth, 0,M-1, 0,N-1, 0,P-1 ); /* note overlap = 1 for Q1 */
+  if(vtk_fp) PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "  <PStructuredGrid GhostLevel=\"%" PetscInt_FMT "\" WholeExtent=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\">\n", swidth, 0,M-1, 0,N-1, 0,P-1 ); /* note overlap = 1 for Q1 */
   //  fprintf( vtk_fp, "    <Piece Extent=\"%d %d %d %d %d %d\">\n", esi,esi+2*mx+1-1, esj,esj+2*my+1-1, 0,0);
 
   /* VTS COORD DATA */
@@ -773,7 +773,7 @@ PetscErrorCode pTatinOutputLiteMeshVelocityPVTS(DM pack,const char prefix[],cons
 #endif
 
   ierr = DMDAGetInfo( dau, 0, &M,&N,&P, 0,0,0, 0,&swidth, 0,0,0, 0 );CHKERRQ(ierr);
-  if(vtk_fp) PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "  <PStructuredGrid GhostLevel=\"%D\" WholeExtent=\"%D %D %D %D %D %D\">\n", swidth, 0,M-1, 0,N-1, 0,P-1 ); /* note overlap = 1 for Q1 */
+  if(vtk_fp) PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "  <PStructuredGrid GhostLevel=\"%" PetscInt_FMT "\" WholeExtent=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\">\n", swidth, 0,M-1, 0,N-1, 0,P-1 ); /* note overlap = 1 for Q1 */
 
   /* VTS COORD DATA */
   if(vtk_fp) fprintf( vtk_fp, "    <PPoints>\n");
@@ -834,7 +834,7 @@ PetscErrorCode DAQ2PieceExtendForGhostLevelZero( FILE *vtk_fp, int indent_level,
           for( II=0; II<indent_level; II++ ) {
             if(vtk_fp) fprintf(vtk_fp,"  ");
           }
-          if(vtk_fp) PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "<Piece Extent=\"%D %D %D %D %D %D\"      Source=\"%s\"/>\n",
+          if(vtk_fp) PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "<Piece Extent=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\"      Source=\"%s\"/>\n",
                              olx[i],olx[i]+lmx[i]*2,
                              oly[j],oly[j]+lmy[j]*2,
                              olz[k],olz[k]+lmz[k]*2,
@@ -855,7 +855,7 @@ PetscErrorCode DAQ2PieceExtendForGhostLevelZero( FILE *vtk_fp, int indent_level,
         for( II=0; II<indent_level; II++ ) {
           if(vtk_fp) fprintf(vtk_fp,"  ");
         }
-        if(vtk_fp) PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "<Piece Extent=\"%D %D %D %D 0 0\"      Source=\"%s\"/>\n",
+        if(vtk_fp) PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "<Piece Extent=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " 0 0\"      Source=\"%s\"/>\n",
                            olx[i],olx[i]+lmx[i]*2,
                            oly[j],oly[j]+lmy[j]*2,
                            name);
@@ -910,7 +910,7 @@ PetscErrorCode _pTatinOutputLiteMeshVelocitySlicedPVTS(FILE *vtk_fp,
   startK = olz[processor_K[0]];
   endK   = olz[processor_K[1]-1] + 2*lmz[processor_K[1]-1];
 
-  if(vtk_fp) PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "  <PStructuredGrid GhostLevel=\"%D\" WholeExtent=\"%D %D %D %D %D %D\">\n", swidth, startI,endI, startJ,endJ, startK,endK );
+  if(vtk_fp) PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "  <PStructuredGrid GhostLevel=\"%" PetscInt_FMT "\" WholeExtent=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\">\n", swidth, startI,endI, startJ,endJ, startK,endK );
 
   /* VTS COORD DATA */
   if(vtk_fp) fprintf( vtk_fp, "    <PPoints>\n");
@@ -940,7 +940,7 @@ PetscErrorCode _pTatinOutputLiteMeshVelocitySlicedPVTS(FILE *vtk_fp,
         PetscMPIIntCast(procid,&procid32);
 
         if (asprintf( &name, "%s-subdomain%1.5d.vts", prefix, procid32 ) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-        if(vtk_fp) PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "      <Piece Extent=\"%D %D %D %D %D %D\"      Source=\"%s\"/>\n",
+        if(vtk_fp) PetscFPrintf(PETSC_COMM_SELF, vtk_fp, "      <Piece Extent=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\"      Source=\"%s\"/>\n",
                            olx[i],olx[i]+lmx[i]*2,
                            oly[j],oly[j]+lmy[j]*2,
                            olz[k],olz[k]+lmz[k]*2,
@@ -990,7 +990,7 @@ PetscErrorCode pTatinOutputLiteMeshVelocitySlicedPVTS(DM pack,const char path[],
       char sdprefix[PETSC_MAX_PATH_LEN];
       char *vtkfilename,*filename;
 
-      PetscSNPrintf(pprefix,PETSC_MAX_PATH_LEN-1,"%s_v_PSliceI%D",prefix,i);
+      PetscSNPrintf(pprefix,PETSC_MAX_PATH_LEN-1,"%s_v_PSliceI%" PetscInt_FMT "",prefix,i);
       ierr = pTatinGenerateVTKName(pprefix,"pvts",&vtkfilename);CHKERRQ(ierr);
       if (path) {
         if (asprintf(&filename,"%s/%s",path,vtkfilename) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
@@ -1028,7 +1028,7 @@ PetscErrorCode pTatinOutputLiteMeshVelocitySlicedPVTS(DM pack,const char path[],
       char sdprefix[PETSC_MAX_PATH_LEN];
       char *vtkfilename,*filename;
 
-      PetscSNPrintf(pprefix,PETSC_MAX_PATH_LEN-1,"%s_v_PSliceJ%D",prefix,j);
+      PetscSNPrintf(pprefix,PETSC_MAX_PATH_LEN-1,"%s_v_PSliceJ%" PetscInt_FMT "",prefix,j);
       ierr = pTatinGenerateVTKName(pprefix,"pvts",&vtkfilename);CHKERRQ(ierr);
       if (path) {
         if (asprintf(&filename,"%s/%s",path,vtkfilename) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
@@ -1066,7 +1066,7 @@ PetscErrorCode pTatinOutputLiteMeshVelocitySlicedPVTS(DM pack,const char path[],
       char sdprefix[PETSC_MAX_PATH_LEN];
       char *vtkfilename,*filename;
 
-      PetscSNPrintf(pprefix,PETSC_MAX_PATH_LEN-1,"%s_v_PSliceK%D",prefix,k);
+      PetscSNPrintf(pprefix,PETSC_MAX_PATH_LEN-1,"%s_v_PSliceK%" PetscInt_FMT "",prefix,k);
       ierr = pTatinGenerateVTKName(pprefix,"pvts",&vtkfilename);CHKERRQ(ierr);
       if (path) {
         if (asprintf(&filename,"%s/%s",path,vtkfilename) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");

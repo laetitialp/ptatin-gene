@@ -224,7 +224,7 @@ PetscErrorCode pTatin3dStokesReportMeshHierarchy(PetscInt nlevels,DM dav_hierarc
   /* Report mesh sizes */
   for (k=0; k<nlevels; k++) {
     ierr = DMDAGetSizeElementQ2(dav_hierarchy[k],&lmx,&lmy,&lmz);CHKERRQ(ierr);
-    PetscPrintf(PETSC_COMM_WORLD,"         level [%2D]: global Q2 elements (%D x %D x %D) \n", k,lmx,lmy,lmz );
+    PetscPrintf(PETSC_COMM_WORLD,"         level [%2D]: global Q2 elements (%" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT ") \n", k,lmx,lmy,lmz );
   }
 
   /*
@@ -233,7 +233,7 @@ PetscErrorCode pTatin3dStokesReportMeshHierarchy(PetscInt nlevels,DM dav_hierarc
     ierr = DMDAGetElements_pTatinQ2P1(dav_hierarchy[k],&nels,&nen,&els);CHKERRQ(ierr);
     ierr = DMDAGetLocalSizeElementQ2(dav_hierarchy[k],&lmx,&lmy,&lmz);CHKERRQ(ierr);
     if (rank<10) {
-      PetscPrintf(PETSC_COMM_SELF,"[r%4D]: level [%2D]: local Q2 elements  (%D x %D x %D) \n", rank, k,lmx,lmy,lmz );
+      PetscPrintf(PETSC_COMM_SELF,"[r%4D]: level [%2D]: local Q2 elements  (%" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT ") \n", rank, k,lmx,lmy,lmz );
     }
   }
   */
@@ -246,7 +246,7 @@ PetscErrorCode pTatin3dStokesReportMeshHierarchy(PetscInt nlevels,DM dav_hierarc
     sj = sj/2;
     sk = sk/2;
     if (rank<10) {
-      PetscPrintf(PETSC_COMM_SELF,"[r%4D]: level [%2D]: element range [%D - %D] x [%D - %D] x [%D - %D] \n", rank, k,si,si+lmx-1,sj,sj+lmy-1,sk,sk+lmz-1 );
+      PetscPrintf(PETSC_COMM_SELF,"[r%4D]: level [%2D]: element range [%" PetscInt_FMT " - %" PetscInt_FMT "] x [%" PetscInt_FMT " - %" PetscInt_FMT "] x [%" PetscInt_FMT " - %" PetscInt_FMT "] \n", rank, k,si,si+lmx-1,sj,sj+lmy-1,sk,sk+lmz-1 );
     }
   }
   */
@@ -375,7 +375,7 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
         MatNullSpace nullsp;
 
         /* use -stk_velocity_da_mat_type sbaij or -Buu_da_mat_type sbaij */
-        if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: Re-discretisation :: assembled operator \n", k);
+        if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%" PetscInt_FMT "]: Coarse grid type :: Re-discretisation :: assembled operator \n", k);
         //ierr = DMSetMatType(dav_hierarchy[k],MATSBAIJ);CHKERRQ(ierr);
         ierr = DMCreateMatrix(dav_hierarchy[k],&Auu);CHKERRQ(ierr);
         ierr = MatSetOptionsPrefix(Auu,"Buu_");CHKERRQ(ierr);
@@ -406,7 +406,7 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
         Mat Auu;
         MatA11MF mf,A11Ctx;
 
-        if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: Re-discretisation :: matrix free operator \n", k);
+        if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%" PetscInt_FMT "]: Coarse grid type :: Re-discretisation :: matrix free operator \n", k);
         ierr = MatA11MFCreate(&A11Ctx);CHKERRQ(ierr);
         ierr = MatA11MFSetup(A11Ctx,dav_hierarchy[k],volQ[k],u_bclist[k],NULL);CHKERRQ(ierr);
 
@@ -460,7 +460,7 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
           SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_ARG_OUTOFRANGE,"Cannot use galerkin coarse grid on the finest level");
         }
 
-        if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: Galerkin :: assembled operator \n", k);
+        if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%" PetscInt_FMT "]: Coarse grid type :: Galerkin :: assembled operator \n", k);
 
         /* should move coarse grid assembly into jacobian */
         ierr = MatPtAP(operatorA11[k+1],interpolation_v[k+1],MAT_INITIAL_MATRIX,1.0,&Auu);CHKERRQ(ierr);
@@ -624,7 +624,7 @@ PetscErrorCode pTatin3dCreateStokesOperatorsAnestBnest(PhysCompStokes stokes_ctx
         PetscBool same1 = PETSC_FALSE,same2 = PETSC_FALSE,same3 = PETSC_FALSE;
 
         /* use -stk_velocity_da_mat_type sbaij or -Buu_da_mat_type sbaij */
-        if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: Re-discretisation :: assembled operator \n", k);
+        if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%" PetscInt_FMT "]: Coarse grid type :: Re-discretisation :: assembled operator \n", k);
         ierr = DMSetMatType(dav_hierarchy[k],MATSBAIJ);CHKERRQ(ierr);
         ierr = DMCreateMatrix(dav_hierarchy[k],&Auu);CHKERRQ(ierr);
         ierr = MatSetOptionsPrefix(Auu,"Buu_");CHKERRQ(ierr);
@@ -651,7 +651,7 @@ PetscErrorCode pTatin3dCreateStokesOperatorsAnestBnest(PhysCompStokes stokes_ctx
         Mat Auu;
         MatA11MF mf,A11Ctx;
 
-        if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: Re-discretisation :: matrix free operator \n", k);
+        if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%" PetscInt_FMT "]: Coarse grid type :: Re-discretisation :: matrix free operator \n", k);
         ierr = MatA11MFCreate(&A11Ctx);CHKERRQ(ierr);
         ierr = MatA11MFSetup(A11Ctx,dav_hierarchy[k],volQ[k],u_bclist[k],NULL);CHKERRQ(ierr);
 
@@ -693,7 +693,7 @@ PetscErrorCode pTatin3dCreateStokesOperatorsAnestBnest(PhysCompStokes stokes_ctx
           SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_ARG_OUTOFRANGE,"Cannot use galerkin coarse grid on the finest level");
         }
 
-        if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: Galerkin :: assembled operator \n", k);
+        if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%" PetscInt_FMT "]: Coarse grid type :: Galerkin :: assembled operator \n", k);
 
         /* should move coarse grid assembly into jacobian */
         ierr = MatPtAP(operatorA11[k+1],interpolation_v[k+1],MAT_INITIAL_MATRIX,1.0,&Auu);CHKERRQ(ierr);
@@ -906,7 +906,7 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
           if (k == mlctx->nlevels-1) {
             SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_ARG_OUTOFRANGE,"Cannot use galerkin coarse grid on the finest level");
           }
-          PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: Galerkin :: assembled operator \n", k);
+          PetscPrintf(PETSC_COMM_WORLD,"Level [%" PetscInt_FMT "]: Coarse grid type :: Galerkin :: assembled operator \n", k);
 
           /*
           ierr = MatPtAP(mlctx->operatorA11[k+1],mlctx->interpolation_v[k+1],MAT_INITIAL_MATRIX,1.0,&Auu_k);CHKERRQ(ierr);
@@ -998,12 +998,12 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
     if (mg_dump_coarse) {
       if (mlctx->level_type[0] != OP_TYPE_REDISC_MF) {
 
-        PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"%s/mg_coarse_operatorA_step%D_snes%D.mat",user->outputpath,user->step,snes_it);
+        PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"%s/mg_coarse_operatorA_step%" PetscInt_FMT "_snes%" PetscInt_FMT ".mat",user->outputpath,user->step,snes_it);
         PetscViewerBinaryOpen(PETSC_COMM_WORLD,filename,FILE_MODE_WRITE,&viewer);
         MatView(mlctx->operatorA11[0],viewer);
         PetscViewerDestroy(&viewer);
         if (mlctx->operatorA11[0] != mlctx->operatorB11[0]) {
-          PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"%s/mg_coarse_operatorB_step%D_snes%D.mat",user->outputpath,user->step,snes_it);
+          PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"%s/mg_coarse_operatorB_step%" PetscInt_FMT "_snes%" PetscInt_FMT ".mat",user->outputpath,user->step,snes_it);
           PetscViewerBinaryOpen(PETSC_COMM_WORLD,filename,FILE_MODE_WRITE,&viewer);
           MatView(mlctx->operatorB11[0],viewer);
           PetscViewerDestroy(&viewer);
@@ -1156,13 +1156,13 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver(int argc,char **a
   /* setup mg */
   nlevels = 1;
   PetscOptionsGetInt(NULL,NULL,"-dau_nlevels",&nlevels,0);
-  PetscPrintf(PETSC_COMM_WORLD,"Mesh size (%D x %D x %D) : MG levels %D  \n", user->mx,user->my,user->mz,nlevels );
+  PetscPrintf(PETSC_COMM_WORLD,"Mesh size (%" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT ") : MG levels %" PetscInt_FMT "  \n", user->mx,user->my,user->mz,nlevels );
   ierr = pTatin3dStokesBuildMeshHierarchy(dav,nlevels,dav_hierarchy);CHKERRQ(ierr);
   ierr = pTatin3dStokesReportMeshHierarchy(nlevels,dav_hierarchy);CHKERRQ(ierr);
   ierr = pTatinLogNote(user,"  [Velocity multi-grid hierarchy]");CHKERRQ(ierr);
   for (k=nlevels-1; k>=0; k--) {
     char name[PETSC_MAX_PATH_LEN];
-    PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"vel_dmda_Lv%D",k);
+    PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"vel_dmda_Lv%" PetscInt_FMT "",k);
     ierr = pTatinLogBasicDMDA(user,name,dav_hierarchy[k]);CHKERRQ(ierr);
   }
 
@@ -1288,7 +1288,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver(int argc,char **a
   /* configure uu split for galerkin multi-grid */
   ierr = pTatin3dStokesKSPConfigureFSGMG(ksp,nlevels,operatorA11,operatorB11,interpolation_v,dav_hierarchy);CHKERRQ(ierr);
 
-  PetscPrintf(PETSC_COMM_WORLD,"   [[ COMPUTING FLOW FIELD FOR STEP : %D ]]\n", 0 );
+  PetscPrintf(PETSC_COMM_WORLD,"   [[ COMPUTING FLOW FIELD FOR STEP : %" PetscInt_FMT " ]]\n", 0 );
   ierr = pTatinLogBasic(user);CHKERRQ(ierr);
 
   PetscPrintf(PETSC_COMM_WORLD,"PreSolve(0) --> ");
@@ -1461,7 +1461,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver(int argc,char **a
     PetscReal timestep;
 
     PetscPrintf(PETSC_COMM_WORLD,"<<----------------------------------------------------------------------------------------------->>\n");
-    PetscPrintf(PETSC_COMM_WORLD,"   [[ EXECUTING TIME STEP : %D ]]\n", step );
+    PetscPrintf(PETSC_COMM_WORLD,"   [[ EXECUTING TIME STEP : %" PetscInt_FMT " ]]\n", step );
     PetscPrintf(PETSC_COMM_WORLD,"     dt    : %1.4e \n", user->dt );
     PetscPrintf(PETSC_COMM_WORLD,"     time  : %1.4e \n", user->time );
 
@@ -1545,7 +1545,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver(int argc,char **a
       ierr = SNESSetType(snesT,SNESKSPONLY);
       ierr = SNESSetFromOptions(snesT);CHKERRQ(ierr);
 
-      PetscPrintf(PETSC_COMM_WORLD,"   [[ COMPUTING THERMAL FIELD FOR STEP : %D ]]\n", step );
+      PetscPrintf(PETSC_COMM_WORLD,"   [[ COMPUTING THERMAL FIELD FOR STEP : %" PetscInt_FMT " ]]\n", step );
 
       /* insert boundary conditions into solution vector */
       ierr = BCListInsert(energy->T_bclist,T);CHKERRQ(ierr);
@@ -1619,7 +1619,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver(int argc,char **a
     ierr = DMCompositeRestoreAccess(user->pack,X,&velocity,&pressure);CHKERRQ(ierr);
     
     /* e) solve mechanical model */
-    PetscPrintf(PETSC_COMM_WORLD,"   [[ COMPUTING FLOW FIELD FOR STEP : %D ]]\n", step );
+    PetscPrintf(PETSC_COMM_WORLD,"   [[ COMPUTING FLOW FIELD FOR STEP : %" PetscInt_FMT " ]]\n", step );
     PetscTime(&time[0]);
     ierr = SNESSolve(snes,NULL,X);CHKERRQ(ierr);
     PetscTime(&time[1]);
@@ -1645,14 +1645,14 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver(int argc,char **a
     ierr = UpdateMeshGeometry_ComputeSurfaceCourantTimestep(dav_hierarchy[nlevels-1],velocity,surface_displacement_max,&timestep);CHKERRQ(ierr);
     ierr = pTatin_SetTimestep(user,"StkSurfaceCourant",timestep);CHKERRQ(ierr);
 
-    PetscPrintf(PETSC_COMM_WORLD,"  timestep_stokes[%D] dt_courant = %1.4e \n", step,user->dt );
+    PetscPrintf(PETSC_COMM_WORLD,"  timestep_stokes[%" PetscInt_FMT "] dt_courant = %1.4e \n", step,user->dt );
     ierr = DMCompositeRestoreAccess(multipys_pack,X,&velocity,&pressure);CHKERRQ(ierr);
     if (active_energy) {
       PetscReal timestep;
 
       ierr = pTatinPhysCompEnergy_ComputeTimestep(energy,T,&timestep);CHKERRQ(ierr);
       ierr = pTatin_SetTimestep(user,"AdvDiffCourant",timestep);CHKERRQ(ierr);
-      PetscPrintf(PETSC_COMM_WORLD,"  timestep_advdiff[%D] dt_courant = %1.4e \n", step,user->dt );
+      PetscPrintf(PETSC_COMM_WORLD,"  timestep_advdiff[%" PetscInt_FMT "] dt_courant = %1.4e \n", step,user->dt );
       energy->dt   = user->dt;
     }
 
@@ -1839,13 +1839,13 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
   /* setup mg */
   nlevels = 1;
   PetscOptionsGetInt(NULL,NULL,"-dau_nlevels",&nlevels,0);
-  PetscPrintf(PETSC_COMM_WORLD,"Mesh size (%D x %D x %D) : MG levels %D  \n", user->mx,user->my,user->mz,nlevels );
+  PetscPrintf(PETSC_COMM_WORLD,"Mesh size (%" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT ") : MG levels %" PetscInt_FMT "  \n", user->mx,user->my,user->mz,nlevels );
   ierr = pTatin3dStokesBuildMeshHierarchy(dav,nlevels,dav_hierarchy);CHKERRQ(ierr);
   ierr = pTatin3dStokesReportMeshHierarchy(nlevels,dav_hierarchy);CHKERRQ(ierr);
   ierr = pTatinLogNote(user,"  [Velocity multi-grid hierarchy]");CHKERRQ(ierr);
   for (k=nlevels-1; k>=0; k--) {
     char name[PETSC_MAX_PATH_LEN];
-    PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"vel_dmda_Lv%D",k);
+    PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"vel_dmda_Lv%" PetscInt_FMT "",k);
     ierr = pTatinLogBasicDMDA(user,name,dav_hierarchy[k]);CHKERRQ(ierr);
   }
 
@@ -1931,7 +1931,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
         ierr = pTatinModel_Output(model,user,X,"icbc");CHKERRQ(ierr);
   }
 
-  PetscPrintf(PETSC_COMM_WORLD,"   [[ COMPUTING FLOW FIELD FOR STEP : %D ]]\n", 0 );
+  PetscPrintf(PETSC_COMM_WORLD,"   [[ COMPUTING FLOW FIELD FOR STEP : %" PetscInt_FMT " ]]\n", 0 );
 
   {
     PetscInt snes_its;
@@ -2248,7 +2248,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
     PetscReal timestep;
 
     PetscPrintf(PETSC_COMM_WORLD,"<<----------------------------------------------------------------------------------------------->>\n");
-    PetscPrintf(PETSC_COMM_WORLD,"   [[ EXECUTING TIME STEP : %D ]]\n", step );
+    PetscPrintf(PETSC_COMM_WORLD,"   [[ EXECUTING TIME STEP : %" PetscInt_FMT " ]]\n", step );
     PetscPrintf(PETSC_COMM_WORLD,"     dt    : %1.4e \n", user->dt );
     PetscPrintf(PETSC_COMM_WORLD,"     time  : %1.4e \n", user->time );
 
@@ -2330,7 +2330,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
       ierr = SNESSetType(snesT,SNESKSPONLY);
       ierr = SNESSetFromOptions(snesT);CHKERRQ(ierr);
 
-      PetscPrintf(PETSC_COMM_WORLD,"   [[ COMPUTING THERMAL FIELD FOR STEP : %D ]]\n", step );
+      PetscPrintf(PETSC_COMM_WORLD,"   [[ COMPUTING THERMAL FIELD FOR STEP : %" PetscInt_FMT " ]]\n", step );
 
       /* insert boundary conditions into solution vector */
       ierr = BCListInsert(energy->T_bclist,T);CHKERRQ(ierr);
@@ -2399,7 +2399,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
     ierr = DMCompositeRestoreAccess(user->pack,X,&velocity,&pressure);CHKERRQ(ierr);
 
     /* e) solve mechanical model */
-    PetscPrintf(PETSC_COMM_WORLD,"   [[ COMPUTING FLOW FIELD FOR STEP : %D ]]\n", step );
+    PetscPrintf(PETSC_COMM_WORLD,"   [[ COMPUTING FLOW FIELD FOR STEP : %" PetscInt_FMT " ]]\n", step );
     PetscTime(&time[0]);
     ierr = SNESSolve(snes,NULL,X);CHKERRQ(ierr);
     PetscTime(&time[1]);
@@ -2426,13 +2426,13 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
     ierr = pTatin_SetTimestep(user,"StkSurfaceCourant",timestep);CHKERRQ(ierr);
     ierr = DMCompositeRestoreAccess(multipys_pack,X,&velocity,&pressure);CHKERRQ(ierr);
 
-    PetscPrintf(PETSC_COMM_WORLD,"  timestep_stokes[%D] dt_courant = %1.4e \n", step,user->dt );
+    PetscPrintf(PETSC_COMM_WORLD,"  timestep_stokes[%" PetscInt_FMT "] dt_courant = %1.4e \n", step,user->dt );
     if (active_energy) {
       PetscReal timestep;
 
       ierr = pTatinPhysCompEnergy_ComputeTimestep(energy,T,&timestep);CHKERRQ(ierr);
       ierr = pTatin_SetTimestep(user,"AdvDiffCourant",timestep);CHKERRQ(ierr);
-      PetscPrintf(PETSC_COMM_WORLD,"  timestep_advdiff[%D] dt_courant = %1.4e \n", step,user->dt );
+      PetscPrintf(PETSC_COMM_WORLD,"  timestep_advdiff[%" PetscInt_FMT "] dt_courant = %1.4e \n", step,user->dt );
       energy->dt   = user->dt;
     }
 
@@ -2617,13 +2617,13 @@ PetscErrorCode experimental_pTatin3d_nonlinear_viscous_forward_model_driver(int 
   /* setup mg */
   nlevels = 1;
   PetscOptionsGetInt(NULL,NULL,"-dau_nlevels",&nlevels,0);
-  PetscPrintf(PETSC_COMM_WORLD,"Mesh size (%D x %D x %D) : MG levels %D  \n", user->mx,user->my,user->mz,nlevels );
+  PetscPrintf(PETSC_COMM_WORLD,"Mesh size (%" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT ") : MG levels %" PetscInt_FMT "  \n", user->mx,user->my,user->mz,nlevels );
   ierr = pTatin3dStokesBuildMeshHierarchy(dav,nlevels,dav_hierarchy);CHKERRQ(ierr);
   ierr = pTatin3dStokesReportMeshHierarchy(nlevels,dav_hierarchy);CHKERRQ(ierr);
   ierr = pTatinLogNote(user,"  [Velocity multi-grid hierarchy]");CHKERRQ(ierr);
   for (k=nlevels-1; k>=0; k--) {
     char name[PETSC_MAX_PATH_LEN];
-    PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"vel_dmda_Lv%D",k);
+    PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"vel_dmda_Lv%" PetscInt_FMT "",k);
     ierr = pTatinLogBasicDMDA(user,name,dav_hierarchy[k]);CHKERRQ(ierr);
   }
 
@@ -2748,7 +2748,7 @@ PetscErrorCode experimental_pTatin3d_nonlinear_viscous_forward_model_driver(int 
   PetscPrintf(PETSC_COMM_WORLD,"PreSolve(0) --> ");
   pTatinGetRangeCurrentMemoryUsage(NULL);
 
-  PetscPrintf(PETSC_COMM_WORLD,"   [[ COMPUTING FLOW FIELD FOR STEP : %D ]]\n", 0 );
+  PetscPrintf(PETSC_COMM_WORLD,"   [[ COMPUTING FLOW FIELD FOR STEP : %" PetscInt_FMT " ]]\n", 0 );
   ierr = pTatinLogBasic(user);CHKERRQ(ierr);
 
   {
@@ -2894,7 +2894,7 @@ PetscErrorCode experimental_pTatin3d_nonlinear_viscous_forward_model_driver(int 
     PetscReal timestep;
 
     PetscPrintf(PETSC_COMM_WORLD,"<<----------------------------------------------------------------------------------------------->>\n");
-    PetscPrintf(PETSC_COMM_WORLD,"   [[ EXECUTING TIME STEP : %D ]]\n", step );
+    PetscPrintf(PETSC_COMM_WORLD,"   [[ EXECUTING TIME STEP : %" PetscInt_FMT " ]]\n", step );
     PetscPrintf(PETSC_COMM_WORLD,"     dt    : %1.4e \n", user->dt );
     PetscPrintf(PETSC_COMM_WORLD,"     time  : %1.4e \n", user->time );
 
@@ -2977,7 +2977,7 @@ PetscErrorCode experimental_pTatin3d_nonlinear_viscous_forward_model_driver(int 
       ierr = SNESSetType(snesT,SNESKSPONLY);
       ierr = SNESSetFromOptions(snesT);CHKERRQ(ierr);
 
-      PetscPrintf(PETSC_COMM_WORLD,"   [[ COMPUTING THERMAL FIELD FOR STEP : %D ]]\n", step );
+      PetscPrintf(PETSC_COMM_WORLD,"   [[ COMPUTING THERMAL FIELD FOR STEP : %" PetscInt_FMT " ]]\n", step );
 
       /* insert boundary conditions into solution vector */
       ierr = BCListInsert(energy->T_bclist,T);CHKERRQ(ierr);
@@ -2997,7 +2997,7 @@ PetscErrorCode experimental_pTatin3d_nonlinear_viscous_forward_model_driver(int 
     //                                     nlevels,dav_hierarchy,interpolation_v,u_bclist,volQ,level_type,
     //                                     &A,operatorA11,&B,operatorB11);CHKERRQ(ierr);
 
-    PetscPrintf(PETSC_COMM_WORLD,"   [[ COMPUTING FLOW FIELD FOR STEP : %D ]]\n", step );
+    PetscPrintf(PETSC_COMM_WORLD,"   [[ COMPUTING FLOW FIELD FOR STEP : %" PetscInt_FMT " ]]\n", step );
 
     /* b) create solver */
 
@@ -3107,13 +3107,13 @@ PetscErrorCode experimental_pTatin3d_nonlinear_viscous_forward_model_driver(int 
     ierr = pTatin_SetTimestep(user,"StkSurfaceCourant",timestep);CHKERRQ(ierr);
 
     ierr = DMCompositeRestoreAccess(multipys_pack,X,&velocity,&pressure);CHKERRQ(ierr);
-    PetscPrintf(PETSC_COMM_WORLD,"  timestep_stokes[%D] dt_courant = %1.4e \n", step,user->dt );
+    PetscPrintf(PETSC_COMM_WORLD,"  timestep_stokes[%" PetscInt_FMT "] dt_courant = %1.4e \n", step,user->dt );
     if (active_energy) {
       PetscReal timestep;
 
       ierr = pTatinPhysCompEnergy_ComputeTimestep(energy,T,&timestep);CHKERRQ(ierr);
       ierr = pTatin_SetTimestep(user,"AdvDiffCourant",timestep);CHKERRQ(ierr);
-      PetscPrintf(PETSC_COMM_WORLD,"  timestep_advdiff[%D] dt_courant = %1.4e \n", step,user->dt );
+      PetscPrintf(PETSC_COMM_WORLD,"  timestep_advdiff[%" PetscInt_FMT "] dt_courant = %1.4e \n", step,user->dt );
       energy->dt   = user->dt;
     }
 
@@ -3192,9 +3192,9 @@ int main(int argc,char **argv)
   }
 
   //ierr = PetscMemoryGetMaximumUsage(&mem);CHKERRQ(ierr);
-  //PetscPrintf(PETSC_COMM_SELF,"[%D] MaxMemory = %1.4e MB \n",rank,mem*1.0e-6);
+  //PetscPrintf(PETSC_COMM_SELF,"[%" PetscInt_FMT "] MaxMemory = %1.4e MB \n",rank,mem*1.0e-6);
   //ierr = PetscMallocGetMaximumUsage(&mem);CHKERRQ(ierr);
-  //PetscPrintf(PETSC_COMM_SELF,"[%D] MaxMemory = %1.4e MB \n",rank,mem*1.0e-6);
+  //PetscPrintf(PETSC_COMM_SELF,"[%" PetscInt_FMT "] MaxMemory = %1.4e MB \n",rank,mem*1.0e-6);
   ierr = pTatinGetRangeMaximumMemoryUsage(NULL);CHKERRQ(ierr);
 
   ierr = pTatinFinalize();CHKERRQ(ierr);

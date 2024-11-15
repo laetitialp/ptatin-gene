@@ -110,7 +110,7 @@ PetscErrorCode MatAssembleMFGalerkin(DM dav_fine,BCList u_bclist_fine,Quadrature
   nnk = 2*refk + 1;
 
   PetscPrintf(PETSC_COMM_WORLD,"MatAssembleMFGalerkin:\n");
-  PetscPrintf(PETSC_COMM_WORLD,"  Q2 cell problem contains: [%D x %D x %D] elements, [%D x %D x %D] nodes\n",refi,refj,refk,nni,nnj,nnk);
+  PetscPrintf(PETSC_COMM_WORLD,"  Q2 cell problem contains: [%" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT "] elements, [%" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT "] nodes\n",refi,refj,refk,nni,nnj,nnk);
 
   ierr = x_DMDACreate3d(PETSC_COMM_SELF,wrap,DMDA_STENCIL_BOX,nni,nnj,nnk, 1,1,1, 3,2, 0,0,0,&daf);CHKERRQ(ierr);
   ierr = DMSetUp(daf);CHKERRQ(ierr);
@@ -126,13 +126,13 @@ PetscErrorCode MatAssembleMFGalerkin(DM dav_fine,BCList u_bclist_fine,Quadrature
 
   /* check nlocal_elements_i is divisible by ref_i: I don't want to build any off proc elements needed for the cell problem */
   ierr = DMDAGetCornersElementQ2(dav_fine,&sei,&sej,&sek,&lmi,&lmj,&lmk);CHKERRQ(ierr);
-  if (sei%refi != 0) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Start element (i) must be divisible by %D",refi); }
-  if (sej%refj != 0) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Start element (j) must be divisible by %D",refj); }
-  if (sek%refk != 0) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Start element (k) must be divisible by %D",refk); }
+  if (sei%refi != 0) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Start element (i) must be divisible by %" PetscInt_FMT "",refi); }
+  if (sej%refj != 0) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Start element (j) must be divisible by %" PetscInt_FMT "",refj); }
+  if (sek%refk != 0) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Start element (k) must be divisible by %" PetscInt_FMT "",refk); }
 
-  if (lmi%refi != 0) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Local element size (i) must be divisible by %D",refi); }
-  if (lmj%refj != 0) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Local element size (j) must be divisible by %D",refj); }
-  if (lmk%refk != 0) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Local element size (k) must be divisible by %D",refk); }
+  if (lmi%refi != 0) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Local element size (i) must be divisible by %" PetscInt_FMT "",refi); }
+  if (lmj%refj != 0) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Local element size (j) must be divisible by %" PetscInt_FMT "",refj); }
+  if (lmk%refk != 0) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Local element size (k) must be divisible by %" PetscInt_FMT "",refk); }
 
   ierr = DMSetMatType(daf,MATSEQAIJ);CHKERRQ(ierr);
   ierr = DMCreateMatrix(daf,&Acell);CHKERRQ(ierr);
@@ -528,7 +528,7 @@ PetscErrorCode pTatin3dStokesReportMeshHierarchy(PetscInt nlevels,DM dav_hierarc
   /* Report mesh sizes */
   for (k=0; k<nlevels; k++) {
     ierr = DMDAGetSizeElementQ2(dav_hierarchy[k],&lmx,&lmy,&lmz);CHKERRQ(ierr);
-    PetscPrintf(PETSC_COMM_WORLD,"         level [%2D]: global Q2 elements (%D x %D x %D) \n", k,lmx,lmy,lmz );
+    PetscPrintf(PETSC_COMM_WORLD,"         level [%2D]: global Q2 elements (%" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT ") \n", k,lmx,lmy,lmz );
   }
 
 
@@ -537,7 +537,7 @@ PetscErrorCode pTatin3dStokesReportMeshHierarchy(PetscInt nlevels,DM dav_hierarc
     ierr = DMDAGetElements_pTatinQ2P1(dav_hierarchy[k],&nels,&nen,&els);CHKERRQ(ierr);
     ierr = DMDAGetLocalSizeElementQ2(dav_hierarchy[k],&lmx,&lmy,&lmz);CHKERRQ(ierr);
     if (rank<1) {
-      PetscPrintf(PETSC_COMM_SELF,"[r%4D]: level [%2D]: local Q2 elements  (%D x %D x %D) \n", rank, k,lmx,lmy,lmz );
+      PetscPrintf(PETSC_COMM_SELF,"[r%4D]: level [%2D]: local Q2 elements  (%" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT ") \n", rank, k,lmx,lmy,lmz );
     }
   }
 
@@ -549,7 +549,7 @@ PetscErrorCode pTatin3dStokesReportMeshHierarchy(PetscInt nlevels,DM dav_hierarc
     sj = sj/2;
     sk = sk/2;
     if (rank<1) {
-      PetscPrintf(PETSC_COMM_SELF,"[r%4D]: level [%2D]: element range [%D - %D] x [%D - %D] x [%D - %D] \n", rank, k,si,si+lmx-1,sj,sj+lmy-1,sk,sk+lmz-1 );
+      PetscPrintf(PETSC_COMM_SELF,"[r%4D]: level [%2D]: element range [%" PetscInt_FMT " - %" PetscInt_FMT "] x [%" PetscInt_FMT " - %" PetscInt_FMT "] x [%" PetscInt_FMT " - %" PetscInt_FMT "] \n", rank, k,si,si+lmx-1,sj,sj+lmy-1,sk,sk+lmz-1 );
     }
   }
 
@@ -646,7 +646,7 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
           MatNullSpace nullsp;
 
           /* use -stk_velocity_da_mat_type sbaij or -Buu_da_mat_type sbaij */
-          if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: Re-discretisation :: assembled operator \n", k);
+          if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%" PetscInt_FMT "]: Coarse grid type :: Re-discretisation :: assembled operator \n", k);
           ierr = DMCreateMatrix(dav_hierarchy[k],&Auu);CHKERRQ(ierr);
           ierr = MatSetOptionsPrefix(Auu,"Buu_");CHKERRQ(ierr);
           ierr = MatSetFromOptions(Auu);CHKERRQ(ierr);
@@ -676,7 +676,7 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
           Mat Auu;
           MatA11MF mf,A11Ctx;
 
-          if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: Re-discretisation :: matrix free operator \n", k);
+          if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%" PetscInt_FMT "]: Coarse grid type :: Re-discretisation :: matrix free operator \n", k);
           ierr = MatA11MFCreate(&A11Ctx);CHKERRQ(ierr);
           ierr = MatA11MFSetup(A11Ctx,dav_hierarchy[k],volQ[k],u_bclist[k],surf_bclist[k]);CHKERRQ(ierr);
 
@@ -716,7 +716,7 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
           Vec X;
           MatNullSpace nullsp;
 
-          if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: Galerkin :: assembled operator \n", k);
+          if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%" PetscInt_FMT "]: Coarse grid type :: Galerkin :: assembled operator \n", k);
           if (k==nlevels-1) {
             SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_ARG_OUTOFRANGE,"Cannot use galerkin coarse grid on the finest level");
           }
@@ -725,7 +725,7 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
               SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_ARG_OUTOFRANGE,"Cannot use galerkin coarse grid. Finest level above must be of type OP_TYPE_REDISC_ASM, OP_TYPE_GALERKIN or OP_TYPE_MFGALERKIN, or provide the flag -A11_allow_galerkin_from_mf",k+1);
             }
           } else {
-            if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: Galerkin :: assembling operator A_%D to construct A_%D = Pt.A_%D.P \n", k,k+1,k,k+1);
+            if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%" PetscInt_FMT "]: Coarse grid type :: Galerkin :: assembling operator A_%" PetscInt_FMT " to construct A_%" PetscInt_FMT " = Pt.A_%" PetscInt_FMT ".P \n", k,k+1,k,k+1);
           }
 
           /* should move coarse grid assembly into jacobian */
@@ -768,12 +768,12 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
           Vec X;
           MatNullSpace nullsp;
 
-          if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: MFGalerkin :: assembled operator \n", k);
+          if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%" PetscInt_FMT "]: Coarse grid type :: MFGalerkin :: assembled operator \n", k);
           if (k==nlevels-1) {
             SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_ARG_OUTOFRANGE,"Cannot use mf-galerkin coarse grid on the finest level");
           }
           if (level_type[k+1] != OP_TYPE_REDISC_MF) {
-            SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_ARG_OUTOFRANGE,"Cannot use mf-galerkin. Next finest level[%D] must be of type OP_TYPE_REDISC_MF",k+1);
+            SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_ARG_OUTOFRANGE,"Cannot use mf-galerkin. Next finest level[%" PetscInt_FMT "] must be of type OP_TYPE_REDISC_MF",k+1);
           }
 
           ierr = DMSetMatType(dav_hierarchy[k],MATAIJ);CHKERRQ(ierr);
@@ -980,13 +980,13 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
   /* setup mg */
   nlevels = 1;
   PetscOptionsGetInt(NULL,NULL,"-dau_nlevels",&nlevels,0);
-  PetscPrintf(PETSC_COMM_WORLD,"Mesh size (%D x %D x %D) : MG levels %D  \n", user->mx,user->my,user->mz,nlevels );
+  PetscPrintf(PETSC_COMM_WORLD,"Mesh size (%" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT ") : MG levels %" PetscInt_FMT "  \n", user->mx,user->my,user->mz,nlevels );
   ierr = pTatin3dStokesBuildMeshHierarchy(dav,nlevels,dav_hierarchy);CHKERRQ(ierr);
   ierr = pTatin3dStokesReportMeshHierarchy(nlevels,dav_hierarchy);CHKERRQ(ierr);
   ierr = pTatinLogNote(user,"  [Velocity multi-grid hierarchy]");CHKERRQ(ierr);
   for (k=nlevels-1; k>=0; k--) {
     char name[PETSC_MAX_PATH_LEN];
-    PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"vel_dmda_Lv%D",k);
+    PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"vel_dmda_Lv%" PetscInt_FMT "",k);
     ierr = pTatinLogBasicDMDA(user,name,dav_hierarchy[k]);CHKERRQ(ierr);
 
     //sprintf(name,"vel_dmda_Lv%d.vts",k);
@@ -1146,7 +1146,7 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
 
   //ierr = SNESStokes_KSPSetConvergenceTest_ScaledResiduals(snes,user);CHKERRQ(ierr);
 
-  PetscPrintf(PETSC_COMM_WORLD,"   [[ COMPUTING FLOW FIELD FOR STEP : %D ]]\n", 0 );
+  PetscPrintf(PETSC_COMM_WORLD,"   [[ COMPUTING FLOW FIELD FOR STEP : %" PetscInt_FMT " ]]\n", 0 );
   ierr = pTatinLogBasic(user);CHKERRQ(ierr);
 
   PetscTime(&time[0]);
@@ -1212,7 +1212,7 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
     user->step = step;
 
     PetscPrintf(PETSC_COMM_WORLD,"<<----------------------------------------------------------------------------------------------->>\n");
-    PetscPrintf(PETSC_COMM_WORLD,"   [[ EXECUTING TIME STEP : %D ]]\n", user->step );
+    PetscPrintf(PETSC_COMM_WORLD,"   [[ EXECUTING TIME STEP : %" PetscInt_FMT " ]]\n", user->step );
     PetscPrintf(PETSC_COMM_WORLD,"     dt    : %1.4e \n", user->dt );
     PetscPrintf(PETSC_COMM_WORLD,"     time  : %1.4e \n", user->time+user->dt );
     /* update context time information */
@@ -1297,7 +1297,7 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
     ierr = DMCompositeRestoreAccess(multipys_pack,X,&velocity,&pressure);CHKERRQ(ierr);
     
     /* e) solve */
-    PetscPrintf(PETSC_COMM_WORLD,"   [[ COMPUTING FLOW FIELD FOR STEP : %D ]]\n", step );
+    PetscPrintf(PETSC_COMM_WORLD,"   [[ COMPUTING FLOW FIELD FOR STEP : %" PetscInt_FMT " ]]\n", step );
     PetscTime(&time[0]);
     ierr = SNESSolve(snes,NULL,X);CHKERRQ(ierr);
     PetscTime(&time[1]);
@@ -1334,7 +1334,7 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
     ierr = pTatin_SetTimestep(user,"StkSurfaceCourant",timestep);CHKERRQ(ierr);
 
     ierr = DMCompositeRestoreAccess(multipys_pack,X,&velocity,&pressure);CHKERRQ(ierr);
-    PetscPrintf(PETSC_COMM_WORLD,"  timestep[%D] dt_courant = %1.4e \n", step,user->dt );
+    PetscPrintf(PETSC_COMM_WORLD,"  timestep[%" PetscInt_FMT "] dt_courant = %1.4e \n", step,user->dt );
 
     /* CHECKPOINT */
     ierr = pTatin3dCheckpointManager(user,X);CHKERRQ(ierr);

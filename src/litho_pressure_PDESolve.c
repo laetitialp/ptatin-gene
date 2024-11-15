@@ -768,7 +768,7 @@ PetscErrorCode PoissonPressureOutput_PVD(pTatinCtx ptatin, const char prefix[], 
   if (prefix) { PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "%s_poisson_P.pvts",prefix);
   } else {      PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "poisson_P.pvts");           }
 
-  ierr = PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%D",ptatin->step);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%" PetscInt_FMT "",ptatin->step);CHKERRQ(ierr);
   if (!been_here) { /* new file */
     ierr = ParaviewPVDOpen(pvdfilename);CHKERRQ(ierr);
     ierr = ParaviewPVDAppend(pvdfilename,ptatin->time,vtkfilename,stepprefix);CHKERRQ(ierr);
@@ -829,7 +829,7 @@ PetscErrorCode PoissonPressureOutput(pTatinCtx ptatin, const char prefix[], Pets
   ierr = pTatinGetContext_LithoP(ptatin,&poisson_pressure);CHKERRQ(ierr);
 
   ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s",ptatin->outputpath);CHKERRQ(ierr);
-  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%D",root,ptatin->step);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%" PetscInt_FMT "",root,ptatin->step);CHKERRQ(ierr);
   ierr = pTatinTestDirectory(pvoutputdir,'w',&found);CHKERRQ(ierr);
   if (!found) { ierr = pTatinCreateDirectory(pvoutputdir);CHKERRQ(ierr); }
 

@@ -822,13 +822,13 @@ PetscErrorCode DMDACoordinateRefinementTransferFunction_OrthogonalFaces(DM da,Pe
         if (region == -1) {
           switch (dir) {
             case 0:
-              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index i=%D",i);
+              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index i=%" PetscInt_FMT "",i);
               break;
             case 1:
-              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index j=%D",j);
+              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index j=%" PetscInt_FMT "",j);
               break;
             case 2:
-              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index k=%D",k);
+              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index k=%" PetscInt_FMT "",k);
               break;
             default:
               break;
@@ -982,13 +982,13 @@ PetscErrorCode DMDACoordinateRefinementTransferFunction_PreserveFaceGeometry(DM 
         if (region == -1) {
           switch (dir) {
             case 0:
-              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index i=%D",i);
+              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index i=%" PetscInt_FMT "",i);
               break;
             case 1:
-              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index j=%D",j);
+              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index j=%" PetscInt_FMT "",j);
               break;
             case 2:
-              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index k=%D",k);
+              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index k=%" PetscInt_FMT "",k);
               break;
             default:
               break;
@@ -1108,13 +1108,13 @@ PetscErrorCode _DMDACoordinateRefinementTransferFunction(DM da,PetscInt dir,Pets
         if (region == -1) {
           switch (dir) {
             case 0:
-              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index i=%D",i);
+              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index i=%" PetscInt_FMT "",i);
               break;
             case 1:
-              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index j=%D",j);
+              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index j=%" PetscInt_FMT "",j);
               break;
             case 2:
-              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index k=%D",k);
+              SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to determine which sector contains node index k=%" PetscInt_FMT "",k);
               break;
           }
         }

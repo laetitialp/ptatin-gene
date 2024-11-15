@@ -285,10 +285,10 @@ PetscErrorCode InterpolateSPMSurfIKGridToMSurf0(PetscInt spm_mi,PetscInt spm_mj,
         /* node index in spm data */
         spm_nidx = ii + jj * spm_ni;
         if (spm_nidx >= spm_nodes) {
-          SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"spm node index %D larger than max %D",spm_nidx,spm_nodes);
+          SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"spm node index %" PetscInt_FMT " larger than max %" PetscInt_FMT "",spm_nidx,spm_nodes);
         }
         if (spm_nidx < 0) {
-          SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"spm node index %D < 0",spm_nidx);
+          SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"spm node index %" PetscInt_FMT " < 0",spm_nidx);
         }
 
         spm_surface_Hi += spm_H[spm_nidx];
@@ -440,7 +440,7 @@ PetscErrorCode DMDAScatterIKRedundantSurfaceDMDA(DM dm_msurf0,DM dm_mech)
   ierr = DMDAVecGetArray(cda_mech,coords,&LA_coords);CHKERRQ(ierr);
   if (surface_rank && (rank != 0)) {
     if (rJ != (pJ-1)) {
-      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Rank of surface sub-domain must define rJ = %D - detected %D",pJ-1,rJ);
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Rank of surface sub-domain must define rJ = %" PetscInt_FMT " - detected %" PetscInt_FMT "",pJ-1,rJ);
     }
 
     /* receive */
@@ -696,9 +696,9 @@ PetscErrorCode DMDAScatterIKSurfaceDMDA(DM dm_msurf,Vec height,DM dm_mech)
     PetscInt sM,sN,sP;
     ierr = DMDAGetInfo(dm_msurf,0,&sM,&sN,&sP,0,0,0,0,0,0,0,0,0);CHKERRQ(ierr);
 
-    if (sP != 1) { SETERRQ(comm,PETSC_ERR_SUP,"Surface DM (P=%D) must have P = 1 in K",sN); }
-    if (sM != M) { SETERRQ(comm,PETSC_ERR_SUP,"Surface DM (I:M=%D) doesn't overlap with volume DM (I:M=%D) in I",sM,M); }
-    if (sN != P) { SETERRQ(comm,PETSC_ERR_SUP,"Surface DM (J:N=%D) doesn't overlap with volume DM (K:P=%D) in J",sN,P); }
+    if (sP != 1) { SETERRQ(comm,PETSC_ERR_SUP,"Surface DM (P=%" PetscInt_FMT ") must have P = 1 in K",sN); }
+    if (sM != M) { SETERRQ(comm,PETSC_ERR_SUP,"Surface DM (I:M=%" PetscInt_FMT ") doesn't overlap with volume DM (I:M=%" PetscInt_FMT ") in I",sM,M); }
+    if (sN != P) { SETERRQ(comm,PETSC_ERR_SUP,"Surface DM (J:N=%" PetscInt_FMT ") doesn't overlap with volume DM (K:P=%" PetscInt_FMT ") in J",sN,P); }
   }
 
   /* ----------------------------- */

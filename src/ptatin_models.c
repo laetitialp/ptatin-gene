@@ -263,7 +263,7 @@ PetscErrorCode pTatinModelRegister(pTatinModel model)
   if (index != -1) {
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"  [pTatinModel]: Model with name \"%s\" has already been registered",model->model_name );
   } else {
-    PetscPrintf(PETSC_COMM_WORLD,"  [pTatinModel]: Registering model [%D] with name \"%s\"\n",list_length, model->model_name );
+    PetscPrintf(PETSC_COMM_WORLD,"  [pTatinModel]: Registering model [%" PetscInt_FMT "] with name \"%s\"\n",list_length, model->model_name );
   }
 
   tmp = realloc( registered_model_list,sizeof(pTatinModel)*(list_length+2) );

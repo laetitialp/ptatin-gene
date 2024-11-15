@@ -283,19 +283,19 @@ PetscErrorCode DMDAProjectCoordinatesQ2toOverlappingQ1_3d(DM daq2,DM daq1)
 */
   for( k=sk1; k<sk1+nz1; k++ ) {
     if ( (2*k<sk2) || (2*k>sk2+nz2) ) {
-      PetscPrintf(PETSC_COMM_SELF,"sk1=%D, sk2=%D, : sk1+nz1=%D, sk2+nz=%D \n", sk1,sk2, sk1+nz1,sk2+nz2 );
+      PetscPrintf(PETSC_COMM_SELF,"sk1=%" PetscInt_FMT ", sk2=%" PetscInt_FMT ", : sk1+nz1=%" PetscInt_FMT ", sk2+nz=%" PetscInt_FMT " \n", sk1,sk2, sk1+nz1,sk2+nz2 );
       SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"DA(Q2) (ghosted-k) must overlap DA(Q1) in global space");
     }
 
     for( j=sj1; j<sj1+ny1; j++ ) {
       if ( (2*j<sj2) || (2*j>sj2+ny2) ) {
-        PetscPrintf(PETSC_COMM_SELF,"sj1=%D, sj2=%D, : sj1+ny1=%D, sj2+ny=%D \n", sj1,sj2, sj1+ny1,sj2+ny2 );
+        PetscPrintf(PETSC_COMM_SELF,"sj1=%" PetscInt_FMT ", sj2=%" PetscInt_FMT ", : sj1+ny1=%" PetscInt_FMT ", sj2+ny=%" PetscInt_FMT " \n", sj1,sj2, sj1+ny1,sj2+ny2 );
         SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"DA(Q2) (ghosted-j) must overlap DA(Q1) in global space");
       }
 
       for( i=si1; i<si1+nx1; i++ ) {
         if ( (2*i<si2) || (2*i>si2+nx2) ) {
-          PetscPrintf(PETSC_COMM_SELF,"si1=%D, si2=%D, : si1+nx1=%D, si2+nx=%D \n", si1,si2, si1+nx1,si2+nx2 );
+          PetscPrintf(PETSC_COMM_SELF,"si1=%" PetscInt_FMT ", si2=%" PetscInt_FMT ", : si1+nx1=%" PetscInt_FMT ", si2+nx=%" PetscInt_FMT " \n", si1,si2, si1+nx1,si2+nx2 );
           SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"DA(Q2) (ghosted-i) must overlap DA(Q1) in global space");
         }
 
@@ -379,13 +379,13 @@ PetscErrorCode DMDACreateOverlappingQ1FromQ2(DM dmq2,PetscInt ndofs,DM *dmq1)
   /*
   if (rank==0) {
     for (i=0; i<Mp; i++) {
-      PetscPrintf(PETSC_COMM_SELF,"rank[%D] startI = %D: lmxq1 = %D \n",i,lsip[i],lxq1[i]);
+      PetscPrintf(PETSC_COMM_SELF,"rank[%" PetscInt_FMT "] startI = %" PetscInt_FMT ": lmxq1 = %" PetscInt_FMT " \n",i,lsip[i],lxq1[i]);
     }
     for (j=0; j<Np; j++) {
-      PetscPrintf(PETSC_COMM_SELF,"rank[%D] startJ = %D: lmyq1 = %D \n",j,lsjp[j],lyq1[j]);
+      PetscPrintf(PETSC_COMM_SELF,"rank[%" PetscInt_FMT "] startJ = %" PetscInt_FMT ": lmyq1 = %" PetscInt_FMT " \n",j,lsjp[j],lyq1[j]);
     }
     for (k=0; k<Pp; k++) {
-      PetscPrintf(PETSC_COMM_SELF,"rank[%D] startK = %D: lmzq1 = %D \n",k,lskp[k],lzq1[k]);
+      PetscPrintf(PETSC_COMM_SELF,"rank[%" PetscInt_FMT "] startK = %" PetscInt_FMT ": lmzq1 = %" PetscInt_FMT " \n",k,lskp[k],lzq1[k]);
     }
   }
   */
@@ -491,17 +491,17 @@ PetscErrorCode DMDACreateNestedQ1FromQ2(DM dmq2,PetscInt ndofs,DM *dmq1)
 
   for (i=0; i<Mp; i++) {
     lsip[i] = siq2[i];
-    PetscPrintf(PETSC_COMM_SELF,"[%D]: si[%D] %D \n", rank,i,lsip[i]);
+    PetscPrintf(PETSC_COMM_SELF,"[%" PetscInt_FMT "]: si[%" PetscInt_FMT "] %" PetscInt_FMT " \n", rank,i,lsip[i]);
   }
 
   for (j=0; j<Np; j++) {
     lsjp[j] = sjq2[j];
-    PetscPrintf(PETSC_COMM_SELF,"[%D]: sj[%D] %D \n", rank,j,lsjp[j]);
+    PetscPrintf(PETSC_COMM_SELF,"[%" PetscInt_FMT "]: sj[%" PetscInt_FMT "] %" PetscInt_FMT " \n", rank,j,lsjp[j]);
   }
 
   for (k=0; k<Pp; k++) {
     lskp[k] = skq2[k];
-    PetscPrintf(PETSC_COMM_SELF,"[%D]: sk[%D] %D \n", rank,k,lskp[k]);
+    PetscPrintf(PETSC_COMM_SELF,"[%" PetscInt_FMT "]: sk[%" PetscInt_FMT "] %" PetscInt_FMT " \n", rank,k,lskp[k]);
   }
 
 /*
@@ -545,13 +545,13 @@ PetscErrorCode DMDACreateNestedQ1FromQ2(DM dmq2,PetscInt ndofs,DM *dmq1)
 
   if (rank==0) {
     for (i=0; i<Mp; i++) {
-      PetscPrintf(PETSC_COMM_SELF,"rank[%D] startI = %D: lmxq1 = %D \n",i,lsip[i],lxq1[i]);
+      PetscPrintf(PETSC_COMM_SELF,"rank[%" PetscInt_FMT "] startI = %" PetscInt_FMT ": lmxq1 = %" PetscInt_FMT " \n",i,lsip[i],lxq1[i]);
     }
     for (j=0; j<Np; j++) {
-      PetscPrintf(PETSC_COMM_SELF,"rank[%D] startJ = %D: lmyq1 = %D \n",j,lsjp[j],lyq1[j]);
+      PetscPrintf(PETSC_COMM_SELF,"rank[%" PetscInt_FMT "] startJ = %" PetscInt_FMT ": lmyq1 = %" PetscInt_FMT " \n",j,lsjp[j],lyq1[j]);
     }
     for (k=0; k<Pp; k++) {
-      PetscPrintf(PETSC_COMM_SELF,"rank[%D] startK = %D: lmzq1 = %D \n",k,lskp[k],lzq1[k]);
+      PetscPrintf(PETSC_COMM_SELF,"rank[%" PetscInt_FMT "] startK = %" PetscInt_FMT ": lmzq1 = %" PetscInt_FMT " \n",k,lskp[k],lzq1[k]);
     }
   }
 
@@ -792,19 +792,19 @@ PetscErrorCode DMDAProjectVectorQ2toOverlappingQ1_3d(DM daq2,Vec x2,DM daq1,Vec 
 
   for( k=sk1; k<sk1+nz1; k++ ) {
     if ( (2*k<sk2) || (2*k>sk2+nz2) ) {
-      PetscPrintf(PETSC_COMM_SELF,"sk1=%D, sk2=%D, : sk1+nz1=%D, sk2+nz=%D \n", sk1,sk2, sk1+nz1,sk2+nz2 );
+      PetscPrintf(PETSC_COMM_SELF,"sk1=%" PetscInt_FMT ", sk2=%" PetscInt_FMT ", : sk1+nz1=%" PetscInt_FMT ", sk2+nz=%" PetscInt_FMT " \n", sk1,sk2, sk1+nz1,sk2+nz2 );
       SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"DA(Q2) (ghosted-k) must overlap DA(Q1) in global space");
     }
 
     for( j=sj1; j<sj1+ny1; j++ ) {
       if ( (2*j<sj2) || (2*j>sj2+ny2) ) {
-        PetscPrintf(PETSC_COMM_SELF,"sj1=%D, sj2=%D, : sj1+ny1=%D, sj2+ny=%D \n", sj1,sj2, sj1+ny1,sj2+ny2 );
+        PetscPrintf(PETSC_COMM_SELF,"sj1=%" PetscInt_FMT ", sj2=%" PetscInt_FMT ", : sj1+ny1=%" PetscInt_FMT ", sj2+ny=%" PetscInt_FMT " \n", sj1,sj2, sj1+ny1,sj2+ny2 );
         SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"DA(Q2) (ghosted-j) must overlap DA(Q1) in global space");
       }
 
       for( i=si1; i<si1+nx1; i++ ) {
         if ( (2*i<si2) || (2*i>si2+nx2) ) {
-          PetscPrintf(PETSC_COMM_SELF,"si1=%D, si2=%D, : si1+nx1=%D, si2+nx=%D \n", si1,si2, si1+nx1,si2+nx2 );
+          PetscPrintf(PETSC_COMM_SELF,"si1=%" PetscInt_FMT ", si2=%" PetscInt_FMT ", : si1+nx1=%" PetscInt_FMT ", si2+nx=%" PetscInt_FMT " \n", si1,si2, si1+nx1,si2+nx2 );
           SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"DA(Q2) (ghosted-i) must overlap DA(Q1) in global space");
         }
 

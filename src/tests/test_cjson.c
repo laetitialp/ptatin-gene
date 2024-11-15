@@ -126,7 +126,7 @@ PetscErrorCode test_GeometryObjectParse2_cJSON(void)
   PetscTime(&t0);
   ierr = GeometryObjectLoadJSON(filename,&ngo,&golist);CHKERRQ(ierr);
   PetscTime(&t1);
-  PetscPrintf(PETSC_COMM_WORLD,"Time to parse %D geom objects: %1.4e (sec)\n",ngo,t1-t0);
+  PetscPrintf(PETSC_COMM_WORLD,"Time to parse %" PetscInt_FMT " geom objects: %1.4e (sec)\n",ngo,t1-t0);
 
   for (k=0; k<ngo; k++) {
     ierr = GeometryObjectDestroy(&golist[k]);CHKERRQ(ierr);

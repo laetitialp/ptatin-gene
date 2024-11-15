@@ -142,9 +142,9 @@ PetscErrorCode SurfBCListViewer(SurfBCList sl,PetscViewer v)
   PetscInt k;
   PetscViewerASCIIPrintf(v,"SurfBCList:\n");
   PetscViewerASCIIPushTab(v);
-  PetscViewerASCIIPrintf(v,"n_constraints: %D\n",sl->sc_nreg);
+  PetscViewerASCIIPrintf(v,"n_constraints: %" PetscInt_FMT "\n",sl->sc_nreg);
   for (k=0; k<sl->sc_nreg; k++) {
-    PetscViewerASCIIPrintf(v,"constraint[%D]\n",k);
+    PetscViewerASCIIPrintf(v,"constraint[%" PetscInt_FMT "]\n",k);
     PetscViewerASCIIPushTab(v);
     ierr = SurfaceConstraintViewer(sl->sc_list[k],v);CHKERRQ(ierr);
     PetscViewerASCIIPopTab(v);

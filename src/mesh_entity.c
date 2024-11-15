@@ -15,10 +15,10 @@ PetscErrorCode MeshEntityView(MeshEntity e)
   if (e->name) { PetscPrintf(comm,"MeshEntity: %s\n",e->name); }
   else { PetscPrintf(comm,"MeshEntity:\n"); }
   PetscPrintf(comm,"  type: %s\n",MeshEntityTypeNames[(PetscInt)e->type]);
-  PetscPrintf(comm,"  n_entities: %D (global)\n",e->n_entities_global);
-  PetscPrintf(comm,"  range: [ %D , %D )\n",e->range_index[0],e->range_index[1]);
-  PetscPrintf(comm,"  empty?: %D\n",(PetscInt)e->empty);
-  PetscPrintf(comm,"  set_values_called?: %D\n",(PetscInt)e->set_values_called);
+  PetscPrintf(comm,"  n_entities: %" PetscInt_FMT " (global)\n",e->n_entities_global);
+  PetscPrintf(comm,"  range: [ %" PetscInt_FMT " , %" PetscInt_FMT " )\n",e->range_index[0],e->range_index[1]);
+  PetscPrintf(comm,"  empty?: %" PetscInt_FMT "\n",(PetscInt)e->empty);
+  PetscPrintf(comm,"  set_values_called?: %" PetscInt_FMT "\n",(PetscInt)e->set_values_called);
   PetscFunctionReturn(0);
 }
 
@@ -28,10 +28,10 @@ PetscErrorCode MeshEntityViewer(MeshEntity e,PetscViewer v)
   else { PetscViewerASCIIPrintf(v,"MeshEntity:\n"); }
   PetscViewerASCIIPushTab(v);
   PetscViewerASCIIPrintf(v,"type: %s\n",MeshEntityTypeNames[(PetscInt)e->type]);
-  PetscViewerASCIIPrintf(v,"n_entities: %D (global)\n",e->n_entities_global);
-  PetscViewerASCIIPrintf(v,"range: [ %D , %D )\n",e->range_index[0],e->range_index[1]);
-  PetscViewerASCIIPrintf(v,"empty?: %D\n",(PetscInt)e->empty);
-  PetscViewerASCIIPrintf(v,"set_values_called?: %D\n",(PetscInt)e->set_values_called);
+  PetscViewerASCIIPrintf(v,"n_entities: %" PetscInt_FMT " (global)\n",e->n_entities_global);
+  PetscViewerASCIIPrintf(v,"range: [ %" PetscInt_FMT " , %" PetscInt_FMT " )\n",e->range_index[0],e->range_index[1]);
+  PetscViewerASCIIPrintf(v,"empty?: %" PetscInt_FMT "\n",(PetscInt)e->empty);
+  PetscViewerASCIIPrintf(v,"set_values_called?: %" PetscInt_FMT "\n",(PetscInt)e->set_values_called);
   PetscViewerASCIIPopTab(v);
   PetscFunctionReturn(0);
 }

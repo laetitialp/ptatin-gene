@@ -77,10 +77,10 @@ PetscErrorCode QuadratureView(Quadrature q)
   PetscFunctionBegin;
 
   PetscPrintf(PETSC_COMM_WORLD,"QuadratureView:\n");
-  PetscPrintf(PETSC_COMM_WORLD,"  dim    %D\n", q->dim);
-  PetscPrintf(PETSC_COMM_WORLD,"  type    %D\n", (PetscInt)q->type);
-  PetscPrintf(PETSC_COMM_WORLD,"  npoints    %D\n", q->npoints);
-  PetscPrintf(PETSC_COMM_WORLD,"  n_elements %D\n", q->n_elements);
+  PetscPrintf(PETSC_COMM_WORLD,"  dim    %" PetscInt_FMT "\n", q->dim);
+  PetscPrintf(PETSC_COMM_WORLD,"  type    %" PetscInt_FMT "\n", (PetscInt)q->type);
+  PetscPrintf(PETSC_COMM_WORLD,"  npoints    %" PetscInt_FMT "\n", q->npoints);
+  PetscPrintf(PETSC_COMM_WORLD,"  n_elements %" PetscInt_FMT "\n", q->n_elements);
 
   DataBucketView(PETSC_COMM_WORLD, q->properties_db,"GaussLegendre StokesCoefficients",DATABUCKET_VIEW_STDOUT);
 

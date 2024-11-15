@@ -347,7 +347,7 @@ PetscErrorCode apply_mppc_nn_patch(
   }
 
 #if (MPPC_LOG_LEVEL >= 1)
-  PetscPrintf(PETSC_COMM_SELF,"[LOG]  np_per_patch_max = %D \n", np_per_cell_max );
+  PetscPrintf(PETSC_COMM_SELF,"[LOG]  np_per_patch_max = %" PetscInt_FMT " \n", np_per_cell_max );
 #endif
   ierr = MPI_Allreduce( &cells_needing_new_points64, &cells_needing_new_points_g64, 1, MPI_LONG, MPI_SUM, PETSC_COMM_WORLD );CHKERRQ(ierr);
   if (cells_needing_new_points_g64 == 0) {
@@ -400,7 +400,7 @@ PetscErrorCode apply_mppc_nn_patch(
           patch_cell_id = i + j * mx + k * mx*my;
           points_per_patch = (pcell_list[patch_cell_id+1] - pcell_list[patch_cell_id]);
 #if (MPPC_LOG_LEVEL >= 2)
-          PetscPrintf(PETSC_COMM_SELF,"[LOG]     patch(%D)-(%D,%D,%D) cell(%D)-(%D,%D,%D)  : ppcell = %D \n", c, cell_index_i,cell_index_j,cell_index_k, patch_cell_id,i,j,k,points_per_patch);
+          PetscPrintf(PETSC_COMM_SELF,"[LOG]     patch(%" PetscInt_FMT ")-(%" PetscInt_FMT ",%" PetscInt_FMT ",%" PetscInt_FMT ") cell(%" PetscInt_FMT ")-(%" PetscInt_FMT ",%" PetscInt_FMT ",%" PetscInt_FMT ")  : ppcell = %" PetscInt_FMT " \n", c, cell_index_i,cell_index_j,cell_index_k, patch_cell_id,i,j,k,points_per_patch);
 #endif
           for (p=0; p<points_per_patch; p++) {
             MPntStd *marker_p;
@@ -416,7 +416,7 @@ PetscErrorCode apply_mppc_nn_patch(
             patch_point_coords[3*point_count+2] = marker_p->coor[2];
             patch_point_idx[point_count]        = pid_unsorted;
 #if (MPPC_LOG_LEVEL >= 2)
-            PetscPrintf(PETSC_COMM_SELF,"[LOG]       patch(%D)/cell(%D) -> p(%D):p->wil,x,y,z = %d %1.4e %1.4e %1.4e \n", c, patch_cell_id, p,marker_p->wil, marker_p->coor[0],marker_p->coor[1],marker_p->coor[2] );
+            PetscPrintf(PETSC_COMM_SELF,"[LOG]       patch(%" PetscInt_FMT ")/cell(%" PetscInt_FMT ") -> p(%" PetscInt_FMT "):p->wil,x,y,z = %d %1.4e %1.4e %1.4e \n", c, patch_cell_id, p,marker_p->wil, marker_p->coor[0],marker_p->coor[1],marker_p->coor[2] );
 #endif
             point_count++;
           }
@@ -426,7 +426,7 @@ PetscErrorCode apply_mppc_nn_patch(
     }
     DataFieldRestoreAccess(PField);
 #if (MPPC_LOG_LEVEL >= 2)
-    PetscPrintf(PETSC_COMM_SELF,"[LOG]  cell = %D: total points per patch = %D \n", c,point_count);
+    PetscPrintf(PETSC_COMM_SELF,"[LOG]  cell = %" PetscInt_FMT ": total points per patch = %" PetscInt_FMT " \n", c,point_count);
 #endif
 
     /* create trial coordinates - find closest point */
@@ -615,7 +615,7 @@ PetscErrorCode apply_mppc_nn_patch2(
   }
 
 #if (MPPC_LOG_LEVEL >= 1)
-  PetscPrintf(PETSC_COMM_SELF,"[LOG]  np_per_patch_max = %D \n", np_per_cell_max );
+  PetscPrintf(PETSC_COMM_SELF,"[LOG]  np_per_patch_max = %" PetscInt_FMT " \n", np_per_cell_max );
 #endif
   ierr = MPI_Allreduce( &cells_needing_new_points64, &cells_needing_new_points_g64, 1, MPI_LONG, MPI_SUM, PetscObjectComm((PetscObject)da) );CHKERRQ(ierr);
   if (cells_needing_new_points_g64 == 0) {
@@ -668,7 +668,7 @@ PetscErrorCode apply_mppc_nn_patch2(
           patch_cell_id = i + j * mx + k * mx*my;
           points_per_patch = (pcell_list[patch_cell_id+1] - pcell_list[patch_cell_id]);
 #if (MPPC_LOG_LEVEL >= 2)
-          PetscPrintf(PETSC_COMM_SELF,"[LOG]     patch(%D)-(%D,%D,%D) cell(%D)-(%D,%D,%D)  : ppcell = %D \n", c, cell_index_i,cell_index_j,cell_index_k, patch_cell_id,i,j,k,points_per_patch);
+          PetscPrintf(PETSC_COMM_SELF,"[LOG]     patch(%" PetscInt_FMT ")-(%" PetscInt_FMT ",%" PetscInt_FMT ",%" PetscInt_FMT ") cell(%" PetscInt_FMT ")-(%" PetscInt_FMT ",%" PetscInt_FMT ",%" PetscInt_FMT ")  : ppcell = %" PetscInt_FMT " \n", c, cell_index_i,cell_index_j,cell_index_k, patch_cell_id,i,j,k,points_per_patch);
 #endif
           for (p=0; p<points_per_patch; p++) {
             MPntStd *marker_p;
@@ -684,7 +684,7 @@ PetscErrorCode apply_mppc_nn_patch2(
             patch_points[point_count].coor[0] = (PetscReal)marker_p->coor[2];
             patch_points[point_count].point_index = pid_unsorted;
 #if (MPPC_LOG_LEVEL >= 2)
-            PetscPrintf(PETSC_COMM_SELF,"[LOG]       patch(%D)/cell(%D) -> p(%D):p->wil,x,y,z = %d %1.4e %1.4e %1.4e \n", c, patch_cell_id, p,marker_p->wil, marker_p->coor[0],marker_p->coor[1],marker_p->coor[2] );
+            PetscPrintf(PETSC_COMM_SELF,"[LOG]       patch(%" PetscInt_FMT ")/cell(%" PetscInt_FMT ") -> p(%" PetscInt_FMT "):p->wil,x,y,z = %d %1.4e %1.4e %1.4e \n", c, patch_cell_id, p,marker_p->wil, marker_p->coor[0],marker_p->coor[1],marker_p->coor[2] );
 #endif
             point_count++;
           }
@@ -694,7 +694,7 @@ PetscErrorCode apply_mppc_nn_patch2(
     }
     DataFieldRestoreAccess(PField);
 #if (MPPC_LOG_LEVEL >= 2)
-    PetscPrintf(PETSC_COMM_SELF,"[LOG]  cell = %D: total points per patch = %D \n", c,point_count);
+    PetscPrintf(PETSC_COMM_SELF,"[LOG]  cell = %" PetscInt_FMT ": total points per patch = %" PetscInt_FMT " \n", c,point_count);
 #endif
 
     /* create trial coordinates - find closest point */
@@ -877,8 +877,8 @@ PetscErrorCode MPPC_NearestNeighbourPatch(PetscInt np_lower,PetscInt np_upper,Pe
     if (points_per_cell > np_upper) { cells_np_upper++; }
   }
 #if (MPPC_LOG_LEVEL >= 1)
-  PetscPrintf(PetscObjectComm((PetscObject)da),"[LOG]  %D cells with points < np_lower (%D) \n", cells_np_lower,np_lower );
-  PetscPrintf(PetscObjectComm((PetscObject)da),"[LOG]  %D cells with points > np_upper (%D) \n", cells_np_upper,np_upper);
+  PetscPrintf(PetscObjectComm((PetscObject)da),"[LOG]  %" PetscInt_FMT " cells with points < np_lower (%" PetscInt_FMT ") \n", cells_np_lower,np_lower );
+  PetscPrintf(PetscObjectComm((PetscObject)da),"[LOG]  %" PetscInt_FMT " cells with points > np_upper (%" PetscInt_FMT ") \n", cells_np_upper,np_upper);
 #endif
 
   /* apply point injection routine */
@@ -944,7 +944,7 @@ PetscErrorCode MPPC_SimpleRemoval(PetscInt np_upper,DM da,DataBucket db,PetscBoo
   }
 
 #if (MPPC_LOG_LEVEL >= 1)
-  PetscPrintf(PetscObjectComm((PetscObject)da),"[LOG]  %D cells with points > np_upper (%D) \n", count, np_upper);
+  PetscPrintf(PetscObjectComm((PetscObject)da),"[LOG]  %" PetscInt_FMT " cells with points > np_upper (%" PetscInt_FMT ") \n", count, np_upper);
 #endif
 
   if (count == 0) {
@@ -1205,7 +1205,7 @@ PetscErrorCode apply_mppc_region_assignment(
   }
 
 #if (MPPC_LOG_LEVEL >= 1)
-  PetscPrintf(PETSC_COMM_SELF,"[LOG]  np_per_patch_max = %D \n", np_per_cell_max );
+  PetscPrintf(PETSC_COMM_SELF,"[LOG]  np_per_patch_max = %" PetscInt_FMT " \n", np_per_cell_max );
 #endif
 
   ierr = PetscMalloc(sizeof(double)*3*np_per_cell_max,&patch_point_coords);CHKERRQ(ierr);
@@ -1247,7 +1247,7 @@ PetscErrorCode apply_mppc_region_assignment(
           patch_cell_id = i + j * mx + k * mx*my;
           points_per_patch = (pcell_list[patch_cell_id+1] - pcell_list[patch_cell_id]);
 #if (MPPC_LOG_LEVEL >= 2)
-          PetscPrintf(PETSC_COMM_SELF,"[LOG]     patch(%D)-(%D,%D,%D) cell(%D)-(%D,%D,%D)  : ppcell = %D \n", c, cell_index_i,cell_index_j,cell_index_k, patch_cell_id,i,j,k,points_per_patch);
+          PetscPrintf(PETSC_COMM_SELF,"[LOG]     patch(%" PetscInt_FMT ")-(%" PetscInt_FMT ",%" PetscInt_FMT ",%" PetscInt_FMT ") cell(%" PetscInt_FMT ")-(%" PetscInt_FMT ",%" PetscInt_FMT ",%" PetscInt_FMT ")  : ppcell = %" PetscInt_FMT " \n", c, cell_index_i,cell_index_j,cell_index_k, patch_cell_id,i,j,k,points_per_patch);
 #endif
           for (p=0; p<points_per_patch; p++) {
             MPntStd *marker_p;
@@ -1266,7 +1266,7 @@ PetscErrorCode apply_mppc_region_assignment(
             patch_point_coords[3*point_count+2] = marker_p->coor[2];
             patch_point_idx[point_count]        = pid_unsorted;
 #if (MPPC_LOG_LEVEL >= 2)
-            PetscPrintf(PETSC_COMM_SELF,"[LOG]       patch(%D)/cell(%D) -> p(%D):p->wil,x,y,z = %d %1.4e %1.4e %1.4e \n", c, patch_cell_id, p,marker_p->wil, marker_p->coor[0],marker_p->coor[1],marker_p->coor[2] );
+            PetscPrintf(PETSC_COMM_SELF,"[LOG]       patch(%" PetscInt_FMT ")/cell(%" PetscInt_FMT ") -> p(%" PetscInt_FMT "):p->wil,x,y,z = %d %1.4e %1.4e %1.4e \n", c, patch_cell_id, p,marker_p->wil, marker_p->coor[0],marker_p->coor[1],marker_p->coor[2] );
 #endif
             point_count++;
           }
@@ -1276,7 +1276,7 @@ PetscErrorCode apply_mppc_region_assignment(
     }
     DataFieldRestoreAccess(PField);
 #if (MPPC_LOG_LEVEL >= 2)
-    PetscPrintf(PETSC_COMM_SELF,"[LOG]  cell = %D: total points per patch = %D \n", c,point_count);
+    PetscPrintf(PETSC_COMM_SELF,"[LOG]  cell = %" PetscInt_FMT ": total points per patch = %" PetscInt_FMT " \n", c,point_count);
 #endif
 
     /* traverse points in this cell with phase = MATERIAL_POINT_PHASE_UNASSIGNED and find closest point */
@@ -1311,7 +1311,7 @@ PetscErrorCode apply_mppc_region_assignment(
 
 
 #if (MPPC_LOG_LEVEL >= 2)
-      PetscPrintf(PETSC_COMM_SELF,"[LOG]  cell(%D) point(%D) is un-assigned\n",c,pid_unsorted);
+      PetscPrintf(PETSC_COMM_SELF,"[LOG]  cell(%" PetscInt_FMT ") point(%" PetscInt_FMT ") is un-assigned\n",c,pid_unsorted);
 #endif
 
       pos_p = marker_p->coor;
@@ -1350,7 +1350,7 @@ PetscErrorCode apply_mppc_region_assignment(
       points_assigned++;
 
 #if (MPPC_LOG_LEVEL >= 2)
-      PetscPrintf(PETSC_COMM_SELF,"[LOG]  point(%D) nearest neighbour(%D) -> phase %d\n",pid_unsorted,marker_index,marker_nearest->phase);
+      PetscPrintf(PETSC_COMM_SELF,"[LOG]  point(%" PetscInt_FMT ") nearest neighbour(%" PetscInt_FMT ") -> phase %d\n",pid_unsorted,marker_index,marker_nearest->phase);
 #endif
 
       if (marker_p->phase == MATERIAL_POINT_PHASE_UNASSIGNED) {
@@ -1365,7 +1365,7 @@ PetscErrorCode apply_mppc_region_assignment(
   ierr = PetscFree(patch_point_idx);CHKERRQ(ierr);
 
 #if (MPPC_LOG_LEVEL >= 1)
-  PetscPrintf(PETSC_COMM_SELF,"[LOG]  points assigned   = %D\n", points_assigned);
+  PetscPrintf(PETSC_COMM_SELF,"[LOG]  points assigned   = %" PetscInt_FMT "\n", points_assigned);
   PetscPrintf(PETSC_COMM_SELF,"[LOG]  time_nn           = %1.4e (sec)\n", time_nn);
 #endif
 
@@ -1441,8 +1441,8 @@ PetscErrorCode MaterialPointRegionAssignment_v1(DataBucket db,DM da)
     long int points_needing_reassignment_g64;
 
     ierr = MPI_Allreduce( &points_needing_reassignment64, &points_needing_reassignment_g64, 1, MPI_LONG, MPI_SUM, PetscObjectComm((PetscObject)da) );CHKERRQ(ierr);
-    PetscPrintf(PetscObjectComm((PetscObject)da),"[LOG]  !! Region re-assignment required for %D cells <global> !!\n",cells_needing_reassignment_g64);
-    PetscPrintf(PetscObjectComm((PetscObject)da),"[LOG]  !! Region re-assignment required for %D points <global> !!\n",points_needing_reassignment_g64);
+    PetscPrintf(PetscObjectComm((PetscObject)da),"[LOG]  !! Region re-assignment required for %" PetscInt_FMT " cells <global> !!\n",cells_needing_reassignment_g64);
+    PetscPrintf(PetscObjectComm((PetscObject)da),"[LOG]  !! Region re-assignment required for %" PetscInt_FMT " points <global> !!\n",points_needing_reassignment_g64);
   }
 #endif
 
@@ -1559,7 +1559,7 @@ PetscErrorCode apply_mppc_region_assignment_v2(
   }
 
 #if (MPPC_LOG_LEVEL >= 1)
-  PetscPrintf(PETSC_COMM_SELF,"[LOG]  np_per_patch_max = %D \n", np_per_cell_max );
+  PetscPrintf(PETSC_COMM_SELF,"[LOG]  np_per_patch_max = %" PetscInt_FMT " \n", np_per_cell_max );
 #endif
 
   ierr = PetscMalloc(sizeof(double)*3*np_per_cell_max,&patch_point_coords);CHKERRQ(ierr);
@@ -1601,7 +1601,7 @@ PetscErrorCode apply_mppc_region_assignment_v2(
           patch_cell_id = i + j * mx + k * mx*my;
           points_per_patch = (pcell_list[patch_cell_id+1] - pcell_list[patch_cell_id]);
 #if (MPPC_LOG_LEVEL >= 2)
-          PetscPrintf(PETSC_COMM_SELF,"[LOG]     patch(%D)-(%D,%D,%D) cell(%D)-(%D,%D,%D)  : ppcell = %D \n", c, cell_index_i,cell_index_j,cell_index_k, patch_cell_id,i,j,k,points_per_patch);
+          PetscPrintf(PETSC_COMM_SELF,"[LOG]     patch(%" PetscInt_FMT ")-(%" PetscInt_FMT ",%" PetscInt_FMT ",%" PetscInt_FMT ") cell(%" PetscInt_FMT ")-(%" PetscInt_FMT ",%" PetscInt_FMT ",%" PetscInt_FMT ")  : ppcell = %" PetscInt_FMT " \n", c, cell_index_i,cell_index_j,cell_index_k, patch_cell_id,i,j,k,points_per_patch);
 #endif
           for (p=0; p<points_per_patch; p++) {
             MPntStd *marker_p;
@@ -1620,7 +1620,7 @@ PetscErrorCode apply_mppc_region_assignment_v2(
             patch_point_coords[3*point_count+2] = marker_p->coor[2];
             patch_point_idx[point_count]        = pid_unsorted;
 #if (MPPC_LOG_LEVEL >= 2)
-            PetscPrintf(PETSC_COMM_SELF,"[LOG]       patch(%D)/cell(%D) -> p(%D):p->wil,x,y,z = %d %1.4e %1.4e %1.4e \n", c, patch_cell_id, p,marker_p->wil, marker_p->coor[0],marker_p->coor[1],marker_p->coor[2] );
+            PetscPrintf(PETSC_COMM_SELF,"[LOG]       patch(%" PetscInt_FMT ")/cell(%" PetscInt_FMT ") -> p(%" PetscInt_FMT "):p->wil,x,y,z = %d %1.4e %1.4e %1.4e \n", c, patch_cell_id, p,marker_p->wil, marker_p->coor[0],marker_p->coor[1],marker_p->coor[2] );
 #endif
             point_count++;
           }
@@ -1630,7 +1630,7 @@ PetscErrorCode apply_mppc_region_assignment_v2(
     }
     DataFieldRestoreAccess(PField);
 #if (MPPC_LOG_LEVEL >= 2)
-    PetscPrintf(PETSC_COMM_SELF,"[LOG]  cell = %D: total points per patch = %D \n", c,point_count);
+    PetscPrintf(PETSC_COMM_SELF,"[LOG]  cell = %" PetscInt_FMT ": total points per patch = %" PetscInt_FMT " \n", c,point_count);
 #endif
 
     /* traverse points in this cell with phase = MATERIAL_POINT_PHASE_UNASSIGNED and find closest point */
@@ -1655,7 +1655,7 @@ PetscErrorCode apply_mppc_region_assignment_v2(
 
 
 #if (MPPC_LOG_LEVEL >= 2)
-      PetscPrintf(PETSC_COMM_SELF,"[LOG]  cell(%D) point(%D) is un-assigned\n",c,pid_unsorted);
+      PetscPrintf(PETSC_COMM_SELF,"[LOG]  cell(%" PetscInt_FMT ") point(%" PetscInt_FMT ") is un-assigned\n",c,pid_unsorted);
 #endif
 
       pos_p = marker_p->coor;
@@ -1680,7 +1680,7 @@ PetscErrorCode apply_mppc_region_assignment_v2(
       points_assigned++;
 
 #if (MPPC_LOG_LEVEL >= 2)
-      PetscPrintf(PETSC_COMM_SELF,"[LOG]  point(%D) nearest neighbour(%D) -> phase %d\n",pid_unsorted,marker_index,marker_nearest_p->phase);
+      PetscPrintf(PETSC_COMM_SELF,"[LOG]  point(%" PetscInt_FMT ") nearest neighbour(%" PetscInt_FMT ") -> phase %d\n",pid_unsorted,marker_index,marker_nearest_p->phase);
 #endif
 
       if (marker_p->phase == MATERIAL_POINT_PHASE_UNASSIGNED) {
@@ -1697,7 +1697,7 @@ PetscErrorCode apply_mppc_region_assignment_v2(
   ierr = PetscFree(patch_point_idx);CHKERRQ(ierr);
 
 #if (MPPC_LOG_LEVEL >= 1)
-  PetscPrintf(PETSC_COMM_SELF,"[LOG]  points assigned   = %D\n", points_assigned);
+  PetscPrintf(PETSC_COMM_SELF,"[LOG]  points assigned   = %" PetscInt_FMT "\n", points_assigned);
   PetscPrintf(PETSC_COMM_SELF,"[LOG]  time_nn           = %1.4e (sec)\n", time_nn);
 #endif
 
@@ -1772,8 +1772,8 @@ PetscErrorCode MaterialPointRegionAssignment_v2(DataBucket db,DM da)
     long int points_needing_reassignment_g64;
 
     ierr = MPI_Allreduce( &points_needing_reassignment64, &points_needing_reassignment_g64, 1, MPI_LONG, MPI_SUM, PetscObjectComm((PetscObject)da) );CHKERRQ(ierr);
-    PetscPrintf(PetscObjectComm((PetscObject)da),"[LOG]  !! Region re-assignment required for %D cells <global> !!\n",cells_needing_reassignment_g64);
-    PetscPrintf(PetscObjectComm((PetscObject)da),"[LOG]  !! Region re-assignment required for %D points <global> !!\n",points_needing_reassignment_g64);
+    PetscPrintf(PetscObjectComm((PetscObject)da),"[LOG]  !! Region re-assignment required for %" PetscInt_FMT " cells <global> !!\n",cells_needing_reassignment_g64);
+    PetscPrintf(PetscObjectComm((PetscObject)da),"[LOG]  !! Region re-assignment required for %" PetscInt_FMT " points <global> !!\n",points_needing_reassignment_g64);
   }
 #endif
 

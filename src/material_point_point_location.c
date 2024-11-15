@@ -125,7 +125,7 @@ void InverseMappingDomain_2dQ2(PetscReal tolerance,PetscInt max_its,
   tolerance2 = tolerance * tolerance; /* Eliminates the need to do a sqrt in the convergence test */
 
 #ifdef PTAT3D_DBG_PointLocation
-  PetscPrintf(PETSC_COMM_SELF,"Domain: ncells = %D x %D = %D \n", mx,my,mx*my );
+  PetscPrintf(PETSC_COMM_SELF,"Domain: ncells = %" PetscInt_FMT " x %" PetscInt_FMT " = %" PetscInt_FMT " \n", mx,my,mx*my );
 #endif
 
   /* map domain to [-1,1]x[-1,1] domain */
@@ -169,7 +169,7 @@ void InverseMappingDomain_2dQ2(PetscReal tolerance,PetscInt max_its,
       Gxip[0] = dxi   * (cxip[0]+1.0)/2.0 + xi0;
       Gxip[1] = deta  * (cxip[1]+1.0)/2.0 + eta0;
 #ifdef PTAT3D_DBG_PointLocation
-      PetscPrintf(PETSC_COMM_SELF,"init nI,nJ = %D %D \n", nI,nJ );
+      PetscPrintf(PETSC_COMM_SELF,"init nI,nJ = %" PetscInt_FMT " %" PetscInt_FMT " \n", nI,nJ );
       PetscPrintf(PETSC_COMM_SELF,"[Lxi-init] = %1.8e %1.8e \n", cxip[0], cxip[1] );
       PetscPrintf(PETSC_COMM_SELF,"[Gxi-init] = %1.8e %1.8e \n", Gxip[0], Gxip[1] );
 #endif
@@ -185,7 +185,7 @@ void InverseMappingDomain_2dQ2(PetscReal tolerance,PetscInt max_its,
     its = 0;
     do {
 #ifdef PTAT3D_DBG_PointLocation
-      PetscPrintf(PETSC_COMM_SELF,"iteration: %D\n",its);
+      PetscPrintf(PETSC_COMM_SELF,"iteration: %" PetscInt_FMT "\n",its);
 #endif
       /* convert Gxi to nInJ */
       nI = (Gxip[0]+1.0)/dxi;
@@ -196,7 +196,7 @@ void InverseMappingDomain_2dQ2(PetscReal tolerance,PetscInt max_its,
 
       if ((nI<0) || (nJ<0)) {
 #ifdef PTAT3D_DBG_PointLocation
-        PetscPrintf(PETSC_COMM_SELF,"  nI(%D),nJ(%D) negative Gxip %1.8e,%1.8e \n",nI,nJ,Gxip[0],Gxip[1]);
+        PetscPrintf(PETSC_COMM_SELF,"  nI(%" PetscInt_FMT "),nJ(%" PetscInt_FMT ") negative Gxip %1.8e,%1.8e \n",nI,nJ,Gxip[0],Gxip[1]);
 #endif
         break;
       }
@@ -216,7 +216,7 @@ void InverseMappingDomain_2dQ2(PetscReal tolerance,PetscInt max_its,
       /* Get coords of cell nInJ */
       wil_nInJ = nI + nJ * mx;
 #ifdef PTAT3D_DBG_PointLocation
-      PetscPrintf(PETSC_COMM_SELF,"  nI,nJ=%D/%D : wil_nInJ %D : nid = ", nI,nJ,wil_nInJ);
+      PetscPrintf(PETSC_COMM_SELF,"  nI,nJ=%" PetscInt_FMT "/%" PetscInt_FMT " : wil_nInJ %" PetscInt_FMT " : nid = ", nI,nJ,wil_nInJ);
 #endif
       for (k=0; k<Q2_NODES_PER_EL_2D; k++) {
         PetscInt nid = element[wil_nInJ*Q2_NODES_PER_EL_2D+k];
@@ -224,7 +224,7 @@ void InverseMappingDomain_2dQ2(PetscReal tolerance,PetscInt max_its,
         vertex[NSD2d*k+0] = coords[NSD2d*nid+0];
         vertex[NSD2d*k+1] = coords[NSD2d*nid+1];
 #ifdef PTAT3D_DBG_PointLocation
-        PetscPrintf(PETSC_COMM_SELF,"%D ", nid);
+        PetscPrintf(PETSC_COMM_SELF,"%" PetscInt_FMT " ", nid);
 #endif
       }
 #ifdef PTAT3D_DBG_PointLocation
@@ -251,7 +251,7 @@ void InverseMappingDomain_2dQ2(PetscReal tolerance,PetscInt max_its,
       Lxip[1] = 2.0*(Gxip[1]-eta0 )/deta  - 1.0;
 
 #ifdef PTAT3D_DBG_PointLocation
-      PetscPrintf(PETSC_COMM_SELF,"  Lxi,Lxeta = %1.8e, %1.8e (%D,%D) \n", Lxip[0],Lxip[1],nI,nJ );
+      PetscPrintf(PETSC_COMM_SELF,"  Lxi,Lxeta = %1.8e, %1.8e (%" PetscInt_FMT ",%" PetscInt_FMT ") \n", Lxip[0],Lxip[1],nI,nJ );
 #endif
 
       _compute_F_2dQ2( Lxip, vertex, marker_p->coor, f );
@@ -324,9 +324,9 @@ void InverseMappingDomain_2dQ2(PetscReal tolerance,PetscInt max_its,
 
     if (monitor && (point_found == PETSC_FALSE)){
       if (its >= max_its) {
-        PetscPrintf(PETSC_COMM_SELF,"%4D %s : Reached maximum iterations (%D) without converging. \n", its, PETSC_FUNCTION_NAME, max_its );
+        PetscPrintf(PETSC_COMM_SELF,"%4D %s : Reached maximum iterations (%" PetscInt_FMT ") without converging. \n", its, PETSC_FUNCTION_NAME, max_its );
       } else {
-        PetscPrintf(PETSC_COMM_SELF,"%4D %s : Newton broke down, diverged or stagnated after (%D) iterations without converging. \n", its, PETSC_FUNCTION_NAME, its );
+        PetscPrintf(PETSC_COMM_SELF,"%4D %s : Newton broke down, diverged or stagnated after (%" PetscInt_FMT ") iterations without converging. \n", its, PETSC_FUNCTION_NAME, its );
       }
     }
 
@@ -571,7 +571,7 @@ void InverseMappingDomain_3dQ2(PetscReal tolerance,PetscInt max_its,
   tolerance2 = tolerance * tolerance; /* Eliminates the need to do a sqrt in the convergence test */
 
 #ifdef PTAT3D_DBG_PointLocation
-  PetscPrintf(PETSC_COMM_SELF,"Domain: ncells = %D x %D x %D = %D \n", mx,my,mz,mx*my*mz );
+  PetscPrintf(PETSC_COMM_SELF,"Domain: ncells = %" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT " = %" PetscInt_FMT " \n", mx,my,mz,mx*my*mz );
 #endif
 
   /* map domain to [-1,1]x[-1,1]x[-1,1] domain */
@@ -606,7 +606,7 @@ void InverseMappingDomain_3dQ2(PetscReal tolerance,PetscInt max_its,
       nJ = wil_2d/mx;
       nI = wil_2d - nJ*mx;
 #ifdef PTAT3D_DBG_PointLocation
-      PetscPrintf(PETSC_COMM_SELF,"init nI,nJ,nK = %D %D %D [wil=%D]\n", nI,nJ,nK,wil_nInJ );
+      PetscPrintf(PETSC_COMM_SELF,"init nI,nJ,nK = %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " [wil=%" PetscInt_FMT "]\n", nI,nJ,nK,wil_nInJ );
 #endif
       /* convert Lxip => Gxip */
       xi0   = -1.0 + nI*dxi;
@@ -649,7 +649,7 @@ void InverseMappingDomain_3dQ2(PetscReal tolerance,PetscInt max_its,
     its = 0;
     do {
 #ifdef PTAT3D_DBG_PointLocation
-            PetscPrintf(PETSC_COMM_SELF,"iteration: %D\n",its);
+            PetscPrintf(PETSC_COMM_SELF,"iteration: %" PetscInt_FMT "\n",its);
 #endif
       /* convert Gxi to nInJ */
       nI = (Gxip[0]+1.0)/dxi;
@@ -662,7 +662,7 @@ void InverseMappingDomain_3dQ2(PetscReal tolerance,PetscInt max_its,
 
       if ( (nI<0) || (nJ<0)|| (nK<0) ) {
 #ifdef PTAT3D_DBG_PointLocation
-        PetscPrintf(PETSC_COMM_SELF,"  nI(%D),nJ(%D),nK(%D) negative Gxip %1.8e,%1.8e,%1.8e \n",nI,nJ,nK,Gxip[0],Gxip[1],Gxip[2]);
+        PetscPrintf(PETSC_COMM_SELF,"  nI(%" PetscInt_FMT "),nJ(%" PetscInt_FMT "),nK(%" PetscInt_FMT ") negative Gxip %1.8e,%1.8e,%1.8e \n",nI,nJ,nK,Gxip[0],Gxip[1],Gxip[2]);
 #endif
         break;
       }
@@ -688,7 +688,7 @@ void InverseMappingDomain_3dQ2(PetscReal tolerance,PetscInt max_its,
       /* Get coords of cell nInJ */
       wil_nInJ = nI + nJ*mx + nK*mx*my;
 #ifdef PTAT3D_DBG_PointLocation
-      PetscPrintf(PETSC_COMM_SELF,"  nI,nJ,nK=%D/%D/%D : wil_nInJ %D : nid = ", nI,nJ,nK,wil_nInJ);
+      PetscPrintf(PETSC_COMM_SELF,"  nI,nJ,nK=%" PetscInt_FMT "/%" PetscInt_FMT "/%" PetscInt_FMT " : wil_nInJ %" PetscInt_FMT " : nid = ", nI,nJ,nK,wil_nInJ);
 #endif
       for (k=0; k<Q2_NODES_PER_EL_3D; k++) {
         PetscInt nid = element[wil_nInJ*Q2_NODES_PER_EL_3D+k];
@@ -697,7 +697,7 @@ void InverseMappingDomain_3dQ2(PetscReal tolerance,PetscInt max_its,
         vertex[NSD3d*k+1] = coords[NSD3d*nid+1];
         vertex[NSD3d*k+2] = coords[NSD3d*nid+2];
 #ifdef PTAT3D_DBG_PointLocation
-        PetscPrintf(PETSC_COMM_SELF,"%D ", nid);
+        PetscPrintf(PETSC_COMM_SELF,"%" PetscInt_FMT " ", nid);
 #endif
       }
 #ifdef PTAT3D_DBG_PointLocation
@@ -726,7 +726,7 @@ void InverseMappingDomain_3dQ2(PetscReal tolerance,PetscInt max_its,
       Lxip[2] = 2.0*(Gxip[2]-zeta0)/dzeta - 1.0;
 
 #ifdef PTAT3D_DBG_PointLocation
-      PetscPrintf(PETSC_COMM_SELF,"  Lxi,Lxeta,Lzeta = %1.8e, %1.8e, %1.8e (%D,%D,%D) \n", Lxip[0],Lxip[1],Lxip[2],nI,nJ,nK );
+      PetscPrintf(PETSC_COMM_SELF,"  Lxi,Lxeta,Lzeta = %1.8e, %1.8e, %1.8e (%" PetscInt_FMT ",%" PetscInt_FMT ",%" PetscInt_FMT ") \n", Lxip[0],Lxip[1],Lxip[2],nI,nJ,nK );
 #endif
       _compute_F_3dQ2( Lxip, vertex, marker_p->coor, f );
 #ifdef PTAT3D_DBG_PointLocation
@@ -817,9 +817,9 @@ void InverseMappingDomain_3dQ2(PetscReal tolerance,PetscInt max_its,
 
     if (monitor && (point_found == PETSC_FALSE)) {
       if (its >= max_its) {
-        PetscPrintf(PETSC_COMM_SELF,"%4D %s : Reached maximum iterations (%D) without converging. \n", its, PETSC_FUNCTION_NAME, max_its );
+        PetscPrintf(PETSC_COMM_SELF,"%4D %s : Reached maximum iterations (%" PetscInt_FMT ") without converging. \n", its, PETSC_FUNCTION_NAME, max_its );
       } else {
-        PetscPrintf(PETSC_COMM_SELF,"%4D %s : Newton broke down, diverged or stagnated after (%D) iterations without converging. \n", its, PETSC_FUNCTION_NAME, its );
+        PetscPrintf(PETSC_COMM_SELF,"%4D %s : Newton broke down, diverged or stagnated after (%" PetscInt_FMT ") iterations without converging. \n", its, PETSC_FUNCTION_NAME, its );
       }
     }
 
@@ -883,7 +883,7 @@ void InverseMappingDomain_3dQ2(PetscReal tolerance,PetscInt max_its,
     marker_p->wil   = wil_nInJ;
 
 #ifdef PTAT3D_DBG_PointLocation
-    PetscPrintf(PETSC_COMM_SELF,"  <<final>> xi,eta,zeta = %1.8e, %1.8e, %1.8e [wil=%D] \n", Lxip[0],Lxip[1],Lxip[2],wil_nInJ);
+    PetscPrintf(PETSC_COMM_SELF,"  <<final>> xi,eta,zeta = %1.8e, %1.8e, %1.8e [wil=%" PetscInt_FMT "] \n", Lxip[0],Lxip[1],Lxip[2],wil_nInJ);
 #endif
   }
 }

@@ -1416,7 +1416,7 @@ PetscErrorCode SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierar
       break;
 
     default:
-      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Unrecognized coefficient projection provided (%D)",coefficient_projection_type);
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Unrecognized coefficient projection provided (%" PetscInt_FMT ")",coefficient_projection_type);
       break;
   }
 
@@ -1427,7 +1427,7 @@ PetscErrorCode SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierar
     PetscViewer viewer;
     char name[PETSC_MAX_PATH_LEN];
 
-    PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"SwarmUpdateProperties_LocalL2Proj_Stokes_%D.vts",nlevels-1);
+    PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"SwarmUpdateProperties_LocalL2Proj_Stokes_%" PetscInt_FMT ".vts",nlevels-1);
     PetscCall(PetscViewerVTKOpen(PETSC_COMM_WORLD, name, FILE_MODE_WRITE, &viewer));
     ierr = DMView(clone[nlevels-1], viewer);CHKERRQ(ierr);
     ierr = VecView(properties_A1[nlevels-1], viewer);CHKERRQ(ierr);
@@ -1436,7 +1436,7 @@ PetscErrorCode SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierar
     ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
     
     if (surfQ) {
-      PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"SwarmUpdateProperties_LocalL2Proj_Stokes_%D",nlevels-1);
+      PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"SwarmUpdateProperties_LocalL2Proj_Stokes_%" PetscInt_FMT "",nlevels-1);
       ierr = SurfaceQuadratureViewParaview_Stokes2(surfQ[nlevels-1],mfi[nlevels-1],NULL,name);CHKERRQ(ierr);
     }
   }
@@ -1483,7 +1483,7 @@ PetscErrorCode SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierar
     if (surfQ && mfi) {
       ierr = _SwarmUpdateGaussPropertiesLocalL2ProjectionQ1_MPntPStokes_InterpolateToQuadratePoints(clone[k-1],properties_A1[k-1],properties_A2[k-1],Q[k-1],surfQ[k-1],mfi[k-1]);CHKERRQ(ierr);
     } else {
-      PetscPrintf(PETSC_COMM_WORLD,"** WARNING [SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy] ** Level %D will not have interpolated surface data\n",k-1);
+      PetscPrintf(PETSC_COMM_WORLD,"** WARNING [SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy] ** Level %" PetscInt_FMT " will not have interpolated surface data\n",k-1);
       ierr = _SwarmUpdateGaussPropertiesLocalL2ProjectionQ1_MPntPStokes_InterpolateToQuadratePoints(clone[k-1],properties_A1[k-1],properties_A2[k-1],Q[k-1],NULL,NULL);CHKERRQ(ierr);
     }
     
@@ -1491,7 +1491,7 @@ PetscErrorCode SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierar
       PetscViewer viewer;
       char name[PETSC_MAX_PATH_LEN];
 
-      PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"SwarmUpdateProperties_LocalL2Proj_Stokes_%D.vts",k-1);
+      PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"SwarmUpdateProperties_LocalL2Proj_Stokes_%" PetscInt_FMT ".vts",k-1);
       PetscCall(PetscViewerVTKOpen(PETSC_COMM_WORLD, name, FILE_MODE_WRITE, &viewer));
       ierr = DMView(clone[k-1], viewer);CHKERRQ(ierr);
       ierr = VecView(properties_A1[k-1], viewer);CHKERRQ(ierr);
@@ -1500,7 +1500,7 @@ PetscErrorCode SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierar
       ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
       
       if (surfQ) {
-        PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"SwarmUpdateProperties_LocalL2Proj_Stokes_%D",k-1);
+        PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"SwarmUpdateProperties_LocalL2Proj_Stokes_%" PetscInt_FMT "",k-1);
         ierr = SurfaceQuadratureViewParaview_Stokes2(surfQ[k],mfi[k],NULL,name);CHKERRQ(ierr);
       }
     }
@@ -2617,7 +2617,7 @@ PetscErrorCode MProjection_Q1Projection_onto_Q2_MPntPStokes_Level(const int npoi
     char filename[PETSC_MAX_PATH_LEN];
     PetscViewer viewer;
 
-    PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"MProjectionQ1_stokes_eta_Lv%D.vts",level);
+    PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"MProjectionQ1_stokes_eta_Lv%" PetscInt_FMT ".vts",level);
     PetscCall(PetscViewerVTKOpen(PETSC_COMM_WORLD, filename, FILE_MODE_WRITE, &viewer));
     ierr = DMView(clone, viewer);CHKERRQ(ierr);
     ierr = VecView(properties_A, viewer);CHKERRQ(ierr);

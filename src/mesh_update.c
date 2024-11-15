@@ -408,7 +408,7 @@ PetscErrorCode UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX_Interpola
                                   1,&mp);
         /*
         if (mp.wil == -1) {
-          PetscPrintf(PETSC_COMM_SELF,"Error: point %D not found\n",n);
+          PetscPrintf(PETSC_COMM_SELF,"Error: point %" PetscInt_FMT " not found\n",n);
           PetscPrintf(PETSC_COMM_SELF,"  pos(x,z) %1.8e %1.8e\n",mp.coor[0],mp.coor[1]);
           SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"  location of node in interpolated surface could not be determined");
         }
@@ -418,7 +418,7 @@ PetscErrorCode UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX_Interpola
           PetscReal sep2,min_sep2 = 1.0e32;
           PetscInt index;
 
-          //PetscPrintf(PETSC_COMM_SELF,"Warning: point %D not found\n",(i-si)+(k-sk)*nx);
+          //PetscPrintf(PETSC_COMM_SELF,"Warning: point %" PetscInt_FMT " not found\n",(i-si)+(k-sk)*nx);
           //PetscPrintf(PETSC_COMM_SELF,"  pos(x,z) %1.8e %1.8e\n",mp.coor[0],mp.coor[1]);
 
           index = -1;
@@ -672,7 +672,7 @@ PetscErrorCode UpdateMeshGeometry_ApplyDiffusionJMAX(DM dav,PetscReal diffusivit
   PetscBool view_surface_diffusion = PETSC_FALSE;
 
   PetscFunctionBegin;
-  PetscPrintf(PETSC_COMM_WORLD,"Applying surface diffision. Dirichlet sides: { east=%D , west=%D , front=%D , back=%D } \n",dirichlet_east,dirichlet_west,dirichlet_front,dirichlet_back);
+  PetscPrintf(PETSC_COMM_WORLD,"Applying surface diffision. Dirichlet sides: { east=%" PetscInt_FMT " , west=%" PetscInt_FMT " , front=%" PetscInt_FMT " , back=%" PetscInt_FMT " } \n",dirichlet_east,dirichlet_west,dirichlet_front,dirichlet_back);
   if (only_update_surface) {
     PetscPrintf(PETSC_COMM_WORLD,"  [Only applying diffusion operator to JMAX surface] \n");
   }
@@ -710,7 +710,7 @@ PetscErrorCode UpdateMeshGeometry_ApplyDiffusionJMAX(DM dav,PetscReal diffusivit
 
 
   PetscPrintf(PETSC_COMM_WORLD,"  [time period of diffusion] timespan = %1.4e \n",timespan);
-  PetscPrintf(PETSC_COMM_WORLD,"  [number of explicit time steps] nsteps = %D \n",nsteps);
+  PetscPrintf(PETSC_COMM_WORLD,"  [number of explicit time steps] nsteps = %" PetscInt_FMT " \n",nsteps);
   PetscPrintf(PETSC_COMM_WORLD,"  [time step size] dt_explicit = %1.4e \n",dt_explicit);
 
   /* extract height */

@@ -241,7 +241,7 @@ PetscErrorCode PSwarmViewInfo(PSwarm ps)
   } else {
     PetscPrintf(comm,"PSwarm [%s] --------------------\n",prefix);
   }
-  PetscPrintf(comm,"  npoints %D\n",n_points);
+  PetscPrintf(comm,"  npoints %" PetscInt_FMT "\n",n_points);
   PetscPrintf(comm,"  Transport mode: \n");
   if (ps->transport_mode == PSWARM_TM_EULERIAN) {
     PetscPrintf(comm,"    Eulerian\n");
@@ -1203,17 +1203,17 @@ PetscErrorCode PSwarmSetUpCoords_FromUserList(PSwarm ps)
   nlist = nlistsize;
   PetscOptionsGetRealArray(NULL,prefix,"-pswarm_coor_x",coorx,&nlist,&found);
   if (!found) SETERRQ(comm,PETSC_ERR_USER,"Must specify x coordinates via -pswarm_coor_x");
-  if (nlist != nlistsize) SETERRQ(comm,PETSC_ERR_USER,"Must specify %D x coordinates",nlistsize);
+  if (nlist != nlistsize) SETERRQ(comm,PETSC_ERR_USER,"Must specify %" PetscInt_FMT " x coordinates",nlistsize);
 
   nlist = nlistsize;
   PetscOptionsGetRealArray(NULL,prefix,"-pswarm_coor_y",coory,&nlist,&found);
   if (!found) SETERRQ(comm,PETSC_ERR_USER,"Must specify y coordinates via -pswarm_coor_y");
-  if (nlist != nlistsize) SETERRQ(comm,PETSC_ERR_USER,"Must specify %D y coordinates",nlistsize);
+  if (nlist != nlistsize) SETERRQ(comm,PETSC_ERR_USER,"Must specify %" PetscInt_FMT " y coordinates",nlistsize);
 
   nlist = nlistsize;
   PetscOptionsGetRealArray(NULL,prefix,"-pswarm_coor_z",coorz,&nlist,&found);
   if (!found) SETERRQ(comm,PETSC_ERR_USER,"Must specify z coordinates via -pswarm_coor_z");
-  if (nlist != nlistsize) SETERRQ(comm,PETSC_ERR_USER,"Must specify %D z coordinates",nlistsize);
+  if (nlist != nlistsize) SETERRQ(comm,PETSC_ERR_USER,"Must specify %" PetscInt_FMT " z coordinates",nlistsize);
 
   for (i=0; i<nlistsize; i++) {
     coorlist[3*i+0] = coorx[i];
@@ -2006,9 +2006,9 @@ PetscErrorCode PSwarmView_PerRank(PSwarm ps)
      */
 
   ierr = PetscObjectGetOptionsPrefix((PetscObject)ps,&petscprefix);CHKERRQ(ierr);
-  PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%D",ps->pctx->step);
+  PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%" PetscInt_FMT "",ps->pctx->step);
 
-  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%D",ps->pctx->outputpath,ps->pctx->step);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%" PetscInt_FMT "",ps->pctx->outputpath,ps->pctx->step);CHKERRQ(ierr);
   ierr = pTatinTestDirectory(pvoutputdir,'w',&found);CHKERRQ(ierr);
   if (!found) { ierr = pTatinCreateDirectory(pvoutputdir);CHKERRQ(ierr); }
 
@@ -2454,9 +2454,9 @@ PetscErrorCode PSwarmView_Singleton(PSwarm ps)
   ierr = PhysCompStokesGetDMs(stokes,&dmv,NULL);CHKERRQ(ierr);
 
   ierr = PetscObjectGetOptionsPrefix((PetscObject)ps,&petscprefix);CHKERRQ(ierr);
-  PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%D",ps->pctx->step);
+  PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%" PetscInt_FMT "",ps->pctx->step);
 
-  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%D",ps->pctx->outputpath,ps->pctx->step);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%" PetscInt_FMT "",ps->pctx->outputpath,ps->pctx->step);CHKERRQ(ierr);
   ierr = pTatinTestDirectory(pvoutputdir,'w',&found);CHKERRQ(ierr);
   if (!found) { ierr = pTatinCreateDirectory(pvoutputdir);CHKERRQ(ierr); }
 

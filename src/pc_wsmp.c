@@ -188,15 +188,15 @@ static PetscErrorCode PCWSMP_VecView(const char name[],PC_WSMP *wsmp)
   PetscFunctionBegin;
   ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&rank);CHKERRQ(ierr);
 
-  PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s_rank%D.dat",name,rank);
+  PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s_rank%" PetscInt_FMT ".dat",name,rank);
   fp = fopen(fname,"w");
   if (!fp) {
     SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",fname);
   }
 
-  PetscFPrintf(PETSC_COMM_SELF,fp,"%D\n",wsmp->Nlocal);
+  PetscFPrintf(PETSC_COMM_SELF,fp,"%" PetscInt_FMT "\n",wsmp->Nlocal);
   for (i=0; i<wsmp->Nlocal; i++) {
-    PetscFPrintf(PETSC_COMM_SELF,fp,"%D %+1.8e\n",i,wsmp->B[i]);
+    PetscFPrintf(PETSC_COMM_SELF,fp,"%" PetscInt_FMT " %+1.8e\n",i,wsmp->B[i]);
   }
   fclose(fp);
 
@@ -219,14 +219,14 @@ static PetscErrorCode PCWSMP_CSRView(Mat A,int ia[],int ja[],double aij[])
 
   /* ia */
   if (ia) {
-    PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"ia_rank%D.dat",rank);
+    PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"ia_rank%" PetscInt_FMT ".dat",rank);
     fp = fopen(name,"w");
 
-    PetscFPrintf(PETSC_COMM_SELF,fp,"%D\n",m+1);
+    PetscFPrintf(PETSC_COMM_SELF,fp,"%" PetscInt_FMT "\n",m+1);
     for (i=0; i<m; i++) {
-      PetscFPrintf(PETSC_COMM_SELF,fp,"%D %D\n",i,ia[i]);
+      PetscFPrintf(PETSC_COMM_SELF,fp,"%" PetscInt_FMT " %" PetscInt_FMT "\n",i,ia[i]);
     }
-    PetscFPrintf(PETSC_COMM_SELF,fp,"%D %D\n",m,ia[m]);
+    PetscFPrintf(PETSC_COMM_SELF,fp,"%" PetscInt_FMT " %" PetscInt_FMT "\n",m,ia[m]);
     fclose(fp);
   }
 
@@ -237,12 +237,12 @@ static PetscErrorCode PCWSMP_CSRView(Mat A,int ia[],int ja[],double aij[])
     }
     nnz = (PetscInt)ia[m];
 
-    PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"ja_rank%D.dat",rank);
+    PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"ja_rank%" PetscInt_FMT ".dat",rank);
     fp = fopen(name,"w");
 
-    PetscFPrintf(PETSC_COMM_SELF,fp,"%D\n",nnz);
+    PetscFPrintf(PETSC_COMM_SELF,fp,"%" PetscInt_FMT "\n",nnz);
     for (i=0; i<nnz; i++) {
-      PetscFPrintf(PETSC_COMM_SELF,fp,"%D %D\n",i,ja[i]);
+      PetscFPrintf(PETSC_COMM_SELF,fp,"%" PetscInt_FMT " %" PetscInt_FMT "\n",i,ja[i]);
     }
     fclose(fp);
   }
@@ -254,12 +254,12 @@ static PetscErrorCode PCWSMP_CSRView(Mat A,int ia[],int ja[],double aij[])
     }
     nnz = (PetscInt)ia[m];
 
-    PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"aij_rank%D.dat",rank);
+    PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"aij_rank%" PetscInt_FMT ".dat",rank);
     fp = fopen(name,"w");
 
-    PetscFPrintf(PETSC_COMM_SELF,fp,"%D\n",nnz);
+    PetscFPrintf(PETSC_COMM_SELF,fp,"%" PetscInt_FMT "\n",nnz);
     for (i=0; i<nnz; i++) {
-      PetscFPrintf(PETSC_COMM_SELF,fp,"%D %+1.8e\n",i,aij[i]);
+      PetscFPrintf(PETSC_COMM_SELF,fp,"%" PetscInt_FMT " %+1.8e\n",i,aij[i]);
     }
     fclose(fp);
   }

@@ -168,11 +168,11 @@ PetscErrorCode MatCreateSemiRedundantFuseBlocks(Mat A,PetscMPISubComm subcomm,Ma
     //printf("nsize %d nsize_sub %d \n",nsize,nsize_sub);
     SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Cannot use -pc_semiredundant_fuse_blocks when comm->size is not exactly divisible by comm_sub->size");
   }
-  //PetscPrintf(PETSC_COMM_WORLD,"A->bsize = %D \n",bsize);
+  //PetscPrintf(PETSC_COMM_WORLD,"A->bsize = %" PetscInt_FMT " \n",bsize);
 
   fused_length = 0;
   //for (i=0; i<nsize; i++) {
-  //  PetscPrintf(PETSC_COMM_WORLD,"[%D]: start %D --->> end %D \n",i,ranges[i],ranges[i+1]);
+  //  PetscPrintf(PETSC_COMM_WORLD,"[%" PetscInt_FMT "]: start %" PetscInt_FMT " --->> end %" PetscInt_FMT " \n",i,ranges[i],ranges[i+1]);
   //}
 
   ierr = ISCreateStride(comm,nc,0,1,&iscol);CHKERRQ(ierr);
@@ -186,12 +186,12 @@ PetscErrorCode MatCreateSemiRedundantFuseBlocks(Mat A,PetscMPISubComm subcomm,Ma
     if (reuse == MAT_INITIAL_MATRIX) {
 
       offset = nsize/nsize_sub;
-      //PetscPrintf(PETSC_COMM_SELF,"[%D,%D]: offset %D\n",rank,rank_sub,offset);
+      //PetscPrintf(PETSC_COMM_SELF,"[%" PetscInt_FMT ",%" PetscInt_FMT "]: offset %" PetscInt_FMT "\n",rank,rank_sub,offset);
       f0 = ranges[ offset * rank_sub];
       f1 = ranges[ offset * (rank_sub + 1)];
       fused_length = f1 - f0;
-      //PetscPrintf(PETSC_COMM_SELF,"[%D,%D]: fused [%D -- %D] \n",rank,rank_sub,f0,f1);
-      //PetscPrintf(PETSC_COMM_SELF,"[%D,%D]: fused length %D \n",rank,rank_sub,fused_length);
+      //PetscPrintf(PETSC_COMM_SELF,"[%" PetscInt_FMT ",%" PetscInt_FMT "]: fused [%" PetscInt_FMT " -- %" PetscInt_FMT "] \n",rank,rank_sub,f0,f1);
+      //PetscPrintf(PETSC_COMM_SELF,"[%" PetscInt_FMT ",%" PetscInt_FMT "]: fused length %" PetscInt_FMT " \n",rank,rank_sub,fused_length);
 
       ierr = MatCreate(subcomm->sub_comm,&red);CHKERRQ(ierr);
       //ierr = MatSetSizes(red,PETSC_DECIDE,PETSC_DECIDE,nr,nc);CHKERRQ(ierr);
@@ -508,8 +508,8 @@ static PetscErrorCode PCView_SemiRedundant(PC pc,PetscViewer viewer)
     } else {
 
       /* ierr = PetscViewerASCIIPrintf(viewer,"  SemiRedundant preconditioner:\n");CHKERRQ(ierr); */
-      ierr = PetscViewerASCIIPrintf(viewer,"  SemiRedundant: parent comm size reduction factor = %D\n",red->nsubcomm_factor);CHKERRQ(ierr);
-      ierr = PetscViewerASCIIPrintf(viewer,"  SemiRedundant: subcomm_size = %D\n",red->nsubcomm_size);CHKERRQ(ierr);
+      ierr = PetscViewerASCIIPrintf(viewer,"  SemiRedundant: parent comm size reduction factor = %" PetscInt_FMT "\n",red->nsubcomm_factor);CHKERRQ(ierr);
+      ierr = PetscViewerASCIIPrintf(viewer,"  SemiRedundant: subcomm_size = %" PetscInt_FMT "\n",red->nsubcomm_size);CHKERRQ(ierr);
       if (!red->fuse_blocks) {
         ierr = PetscViewerASCIIPrintf(viewer,"  SemiRedundant: not preserving original matrix partition boundaries\n");CHKERRQ(ierr);
       } else {

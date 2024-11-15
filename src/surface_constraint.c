@@ -409,7 +409,7 @@ PetscErrorCode _sc_check_sizes(SurfaceConstraint sc)
   DataBucketGetDataFields(sc->properties_db,&nfields,NULL);
   if (nfields) {
     DataBucketGetSizes(sc->properties_db,&nquadpoints,NULL,NULL);
-    if ( (PetscInt)(nquadpoints / sc->nqp_facet) != nfacets) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Must call SurfaceConstraintSetValues(). Found %D facets and %D quadrature points.",nfacets,nquadpoints);
+    if ( (PetscInt)(nquadpoints / sc->nqp_facet) != nfacets) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Must call SurfaceConstraintSetValues(). Found %" PetscInt_FMT " facets and %" PetscInt_FMT " quadrature points.",nfacets,nquadpoints);
   }
   PetscFunctionReturn(0);
 }

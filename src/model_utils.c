@@ -559,8 +559,8 @@ PetscErrorCode DMDAFieldViewAscii(DM dm,Vec field,const char filename[])
     } else {
       PetscFPrintf(PETSC_COMM_SELF,fp,"# DMDA Vec\n");
     }
-    PetscFPrintf(PETSC_COMM_SELF,fp,"# M N P %D %D %D\n",M,N,P);
-    PetscFPrintf(PETSC_COMM_SELF,fp,"# dofs %D\n",dofs);
+    PetscFPrintf(PETSC_COMM_SELF,fp,"# M N P %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\n",M,N,P);
+    PetscFPrintf(PETSC_COMM_SELF,fp,"# dofs %" PetscInt_FMT "\n",dofs);
     ierr = VecGetSize(natural_field_red,&n);CHKERRQ(ierr);
     ierr = VecGetArray(natural_field_red,&LA_field);CHKERRQ(ierr);
     for (i=0; i<n; i++) {

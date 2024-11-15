@@ -89,9 +89,9 @@ PetscErrorCode _DMDARepartitionDetermineRankFromGlobalIJK(PetscInt i,PetscInt j,
       break;
     }
   }
-  if (pi == -1) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"  [dmdarepart][pi] cannot be determined : range %D, val %D",Mp,i); }
-  if (pj == -1) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"  [dmdarepart][pj] cannot be determined : range %D, val %D",Np,j); }
-  if (pk == -1) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"  [dmdarepart][pk] cannot be determined : range %D, val %D",Pp,k); }
+  if (pi == -1) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"  [dmdarepart][pi] cannot be determined : range %" PetscInt_FMT ", val %" PetscInt_FMT "",Mp,i); }
+  if (pj == -1) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"  [dmdarepart][pj] cannot be determined : range %" PetscInt_FMT ", val %" PetscInt_FMT "",Np,j); }
+  if (pk == -1) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"  [dmdarepart][pk] cannot be determined : range %" PetscInt_FMT ", val %" PetscInt_FMT "",Pp,k); }
 
   *_pi = pi;
   *_pj = pj;
@@ -298,7 +298,7 @@ PetscErrorCode _DMDARepart_SetupPMatrix(PC pc,PC_DMDARepart *red)
         /* natural_ijk = i + j*nx + k*nx*ny; */
 
         ierr = MatSetValue(Pscalar,sr+location,mapped_ijk,1.0,INSERT_VALUES);CHKERRQ(ierr);
-        //PetscPrintf(PETSC_COMM_SELF,"[%d] (%D,%D,%D) --> local %D [g=%D] [natural %D] --> repart %D \n",(int)rank,i,j,k,location,sr+location,natural_ijk,mapped_ijk);
+        //PetscPrintf(PETSC_COMM_SELF,"[%d] (%" PetscInt_FMT ",%" PetscInt_FMT ",%" PetscInt_FMT ") --> local %" PetscInt_FMT " [g=%" PetscInt_FMT "] [natural %" PetscInt_FMT "] --> repart %" PetscInt_FMT " \n",(int)rank,i,j,k,location,sr+location,natural_ijk,mapped_ijk);
       }
     }
   }
@@ -581,7 +581,7 @@ static PetscErrorCode PCSetUp_DMDARepart(PC pc)
        start_IJK = -1;
        ierr = MPI_Comm_rank(subcomm->sub_comm,&rank_re);CHKERRQ(ierr);
        ierr = _DMDARepartitionDetermineGlobalS0(rank_re,red->Mp_re,red->Np_re,red->Pp_re,red->range_i_re,red->range_j_re,red->range_k_re,&start_IJK);CHKERRQ(ierr);
-       PetscPrintf(PETSC_COMM_SELF,"  [dmdarepart] rank[%d]: subrank[%d]: start idx = %D \n",(int)rank,(int)rank_re,start_IJK);
+       PetscPrintf(PETSC_COMM_SELF,"  [dmdarepart] rank[%d]: subrank[%d]: start idx = %" PetscInt_FMT " \n",(int)rank,(int)rank_re,start_IJK);
        } else {
        PetscPrintf(PETSC_COMM_SELF,"  [dmdarepart] rank[%d]: dmrepart doesn't live on this rank \n",(int)rank);
        }
@@ -600,7 +600,7 @@ static PetscErrorCode PCSetUp_DMDARepart(PC pc)
        pJ_re = rankIJ_re/red->Mp_re;
        pI_re = rankIJ_re - pJ_re*red->Mp_re;
 
-       PetscPrintf(PETSC_COMM_SELF,"  [dmdarepart] rank[%d]: subrank[%d] (%D %D %D)\n",(int)rank,(int)rank_re,pI_re,pJ_re,pK_re);
+       PetscPrintf(PETSC_COMM_SELF,"  [dmdarepart] rank[%d]: subrank[%d] (%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT ")\n",(int)rank,(int)rank_re,pI_re,pJ_re,pK_re);
        }
     */
     /* attach dm to ksp on sub communicator */
@@ -766,8 +766,8 @@ static PetscErrorCode PCView_DMDARepart(PC pc,PetscViewer viewer)
       ierr = PetscViewerASCIIPrintf(viewer,"  DMDARepart: preconditioner not yet setup\n");CHKERRQ(ierr);
     } else {
       /* ierr = PetscViewerASCIIPrintf(viewer,"  SemiRedundant preconditioner:\n");CHKERRQ(ierr); */
-      ierr = PetscViewerASCIIPrintf(viewer,"  DMDARepart: parent comm size reduction factor = %D\n",red->nsubcomm_factor);CHKERRQ(ierr);
-      ierr = PetscViewerASCIIPrintf(viewer,"  DMDARepart: subcomm_size = %D\n",red->nsubcomm_size);CHKERRQ(ierr);
+      ierr = PetscViewerASCIIPrintf(viewer,"  DMDARepart: parent comm size reduction factor = %" PetscInt_FMT "\n",red->nsubcomm_factor);CHKERRQ(ierr);
+      ierr = PetscViewerASCIIPrintf(viewer,"  DMDARepart: subcomm_size = %" PetscInt_FMT "\n",red->nsubcomm_size);CHKERRQ(ierr);
       ierr = PetscViewerGetSubViewer(viewer,red->subcomm->sub_comm,&subviewer);CHKERRQ(ierr);
       ierr = PetscViewerASCIIPushTab(viewer);CHKERRQ(ierr);
       if (red->subcomm->parent_rank_active_in_subcomm) {

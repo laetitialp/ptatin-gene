@@ -124,8 +124,8 @@ PetscErrorCode KSPSetUp_ChebychevRN(KSP ksp)
         rend_sub = m;
       }
       mloc_sub = rend_sub - rstart_sub;
-      PetscPrintf(PETSC_COMM_SELF,"mloc_sub = %D \n",mloc_sub);
-      PetscPrintf(PETSC_COMM_SELF,"nsubcomm %D \n",cheb->nsubcomm);
+      PetscPrintf(PETSC_COMM_SELF,"mloc_sub = %" PetscInt_FMT " \n",mloc_sub);
+      PetscPrintf(PETSC_COMM_SELF,"nsubcomm %" PetscInt_FMT " \n",cheb->nsubcomm);
       ierr = MPI_Barrier(subcomm);CHKERRQ(ierr); /* what is this doing in here?? */
 
       /* create xsub with empty local arrays, because xdup's arrays will be placed into it */
@@ -820,7 +820,7 @@ PetscErrorCode KSPView_ChebychevRN(KSP ksp,PetscViewer viewer)
     if (!cheb->psubcomm) {
       ierr = PetscViewerASCIIPrintf(viewer,"  Redundant VecNorm: Not activated\n");CHKERRQ(ierr);
     } else {
-      ierr = PetscViewerASCIIPrintf(viewer,"  Redundant VecNorm: First (color=0) of %D processor subsets follows\n",cheb->nsubcomm);CHKERRQ(ierr);
+      ierr = PetscViewerASCIIPrintf(viewer,"  Redundant VecNorm: First (color=0) of %" PetscInt_FMT " processor subsets follows\n",cheb->nsubcomm);CHKERRQ(ierr);
     }
   } else {
     SETERRQ(PetscObjectComm((PetscObject)ksp),PETSC_ERR_SUP,"Viewer type %s not supported for KSP Chebychev",((PetscObject)viewer)->type_name);
