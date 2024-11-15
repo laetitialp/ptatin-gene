@@ -247,7 +247,7 @@ PetscErrorCode DMDARemeshSetUniformCoordinatesBetweenKLayers3d_MPI( DM da, Petsc
   {
     PetscViewer vv;
     Vec x;
-    ierr = PetscViewerASCIIOpen(PetscObjectComm((PetscObject)surface1_da), "test_dmda_remesh_s1.vtk", &vv);CHKERRQ(ierr);
+    ierr = PetscViewerASCIIOpen(PetscObjectComm((PetscObject)surface1_da), "test_dmda_remesh_s1.vts", &vv);CHKERRQ(ierr);
     ierr = PetscViewerPushFormat(vv, PETSC_VIEWER_ASCII_VTK);CHKERRQ(ierr);
     ierr = DMCreateGlobalVector(surface1_da,&x);CHKERRQ(ierr);
     ierr = PetscObjectSetName( (PetscObject)x, "phi" );CHKERRQ(ierr);
@@ -259,7 +259,7 @@ PetscErrorCode DMDARemeshSetUniformCoordinatesBetweenKLayers3d_MPI( DM da, Petsc
   {
     PetscViewer vv;
     Vec x;
-    ierr = PetscViewerASCIIOpen(PetscObjectComm((PetscObject)surface2_da), "test_dmda_remesh_s2.vtk", &vv);CHKERRQ(ierr);
+    ierr = PetscViewerASCIIOpen(PetscObjectComm((PetscObject)surface2_da), "test_dmda_remesh_s2.vts", &vv);CHKERRQ(ierr);
     ierr = PetscViewerPushFormat(vv, PETSC_VIEWER_ASCII_VTK);CHKERRQ(ierr);
     ierr = DMCreateGlobalVector(surface2_da,&x);CHKERRQ(ierr);
     ierr = PetscObjectSetName( (PetscObject)x, "phi" );CHKERRQ(ierr);

@@ -82,7 +82,7 @@ PetscErrorCode pTatinSurfaceMeshCreate(DM dav, DM *da_spm,Vec *_height)
   //printf("rank %d: surf si,ei=%.4d-%.4d:                  sj,ej=%.4d-%.4d \n", rank, si2d,si2d+nx2d,sj2d,sj2d+ny2d);
 
   ierr = DMDACreate3dRedundant(dav,si2d,si2d+nx2d,N-1,N,sj2d,sj2d+ny2d, 1, &da_red_spm);CHKERRQ(ierr);
-  //sprintf(name,"surf%d.vtk",rank);
+  //sprintf(name,"surf%d.vts",rank);
   //ierr = DMDAViewPetscVTK(da_red_spm,0,name);CHKERRQ(ierr);
 
   /* copy these values into my parallel surface mesh x,y,z (vol) => x,y (surf) */
@@ -121,7 +121,7 @@ PetscErrorCode pTatinSurfaceMeshCreate(DM dav, DM *da_spm,Vec *_height)
 
   ierr = DMDAUpdateGhostedCoordinates(da_surf);CHKERRQ(ierr);
 
-  //sprintf(name,"surf.vtk");
+  //sprintf(name,"surf.vts");
   //ierr = DMDAViewPetscVTK(da_surf,height,name);CHKERRQ(ierr);
 
   ierr = DMDestroy(&da_red_spm);CHKERRQ(ierr);
@@ -413,7 +413,7 @@ PetscErrorCode pTatin3d_material_points_check_ic(int argc,char **argv)
     ierr = DMDACreateOverlappingQ1FromQ2(dav,1,&daq1);CHKERRQ(ierr);
     //ierr = DMDACreateNestedQ1FromQ2(dav,1,&daq1);CHKERRQ(ierr);
     ierr = DMCreateGlobalVector(daq1,&phi);CHKERRQ(ierr);
-    ierr = DMDAViewPetscVTK(daq1,phi,"phi_overlapping_q1.vtk");CHKERRQ(ierr);
+    ierr = DMDAViewPetscVTK(daq1,phi,"phi_overlapping_q1.vts");CHKERRQ(ierr);
 
     ierr = VecDestroy(&phi);CHKERRQ(ierr);
     ierr = DMDestroy(&daq1);CHKERRQ(ierr);
@@ -422,7 +422,7 @@ PetscErrorCode pTatin3d_material_points_check_ic(int argc,char **argv)
 
   /* generate a parallel surface mesh */
   ierr = pTatinSurfaceMeshCreate(dav,&daspm,&height);CHKERRQ(ierr);
-  ierr = DMDAViewPetscVTK(daspm,height,"surf_pt1.vtk");CHKERRQ(ierr);
+  ierr = DMDAViewPetscVTK(daspm,height,"surf_pt1.vts");CHKERRQ(ierr);
 
   {
     Vec rand;
@@ -433,7 +433,7 @@ PetscErrorCode pTatin3d_material_points_check_ic(int argc,char **argv)
     VecAXPY(height,1.0,rand);
     ierr = VecDestroy(&rand);CHKERRQ(ierr);
   }
-  ierr = DMDAViewPetscVTK(daspm,height,"surf_pt2.vtk");CHKERRQ(ierr);
+  ierr = DMDAViewPetscVTK(daspm,height,"surf_pt2.vts");CHKERRQ(ierr);
 
   ierr = pTatin_InjectSurfaceMeshOntoMechanicalDomain(daspm,height,dav);CHKERRQ(ierr);
   ierr = pTatinModel_Output(user->model,user,X,"spm");CHKERRQ(ierr);
@@ -442,7 +442,7 @@ PetscErrorCode pTatin3d_material_points_check_ic(int argc,char **argv)
   ierr = DMDASetUniformCoordinates(dav, 0.0,4.0, 0.0,1.0, 0.0,6.0);CHKERRQ(ierr);
   ierr = DMDAUpdateGhostedCoordinates(dav);CHKERRQ(ierr);
   ierr = pTatin_InjectMechanicalDomainSurfaceOntoSurfaceMesh(dav,daspm,height);CHKERRQ(ierr);
-  ierr = DMDAViewPetscVTK(daspm,height,"surf_pt3.vtk");CHKERRQ(ierr);
+  ierr = DMDAViewPetscVTK(daspm,height,"surf_pt3.vts");CHKERRQ(ierr);
 
 
   ierr = DMDestroy(&daspm);CHKERRQ(ierr);

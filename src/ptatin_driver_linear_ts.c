@@ -989,7 +989,7 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
     PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"vel_dmda_Lv%D",k);
     ierr = pTatinLogBasicDMDA(user,name,dav_hierarchy[k]);CHKERRQ(ierr);
 
-    //sprintf(name,"vel_dmda_Lv%d.vtk",k);
+    //sprintf(name,"vel_dmda_Lv%d.vts",k);
     //ierr = DMDAViewPetscVTK(dav_hierarchy[k],NULL,name);CHKERRQ(ierr);
   }
 

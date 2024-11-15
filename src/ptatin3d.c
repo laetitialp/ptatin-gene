@@ -1102,9 +1102,9 @@ PetscErrorCode  DMCoarsenHierarchy2_DA(DM da,PetscInt nlevels,DM dac[])
   if (view) {
     char levelname[PETSC_MAX_PATH_LEN];
 
-    ierr = DMDAViewPetscVTK(da,NULL,"dav_fine.vtk");CHKERRQ(ierr);
+    ierr = DMDAViewPetscVTK(da,NULL,"dav_fine.vts");CHKERRQ(ierr);
     for (i=0; i<nlevels; i++) {
-      PetscSNPrintf(levelname,PETSC_MAX_PATH_LEN-1,"dav_level%D.vtk",nlevels-1-i); /* do shift to make 0 named as the corsest */
+      PetscSNPrintf(levelname,PETSC_MAX_PATH_LEN-1,"dav_level%D.vts",nlevels-1-i); /* do shift to make 0 named as the corsest */
       ierr = DMDAViewPetscVTK(dac[i],NULL,levelname);CHKERRQ(ierr);
     }
   }

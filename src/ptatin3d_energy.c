@@ -271,9 +271,8 @@ PetscErrorCode MaterialPointQuadraturePointProjectionC0_Q2Energy(DM da,DataBucke
     char filename[256];
     PetscViewer viewer;
 
-    sprintf(filename,"MaterialPointProjection_energy_member_%d.vtk",(int)member );
-    ierr = PetscViewerASCIIOpen(PETSC_COMM_WORLD, filename, &viewer);CHKERRQ(ierr);
-    ierr = PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_VTK);CHKERRQ(ierr);
+    sprintf(filename,"MaterialPointProjection_energy_member_%d.vts",(int)member );
+    PetscCall(PetscViewerVTKOpen(PETSC_COMM_WORLD, filename, FILE_MODE_WRITE, &viewer));
     ierr = DMView(clone, viewer);CHKERRQ(ierr);
     ierr = VecView(properties_A, viewer);CHKERRQ(ierr);
     ierr = PetscViewerPopFormat(viewer);CHKERRQ(ierr);

@@ -473,13 +473,13 @@ PetscErrorCode ModelOutput_AdvDiffExample(pTatinCtx c,Vec X,const char prefix[],
 
   /* debugging adv-diff solver */
 #if 0
-  sprintf(name,"%s/%s_T.vtk",c->outputpath,prefix);
+  sprintf(name,"%s/%s_T.vts",c->outputpath,prefix);
   ierr = DMDAViewPetscVTK(energy->daT,temperature,name);CHKERRQ(ierr);
 
-  sprintf(name,"%s/%s_Tlast.vtk",c->outputpath,prefix);
+  sprintf(name,"%s/%s_Tlast.vts",c->outputpath,prefix);
   ierr = DMDAViewPetscVTK(energy->daT,energy->Told,name);CHKERRQ(ierr);
 
-  sprintf(name,"%s/%s_advdiff_u.vtk",c->outputpath,prefix);
+  sprintf(name,"%s/%s_advdiff_u.vts",c->outputpath,prefix);
   ierr = DMDAViewPetscVTK(energy->daT,energy->u_minus_V,name);CHKERRQ(ierr);
 #endif
 

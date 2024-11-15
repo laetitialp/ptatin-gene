@@ -139,8 +139,7 @@ PetscErrorCode test_DMDACreate3dRedundant(PetscInt nx,PetscInt ny,PetscInt nz)
   ierr = DMSetUp(da_red);CHKERRQ(ierr);
 
   /* output */
-  ierr = PetscViewerASCIIOpen(PetscObjectComm((PetscObject)da), "test_dmda_redundant_in.vtk", &vv);CHKERRQ(ierr);
-  ierr = PetscViewerPushFormat(vv, PETSC_VIEWER_ASCII_VTK);CHKERRQ(ierr);
+  PetscCall(PetscViewerVTKOpen(PetscObjectComm((PetscObject)da), "test_dmda_redundant_in.vts", FILE_MODE_WRITE, &vv));
   ierr = DMCreateGlobalVector(da,&x);CHKERRQ(ierr);
   ierr = PetscObjectSetName( (PetscObject)x, "phi" );CHKERRQ(ierr);
   ierr = DMView(da, vv);CHKERRQ(ierr);
@@ -153,11 +152,11 @@ PetscErrorCode test_DMDACreate3dRedundant(PetscInt nx,PetscInt ny,PetscInt nz)
     char *name;
     PetscMPIInt rank;
     MPI_Comm_rank(PetscObjectComm((PetscObject)da),&rank);
-    if (asprintf(&name,"test_dmda_redundant_out_%d.vtk",rank) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
-    ierr = PetscViewerASCIIOpen(PetscObjectComm((PetscObject)da_red), name, &vv);CHKERRQ(ierr);
+    if (asprintf(&name,"test_dmda_redundant_out_%d.vts",rank) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
+    PetscCall(PetscViewerVTKOpen(PetscObjectComm((PetscObject)da_red), name, FILE_MODE_WRITE, &vv));
     free(name);
   }
-  ierr = PetscViewerPushFormat(vv, PETSC_VIEWER_ASCII_VTK);CHKERRQ(ierr);
+  //ierr = PetscViewerPushFormat(vv, PETSC_VIEWER_ASCII_VTK);CHKERRQ(ierr);
   ierr = DMCreateGlobalVector(da_red,&x);CHKERRQ(ierr);
   ierr = PetscObjectSetName( (PetscObject)x, "phi" );CHKERRQ(ierr);
   ierr = DMView(da_red, vv);CHKERRQ(ierr);

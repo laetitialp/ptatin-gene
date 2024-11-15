@@ -88,7 +88,7 @@ PetscErrorCode test_dmda_checkpoint_pack(void)
 
 
   /* dump field to vtk */
-  ierr = DMDAViewPetscVTK(da, x, "dmda_checkpoint_1.vtk");CHKERRQ(ierr);
+  ierr = DMDAViewPetscVTK(da, x, "dmda_checkpoint_1.vts");CHKERRQ(ierr);
 
   /* dump field to disk */
   ierr = PetscViewerBinaryOpen( PetscObjectComm((PetscObject)da), "dmda_checkpoint_stressfield.dat", FILE_MODE_WRITE, &v );CHKERRQ(ierr);
@@ -151,7 +151,7 @@ PetscErrorCode test_dmda_checkpoint_load( void )
   PetscPrintf( PETSC_COMM_WORLD, "(r) gmax-z = %1.5e \n", gmax[2] );
 
   /* dump field to vtk */
-  ierr = DMDAViewPetscVTK(da, x, "dmda_checkpoint_2.vtk");CHKERRQ(ierr);
+  ierr = DMDAViewPetscVTK(da, x, "dmda_checkpoint_2.vts");CHKERRQ(ierr);
 
   ierr = DMDestroy(&da);CHKERRQ(ierr);
   ierr = VecDestroy(&x);CHKERRQ(ierr);

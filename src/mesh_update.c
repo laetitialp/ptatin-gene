@@ -905,7 +905,7 @@ PetscErrorCode UpdateMeshGeometry_ApplyDiffusionJMAX(DM dav,PetscReal diffusivit
       ierr = VecStrideScatter(H,1,coordsH,INSERT_VALUES);CHKERRQ(ierr);
 
       PetscMPIIntCast(s,&s32);
-      sprintf(name,"surface_diffusion_%.4d.vtk",s32);
+      sprintf(name,"surface_diffusion_%.4d.vts",s32);
       ierr = DMDAViewPetscVTK(daH,H,name);CHKERRQ(ierr);
     }
 

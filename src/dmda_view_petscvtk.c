@@ -42,8 +42,7 @@ PetscErrorCode DMDAViewPetscVTK(DM da,Vec field,const char name[])
 
 
   PetscFunctionBegin;
-  ierr = PetscViewerASCIIOpen(PetscObjectComm((PetscObject)da), name, &vv);CHKERRQ(ierr);
-  ierr = PetscViewerPushFormat(vv, PETSC_VIEWER_ASCII_VTK);CHKERRQ(ierr);
+  PetscCall(PetscViewerVTKOpen(PetscObjectComm((PetscObject)da), name, FILE_MODE_WRITE, &vv));
 
   /* view mesh */
   ierr = DMView(da, vv);CHKERRQ(ierr);

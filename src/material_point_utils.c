@@ -935,8 +935,7 @@ PetscErrorCode SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes(const 
   if (view) {
     PetscViewer viewer;
 
-    ierr = PetscViewerASCIIOpen(PETSC_COMM_WORLD, "SwarmUpdateProperties_LocalL2Proj_Stokes.vtk", &viewer);CHKERRQ(ierr);
-    ierr = PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_VTK);CHKERRQ(ierr);
+    PetscCall(PetscViewerVTKOpen(PETSC_COMM_WORLD, "SwarmUpdateProperties_LocalL2Proj_Stokes.vts", FILE_MODE_WRITE, &viewer));
     ierr = DMView(clone, viewer);CHKERRQ(ierr);
     ierr = VecView(properties_A1, viewer);CHKERRQ(ierr);
     ierr = VecView(properties_A2, viewer);CHKERRQ(ierr);
@@ -1428,9 +1427,8 @@ PetscErrorCode SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierar
     PetscViewer viewer;
     char name[PETSC_MAX_PATH_LEN];
 
-    PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"SwarmUpdateProperties_LocalL2Proj_Stokes_%D.vtk",nlevels-1);
-    ierr = PetscViewerASCIIOpen(PETSC_COMM_WORLD,name,&viewer);CHKERRQ(ierr);
-    ierr = PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_VTK);CHKERRQ(ierr);
+    PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"SwarmUpdateProperties_LocalL2Proj_Stokes_%D.vts",nlevels-1);
+    PetscCall(PetscViewerVTKOpen(PETSC_COMM_WORLD, name, FILE_MODE_WRITE, &viewer));
     ierr = DMView(clone[nlevels-1], viewer);CHKERRQ(ierr);
     ierr = VecView(properties_A1[nlevels-1], viewer);CHKERRQ(ierr);
     ierr = VecView(properties_A2[nlevels-1], viewer);CHKERRQ(ierr);
@@ -1493,9 +1491,8 @@ PetscErrorCode SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierar
       PetscViewer viewer;
       char name[PETSC_MAX_PATH_LEN];
 
-      PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"SwarmUpdateProperties_LocalL2Proj_Stokes_%D.vtk",k-1);
-      ierr = PetscViewerASCIIOpen(PETSC_COMM_WORLD, name, &viewer);CHKERRQ(ierr);
-      ierr = PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_VTK);CHKERRQ(ierr);
+      PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"SwarmUpdateProperties_LocalL2Proj_Stokes_%D.vts",k-1);
+      PetscCall(PetscViewerVTKOpen(PETSC_COMM_WORLD, name, FILE_MODE_WRITE, &viewer));
       ierr = DMView(clone[k-1], viewer);CHKERRQ(ierr);
       ierr = VecView(properties_A1[k-1], viewer);CHKERRQ(ierr);
       ierr = VecView(properties_A2[k-1], viewer);CHKERRQ(ierr);
@@ -1820,12 +1817,11 @@ PetscErrorCode MaterialPointQuadraturePointProjectionC0_Q2Stokes(DM da,DataBucke
   view = PETSC_FALSE;
   PetscOptionsGetBool(NULL,NULL,"-view_projected_marker_fields",&view,NULL);
   if (view) {
-    char filename[256];
+    char filename[PETSC_MAX_PATH_LEN];
     PetscViewer viewer;
 
-    sprintf(filename,"MaterialPointProjection_stokes_member_%d.vtk",(int)member );
-    ierr = PetscViewerASCIIOpen(PETSC_COMM_WORLD, filename, &viewer);CHKERRQ(ierr);
-    ierr = PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_VTK);CHKERRQ(ierr);
+    PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"MaterialPointProjection_stokes_member_%d.vts",(int)member);
+    PetscCall(PetscViewerVTKOpen(PETSC_COMM_WORLD, filename, FILE_MODE_WRITE, &viewer));
     ierr = DMView(clone, viewer);CHKERRQ(ierr);
     ierr = VecView(properties_A, viewer);CHKERRQ(ierr);
     ierr = PetscViewerPopFormat(viewer);CHKERRQ(ierr);
@@ -2621,9 +2617,8 @@ PetscErrorCode MProjection_Q1Projection_onto_Q2_MPntPStokes_Level(const int npoi
     char filename[PETSC_MAX_PATH_LEN];
     PetscViewer viewer;
 
-    PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"MProjectionQ1_stokes_eta_Lv%D.vtk",level );
-    ierr = PetscViewerASCIIOpen(PETSC_COMM_WORLD, filename, &viewer);CHKERRQ(ierr);
-    ierr = PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_VTK);CHKERRQ(ierr);
+    PetscSNPrintf(filename,PETSC_MAX_PATH_LEN-1,"MProjectionQ1_stokes_eta_Lv%D.vts",level);
+    PetscCall(PetscViewerVTKOpen(PETSC_COMM_WORLD, filename, FILE_MODE_WRITE, &viewer));
     ierr = DMView(clone, viewer);CHKERRQ(ierr);
     ierr = VecView(properties_A, viewer);CHKERRQ(ierr);
     ierr = PetscViewerPopFormat(viewer);CHKERRQ(ierr);

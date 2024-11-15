@@ -69,8 +69,7 @@ PetscErrorCode test_DMDAUpdateGhostedCoordinates(PetscInt nx,PetscInt ny,PetscIn
   ierr = DMDAUpdateGhostedCoordinates(da);CHKERRQ(ierr);
 
   /* output */
-  ierr = PetscViewerASCIIOpen(PetscObjectComm((PetscObject)da), "test1.vtk", &vv);CHKERRQ(ierr);
-  ierr = PetscViewerPushFormat(vv, PETSC_VIEWER_ASCII_VTK);CHKERRQ(ierr);
+  PetscCall(PetscViewerVTKOpen(PetscObjectComm((PetscObject)da), "test1.vts", FILE_MODE_WRITE, &vv));
   ierr = DMCreateGlobalVector(da,&x);CHKERRQ(ierr);
   ierr = PetscObjectSetName( (PetscObject)x, "phi" );CHKERRQ(ierr);
   ierr = DMView(da, vv);CHKERRQ(ierr);
