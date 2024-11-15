@@ -497,7 +497,6 @@ static PetscErrorCode PCSetUp_DMDARepart(PC pc)
 
       ierr = KSPCreate(red->subcomm->sub_comm,&red->ksp);CHKERRQ(ierr);
       ierr = PetscObjectIncrementTabLevel((PetscObject)red->ksp,(PetscObject)pc,tablevel);CHKERRQ(ierr);
-      ierr = PetscLogObjectParent((PetscObject)pc,(PetscObject)red->ksp);CHKERRQ(ierr);
 
       ierr = PCGetOptionsPrefix(pc,&prefix);CHKERRQ(ierr);
       ierr = KSPSetOptionsPrefix(red->ksp,prefix);CHKERRQ(ierr);
@@ -739,15 +738,15 @@ static PetscErrorCode PCDestroy_DMDARepart(PC pc)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCSetFromOptions_DMDARepart(PetscOptionItems *PetscOptionsObject,PC pc)
+static PetscErrorCode PCSetFromOptions_DMDARepart(PC pc,PetscOptionItems *PetscOptionsObject)
 {
   PetscErrorCode ierr;
   PC_DMDARepart  *red = (PC_DMDARepart*)pc->data;
 
   PetscFunctionBegin;
-  ierr = PetscOptionsHead(PetscOptionsObject, "DMDARepart options");CHKERRQ(ierr);
+  PetscOptionsHeadBegin(PetscOptionsObject, "DMDARepart options");
   ierr = PetscOptionsInt("-pc_dmdarepart_factor","Factor to reduce parent communication size by","PCDMDARepartSetFactor",red->nsubcomm_factor,&red->nsubcomm_factor,0);CHKERRQ(ierr);
-  ierr = PetscOptionsTail();CHKERRQ(ierr);
+  PetscOptionsHeadEnd();
   PetscFunctionReturn(0);
 }
 
@@ -807,7 +806,7 @@ PetscErrorCode PCCreate_DMDARepart(PC pc)
     if (_PCDMDARepart_PCApplyStage == -1) { ierr = PetscLogStageRegister("PCRprt_Apply",&_PCDMDARepart_PCApplyStage);CHKERRQ(ierr); }
   }
 
-  ierr = PetscNewLog(pc,&red);CHKERRQ(ierr);
+  ierr = PetscNew(&red);CHKERRQ(ierr);
   pc->data            = (void*)red;
 
   red->nsubcomm_factor = 2;

@@ -300,7 +300,6 @@ static PetscErrorCode PCSetUp_SemiRedundant(PC pc)
 
       ierr = KSPCreate(red->subcomm->sub_comm,&red->ksp);CHKERRQ(ierr);
       ierr = PetscObjectIncrementTabLevel((PetscObject)red->ksp,(PetscObject)pc,1);CHKERRQ(ierr);
-      ierr = PetscLogObjectParent((PetscObject)pc,(PetscObject)red->ksp);CHKERRQ(ierr);
 
       ierr = PCGetOptionsPrefix(pc,&prefix);CHKERRQ(ierr);
       ierr = KSPSetOptionsPrefix(red->ksp,prefix);CHKERRQ(ierr);
@@ -479,16 +478,16 @@ static PetscErrorCode PCDestroy_SemiRedundant(PC pc)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCSetFromOptions_SemiRedundant(PetscOptionItems *PetscOptionsObject,PC pc)
+static PetscErrorCode PCSetFromOptions_SemiRedundant(PC pc,PetscOptionItems *PetscOptionsObject)
 {
   PetscErrorCode   ierr;
   PC_SemiRedundant *red = (PC_SemiRedundant*)pc->data;
 
   PetscFunctionBegin;
-  ierr = PetscOptionsHead(PetscOptionsObject,"SemiRedundant options");CHKERRQ(ierr);
+  PetscOptionsHeadBegin(PetscOptionsObject,"SemiRedundant options");
   ierr = PetscOptionsInt("-pc_semiredundant_factor","Factor to reduce parent communication size by","PCSemiRedundantSetFactor",red->nsubcomm_factor,&red->nsubcomm_factor,0);CHKERRQ(ierr);
   ierr = PetscOptionsBool("-pc_semiredundant_fuse_blocks","Fuse original matrix partitioning and preserve block size","PCSemiRedundantFuseBlocks",red->fuse_blocks,&red->fuse_blocks,0);CHKERRQ(ierr);
-  ierr = PetscOptionsTail();CHKERRQ(ierr);
+  PetscOptionsHeadEnd();
   PetscFunctionReturn(0);
 }
 
@@ -539,7 +538,7 @@ PetscErrorCode PCCreate_SemiRedundant(PC pc)
   PetscMPIInt      size;
 
   PetscFunctionBegin;
-  ierr = PetscNewLog(pc,&red);CHKERRQ(ierr);
+  ierr = PetscNew(&red);CHKERRQ(ierr);
   pc->data            = (void*)red;
 
   red->nsubcomm_factor = 1;

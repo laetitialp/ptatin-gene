@@ -89,7 +89,6 @@ PetscErrorCode KSPSetUp_ChebychevRN(KSP ksp)
       ierr = PetscSubcommCreate(comm,&cheb->psubcomm);CHKERRQ(ierr);
       ierr = PetscSubcommSetNumber(cheb->psubcomm,cheb->nsubcomm);CHKERRQ(ierr);
       ierr = PetscSubcommSetType(cheb->psubcomm,PETSC_SUBCOMM_INTERLACED);CHKERRQ(ierr);
-      ierr = PetscLogObjectMemory((PetscObject)ksp,sizeof(PetscSubcomm));CHKERRQ(ierr);
 
       subcomm = PetscSubcommChild(cheb->psubcomm);
     } else {
@@ -236,7 +235,7 @@ PetscErrorCode KSPChebychevRNSetEstimateEigenvalues(KSP ksp,PetscReal a,PetscRea
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode KSPSetFromOptions_ChebychevRN(PetscOptionItems *PetscOptionsObject,KSP ksp)
+PetscErrorCode KSPSetFromOptions_ChebychevRN(KSP ksp,PetscOptionItems *PetscOptionsObject)
 {
   KSP_ChebychevRN  *cheb = (KSP_ChebychevRN*)ksp->data;
   PetscErrorCode   ierr;
@@ -246,7 +245,7 @@ PetscErrorCode KSPSetFromOptions_ChebychevRN(PetscOptionItems *PetscOptionsObjec
   PetscMPIInt      size;
 
   PetscFunctionBegin;
-  ierr = PetscOptionsHead(PetscOptionsObject,"KSP ChebychevRN Options");CHKERRQ(ierr);
+  PetscOptionsHeadBegin(PetscOptionsObject,"KSP ChebychevRN Options");
   ierr = PetscOptionsInt("-ksp_chebychev_global_reduction_redundant_number","Number of redundant vecs used in VecNorm/VecDot","KSPChebychevGlobalReductionRedundantSetNumber",cheb->nsubcomm,&cheb->nsubcomm,0);CHKERRQ(ierr);
   ierr = PetscOptionsRealArray("-ksp_chebychev_eigenvalues","extreme eigenvalues","KSPChebychevRNSetEigenvalues",&cheb->emin,&two,0);CHKERRQ(ierr);
   ierr = PetscOptionsRealArray("-ksp_chebychev_estimate_eigenvalues","estimate eigenvalues using a Krylov method, then use this transform for Chebychev eigenvalue bounds","KSPChebychevRNSetEstimateEigenvalues",tform,&four,&flg);CHKERRQ(ierr);
@@ -267,7 +266,7 @@ PetscErrorCode KSPSetFromOptions_ChebychevRN(PetscOptionItems *PetscOptionsObjec
   if (cheb->nsubcomm != size) {
     cheb->use_red_norm = PETSC_TRUE;
   }
-  ierr = PetscOptionsTail();CHKERRQ(ierr);
+  PetscOptionsHeadEnd();
   PetscFunctionReturn(0);
 }
 
@@ -877,7 +876,7 @@ PetscErrorCode  KSPCreate_ChebychevRN(KSP ksp)
   PetscMPIInt      size;
 
   PetscFunctionBegin;
-  ierr = PetscNewLog(ksp,&chebychevP);CHKERRQ(ierr);
+  ierr = PetscNew(&chebychevP);CHKERRQ(ierr);
 
   ksp->data                      = (void*)chebychevP;
   ierr = KSPSetSupportedNorm(ksp,KSP_NORM_PRECONDITIONED,PC_LEFT,2);CHKERRQ(ierr);

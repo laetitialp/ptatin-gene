@@ -1030,7 +1030,7 @@ static PetscErrorCode WSMPSetFromOptions_NumericFactorization(PC pc,PC_WSMP *wsm
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCSetFromOptions_WSMP(PetscOptionItems *PetscOptionsObject,PC pc)
+static PetscErrorCode PCSetFromOptions_WSMP(PC pc,PetscOptionItems *PetscOptionsObject)
 {
   PetscErrorCode ierr;
   PC_WSMP        *wsmp = (PC_WSMP*)pc->data;
@@ -1038,7 +1038,7 @@ static PetscErrorCode PCSetFromOptions_WSMP(PetscOptionItems *PetscOptionsObject
   PetscBool      found;
 
   PetscFunctionBegin;
-  ierr = PetscOptionsHead(PetscOptionsObject,"WSMP options [init]");CHKERRQ(ierr);
+  PetscOptionsHeadBegin(PetscOptionsObject,"WSMP options [init]");
 
   index = 8;  ival = (PetscInt)wsmp->IPARM[index-1];
   ierr = PetscOptionsInt("-pc_wsmp_iparm8","","PCWSMPSetIParm",ival,&ival,&found);CHKERRQ(ierr); if (found) { PetscMPIIntCast(ival,&wsmp->IPARM[index-1]); }
@@ -1058,7 +1058,7 @@ static PetscErrorCode PCSetFromOptions_WSMP(PetscOptionItems *PetscOptionsObject
   index = 32;  ival = (PetscInt)wsmp->IPARM[index-1];
   ierr = PetscOptionsInt("-pc_wsmp_iparm32","","PCWSMPSetIParm",ival,&ival,&found);CHKERRQ(ierr); if (found) { PetscMPIIntCast(ival,&wsmp->IPARM[index-1]); }
 
-  ierr = PetscOptionsTail();CHKERRQ(ierr);
+  PetscOptionsHeadEnd();
 
   PetscFunctionReturn(0);
 }
@@ -1146,7 +1146,7 @@ PetscErrorCode PCCreate_WSMP(PC pc)
   PetscMPIInt    size;
 
   PetscFunctionBegin;
-  ierr = PetscNewLog(pc,&wsmp);CHKERRQ(ierr);
+  ierr = PetscNew(&wsmp);CHKERRQ(ierr);
   pc->data = (void*)wsmp;
 
   /* determine if sequential call or parallel call required */
