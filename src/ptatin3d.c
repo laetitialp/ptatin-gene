@@ -1073,7 +1073,7 @@ PetscErrorCode  DMCoarsenHierarchy2_DA(DM da,PetscInt nlevels,DM dac[])
   PetscValidHeaderSpecific(da,DM_CLASSID,1);
   if (nlevels < 0) SETERRQ(PetscObjectComm((PetscObject)da),PETSC_ERR_ARG_OUTOFRANGE,"nlevels cannot be negative");
   if (nlevels == 0) PetscFunctionReturn(0);
-  PetscValidPointer(dac,3);
+  PetscAssertPointer(dac,3);
 
   /* Get refinement factors, defaults taken from the coarse DMDA */
   ierr = PetscMalloc3(nlevels,&refx,nlevels,&refy,nlevels,&refz);CHKERRQ(ierr);
