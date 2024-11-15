@@ -7,7 +7,7 @@
 #include <string.h>
 #include <mpi.h>
 
-#include "MaterialConst_ViscosityArrh_DislDiff_def.h"
+#include "material_constants/MaterialConst_ViscosityArrh_DislDiff_def.h"
 
 
 const char MaterialConst_ViscosityArrh_DislDiff_classname[] = "MaterialConst_ViscosityArrh_DislDiff";
