@@ -799,7 +799,7 @@ PetscErrorCode MPPC_SimpleRemoval_Mask(PetscInt np_upper,DM da,DataBucket db,Pet
   }
 
 #if (MPPC_LOG_LEVEL >= 1)
-  PetscPrintf(PetscObjectComm((PetscObject)da),"[LOG]  %D cells with points > np_upper (%D) \n", count, np_upper);
+  PetscPrintf(PetscObjectComm((PetscObject)da),"[LOG]  %" PetscInt_FMT " cells with points > np_upper (%" PetscInt_FMT ") \n", count, np_upper);
 #endif
 
   if (count == 0) {

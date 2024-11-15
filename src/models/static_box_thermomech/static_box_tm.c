@@ -395,9 +395,9 @@ PetscErrorCode ModelOutput_StaticBoxTM(pTatinCtx c,Vec X,const char prefix[],voi
   ierr = DMCompositeRestoreAccess(stokes,X,&Xu,&Xp);CHKERRQ(ierr);
   for (k=0; k<3; k++) {
     if (nrm[k] > 1.0e-11) {
-      PetscPrintf(PETSC_COMM_WORLD,"[staticBox] ||v%D - v%D_exact||_inf = %+1.12e <fail>\n",k,k,nrm[k]);
+      PetscPrintf(PETSC_COMM_WORLD,"[staticBox] ||v%" PetscInt_FMT " - v%" PetscInt_FMT "_exact||_inf = %+1.12e <fail>\n",k,k,nrm[k]);
     } else {
-      PetscPrintf(PETSC_COMM_WORLD,"[staticBox] ||v%D - v%D_exact||_inf <= 1.0e-11 <pass>\n",k,k);
+      PetscPrintf(PETSC_COMM_WORLD,"[staticBox] ||v%" PetscInt_FMT " - v%" PetscInt_FMT "_exact||_inf <= 1.0e-11 <pass>\n",k,k);
     }
   }
 
@@ -479,7 +479,7 @@ PetscErrorCode ModelOutput_StaticBoxTM(pTatinCtx c,Vec X,const char prefix[],voi
           ierr = Compute1DTemperature(y,Q,&T_exact,&gradT_exact);CHKERRQ(ierr);
           T_numeric = T[k][j][i];
 
-          /*PetscPrintf(PETSC_COMM_WORLD,"%D %+1.12e %+1.12e %+1.12e\n",j,y,T_numeric,T_exact);*/
+          /*PetscPrintf(PETSC_COMM_WORLD,"%" PetscInt_FMT " %+1.12e %+1.12e %+1.12e\n",j,y,T_numeric,T_exact);*/
           delta = PetscAbsReal(T_numeric - T_exact);
           if (delta > max_abs_delta_t) {
             max_abs_delta_t = delta;

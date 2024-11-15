@@ -74,7 +74,7 @@ PetscErrorCode ModelInitialize_iPLUS(pTatinCtx c,void *ctx)
   if (flg) {
     data->modeltype = (iPLUSModelType)modeltype;
   }
-  PetscPrintf(PETSC_COMM_WORLD, "  iPLUS: Using model type %D \n",(PetscInt)modeltype);
+  PetscPrintf(PETSC_COMM_WORLD, "  iPLUS: Using model type %" PetscInt_FMT " \n",(PetscInt)modeltype);
 
   data->mantle_eta = 85.0;    data->mantle_rho = 1413.0;
   data->plume_eta  = 5.0;     data->plume_rho  = 1373.0;
@@ -151,7 +151,7 @@ PetscErrorCode ModelInitialize_iPLUS(pTatinCtx c,void *ctx)
     PetscPrintf(PETSC_COMM_WORLD, "  iPLUS: [plume origin] %1.4e m ; %1.4e m ; %1.4e m\n",data->plume_pos[0],data->plume_pos[1],data->plume_pos[2]);
     PetscPrintf(PETSC_COMM_WORLD, "  iPLUS: [plume radius] %1.4e m \n",data->plume_radius);
     PetscPrintf(PETSC_COMM_WORLD, "  iPLUS: [plume A0]     %1.4e 1/(ms) \n",data->plume_A0);
-    PetscPrintf(PETSC_COMM_WORLD, "  iPLUS: [plume points] %D x %D \n",data->np_plume_x,data->np_plume_z);
+    PetscPrintf(PETSC_COMM_WORLD, "  iPLUS: [plume points] %" PetscInt_FMT " x %" PetscInt_FMT " \n",data->np_plume_x,data->np_plume_z);
   }
 
   /* slab geometry */
@@ -602,7 +602,7 @@ PetscErrorCode ModelOutput_iPLUS(pTatinCtx c,Vec X,const char prefix[],void *ctx
       PetscViewerASCIIPrintf(data->logviewer,"# step  time (ND)       time (sec)      Omega(t=0)      Omega(t)        plume_{y_min,y_max}             slab_{y_min,y_max} \n");
       beenhere = 1;
     }
-    PetscViewerASCIIPrintf(data->logviewer,"%D\t%1.4e\t%1.4e\t%1.6e\t%1.6e\t%+1.4e\t%+1.4e\t%+1.4e\t%+1.4e\n",
+    PetscViewerASCIIPrintf(data->logviewer,"%" PetscInt_FMT "\t%1.4e\t%1.4e\t%1.6e\t%1.6e\t%+1.4e\t%+1.4e\t%+1.4e\t%+1.4e\n",
                            c->step, c->time,c->time*data->time_scale,
                            data->intial_domain_volume, volume,
                            plume_range_yp[0], plume_range_yp[1] ,slab_range_yp[0], slab_range_yp[1]);

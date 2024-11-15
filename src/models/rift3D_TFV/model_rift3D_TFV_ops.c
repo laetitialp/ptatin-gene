@@ -962,7 +962,7 @@ static PetscErrorCode ModelOutput_Rift3D_T(pTatinCtx c,Vec X,const char prefix[]
     char             root[PETSC_MAX_PATH_LEN],pvoutputdir[PETSC_MAX_PATH_LEN],fname[PETSC_MAX_PATH_LEN];
     
     ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s",c->outputpath);CHKERRQ(ierr);
-    ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%D",root,c->step);CHKERRQ(ierr);
+    ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%" PetscInt_FMT "",root,c->step);CHKERRQ(ierr);
     //ierr = pTatinTestDirectory(pvoutputdir,'w',&found);CHKERRQ(ierr);
     //if (!found) { ierr = pTatinCreateDirectory(pvoutputdir);CHKERRQ(ierr); }
 
@@ -979,7 +979,7 @@ static PetscErrorCode ModelOutput_Rift3D_T(pTatinCtx c,Vec X,const char prefix[]
       if (prefix) { PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "%s-Tfv.pvtu",prefix);
       } else {      PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "Tfv.pvtu");           }
       
-      PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%D",c->step);
+      PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%" PetscInt_FMT "",c->step);
       //ierr = ParaviewPVDOpenAppend(PETSC_FALSE,c->step,pvdfilename,c->time, vtkfilename, stepprefix);CHKERRQ(ierr);
       if (!been_here) { /* new file */
         ierr = ParaviewPVDOpen(pvdfilename);CHKERRQ(ierr);
@@ -1002,7 +1002,7 @@ static PetscErrorCode ModelOutput_Rift3D_T(pTatinCtx c,Vec X,const char prefix[]
     char             root[PETSC_MAX_PATH_LEN],pvoutputdir[PETSC_MAX_PATH_LEN],fname[PETSC_MAX_PATH_LEN];
     
     ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s",c->outputpath);CHKERRQ(ierr);
-    ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%D",root,c->step);CHKERRQ(ierr);
+    ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%" PetscInt_FMT "",root,c->step);CHKERRQ(ierr);
     
     
     ierr = pTatinGetContext_EnergyFV(c,&energy);CHKERRQ(ierr);
@@ -1020,7 +1020,7 @@ static PetscErrorCode ModelOutput_Rift3D_T(pTatinCtx c,Vec X,const char prefix[]
       if (prefix) { PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "%s_T_fv.pvts",prefix);
       } else {      PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "T_fv.pvts");           }
       
-      PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%D",c->step);
+      PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%" PetscInt_FMT "",c->step);
       //ierr = ParaviewPVDOpenAppend(PETSC_FALSE,c->step,pvdfilename,c->time, vtkfilename, stepprefix);CHKERRQ(ierr);
       if (!been_here) { /* new file */
         ierr = ParaviewPVDOpen(pvdfilename);CHKERRQ(ierr);
@@ -1038,7 +1038,7 @@ static PetscErrorCode ModelOutput_Rift3D_T(pTatinCtx c,Vec X,const char prefix[]
     char             root[PETSC_MAX_PATH_LEN],pvoutputdir[PETSC_MAX_PATH_LEN],fname[PETSC_MAX_PATH_LEN];
     
     ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s",c->outputpath);CHKERRQ(ierr);
-    ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%D",root,c->step);CHKERRQ(ierr);
+    ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%" PetscInt_FMT "",root,c->step);CHKERRQ(ierr);
     
     
     ierr = pTatinGetContext_EnergyFV(c,&energy);CHKERRQ(ierr);

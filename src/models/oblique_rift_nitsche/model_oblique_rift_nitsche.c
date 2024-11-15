@@ -86,11 +86,11 @@ static PetscErrorCode ModelInitialGeometry_RiftNitsche(ModelRiftNitscheCtx *data
   if (found) { if (nn != 3) { SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Expected 3 values for -y_continent. Found %d",nn); } }
 
   /* reports before scaling */
-  PetscPrintf(PETSC_COMM_WORLD,"************ Box Geometry ************\n",NULL);
+  PetscPrintf(PETSC_COMM_WORLD,"************ Box Geometry ************\n");
   for (d=0; d<3; d++) {
     PetscPrintf(PETSC_COMM_WORLD,"[ O[%d] , L[%d] ] = [ %+1.4e [m], %+1.4e [m] ]\n", d, d, data->O[d] ,data->L[d] );
   }
-  PetscPrintf(PETSC_COMM_WORLD,"********** Initial layering **********\n",NULL);
+  PetscPrintf(PETSC_COMM_WORLD,"********** Initial layering **********\n");
   PetscPrintf(PETSC_COMM_WORLD,"Conrad: %+1.4e [m]\n", data->y_continent[0]);
   PetscPrintf(PETSC_COMM_WORLD,"Moho:   %+1.4e [m]\n", data->y_continent[1]);
   PetscPrintf(PETSC_COMM_WORLD,"LAB:    %+1.4e [m]\n", data->y_continent[2]);
@@ -128,7 +128,7 @@ static PetscErrorCode ModelInitialBoundaryVelocity_RiftNitsche(ModelRiftNitscheC
   ierr = PetscOptionsGetReal(NULL,MODEL_NAME_R,"-bc_time_full_velocity",&data->time_full_velocity,NULL);CHKERRQ(ierr);
 
   /* reports before scaling */
-  PetscPrintf(PETSC_COMM_WORLD,"************ Velocity Dirichlet BCs ************\n",NULL);
+  PetscPrintf(PETSC_COMM_WORLD,"************ Velocity Dirichlet BCs ************\n");
   PetscPrintf(PETSC_COMM_WORLD,"||u||= %1.4e, ux = %+1.4e, uy = %+1.4e, uz = %+1.4e [cm/yr]\n",data->norm_u,data->u_bc[0],data->u_bc[1],data->u_bc[2]);
 
   PetscFunctionReturn(0);
@@ -250,7 +250,7 @@ static PetscErrorCode ComputeNewBasisVectors(ModelRiftNitscheCtx *data)
   ierr = Rotate_u(data->alpha_r,r,u0,data->t1_hat);CHKERRQ(ierr);
   ierr = Rotate_u(-0.5*M_PI,r,data->t1_hat,data->n_hat);CHKERRQ(ierr);
 
-  PetscPrintf(PETSC_COMM_WORLD,"************ Rotated basis vectors ************\n",NULL);
+  PetscPrintf(PETSC_COMM_WORLD,"************ Rotated basis vectors ************\n");
   for (int i=0; i<3; i++) {
     PetscPrintf(PETSC_COMM_WORLD,"n_hat[%d] = %1.4f, t1_hat[%d] = %1.4f \n",i,data->n_hat[i],i,data->t1_hat[i]);
   }
@@ -602,7 +602,7 @@ static PetscErrorCode ModelSetWeakZoneParameters_RiftNitsche(ModelRiftNitscheCtx
 
   data->wz_angle = data->wz_angle * M_PI/180.0;
 
-  PetscPrintf(PETSC_COMM_WORLD,"************ Weak Zones Type ************\n",NULL);
+  PetscPrintf(PETSC_COMM_WORLD,"************ Weak Zones Type ************\n");
   data->wz_type = -1;
   if (wz_notch) {
     data->wz_type = 0;
@@ -1454,7 +1454,7 @@ static PetscErrorCode ModelApplyInitialMaterialGeometry_RiftNitsche(pTatinCtx c,
   ierr = PetscMalloc1(2*data->n_notches,&notch_centre);CHKERRQ(ierr);
   ierr = SetWeakZonesCentreCoordinates(notch_centre,data);CHKERRQ(ierr);
 
-  PetscPrintf(PETSC_COMM_WORLD,"************ Weak Zones Centre Coordinates ************\n",NULL);
+  PetscPrintf(PETSC_COMM_WORLD,"************ Weak Zones Centre Coordinates ************\n");
   for (int II=0; II<data->n_notches; II++) {
     PetscPrintf(PETSC_COMM_WORLD,"notch_centre[2*%d + 0] = %f, notch_centre[2*%d + 1] = %f\n",II,notch_centre[2*II + 0],II,notch_centre[2*II + 1]);
   }
@@ -2778,7 +2778,7 @@ static PetscErrorCode ModelOutputEnergyFV_RiftNitsche(pTatinCtx ptatin, const ch
   if (prefix) { PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "%s_T_fv.pvts",prefix);
   } else {      PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "T_fv.pvts");           }
   
-  PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%D",ptatin->step);
+  PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%" PetscInt_FMT "",ptatin->step);
   if (!been_here) { /* new file */
     ierr = ParaviewPVDOpen(pvdfilename);CHKERRQ(ierr);
     ierr = ParaviewPVDAppend(pvdfilename,ptatin->time,vtkfilename,stepprefix);CHKERRQ(ierr);
@@ -2787,7 +2787,7 @@ static PetscErrorCode ModelOutputEnergyFV_RiftNitsche(pTatinCtx ptatin, const ch
   }
   
   ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s",ptatin->outputpath);CHKERRQ(ierr);
-  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%D",root,ptatin->step);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%" PetscInt_FMT "",root,ptatin->step);CHKERRQ(ierr);
   
   /* PetscVec */
   ierr = PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s_energy",prefix);CHKERRQ(ierr);
@@ -2830,7 +2830,7 @@ static PetscErrorCode ModelViewSurfaceConstraint(pTatinCtx ptatin, ModelRiftNits
   ierr = SurfBCListGetConstraint(stokes->surf_bclist,"bc_navier_face",   &sc_navier_face);CHKERRQ(ierr);
   ierr = SurfBCListGetConstraint(stokes->surf_bclist,"bc_navier_normal", &sc_navier_normal);CHKERRQ(ierr);
   
-  ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s/step%D",ptatin->outputpath,ptatin->step);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s/step%" PetscInt_FMT "",ptatin->outputpath,ptatin->step);CHKERRQ(ierr);
   if (sc_neumann)       { ierr = SurfaceConstraintViewParaview(sc_neumann,       root, "boundary_neumann");CHKERRQ(ierr); }
   if (sc_navier)        { ierr = SurfaceConstraintViewParaview(sc_navier,        root, "boundary_navier");CHKERRQ(ierr);  }
   if (sc_navier_face)   { ierr = SurfaceConstraintViewParaview(sc_navier_face,   root, "bc_navier_face");CHKERRQ(ierr);   }
@@ -2854,7 +2854,7 @@ static PetscErrorCode ModelOutputPoissonPressure(pTatinCtx ptatin, ModelRiftNits
 
   ierr = pTatinGetContext_LithoP(ptatin,&poisson_pressure);CHKERRQ(ierr);
 
-  ierr = PetscSNPrintf(stepname,PETSC_MAX_PATH_LEN-1,"step%1.6D",ptatin->step);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(stepname,PETSC_MAX_PATH_LEN-1,"step%1.6" PetscInt_FMT "",ptatin->step);CHKERRQ(ierr);
   if (data->output_markers) {
     ierr = PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/%sPoissonPressure.vts",ptatin->outputpath,stepname);CHKERRQ(ierr);
     ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);

@@ -351,7 +351,7 @@ PetscErrorCode ModelAdaptMaterialPointResolution_Indentor(pTatinCtx c,void *ctx)
   PetscErrorCode ierr;
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
-  PetscPrintf(PETSC_COMM_WORLD,"  NO MARKER INJECTION ON FACES \n", PETSC_FUNCTION_NAME);
+  PetscPrintf(PETSC_COMM_WORLD,"  NO MARKER INJECTION ON FACES \n");
 
   /* Perform injection and cleanup of markers */
   ierr = MaterialPointPopulationControl_v1(c);CHKERRQ(ierr);
@@ -452,7 +452,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_Indentor(pTatinCtx c,Vec X,void *ctx
 {
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
-  PetscPrintf(PETSC_COMM_WORLD,"  NOT IMPLEMENTED \n", PETSC_FUNCTION_NAME);
+  PetscPrintf(PETSC_COMM_WORLD,"  NOT IMPLEMENTED \n");
 
   PetscFunctionReturn(0);
 }

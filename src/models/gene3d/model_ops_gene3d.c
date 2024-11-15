@@ -2915,7 +2915,7 @@ static PetscErrorCode ModelOutputEnergyFV_Gene3D(pTatinCtx ptatin, const char pr
   if (prefix) { PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "%s_T_fv.pvts",prefix);
   } else {      PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "T_fv.pvts");           }
 
-  PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%D",ptatin->step);
+  PetscSNPrintf(stepprefix,PETSC_MAX_PATH_LEN-1,"step%" PetscInt_FMT "",ptatin->step);
   if (!been_here) { /* new file */
     ierr = ParaviewPVDOpen(pvdfilename);CHKERRQ(ierr);
     ierr = ParaviewPVDAppend(pvdfilename,ptatin->time,vtkfilename,stepprefix);CHKERRQ(ierr);
@@ -2924,7 +2924,7 @@ static PetscErrorCode ModelOutputEnergyFV_Gene3D(pTatinCtx ptatin, const char pr
   }
 
   ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s",ptatin->outputpath);CHKERRQ(ierr);
-  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%D",root,ptatin->step);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(pvoutputdir,PETSC_MAX_PATH_LEN-1,"%s/step%" PetscInt_FMT "",root,ptatin->step);CHKERRQ(ierr);
 
   /* PetscVec */
   ierr = PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s_energy",prefix);CHKERRQ(ierr);
@@ -3084,11 +3084,11 @@ PetscErrorCode ModelGene3DCheckPhase(DataBucket db,RheologyConstants *rheology)
     MPntStdGetField_phase_index(material_point,&phase_index);
     MPntStdGetField_global_coord(material_point,&pos);
     if (phase_index<0) {
-      PetscPrintf(PETSC_COMM_SELF,"Phase of marker %D is uninitialized. Marker coor (%1.4e,%1.4e,%1.4e)\n",p,pos[0],pos[1],pos[2]);
+      PetscPrintf(PETSC_COMM_SELF,"Phase of marker %" PetscInt_FMT " is uninitialized. Marker coor (%1.4e,%1.4e,%1.4e)\n",p,pos[0],pos[1],pos[2]);
       SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Marker phase is uninitialized");
     }
     if (phase_index>=rheology->nphases_active) {
-      PetscPrintf(PETSC_COMM_SELF,"Phase of marker %D is larger than rheo->nphases_active = %D. Marker coor (%1.4e,%1.4e,%1.4e)\n",p,rheology->nphases_active, pos[0],pos[1],pos[2]);
+      PetscPrintf(PETSC_COMM_SELF,"Phase of marker %" PetscInt_FMT " is larger than rheo->nphases_active = %" PetscInt_FMT ". Marker coor (%1.4e,%1.4e,%1.4e)\n",p,rheology->nphases_active, pos[0],pos[1],pos[2]);
       SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Marker phase is undefined");
     }
   }

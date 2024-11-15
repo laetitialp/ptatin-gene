@@ -257,7 +257,7 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_Steady_TFV(pTatinCtx c,void *
 {
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
-  PetscPrintf(PETSC_COMM_WORLD,"  NOT IMPLEMENTED \n", PETSC_FUNCTION_NAME);
+  PetscPrintf(PETSC_COMM_WORLD,"  NOT IMPLEMENTED \n");
 
   PetscFunctionReturn(0);
 }

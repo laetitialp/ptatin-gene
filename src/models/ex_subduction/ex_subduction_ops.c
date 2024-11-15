@@ -373,7 +373,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_ExSubduction(pTatinCtx c,Vec X,void 
     ierr = DMCompositeGetAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
 
     //ierr = UpdateMeshGeometry_VerticalLagrangianSurfaceRemesh(dav,velocity,c->dt);CHKERRQ(ierr);
-    ierr = UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX(dav,velocity,PETSC_NULL,c->dt);CHKERRQ(ierr);
+    ierr = UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX(dav,velocity,NULL,c->dt);CHKERRQ(ierr);
 
     ierr = DMCompositeRestoreAccess(stokes_pack,X,&velocity,&pressure);CHKERRQ(ierr);
 
@@ -432,7 +432,7 @@ PetscErrorCode ModelOutput_ExSubduction(pTatinCtx c,Vec X,const char prefix[],vo
         slab_range_yp[0] = gmin[1];
         slab_range_yp[1] = gmax[1];
     }
-    PetscViewerASCIIPrintf(data->logviewer,"%.7D , %4.4e  , %4.6e , %4.6e , %4.4e  , %4.6e , %4.6e\n",
+    PetscViewerASCIIPrintf(data->logviewer,"%.7" PetscInt_FMT " , %4.4e  , %4.6e , %4.6e , %4.4e  , %4.6e , %4.6e\n",
                            c->step,
                            c->time,slab_range_yp[0],slab_range_yp[1],
                            c->time*char_time/(1.0e6*365.0*24.0*3600.0),slab_range_yp[0]*char_length*1.0e-3,slab_range_yp[1]*char_length*1.0e-3);

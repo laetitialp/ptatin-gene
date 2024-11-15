@@ -181,7 +181,7 @@ PetscErrorCode ModelInitialize_MultilayerFolding(pTatinCtx c,void *ctx)
 
   PetscPrintf(PETSC_COMM_WORLD,"ModelReport: \"Multilayer Folding\"\n");
   PetscPrintf(PETSC_COMM_WORLD," Domain: [0 , %1.4e] x [0 , %1.4e] x [0 , %1.4e]\n", data->Lx,data->Ly,data->Lz );
-  PetscPrintf(PETSC_COMM_WORLD," Mesh:   %.4D x %.4D x %.4D \n", c->mx,c->my,c->mz );
+  PetscPrintf(PETSC_COMM_WORLD," Mesh:   %.4" PetscInt_FMT " x %.4" PetscInt_FMT " x %.4" PetscInt_FMT " \n", c->mx,c->my,c->mz );
 
   n = data->n_interfaces-1;
 
@@ -190,13 +190,13 @@ PetscErrorCode ModelInitialize_MultilayerFolding(pTatinCtx c,void *ctx)
     PetscPrintf(PETSC_COMM_WORLD," ---------------------------- y = %1.4e ----------------------------\n",data->interface_heights[n]);
     PetscPrintf(PETSC_COMM_WORLD,"|\n");
     if (!data->visco_plastic) {
-      PetscPrintf(PETSC_COMM_WORLD,"|      eta = %1.4e , rho = %1.4e , my = %.4D \n",data->eta[n-1],data->rho[n-1],data->layer_res_j[n-1]);
+      PetscPrintf(PETSC_COMM_WORLD,"|      eta = %1.4e , rho = %1.4e , my = %.4" PetscInt_FMT " \n",data->eta[n-1],data->rho[n-1],data->layer_res_j[n-1]);
     } else {
-      PetscPrintf(PETSC_COMM_WORLD,"|      eta = %1.4e , cohesion = %1.4e , rho = %1.4e , my = %.4D \n",data->eta[n-1],data->cohesion[n-1],data->rho[n-1],data->layer_res_j[n-1]);
+      PetscPrintf(PETSC_COMM_WORLD,"|      eta = %1.4e , cohesion = %1.4e , rho = %1.4e , my = %.4" PetscInt_FMT " \n",data->eta[n-1],data->cohesion[n-1],data->rho[n-1],data->layer_res_j[n-1]);
     }
     PetscPrintf(PETSC_COMM_WORLD,"|\n");
   }
-  PetscPrintf(PETSC_COMM_WORLD," ---------------------------- y = %1.4e ----------------------------\n",data->interface_heights[0],data->layer_res_j[0]);
+  PetscPrintf(PETSC_COMM_WORLD," ---------------------------- y = %1.4e res %" PetscInt_FMT " ----------------------------\n",data->interface_heights[0],data->layer_res_j[0]);
 
   /* Rheology prescription */
   ierr = pTatinGetRheology(c,&rheology);CHKERRQ(ierr);
@@ -222,7 +222,7 @@ PetscErrorCode ModelInitialize_MultilayerFolding(pTatinCtx c,void *ctx)
   }
 
   for (n=0; n<data->n_interfaces-1; n++) {
-    PetscPrintf(PETSC_COMM_WORLD,"============== Region index [%D] ============================ \n",n);
+    PetscPrintf(PETSC_COMM_WORLD,"============== Region index [%" PetscInt_FMT "] ============================ \n",n);
     ierr = MaterialConstantsSetFromOptions(materialconstants,"mc_",n,PETSC_FALSE);CHKERRQ(ierr);
     ierr = MaterialConstantsPrintAll(materialconstants,n);CHKERRQ(ierr);
   }
@@ -721,7 +721,7 @@ PetscErrorCode MultilayerFolding_InitialMaterialGeometry_DamageMP(pTatinCtx c,Mo
       SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"InitialDamage: Cannot set a layer index to be less than 0");
     }
     if (damagelist[p] >= data->n_interfaces-1) {
-      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"InitialDamage: Cannot set a layer index greater than max layers (%D)",data->n_interfaces-2);
+      SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"InitialDamage: Cannot set a layer index greater than max layers (%" PetscInt_FMT ")",data->n_interfaces-2);
     }
 
     layer2damge[ damagelist[p] ] = PETSC_TRUE;
@@ -729,9 +729,9 @@ PetscErrorCode MultilayerFolding_InitialMaterialGeometry_DamageMP(pTatinCtx c,Mo
 
   for (p=0; p<data->n_interfaces-1; p++) {
     if (!layer2damge[p]) {
-      PetscPrintf(PETSC_COMM_WORLD,"  layer[%D] : undamaged \n",p);
+      PetscPrintf(PETSC_COMM_WORLD,"  layer[%" PetscInt_FMT "] : undamaged \n",p);
     } else {
-      PetscPrintf(PETSC_COMM_WORLD,"  layer[%D] : initial damage [+%1.4e,+%1.4e] \n",p,dmin,dmax);
+      PetscPrintf(PETSC_COMM_WORLD,"  layer[%" PetscInt_FMT "] : initial damage [+%1.4e,+%1.4e] \n",p,dmin,dmax);
     }
   }
 
@@ -985,7 +985,7 @@ PetscErrorCode _InitialMaterialGeometryQuadraturePoints_MultilayerFolding(pTatin
       layer++;
     }
     if (phase == -1) {
-      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot locate the phase element %D is associated with",e);
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot locate the phase element %" PetscInt_FMT " is associated with",e);
     }
 
     ierr = VolumeQuadratureGetCellData_Stokes(stokes->volQ,all_gausspoints,e,&cell_gausspoints);CHKERRQ(ierr);
@@ -1057,7 +1057,7 @@ PetscErrorCode MultilayerFolding_SetMaterialPointPropertiesFromLayer(pTatinCtx c
       ei = ei + data->layer_res_j[layer];
     }
     if (phase == -1) {
-      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Couldn't identify marker %D in any layer",p);
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Couldn't identify marker %" PetscInt_FMT " in any layer",p);
     }
 
     ierr = MaterialPointSet_viscosity(  mpX,p, data->eta[phase]);CHKERRQ(ierr);
@@ -1448,7 +1448,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_MultilayerFolding(pTatinCtx c,Vec X,
       } else if (data->bc_type == 2) {
         SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Unsupported boundary condition type <move base down to accomodate pure thickening : case 2>");
       } else {
-        SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Unsupported boundary condition type %D",data->bc_type);
+        SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Unsupported boundary condition type %" PetscInt_FMT "",data->bc_type);
       }
 
       /* [B] Advect surface with fluid velocity, internal mesh geometry in x-z is advected with background strain-rate */
@@ -1477,7 +1477,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_MultilayerFolding(pTatinCtx c,Vec X,
     }
 
     if (remesh) {
-      PetscPrintf(PETSC_COMM_WORLD,"Performing surface remeshing \n", PETSC_FUNCTION_NAME);
+      PetscPrintf(PETSC_COMM_WORLD,"Performing surface remeshing \n");
       /*
          Reset position of mesh
          This is required as (i) AR is estimated on the deformed mesh
@@ -1533,7 +1533,7 @@ PetscErrorCode ModelApplyUpdateMeshGeometry_MultilayerFolding(pTatinCtx c,Vec X,
       } else if (data->bc_type == 2) {
         SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Unsupported boundary condition type <move base down to accomodate pure thickening : case 2>");
       } else {
-        SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Unsupported boundary condition type %D",data->bc_type);
+        SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Unsupported boundary condition type %" PetscInt_FMT "",data->bc_type);
       }
 
       /* [B] Advect surface with fluid velocity, internal mesh geometry in x-z is advected with background strain-rate */

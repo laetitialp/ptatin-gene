@@ -113,7 +113,7 @@ PetscErrorCode iPLUS_DetermineElementsContainingPlumeInlet(DM dav,iPLUSCtx *data
   ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
 
   if (data->nplume_elements) {
-    PetscPrintf(PETSC_COMM_SELF,"  [%D] Located %D elements within the plume inlet\n",rank,data->nplume_elements);
+    PetscPrintf(PETSC_COMM_SELF,"  [%" PetscInt_FMT "] Located %" PetscInt_FMT " elements within the plume inlet\n",rank,data->nplume_elements);
   }
 
   PetscFunctionReturn(0);
@@ -230,7 +230,7 @@ PetscErrorCode iPLUS_InsertPlumeMaterial(DM dav,DataBucket materialpoint_db,iPLU
   }
   ierr = MaterialPointRestoreAccess(materialpoint_db,&mpX);CHKERRQ(ierr);
 
-  PetscPrintf(PETSC_COMM_SELF,"  [%D] added %D new plume points; total = %D\n",rank,new_points,n_mpoints);
+  PetscPrintf(PETSC_COMM_SELF,"  [%" PetscInt_FMT "] added %" PetscInt_FMT " new plume points; total = %" PetscInt_FMT "\n",rank,new_points,n_mpoints);
 
   PetscFunctionReturn(0);
 }

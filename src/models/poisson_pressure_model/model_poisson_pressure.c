@@ -79,11 +79,11 @@ static PetscErrorCode ModelInitialGeometryPoissonPressure(ModelPoissonPressureCt
   }
 
   /* reports before scaling */
-  PetscPrintf(PETSC_COMM_WORLD,"************ Box Geometry ************\n",NULL);
+  PetscPrintf(PETSC_COMM_WORLD,"************ Box Geometry ************\n");
   PetscPrintf(PETSC_COMM_WORLD,"[Ox,Lx] = [%+1.4e [m], %+1.4e [m]]\n", data->Ox ,data->Lx );
   PetscPrintf(PETSC_COMM_WORLD,"[Oy,Ly] = [%+1.4e [m], %+1.4e [m]]\n", data->Oy ,data->Ly );
   PetscPrintf(PETSC_COMM_WORLD,"[Oz,Lz] = [%+1.4e [m], %+1.4e [m]]\n", data->Oz ,data->Lz );
-  PetscPrintf(PETSC_COMM_WORLD,"********** Initial layering **********\n",NULL);
+  PetscPrintf(PETSC_COMM_WORLD,"********** Initial layering **********\n");
   PetscPrintf(PETSC_COMM_WORLD,"Conrad: %+1.4e [m]\n", data->y_continent[0]);
   PetscPrintf(PETSC_COMM_WORLD,"Moho:   %+1.4e [m]\n", data->y_continent[1]);
   PetscPrintf(PETSC_COMM_WORLD,"LAB:    %+1.4e [m]\n", data->y_continent[2]);

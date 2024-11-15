@@ -300,7 +300,7 @@ PetscErrorCode ModelAdaptMaterialPointResolution_Delamination(pTatinCtx c,void *
   PetscErrorCode ierr;
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
-  PetscPrintf(PETSC_COMM_WORLD,"  NO MARKER INJECTION ON FACES \n", PETSC_FUNCTION_NAME);
+  PetscPrintf(PETSC_COMM_WORLD,"  NO MARKER INJECTION ON FACES \n");
   
   /* Perform injection and cleanup of markers */
   ierr = MaterialPointPopulationControl_v1(c);CHKERRQ(ierr);
