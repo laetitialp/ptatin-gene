@@ -31,7 +31,7 @@ def write_out_c_class_externdefs( ParticleClass, ParticleClassShortName, variabl
 	print('#include <string.h>')
 	print('#include <stdlib.h>')
 	print('#include <petsc.h>\n')
-	print(('#include "'+ParticleClass+'_def.h"\n\n'))
+	print(('#include "material_constants/'+ParticleClass+'_def.h"\n\n'))
 
 	# function prototype
 	print('PetscErrorCode MaterialConstantsReportParseError(const char model_name[],const char field_name[],const int region);\n\n')
@@ -843,21 +843,40 @@ def Generate_EnergyConductivityThreshold():
 # Call all functions to generate all data types
 def main():
 
-  ## material constants ##
-  Generate_pTatin_MaterialConst_ViscosityArrh()
-  Generate_pTatin_MaterialConst_DiffusivityConst()
-  Generate_pTatin_MaterialConst_VolumetricHeatingConst()
-  Generate_pTatin_MaterialConst_PowerLaw()
+	# These should be moved out of swarm_class_generator.py and moved here.
+	# Requires a lot of code in material_constants.c to be updated.
+	"""
+	Generate_pTatin_MaterialConst_ViscosityConst()
+	Generate_pTatin_MaterialConst_ViscosityZ()
+	Generate_pTatin_MaterialConst_ViscosityArrh()
+	Generate_pTatin_MaterialConst_ViscosityFK()
+	Generate_pTatin_MaterialConst_ViscosityArrh_DislDiff()
 
-  ## Material metadata for energy equations
-  Generate_EnergyMaterialConstants()
-  Generate_EnergySourceConst()
-  Generate_EnergySourceDecay()
-  Generate_EnergySourceAdiabaticAdvection()
+	Generate_pTatin_MaterialConst_DensityConst()
+	Generate_pTatin_MaterialConst_DensityBoussinesq()
+	Generate_pTatin_MaterialConst_DensityTable()
 
-  Generate_EnergyConductivityConst()
-  Generate_EnergyConductivityThreshold()
+	Generate_pTatin_MaterialConst_PlasticMises()
+	Generate_pTatin_MaterialConst_PlasticDP()
+	Generate_pTatin_MaterialConst_SoftLin()
+	Generate_pTatin_MaterialConst_SoftExpo()
+	Generate_pTatin_MaterialConst_MaterialType()
+	"""
 
+	## material constants ##
+	Generate_pTatin_MaterialConst_ViscosityArrh()
+	Generate_pTatin_MaterialConst_DiffusivityConst()
+	Generate_pTatin_MaterialConst_VolumetricHeatingConst()
+	Generate_pTatin_MaterialConst_PowerLaw()
+
+	## Material metadata for energy equations
+	Generate_EnergyMaterialConstants()
+	Generate_EnergySourceConst()
+	Generate_EnergySourceDecay()
+	Generate_EnergySourceAdiabaticAdvection()
+
+	Generate_EnergyConductivityConst()
+	Generate_EnergyConductivityThreshold()
 
 
 if __name__ == "__main__":
