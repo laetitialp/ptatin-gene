@@ -369,7 +369,7 @@ PetscErrorCode t2_ssp(void)
   dt = (2.0 / ((PetscReal)mx)) * (PetscSqrtReal(2.0)/2.0) * PetscSqrtReal(1.0*1.0 + 0.1*0.1);
   time = dt;
   for (k=1; k<10; k++) {
-    PetscPrintf(PETSC_COMM_WORLD,"[step %D]\n",k);
+    PetscPrintf(PETSC_COMM_WORLD,"[step %" PetscInt_FMT "]\n",k);
     //ierr = FVDAStep_FEuler(fv,time,dt,X,F);CHKERRQ(ierr);
     ierr = FVDAStep_RK2SSP(fv,range,time,dt,X,F);CHKERRQ(ierr);
     ierr = VecCopy(F,X);CHKERRQ(ierr);

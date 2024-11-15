@@ -231,7 +231,7 @@ PetscErrorCode t1(void)
       l2Q += (Q_exact - Q_fv)*(Q_exact - Q_fv) * detJ[q];
     }
   }
-  PetscPrintf(fv->comm,"Test function: %D\n",test_function_type);
+  PetscPrintf(fv->comm,"Test function: %" PetscInt_FMT "\n",test_function_type);
   ierr = MPI_Allreduce(MPI_IN_PLACE,&volOmega,1,MPIU_REAL,MPIU_SUM,fv->comm);CHKERRQ(ierr);
   PetscPrintf(fv->comm,"Domain(volume)       %1.4e\n",volOmega);
   ierr = MPI_Allreduce(MPI_IN_PLACE,&l2Q,1,MPIU_REAL,MPIU_SUM,fv->comm);CHKERRQ(ierr);
@@ -502,7 +502,7 @@ PetscErrorCode t2(void)
       l2Q[2] += (gradQ_exact[2] - gradQ_fv[2])*(gradQ_exact[2] - gradQ_fv[2]) * detJ[q];
     }
   }
-  PetscPrintf(fv->comm,"Test function gradient: %D\n",test_function_type);
+  PetscPrintf(fv->comm,"Test function gradient: %" PetscInt_FMT "\n",test_function_type);
   ierr = MPI_Allreduce(MPI_IN_PLACE,&volOmega,1,MPIU_REAL,MPIU_SUM,fv->comm);CHKERRQ(ierr);
   PetscPrintf(fv->comm,"Domain(volume)              %1.4e\n",volOmega);
   ierr = MPI_Allreduce(MPI_IN_PLACE,&l2Q[0],1,MPIU_REAL,MPIU_SUM,fv->comm);CHKERRQ(ierr);

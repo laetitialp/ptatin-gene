@@ -177,18 +177,18 @@ PetscErrorCode FVDAGetReconstructionStencil_AtCell(FVDA fv,PetscInt cijk,PetscIn
   cellglobal.k = cell.k + s[2];
   
   /*
-  if (cellglobal.i == s[0] || cellglobal.i == (s[0]+w[0]-1)) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Cannot perform reconstruction on borders of fv local space. Range i: [%D,%D] -> Found: i %D",s[0],s[0]+w[0]-1,cellglobal.i);
-  if (cellglobal.j == s[1] || cellglobal.j == (s[1]+w[1]-1)) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Cannot perform reconstruction on borders of fv local space. Range j: [%D,%D] -> Found: j %D",s[1],s[1]+w[1]-1,cellglobal.j);
-  if (cellglobal.k == s[2] || cellglobal.k == (s[2]+w[2]-1)) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Cannot perform reconstruction on borders of fv local space. Range k: [%D,%D] -> Found: k %D",s[2],s[2]+w[2]-1,cellglobal.k);
+  if (cellglobal.i == s[0] || cellglobal.i == (s[0]+w[0]-1)) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Cannot perform reconstruction on borders of fv local space. Range i: [%" PetscInt_FMT ",%" PetscInt_FMT "] -> Found: i %" PetscInt_FMT "",s[0],s[0]+w[0]-1,cellglobal.i);
+  if (cellglobal.j == s[1] || cellglobal.j == (s[1]+w[1]-1)) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Cannot perform reconstruction on borders of fv local space. Range j: [%" PetscInt_FMT ",%" PetscInt_FMT "] -> Found: j %" PetscInt_FMT "",s[1],s[1]+w[1]-1,cellglobal.j);
+  if (cellglobal.k == s[2] || cellglobal.k == (s[2]+w[2]-1)) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Cannot perform reconstruction on borders of fv local space. Range k: [%" PetscInt_FMT ",%" PetscInt_FMT "] -> Found: k %" PetscInt_FMT "",s[2],s[2]+w[2]-1,cellglobal.k);
   */
-  if (cellglobal.i == s[0] && s[0] != 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Cannot perform reconstruction on borders of fv local space. Range i: [%D,%D] -> Found: i %D",s[0],s[0]+w[0]-1,cellglobal.i);
-  if (cellglobal.i == (s[0]+w[0]-1) && fv->Mi[0] != (s[0]+w[0])) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Cannot perform reconstruction on borders of fv local space. Range i: [%D,%D] -> Found: i %D",s[0],s[0]+w[0]-1,cellglobal.i);
+  if (cellglobal.i == s[0] && s[0] != 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Cannot perform reconstruction on borders of fv local space. Range i: [%" PetscInt_FMT ",%" PetscInt_FMT "] -> Found: i %" PetscInt_FMT "",s[0],s[0]+w[0]-1,cellglobal.i);
+  if (cellglobal.i == (s[0]+w[0]-1) && fv->Mi[0] != (s[0]+w[0])) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Cannot perform reconstruction on borders of fv local space. Range i: [%" PetscInt_FMT ",%" PetscInt_FMT "] -> Found: i %" PetscInt_FMT "",s[0],s[0]+w[0]-1,cellglobal.i);
 
-  if (cellglobal.j == s[1] && s[1] != 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Cannot perform reconstruction on borders of fv local space. Range j: [%D,%D] -> Found: j %D",s[1],s[1]+w[1]-1,cellglobal.j);
-  if (cellglobal.j == (s[1]+w[1]-1) && fv->Mi[1] != (s[1]+w[1])) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Cannot perform reconstruction on borders of fv local space. Range j: [%D,%D] -> Found: j %D",s[1],s[1]+w[1]-1,cellglobal.j);
+  if (cellglobal.j == s[1] && s[1] != 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Cannot perform reconstruction on borders of fv local space. Range j: [%" PetscInt_FMT ",%" PetscInt_FMT "] -> Found: j %" PetscInt_FMT "",s[1],s[1]+w[1]-1,cellglobal.j);
+  if (cellglobal.j == (s[1]+w[1]-1) && fv->Mi[1] != (s[1]+w[1])) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Cannot perform reconstruction on borders of fv local space. Range j: [%" PetscInt_FMT ",%" PetscInt_FMT "] -> Found: j %" PetscInt_FMT "",s[1],s[1]+w[1]-1,cellglobal.j);
 
-  if (cellglobal.k == s[2] && s[2] != 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Cannot perform reconstruction on borders of fv local space. Range k: [%D,%D] -> Found: k %D",s[2],s[2]+w[2]-1,cellglobal.k);
-  if (cellglobal.k == (s[2]+w[2]-1) && fv->Mi[2] != (s[2]+w[2])) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Cannot perform reconstruction on borders of fv local space. Range k: [%D,%D] -> Found: k %D",s[2],s[2]+w[2]-1,cellglobal.k);
+  if (cellglobal.k == s[2] && s[2] != 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Cannot perform reconstruction on borders of fv local space. Range k: [%" PetscInt_FMT ",%" PetscInt_FMT "] -> Found: k %" PetscInt_FMT "",s[2],s[2]+w[2]-1,cellglobal.k);
+  if (cellglobal.k == (s[2]+w[2]-1) && fv->Mi[2] != (s[2]+w[2])) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Cannot perform reconstruction on borders of fv local space. Range k: [%" PetscInt_FMT ",%" PetscInt_FMT "] -> Found: k %" PetscInt_FMT "",s[2],s[2]+w[2]-1,cellglobal.k);
   
   
   *nn = 0;

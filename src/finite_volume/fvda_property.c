@@ -23,7 +23,7 @@ PetscErrorCode FVDARegisterCellProperty(FVDA fv,const char name[],PetscInt block
       if (match) { index = c; break; }
     }
   }
-  if (index != -1) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"A cell property with name \"%s\" has already been registered (index %D). Textual names are required to be unique",name,index);
+  if (index != -1) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"A cell property with name \"%s\" has already been registered (index %" PetscInt_FMT "). Textual names are required to be unique",name,index);
   
   index = fv->ncoeff_cell;
   ierr = PetscRealloc(sizeof(char**)*(fv->ncoeff_cell+1),&fv->cell_coeff_name);CHKERRQ(ierr);
@@ -53,7 +53,7 @@ PetscErrorCode FVDACellPropertyGetInfo(FVDA fv,const char name[],PetscInt *index
     ierr = PetscStrcmp(name,fv->cell_coeff_name[c],&match);CHKERRQ(ierr);
     if (match) { i = c; break; }
   }
-  if (i < 0 || i >= fv->ncoeff_cell) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Provided cell property index %D is not valid, Must be less < %D. Name \"%s\" not registered as cell property",index,fv->ncoeff_cell,name);
+  if (i < 0 || i >= fv->ncoeff_cell) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Provided cell property index %" PetscInt_FMT " is not valid, Must be less < %" PetscInt_FMT ". Name \"%s\" not registered as cell property",i,fv->ncoeff_cell,name);
   
   l = fv->cell_coeff_size[i];
   b = l / fv->ncells;
@@ -70,7 +70,7 @@ PetscErrorCode FVDAGetCellPropertyArray(FVDA fv,PetscInt index,PetscReal *data[]
 {
   PetscFunctionBegin;
   if (!fv->setup) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Must call FVDASetUp() first");
-  if (index < 0 || index >= fv->ncoeff_cell) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Provided cell property index %D is not valid, Must be less < %D",index,fv->ncoeff_cell);
+  if (index < 0 || index >= fv->ncoeff_cell) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Provided cell property index %" PetscInt_FMT " is not valid, Must be less < %" PetscInt_FMT "",index,fv->ncoeff_cell);
   *data = fv->cell_coefficient[index];
   PetscFunctionReturn(0);
 }
@@ -79,7 +79,7 @@ PetscErrorCode FVDAGetCellPropertyArrayRead(FVDA fv,PetscInt index,const PetscRe
 {
   PetscFunctionBegin;
   if (!fv->setup) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Must call FVDASetUp() first");
-  if (index < 0 || index >= fv->ncoeff_cell) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Provided cell property index %D is not valid, Must be less < %D",index,fv->ncoeff_cell);
+  if (index < 0 || index >= fv->ncoeff_cell) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Provided cell property index %" PetscInt_FMT " is not valid, Must be less < %" PetscInt_FMT "",index,fv->ncoeff_cell);
   *data = (const PetscReal*)fv->cell_coefficient[index];
   PetscFunctionReturn(0);
 }
@@ -97,7 +97,7 @@ PetscErrorCode FVDAGetCellPropertyByNameArrayRead(FVDA fv,const char name[],cons
     ierr = PetscStrcmp(name,fv->cell_coeff_name[c],&match);CHKERRQ(ierr);
     if (match) { index = c; break; }
   }
-  if (index < 0 || index >= fv->ncoeff_cell) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Provided cell property index %D is not valid, Must be less < %D. Name \"%s\" not registered as cell property",index,fv->ncoeff_cell,name);
+  if (index < 0 || index >= fv->ncoeff_cell) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Provided cell property index %" PetscInt_FMT " is not valid, Must be less < %" PetscInt_FMT ". Name \"%s\" not registered as cell property",index,fv->ncoeff_cell,name);
   *data = (const PetscReal*)fv->cell_coefficient[index];
   PetscFunctionReturn(0);
 }
@@ -115,7 +115,7 @@ PetscErrorCode FVDAGetCellPropertyByNameArray(FVDA fv,const char name[],PetscRea
     ierr = PetscStrcmp(name,fv->cell_coeff_name[c],&match);CHKERRQ(ierr);
     if (match) { index = c; break; }
   }
-  if (index < 0 || index >= fv->ncoeff_cell) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Provided cell property index %D is not valid, Must be less < %D. Name \"%s\" not registered as cell property",index,fv->ncoeff_cell,name);
+  if (index < 0 || index >= fv->ncoeff_cell) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Provided cell property index %" PetscInt_FMT " is not valid, Must be less < %" PetscInt_FMT ". Name \"%s\" not registered as cell property",index,fv->ncoeff_cell,name);
   *data = (PetscReal*)fv->cell_coefficient[index];
   PetscFunctionReturn(0);
 }
@@ -144,7 +144,7 @@ PetscErrorCode FVDARegisterFaceProperty(FVDA fv,const char name[],PetscInt block
       if (match) { index = c; break; }
     }
   }
-  if (index != -1) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"A face property with name \"%s\" has already been registered (index %D). Textual names are required to be unique",name,index);
+  if (index != -1) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"A face property with name \"%s\" has already been registered (index %" PetscInt_FMT "). Textual names are required to be unique",name,index);
   
   index = fv->ncoeff_face;
   ierr = PetscRealloc(sizeof(char**)*(fv->ncoeff_face+1),&fv->face_coeff_name);CHKERRQ(ierr);
@@ -173,7 +173,7 @@ PetscErrorCode FVDAFacePropertyGetInfo(FVDA fv,const char name[],PetscInt *index
     ierr = PetscStrcmp(name,fv->face_coeff_name[c],&match);CHKERRQ(ierr);
     if (match) { i = c; break; }
   }
-  if (i < 0 || i >= fv->ncoeff_face) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Provided face property index %D is not valid, Must be less < %D. Name \"%s\" not registered as face property",index,fv->ncoeff_face,name);
+  if (i < 0 || i >= fv->ncoeff_face) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Provided face property index %" PetscInt_FMT " is not valid, Must be less < %" PetscInt_FMT ". Name \"%s\" not registered as face property",i,fv->ncoeff_face,name);
   
   l = fv->face_coeff_size[i];
   b = l / fv->nfaces;
@@ -190,7 +190,7 @@ PetscErrorCode FVDAGetFacePropertyArray(FVDA fv,PetscInt index,PetscReal *data[]
 {
   PetscFunctionBegin;
   if (!fv->setup) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Must call FVDASetUp() first");
-  if (index < 0 || index >= fv->ncoeff_face) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Provided face property index %D is not valid, Must be less < %D",index,fv->ncoeff_face);
+  if (index < 0 || index >= fv->ncoeff_face) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Provided face property index %" PetscInt_FMT " is not valid, Must be less < %" PetscInt_FMT "",index,fv->ncoeff_face);
   *data = fv->face_coefficient[index];
   PetscFunctionReturn(0);
 }
@@ -199,7 +199,7 @@ PetscErrorCode FVDAGetFacePropertyArrayRead(FVDA fv,PetscInt index,const PetscRe
 {
   PetscFunctionBegin;
   if (!fv->setup) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Must call FVDASetUp() first");
-  if (index < 0 || index >= fv->ncoeff_face) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Provided face property index %D is not valid, Must be less < %D",index,fv->ncoeff_face);
+  if (index < 0 || index >= fv->ncoeff_face) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Provided face property index %" PetscInt_FMT " is not valid, Must be less < %" PetscInt_FMT "",index,fv->ncoeff_face);
   *data = (const PetscReal*)fv->face_coefficient[index];
   PetscFunctionReturn(0);
 }
@@ -217,7 +217,7 @@ PetscErrorCode FVDAGetFacePropertyByNameArrayRead(FVDA fv,const char name[],cons
     ierr = PetscStrcmp(name,fv->face_coeff_name[c],&match);CHKERRQ(ierr);
     if (match) { index = c; break; }
   }
-  if (index < 0 || index >= fv->ncoeff_face) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Provided face property index %D is not valid, Must be less < %D. Name \"%s\" not registered as face property",index,fv->ncoeff_face,name);
+  if (index < 0 || index >= fv->ncoeff_face) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Provided face property index %" PetscInt_FMT " is not valid, Must be less < %" PetscInt_FMT ". Name \"%s\" not registered as face property",index,fv->ncoeff_face,name);
   *data = (const PetscReal*)fv->face_coefficient[index];
   PetscFunctionReturn(0);
 }
@@ -235,7 +235,7 @@ PetscErrorCode FVDAGetFacePropertyByNameArray(FVDA fv,const char name[],PetscRea
     ierr = PetscStrcmp(name,fv->face_coeff_name[c],&match);CHKERRQ(ierr);
     if (match) { index = c; break; }
   }
-  if (index < 0 || index >= fv->ncoeff_face) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Provided face property index %D is not valid, Must be less < %D. Name \"%s\" not registered as face property",index,fv->ncoeff_face,name);
+  if (index < 0 || index >= fv->ncoeff_face) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Provided face property index %" PetscInt_FMT " is not valid, Must be less < %" PetscInt_FMT ". Name \"%s\" not registered as face property",index,fv->ncoeff_face,name);
   *data = (PetscReal*)fv->face_coefficient[index];
   PetscFunctionReturn(0);
 }

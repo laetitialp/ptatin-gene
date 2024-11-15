@@ -26,34 +26,34 @@ PetscErrorCode FVDAViewStatistics(FVDA fv,PetscBool collective)
   }
 
   PetscPrintf(comm,"[FVDA sizes]\n");
-  PetscPrintf(comm,"  mx,my,mz  %D x %D x %D (global)\n",fv->Mi[0],fv->Mi[1],fv->Mi[2]);
+  PetscPrintf(comm,"  mx,my,mz  %" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT " (global)\n",fv->Mi[0],fv->Mi[1],fv->Mi[2]);
   
   if (!collective) {
-    PetscPrintf(comm,"  mx,my,mz  %D x %D x %D (local)\n",fv->mi[0],fv->mi[1],fv->mi[2]);
-    PetscPrintf(comm,"  #cells    %D\n",fv->ncells);
-    PetscPrintf(comm,"  #faces    %D (total)\n",fv->nfaces);
-    PetscPrintf(comm,"  #faces    %D (interior)\n",fv->nfaces_interior);
-    PetscPrintf(comm,"  #faces    %D (boundary)\n",fv->nfaces_boundary);
+    PetscPrintf(comm,"  mx,my,mz  %" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT " (local)\n",fv->mi[0],fv->mi[1],fv->mi[2]);
+    PetscPrintf(comm,"  #cells    %" PetscInt_FMT "\n",fv->ncells);
+    PetscPrintf(comm,"  #faces    %" PetscInt_FMT " (total)\n",fv->nfaces);
+    PetscPrintf(comm,"  #faces    %" PetscInt_FMT " (interior)\n",fv->nfaces_interior);
+    PetscPrintf(comm,"  #faces    %" PetscInt_FMT " (boundary)\n",fv->nfaces_boundary);
   } else {
     PetscSynchronizedPrintf(comm,"  [rank %d]\n",(int)commrank);
-    PetscSynchronizedPrintf(comm,"    mx,my,mz  %D x %D x %D (local)\n",fv->mi[0],fv->mi[1],fv->mi[2]);
-    PetscSynchronizedPrintf(comm,"    #cells    %D\n",fv->ncells);
-    PetscSynchronizedPrintf(comm,"    #faces    %D (total)\n",fv->nfaces);
-    PetscSynchronizedPrintf(comm,"    #faces    %D (interior)\n",fv->nfaces_interior);
-    PetscSynchronizedPrintf(comm,"    #faces    %D (boundary)\n",fv->nfaces_boundary);
+    PetscSynchronizedPrintf(comm,"    mx,my,mz  %" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT " (local)\n",fv->mi[0],fv->mi[1],fv->mi[2]);
+    PetscSynchronizedPrintf(comm,"    #cells    %" PetscInt_FMT "\n",fv->ncells);
+    PetscSynchronizedPrintf(comm,"    #faces    %" PetscInt_FMT " (total)\n",fv->nfaces);
+    PetscSynchronizedPrintf(comm,"    #faces    %" PetscInt_FMT " (interior)\n",fv->nfaces_interior);
+    PetscSynchronizedPrintf(comm,"    #faces    %" PetscInt_FMT " (boundary)\n",fv->nfaces_boundary);
     PetscSynchronizedFlush(comm,PETSC_STDOUT);
   }
   
-  PetscPrintf(comm,"  #auxiliary cell fields %D\n",fv->ncoeff_cell);
+  PetscPrintf(comm,"  #auxiliary cell fields %" PetscInt_FMT "\n",fv->ncoeff_cell);
   for (k=0; k<fv->ncoeff_cell; k++) {
     blocksize = fv->cell_coeff_size[k] / fv->ncells;
-    PetscPrintf(comm,"    [%D] (\"%s\") blocksize %D\n",k,fv->cell_coeff_name[k],blocksize);
+    PetscPrintf(comm,"    [%" PetscInt_FMT "] (\"%s\") blocksize %" PetscInt_FMT "\n",k,fv->cell_coeff_name[k],blocksize);
   }
 
-  PetscPrintf(comm,"  #auxiliary face fields %D\n",fv->ncoeff_face);
+  PetscPrintf(comm,"  #auxiliary face fields %" PetscInt_FMT "\n",fv->ncoeff_face);
   for (k=0; k<fv->ncoeff_face; k++) {
     blocksize = fv->face_coeff_size[k] / fv->nfaces;
-    PetscPrintf(comm,"    [%D] (\"%s\") blocksize %D\n",k,fv->face_coeff_name[k],blocksize);
+    PetscPrintf(comm,"    [%" PetscInt_FMT "] (\"%s\") blocksize %" PetscInt_FMT "\n",k,fv->face_coeff_name[k],blocksize);
   }
 
   PetscPrintf(comm,"[FVDA memory usage]\n");
@@ -76,11 +76,11 @@ PetscErrorCode FVDAViewStatistics(FVDA fv,PetscBool collective)
  PetscPrintf(comm,"  face_id_bound.   %1.2e (MB)\n",sizeof(PetscInt)*fv->nfaces_boundary * 1.0e-6);
  
  for (k=0; k<fv->ncoeff_cell; k++) {
-   PetscPrintf(comm,"  cell_coefficient[%D] (\"%s\") %1.2e (MB)\n",k,fv->cell_coeff_name[k],sizeof(PetscReal)*fv->cell_coeff_size[k] * 1.0e-6);
+   PetscPrintf(comm,"  cell_coefficient[%" PetscInt_FMT "] (\"%s\") %1.2e (MB)\n",k,fv->cell_coeff_name[k],sizeof(PetscReal)*fv->cell_coeff_size[k] * 1.0e-6);
  }
  
  for (k=0; k<fv->ncoeff_face; k++) {
-   PetscPrintf(comm,"  face_coefficient[%D] (\"%s\") %1.2e (MB)\n",k,fv->face_coeff_name[k],sizeof(PetscReal)*fv->face_coeff_size[k] * 1.0e-6);
+   PetscPrintf(comm,"  face_coefficient[%" PetscInt_FMT "] (\"%s\") %1.2e (MB)\n",k,fv->face_coeff_name[k],sizeof(PetscReal)*fv->face_coeff_size[k] * 1.0e-6);
  }
 */
   {
@@ -138,12 +138,12 @@ PetscErrorCode FVDAViewStatistics(FVDA fv,PetscBool collective)
 
     cnt = 0;
     for (k=0; k<fv->ncoeff_cell; k++) {
-      PetscPrintf(comm,"  cell_coefficient[%D] (\"%s\") %1.2e (MB)\n",k,fv->cell_coeff_name[k],mem[cnt]);
+      PetscPrintf(comm,"  cell_coefficient[%" PetscInt_FMT "] (\"%s\") %1.2e (MB)\n",k,fv->cell_coeff_name[k],mem[cnt]);
       cnt++;
     }
     
     for (k=0; k<fv->ncoeff_face; k++) {
-      PetscPrintf(comm,"  face_coefficient[%D] (\"%s\") %1.2e (MB)\n",k,fv->face_coeff_name[k],mem[cnt]);
+      PetscPrintf(comm,"  face_coefficient[%" PetscInt_FMT "] (\"%s\") %1.2e (MB)\n",k,fv->face_coeff_name[k],mem[cnt]);
       cnt++;
     }
     
@@ -1157,14 +1157,14 @@ PetscErrorCode PetscVecWriteJSON(Vec x,PetscInt format,const char suffix[])
   else if (format == 1) { PetscSNPrintf(x_filename,PETSC_MAX_PATH_LEN-1,"%s.pbvec",suffix_tail); }
   else if (format == 2) { PetscSNPrintf(x_filename,PETSC_MAX_PATH_LEN-1,"%s.h5",suffix_tail); }
   else if (format == 3) { PetscSNPrintf(x_filename,PETSC_MAX_PATH_LEN-1,"%s.pbvec.gz",suffix_tail); }
-  else SETERRQ(comm,PETSC_ERR_SUP,"Format %D is not recognized and not supported",format);
+  else SETERRQ(comm,PETSC_ERR_SUP,"Format %" PetscInt_FMT " is not recognized and not supported",format);
   */
    
   if      (format == 0) { PetscSNPrintf(x_filename,PETSC_MAX_PATH_LEN-1,"%s.pbvec",suffix); }
   else if (format == 1) { PetscSNPrintf(x_filename,PETSC_MAX_PATH_LEN-1,"%s.pbvec",suffix); }
   else if (format == 2) { PetscSNPrintf(x_filename,PETSC_MAX_PATH_LEN-1,"%s.h5",suffix); }
   else if (format == 3) { PetscSNPrintf(x_filename,PETSC_MAX_PATH_LEN-1,"%s.pbvec.gz",suffix); }
-  else SETERRQ(comm,PETSC_ERR_SUP,"Format %D is not recognized and not supported",format);
+  else SETERRQ(comm,PETSC_ERR_SUP,"Format %" PetscInt_FMT " is not recognized and not supported",format);
   
   if (format == 0 || format == 3) {
     ierr = PetscViewerCreate(comm,&viewer);CHKERRQ(ierr);
@@ -1293,7 +1293,7 @@ PetscErrorCode FVDAView_Heavy(FVDA fv,const char path[],const char suffix[])
       ierr = DMDAGlobalToNaturalEnd(fv->dm_fv,x_cell,INSERT_VALUES,xn_cell);CHKERRQ(ierr);
 
       if (bs == 1) { PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s_%s",fname1,fv->cell_coeff_name[f]); }
-      else {         PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s_%s_bs%D",fname1,fv->cell_coeff_name[f],b); }
+      else {         PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s_%s_bs%" PetscInt_FMT "",fname1,fv->cell_coeff_name[f],b); }
       ierr =  PetscVecWriteJSON(xn_cell,0,fname);CHKERRQ(ierr);
     }
   }
@@ -1342,8 +1342,8 @@ static PetscErrorCode _FVDAOutputParaView_VTS_binary(FVDA fv,Vec field,PetscBool
   fprintf(vtk_fp, "<VTKFile type=\"StructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n");
 #endif
   
-  PetscFPrintf(PETSC_COMM_SELF,vtk_fp, "  <StructuredGrid WholeExtent=\"%D %D %D %D %D %D\">\n",gei[0],gei[0]+fv->mi[0], gei[1],gei[1]+fv->mi[1], gei[2],gei[2]+fv->mi[2]);
-  PetscFPrintf(PETSC_COMM_SELF,vtk_fp, "    <Piece Extent=\"%D %D %D %D %D %D\">\n",gei[0],gei[0]+fv->mi[0], gei[1],gei[1]+fv->mi[1], gei[2],gei[2]+fv->mi[2]);
+  PetscFPrintf(PETSC_COMM_SELF,vtk_fp, "  <StructuredGrid WholeExtent=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\">\n",gei[0],gei[0]+fv->mi[0], gei[1],gei[1]+fv->mi[1], gei[2],gei[2]+fv->mi[2]);
+  PetscFPrintf(PETSC_COMM_SELF,vtk_fp, "    <Piece Extent=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\">\n",gei[0],gei[0]+fv->mi[0], gei[1],gei[1]+fv->mi[1], gei[2],gei[2]+fv->mi[2]);
   
   offset = 0;
   
@@ -1497,7 +1497,7 @@ static PetscErrorCode _FVDAOutputParaView_PVTS(FVDA fv,Vec field,PetscBool view_
 #endif
   
   ierr = DMDAGetInfo( da,NULL,&M,&N,&P,NULL,NULL,NULL,NULL,&swidth,NULL,NULL,NULL,NULL);CHKERRQ(ierr);
-  if(vtk_fp) PetscFPrintf(PETSC_COMM_SELF,vtk_fp, "  <PStructuredGrid GhostLevel=\"%D\" WholeExtent=\"%D %D %D %D %D %D\">\n",swidth,0,M-1,0,N-1,0,P-1); /* note overlap = 1 for Q1 */
+  if(vtk_fp) PetscFPrintf(PETSC_COMM_SELF,vtk_fp, "  <PStructuredGrid GhostLevel=\"%" PetscInt_FMT "\" WholeExtent=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\">\n",swidth,0,M-1,0,N-1,0,P-1); /* note overlap = 1 for Q1 */
   
   /* VTS COORD DATA */
   if(vtk_fp) fprintf(vtk_fp, "    <PPoints>\n");
