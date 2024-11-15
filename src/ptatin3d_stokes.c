@@ -984,7 +984,7 @@ PetscErrorCode Stokes_KSPConvergenceTest_ScaledResiduals(KSP ksp,PetscInt it,Pet
   Vec             X,Xu,Xp,F,Fu,Fp,v,w;
   Mat             A;
   PetscReal       atol,rtol;
-    static PetscInt initial_norms[4];
+    static PetscReal initial_norms[4];
     PetscBool       relative_component_norm_rtol;
 
   PetscFunctionBegin;
@@ -1005,7 +1005,7 @@ PetscErrorCode Stokes_KSPConvergenceTest_ScaledResiduals(KSP ksp,PetscInt it,Pet
 
   ierr = KSPBuildResidual(ksp,v,w,&F);CHKERRQ(ierr);
     ierr = VecAbs(F);CHKERRQ(ierr);
-    ierr = VecChop(F,1.0e-12);CHKERRQ(ierr);
+    ierr = VecFilter(F,1.0e-12);CHKERRQ(ierr);
 
   ierr = DMCompositeGetAccess(ctx->stokes_ctx->stokes_pack,F,&Fu,&Fp);CHKERRQ(ierr);
 
