@@ -106,7 +106,7 @@ PetscErrorCode PSwarmCreate(MPI_Comm comm,PSwarm *ps)
   PSwarm         p;
 
   PetscFunctionBegin;
-  PetscValidPointer(ps,2);
+  PetscAssertPointer(ps,2);
   *ps = NULL;
 
   ierr = PSwarmInitializePackage();CHKERRQ(ierr);
@@ -310,8 +310,8 @@ PetscErrorCode PSwarmSetTransportModeType(PSwarm ps,PSwarmTransportModeType type
 
 /* Pressure update functionality */
 PetscErrorCode UpdateTracerPressure(
-  MPntStd           *tracer, 
-  const PetscInt    *elnidx_u, 
+  MPntStd           *tracer,
+  const PetscInt    *elnidx_u,
   PetscInt          nen_u,
   const PetscInt    *elnidx_p,
   PetscInt          nen_p,
@@ -407,15 +407,15 @@ PetscErrorCode PSwarmSetFieldType_Pressure(PSwarm ps)
 }
 
 PetscErrorCode UpdateTracerTemperature(
-  PhysCompEnergyFV  energy, 
-  MPntStd           *tracer, 
+  PhysCompEnergyFV  energy,
+  MPntStd           *tracer,
   PetscInt          fv_ghost_offset[],
   PetscInt          fv_ghost_range[],
   const PetscReal   *_fv_coor,
   const PetscScalar *LA_temperature_l,
   double            *tracer_temperature)
 {
-  FVReconstructionCell rcell; 
+  FVReconstructionCell rcell;
   PetscInt             sub_fv_cell,macro_ijk[3],macro_fv_ijk[3],ijk[3];
   PetscInt             eidx;
   double               *xi_p,T_mp;
@@ -434,7 +434,7 @@ PetscErrorCode UpdateTracerTemperature(
   ijk[0] = fv_ghost_offset[0] + macro_ijk[0] * energy->nsubdivision[0] + macro_fv_ijk[0];
   ijk[1] = fv_ghost_offset[1] + macro_ijk[1] * energy->nsubdivision[1] + macro_fv_ijk[1];
   ijk[2] = fv_ghost_offset[2] + macro_ijk[2] * energy->nsubdivision[2] + macro_fv_ijk[2];
-        
+
   ierr = _cart_convert_ijk_to_index(ijk,fv_ghost_range,&sub_fv_cell);CHKERRQ(ierr);
   T_mp = LA_temperature_l[sub_fv_cell];
   ierr = FVReconstructionP1Create(&rcell,energy->fv,sub_fv_cell,_fv_coor,LA_temperature_l);CHKERRQ(ierr);
@@ -479,14 +479,14 @@ PetscErrorCode PSwarmUpdate_TemperatureFV(PSwarm ps, PhysCompEnergyFV energy, DM
   ierr = DMGlobalToLocalBegin(daT,temperature,INSERT_VALUES,temperature_l);CHKERRQ(ierr);
   ierr = DMGlobalToLocalEnd  (daT,temperature,INSERT_VALUES,temperature_l);CHKERRQ(ierr);
   ierr = VecGetArrayRead(temperature_l,&LA_temperature_l);CHKERRQ(ierr);
-  
+
   /* Get fvda for reconstruction */
   ierr = DMDAGetCorners(energy->fv->dm_fv,&fv_start[0],&fv_start[1],&fv_start[2],NULL,NULL,NULL);CHKERRQ(ierr);
   ierr = DMDAGetGhostCorners(energy->fv->dm_fv,&fv_start_local[0],&fv_start_local[1],&fv_start_local[2],&fv_ghost_range[0],&fv_ghost_range[1],&fv_ghost_range[2]);CHKERRQ(ierr);
   fv_ghost_offset[0] = fv_start[0] - fv_start_local[0];
   fv_ghost_offset[1] = fv_start[1] - fv_start_local[1];
   fv_ghost_offset[2] = fv_start[2] - fv_start_local[2];
-  
+
   ierr = DMGetCoordinatesLocal(energy->fv->dm_fv,&fv_coor_local);CHKERRQ(ierr);
   ierr = VecGetArrayRead(fv_coor_local,&_fv_coor);CHKERRQ(ierr);
 
@@ -569,14 +569,14 @@ PetscErrorCode PSwarmUpdate_PressureTemperature(PSwarm ps, PhysCompEnergyFV ener
   ierr = DMGlobalToLocalBegin(daT,temperature,INSERT_VALUES,temperature_l);CHKERRQ(ierr);
   ierr = DMGlobalToLocalEnd  (daT,temperature,INSERT_VALUES,temperature_l);CHKERRQ(ierr);
   ierr = VecGetArrayRead(temperature_l,&LA_temperature_l);CHKERRQ(ierr);
-  
+
   /* Get fvda for reconstruction */
   ierr = DMDAGetCorners(energy->fv->dm_fv,&fv_start[0],&fv_start[1],&fv_start[2],NULL,NULL,NULL);CHKERRQ(ierr);
   ierr = DMDAGetGhostCorners(energy->fv->dm_fv,&fv_start_local[0],&fv_start_local[1],&fv_start_local[2],&fv_ghost_range[0],&fv_ghost_range[1],&fv_ghost_range[2]);CHKERRQ(ierr);
   fv_ghost_offset[0] = fv_start[0] - fv_start_local[0];
   fv_ghost_offset[1] = fv_start[1] - fv_start_local[1];
   fv_ghost_offset[2] = fv_start[2] - fv_start_local[2];
-  
+
   ierr = DMGetCoordinatesLocal(energy->fv->dm_fv,&fv_coor_local);CHKERRQ(ierr);
   ierr = VecGetArrayRead(fv_coor_local,&_fv_coor);CHKERRQ(ierr);
 
@@ -768,7 +768,7 @@ PetscErrorCode PSwarmFieldUpdate_PressureTemperature(PSwarm ps)
   if (ps->state == PSW_TS_STALE) {
     ierr = MaterialPointStd_UpdateCoordinates(ps->db,dmv,ps->de);CHKERRQ(ierr);
     ps->state = PSW_TS_INSYNC;
-  }  
+  }
 
   if (ps->ops->field_update_ptt) {
     if (!X) SETERRQ(PetscObjectComm((PetscObject)ps),PETSC_ERR_SUP,"State vector X=(u,p) was not provided. User must call PSwarmAttachStateVecVelocityPressure()");
@@ -1315,7 +1315,7 @@ PetscErrorCode PSwarmSetUp(PSwarm ps)
       if (isactive) { ierr = PSwarmSetRegionIndex(ps,ridx);CHKERRQ(ierr); }
     }
   }
-  
+
 
   ps->setup = PETSC_TRUE;
 
@@ -1329,8 +1329,8 @@ PetscErrorCode PSwarmSetFromOptions(PSwarm ps)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  ierr = PetscObjectOptionsBegin((PetscObject)ps);CHKERRQ(ierr);
-  ierr = PetscOptionsHead(PetscOptionsObject,"PSwarm options");CHKERRQ(ierr);
+  PetscObjectOptionsBegin((PetscObject)ps);
+  PetscOptionsHeadBegin(PetscOptionsObject, "PSwarm options");
 
   isactive = PETSC_FALSE;
   ierr = PetscOptionsBool("-pswarm_transport_mode_eulerian","Transport mode set to Eulerian","PSwarmSetTransportModeType",isactive,&isactive,0);CHKERRQ(ierr);
@@ -1356,8 +1356,8 @@ PetscErrorCode PSwarmSetFromOptions(PSwarm ps)
   ierr = PetscOptionsBool("-pswarm_pressure_temperature","Activate the tracking of pressure-temperature","PSwarmSetFieldUpdateType",isactive,&isactive,0);CHKERRQ(ierr);
   if (isactive) { ierr = PSwarmSetFieldUpdateType(ps,PSWARM_FU_PTT);CHKERRQ(ierr); }
 
-  ierr = PetscOptionsTail();CHKERRQ(ierr);
-  ierr = PetscOptionsEnd();CHKERRQ(ierr);
+  PetscOptionsHeadEnd();
+  PetscOptionsEnd();
 
   PetscFunctionReturn(0);
 }
