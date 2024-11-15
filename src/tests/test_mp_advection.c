@@ -618,7 +618,7 @@ PetscErrorCode test_mp_advection(int argc,char **argv)
     if ((kk+1)%user->output_frequency==0) {
       char name[PETSC_MAX_PATH_LEN];
 
-      PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"step%.6D",tk);
+      PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"step%.6" PetscInt_FMT "",tk);
       ierr = pTatinModel_Output(user->model,user,X,name);CHKERRQ(ierr);
     }
 
@@ -627,7 +627,7 @@ PetscErrorCode test_mp_advection(int argc,char **argv)
 
       PetscPrintf(PETSC_COMM_WORLD,"  checkpointing ptatin :: Model timestep %" PetscInt_FMT " : time %lf Myr : cycle[%" PetscInt_FMT "/%" PetscInt_FMT "] \n", tk,user->time,kk, user->nsteps-1 );
 
-      PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"step%.6D",tk);
+      PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"step%.6" PetscInt_FMT "",tk);
       ierr = pTatin3dCheckpoint(user,X,name);CHKERRQ(ierr);
     }
 
@@ -977,7 +977,7 @@ PetscErrorCode MaterialPointAdvectionTest2(void)
 
     /* output material points */
     if (step%user->output_frequency == 0) {
-      PetscSNPrintf(stepname,PETSC_MAX_PATH_LEN-1,"step%1.6D",step);
+      PetscSNPrintf(stepname,PETSC_MAX_PATH_LEN-1,"step%1.6" PetscInt_FMT "",step);
       ierr = pTatin3d_ModelOutput_MPntStd(user,stepname);CHKERRQ(ierr);
 
       ierr = PSwarmView(pswarm,PSW_VT_SINGLETON);CHKERRQ(ierr);

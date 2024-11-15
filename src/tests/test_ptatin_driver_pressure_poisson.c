@@ -244,7 +244,7 @@ static PetscErrorCode pTatin3d_PoissonPressure_FromModelICState(int argc,char **
   
   /* Output the pressure */
   if (ptatin->step) {
-    ierr = PetscSNPrintf(stepname,PETSC_MAX_PATH_LEN-1,"step%1.6D",ptatin->step);CHKERRQ(ierr);
+    ierr = PetscSNPrintf(stepname,PETSC_MAX_PATH_LEN-1,"step%1.6" PetscInt_FMT "",ptatin->step);CHKERRQ(ierr);
   } else {
     ierr = PetscSNPrintf(stepname,PETSC_MAX_PATH_LEN-1,"step0");CHKERRQ(ierr);
   }
@@ -367,7 +367,7 @@ static PetscErrorCode pTatin3d_PoissonPressure_FromFile(pTatinCtx ptatin, Vec v1
 
   /* Output the pressure */
   if (ptatin->step) {
-    ierr = PetscSNPrintf(stepname,PETSC_MAX_PATH_LEN-1,"step%1.6D",ptatin->step);CHKERRQ(ierr);
+    ierr = PetscSNPrintf(stepname,PETSC_MAX_PATH_LEN-1,"step%1.6" PetscInt_FMT "",ptatin->step);CHKERRQ(ierr);
   } else {
     ierr = PetscSNPrintf(stepname,PETSC_MAX_PATH_LEN-1,"step0");CHKERRQ(ierr);
   }

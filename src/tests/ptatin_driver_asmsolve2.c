@@ -977,7 +977,7 @@ PetscErrorCode pTatin3d_gmg2_material_points(int argc,char **argv)
     if ((kk+1)%5==0) {
       char name[PETSC_MAX_PATH_LEN];
 
-      PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"step%.6D",tk);
+      PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"step%.6" PetscInt_FMT "",tk);
       ierr = pTatinModel_Output(user->model,user,X,name);CHKERRQ(ierr);
     }
 
@@ -989,7 +989,7 @@ PetscErrorCode pTatin3d_gmg2_material_points(int argc,char **argv)
       //  ierr = pTatin3dContextSave(user,"checkpoint.file");CHKERRQ(ierr);
       //  ierr = pTatin3dContextLoad(user,"checkpoint.file");CHKERRQ(ierr);
 
-      PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"step%.6D",tk);
+      PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"step%.6" PetscInt_FMT "",tk);
       ierr = pTatin3dCheckpoint(user,X,name);CHKERRQ(ierr);
     }
 

@@ -105,7 +105,7 @@ PetscErrorCode _ptatin3d_ApplyLandscapeEvolutionModel_FastScape_V3(
   /* parse parameters */
   flg = PETSC_FALSE;
   PetscOptionsGetInt(NULL,NULL,"-fastscape_refinement_factor",&refinement_factor,&flg);
-  if (flg) { PetscPrintf(PETSC_COMM_WORLD,"  [libFastScape] Using refinement factor %D\n",refinement_factor); }
+  if (flg) { PetscPrintf(PETSC_COMM_WORLD,"  [libFastScape] Using refinement factor %" PetscInt_FMT "\n",refinement_factor); }
 
   flg = PETSC_FALSE;
   PetscOptionsGetReal(NULL,NULL,"-fastscape_dt",&dt_spm,&flg);
@@ -131,9 +131,9 @@ PetscErrorCode _ptatin3d_ApplyLandscapeEvolutionModel_FastScape_V3(
     }
   }
 
-  PetscPrintf(PETSC_COMM_WORLD,"  [libFastScape] Mechanical mx: %D \n",mx);
-  PetscPrintf(PETSC_COMM_WORLD,"  [libFastScape] Mechanical my: %D \n",my);
-  PetscPrintf(PETSC_COMM_WORLD,"  [libFastScape] Mechanical mz: %D \n",mz);
+  PetscPrintf(PETSC_COMM_WORLD,"  [libFastScape] Mechanical mx: %" PetscInt_FMT " \n",mx);
+  PetscPrintf(PETSC_COMM_WORLD,"  [libFastScape] Mechanical my: %" PetscInt_FMT " \n",my);
+  PetscPrintf(PETSC_COMM_WORLD,"  [libFastScape] Mechanical mz: %" PetscInt_FMT " \n",mz);
   PetscPrintf(PETSC_COMM_WORLD,"  [libFastScape] Mechanical dt: %1.4e \n",dt_mechanical);
 
   if (dm_spmsurf0) {

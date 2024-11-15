@@ -722,7 +722,7 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
           }
           if (!allow_galerkin){
             if (level_type[k+1] == OP_TYPE_REDISC_MF) {
-              SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_ARG_OUTOFRANGE,"Cannot use galerkin coarse grid. Finest level above must be of type OP_TYPE_REDISC_ASM, OP_TYPE_GALERKIN or OP_TYPE_MFGALERKIN, or provide the flag -A11_allow_galerkin_from_mf",k+1);
+              SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_ARG_OUTOFRANGE,"Cannot use galerkin coarse grid. Finest level above (%" PetscInt_FMT ") must be of type OP_TYPE_REDISC_ASM, OP_TYPE_GALERKIN or OP_TYPE_MFGALERKIN, or provide the flag -A11_allow_galerkin_from_mf",k+1);
             }
           } else {
             if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%" PetscInt_FMT "]: Coarse grid type :: Galerkin :: assembling operator A_%" PetscInt_FMT " to construct A_%" PetscInt_FMT " = Pt.A_%" PetscInt_FMT ".P \n", k,k+1,k,k+1);
@@ -1319,7 +1319,7 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
 
     /* output */
     if ( (step%user->output_frequency == 0) || (step == 1) ) {
-      PetscSNPrintf(stepname,PETSC_MAX_PATH_LEN-1,"step%1.6D",step);
+      PetscSNPrintf(stepname,PETSC_MAX_PATH_LEN-1,"step%1.6" PetscInt_FMT "",step);
       ierr = pTatinModel_Output(user->model,user,X,stepname);CHKERRQ(ierr);
     }
 

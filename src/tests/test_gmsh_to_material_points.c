@@ -433,7 +433,7 @@ static PetscErrorCode OutputSurfaceConstraint(pTatinCtx ptatin, GMSHCtx *data)
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
 
   ierr = pTatinGetStokesContext(ptatin,&stokes);CHKERRQ(ierr);
-  ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s/",ptatin->outputpath,ptatin->step);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(root,PETSC_MAX_PATH_LEN-1,"%s/",ptatin->outputpath);CHKERRQ(ierr);
 
   for (nsc=0; nsc<data->n_bcfaces; nsc++) {
     ierr = SurfaceConstraintViewParaview(data->sc[nsc],root,data->sc[nsc]->name);CHKERRQ(ierr);

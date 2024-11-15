@@ -3026,7 +3026,7 @@ PetscErrorCode Run_NonLinearFV(pTatinCtx user,Vec v1,Vec v2)
     
     /* output */
     if (step%user->output_frequency == 0) {
-      PetscSNPrintf(stepname,PETSC_MAX_PATH_LEN-1,"step%1.6D",step);
+      PetscSNPrintf(stepname,PETSC_MAX_PATH_LEN-1,"step%1.6" PetscInt_FMT "",step);
       ierr = pTatinModel_Output(model,user,X,stepname);CHKERRQ(ierr);
     }
     
