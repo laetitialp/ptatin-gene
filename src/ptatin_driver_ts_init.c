@@ -90,7 +90,7 @@ PetscErrorCode pTatin3dStokesReportMeshHierarchy(PetscInt nlevels,DM dav_hierarc
   /* Report mesh sizes */
   for (k=0; k<nlevels; k++) {
     ierr = DMDAGetSizeElementQ2(dav_hierarchy[k],&lmx,&lmy,&lmz);CHKERRQ(ierr);
-    PetscPrintf(PETSC_COMM_WORLD,"         level [%2D]: global Q2 elements (%" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT ") \n", k,lmx,lmy,lmz );
+    PetscPrintf(PETSC_COMM_WORLD,"         level [%2" PetscInt_FMT "]: global Q2 elements (%" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT ") \n", k,lmx,lmy,lmz );
   }
 
   for (k=0; k<nlevels; k++) {
@@ -98,21 +98,21 @@ PetscErrorCode pTatin3dStokesReportMeshHierarchy(PetscInt nlevels,DM dav_hierarc
 
     ierr = DMDAGetOwnershipRangesElementQ2(dav_hierarchy[k],&mp,&np,&pp,NULL,NULL,NULL,&_mx,&_my,&_mz);CHKERRQ(ierr);
 
-    PetscPrintf(PETSC_COMM_WORLD,"level [%2D]: [total cores %4D]: np-I [%4D]: element range I [ ", k,size,mp );
+    PetscPrintf(PETSC_COMM_WORLD,"level [%2" PetscInt_FMT "]: [total cores %4" PetscInt_FMT "]: np-I [%4" PetscInt_FMT "]: element range I [ ", k,size,mp );
     for (ii=0; ii<mp; ii++) {
-      PetscPrintf(PETSC_COMM_WORLD,"%4D", _mx[ii] );
+      PetscPrintf(PETSC_COMM_WORLD,"%4" PetscInt_FMT "", _mx[ii] );
       if (ii != (mp-1)) { PetscPrintf(PETSC_COMM_WORLD,", "); }
     } PetscPrintf(PETSC_COMM_WORLD," ]\n");
 
-    PetscPrintf(PETSC_COMM_WORLD,"                                np-J [%4D]: element range J [ ",np);
+    PetscPrintf(PETSC_COMM_WORLD,"                                np-J [%4" PetscInt_FMT "]: element range J [ ",np);
     for (jj=0; jj<np; jj++) {
-      PetscPrintf(PETSC_COMM_WORLD,"%4D", _my[jj] );
+      PetscPrintf(PETSC_COMM_WORLD,"%4" PetscInt_FMT "", _my[jj] );
       if (jj != (np-1)) { PetscPrintf(PETSC_COMM_WORLD,", "); }
     } PetscPrintf(PETSC_COMM_WORLD," ]\n");
 
-    PetscPrintf(PETSC_COMM_WORLD,"                                np-K [%4D]: element range K [ ",pp);
+    PetscPrintf(PETSC_COMM_WORLD,"                                np-K [%4" PetscInt_FMT "]: element range K [ ",pp);
     for (kk=0; kk<pp; kk++) {
-      PetscPrintf(PETSC_COMM_WORLD,"%4D", _mz[kk] );
+      PetscPrintf(PETSC_COMM_WORLD,"%4" PetscInt_FMT "", _mz[kk] );
       if (kk != (pp-1)) { PetscPrintf(PETSC_COMM_WORLD,", "); }
     } PetscPrintf(PETSC_COMM_WORLD," ]\n");
 

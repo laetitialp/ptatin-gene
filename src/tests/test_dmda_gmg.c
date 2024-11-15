@@ -159,16 +159,16 @@ PetscErrorCode test_pTatin3d_gmg_galerkin(int argc,char **argv)
 
 
     ierr = DMDAGetSizeElementQ2(dav_hierarchy[k],&lmx,&lmy,&lmz);CHKERRQ(ierr);
-    PetscPrintf(PETSC_COMM_WORLD,"         level [%2D]: global Q2 elements (%" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT ") \n", k,lmx,lmy,lmz );
+    PetscPrintf(PETSC_COMM_WORLD,"         level [%2" PetscInt_FMT "]: global Q2 elements (%" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT ") \n", k,lmx,lmy,lmz );
 
     ierr = DMDAGetLocalSizeElementQ2(dav_hierarchy[k],&lmx,&lmy,&lmz);CHKERRQ(ierr);
-    PetscPrintf(PETSC_COMM_SELF,"[r%4D]: level [%2D]: local Q2 elements  (%" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT ") \n", rank, k,lmx,lmy,lmz );
+    PetscPrintf(PETSC_COMM_SELF,"[r%4" PetscInt_FMT "]: level [%2" PetscInt_FMT "]: local Q2 elements  (%" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT ") \n", rank, k,lmx,lmy,lmz );
 
     ierr = DMDAGetCornersElementQ2(dav_hierarchy[k],&si,&sj,&sk,&lmx,&lmy,&lmz);CHKERRQ(ierr);
     si = si/2;
     sj = sj/2;
     sk = sk/2;
-    PetscPrintf(PETSC_COMM_SELF,"[r%4D]: level [%2D]: element range [%" PetscInt_FMT " - %" PetscInt_FMT "] x [%" PetscInt_FMT " - %" PetscInt_FMT "] x [%" PetscInt_FMT " - %" PetscInt_FMT "] \n", rank, k,si,si+lmx-1,sj,sj+lmy-1,sk,sk+lmz-1 );
+    PetscPrintf(PETSC_COMM_SELF,"[r%4" PetscInt_FMT "]: level [%2" PetscInt_FMT "]: element range [%" PetscInt_FMT " - %" PetscInt_FMT "] x [%" PetscInt_FMT " - %" PetscInt_FMT "] x [%" PetscInt_FMT " - %" PetscInt_FMT "] \n", rank, k,si,si+lmx-1,sj,sj+lmy-1,sk,sk+lmz-1 );
 
   }
 
@@ -386,16 +386,16 @@ PetscErrorCode test_pTatin3d_gmg_mf(int argc,char **argv)
 
 
     ierr = DMDAGetSizeElementQ2(dav_hierarchy[k],&lmx,&lmy,&lmz);CHKERRQ(ierr);
-    PetscPrintf(PETSC_COMM_WORLD,"         level [%2D]: global Q2 elements (%" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT ") \n", k,lmx,lmy,lmz );
+    PetscPrintf(PETSC_COMM_WORLD,"         level [%2" PetscInt_FMT "]: global Q2 elements (%" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT ") \n", k,lmx,lmy,lmz );
 
     ierr = DMDAGetLocalSizeElementQ2(dav_hierarchy[k],&lmx,&lmy,&lmz);CHKERRQ(ierr);
-    PetscPrintf(PETSC_COMM_SELF,"[r%4D]: level [%2D]: local Q2 elements  (%" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT ") \n", rank, k,lmx,lmy,lmz );
+    PetscPrintf(PETSC_COMM_SELF,"[r%4" PetscInt_FMT "]: level [%2" PetscInt_FMT "]: local Q2 elements  (%" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT ") \n", rank, k,lmx,lmy,lmz );
 
     ierr = DMDAGetCornersElementQ2(dav_hierarchy[k],&si,&sj,&sk,&lmx,&lmy,&lmz);CHKERRQ(ierr);
     si = si/2;
     sj = sj/2;
     sk = sk/2;
-    PetscPrintf(PETSC_COMM_SELF,"[r%4D]: level [%2D]: element range [%" PetscInt_FMT " - %" PetscInt_FMT "] x [%" PetscInt_FMT " - %" PetscInt_FMT "] x [%" PetscInt_FMT " - %" PetscInt_FMT "] \n", rank, k,si,si+lmx-1,sj,sj+lmy-1,sk,sk+lmz-1 );
+    PetscPrintf(PETSC_COMM_SELF,"[r%4" PetscInt_FMT "]: level [%2" PetscInt_FMT "]: element range [%" PetscInt_FMT " - %" PetscInt_FMT "] x [%" PetscInt_FMT " - %" PetscInt_FMT "] x [%" PetscInt_FMT " - %" PetscInt_FMT "] \n", rank, k,si,si+lmx-1,sj,sj+lmy-1,sk,sk+lmz-1 );
 
   }
 

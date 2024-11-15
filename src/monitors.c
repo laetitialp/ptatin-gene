@@ -55,7 +55,7 @@ PetscErrorCode pTatin_SNESMonitor_StdoutStokesResiduals3d(SNES snes,PetscInt n,P
   ierr = DMCompositeRestoreAccess(ctx->stokes_ctx->stokes_pack,F,&Fu,&Fp);CHKERRQ(ierr);
 
   ierr = PetscObjectGetComm((PetscObject)F,&comm);CHKERRQ(ierr);
-  PetscPrintf(comm,"%3D SNES Component Fu,Fv,Fw,Fp function norm [ %1.12e, %1.12e, %1.12e, %1.12e ]\n",n,norms[0],norms[1],norms[2],norms[3]);
+  PetscPrintf(comm,"%3" PetscInt_FMT " SNES Component Fu,Fv,Fw,Fp function norm [ %1.12e, %1.12e, %1.12e, %1.12e ]\n",n,norms[0],norms[1],norms[2],norms[3]);
 
   PetscFunctionReturn(0);
 }
@@ -87,7 +87,7 @@ PetscErrorCode pTatin_KSPMonitor_StdoutStokesResiduals3d(KSP ksp,PetscInt n,Pets
   ierr = VecDestroy(&w);CHKERRQ(ierr);
 
   ierr = PetscObjectGetComm((PetscObject)ksp,&comm);CHKERRQ(ierr);
-  PetscPrintf(comm,"%3D KSP Component U,V,W,P residual norm [ %1.12e, %1.12e, %1.12e, %1.12e ]\n",n,norms[0],norms[1],norms[2],norms[3]);
+  PetscPrintf(comm,"%3" PetscInt_FMT " KSP Component U,V,W,P residual norm [ %1.12e, %1.12e, %1.12e, %1.12e ]\n",n,norms[0],norms[1],norms[2],norms[3]);
 
   PetscFunctionReturn(0);
 }
@@ -132,7 +132,7 @@ PetscErrorCode pTatin_KSPMonitor_ParaviewStokesResiduals3d(KSP ksp,PetscInt n,Pe
   ierr = VecDestroy(&v);CHKERRQ(ierr);
   ierr = VecDestroy(&w);CHKERRQ(ierr);
 
-  PetscPrintf(comm,"%3D KSP Residual: ptatin linear solution viewer wrote file \n",its);
+  PetscPrintf(comm,"%3" PetscInt_FMT " KSP Residual: ptatin linear solution viewer wrote file \n",its);
 
   PetscFunctionReturn(0);
 }
@@ -179,9 +179,9 @@ PetscErrorCode _pTatin_SNESMonitorStokes_Paraview(SNES snes,pTatinCtx ctx,Vec X,
 
   ierr = PetscObjectGetComm((PetscObject)X,&comm);CHKERRQ(ierr);
   if (!prefix) {
-    PetscPrintf(comm,"%3D SNES [field %s]: ptatin non-linear solution viewer wrote file \n",its,field);
+    PetscPrintf(comm,"%3" PetscInt_FMT " SNES [field %s]: ptatin non-linear solution viewer wrote file \n",its,field);
   } else {
-    PetscPrintf(comm,"%3D SNES(%s) [field %s]: ptatin non-linear solution viewer wrote file \n",its,field,prefix);
+    PetscPrintf(comm,"%3" PetscInt_FMT " SNES(%s) [field %s]: ptatin non-linear solution viewer wrote file \n",its,field,prefix);
   }
 
   PetscFunctionReturn(0);

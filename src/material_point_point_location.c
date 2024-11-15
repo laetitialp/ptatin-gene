@@ -256,14 +256,14 @@ void InverseMappingDomain_2dQ2(PetscReal tolerance,PetscInt max_its,
 
       _compute_F_2dQ2( Lxip, vertex, marker_p->coor, f );
       if (monitor) {
-        PetscPrintf(PETSC_COMM_SELF,"%4D InverseMapping : F = ( %+1.8e, %+1.8e ) : xi = ( %+1.8e, %+1.8e ) \n",
+        PetscPrintf(PETSC_COMM_SELF,"%4" PetscInt_FMT " InverseMapping : F = ( %+1.8e, %+1.8e ) : xi = ( %+1.8e, %+1.8e ) \n",
                its, f[0],f[1], Lxip[0],Lxip[1] );
       }
 
       /* Check for convergence */
       F2 = (f[0]*f[0]+f[1]*f[1]);
       if (F2 < tolerance2) {
-        if (monitor) PetscPrintf(PETSC_COMM_SELF,"%4D InverseMapping : converged : Norm of F %1.8e \n", its, sqrt(F2) );
+        if (monitor) PetscPrintf(PETSC_COMM_SELF,"%4" PetscInt_FMT " InverseMapping : converged : Norm of F %1.8e \n", its, sqrt(F2) );
         point_found = PETSC_TRUE;
         break;
       }
@@ -285,7 +285,7 @@ void InverseMappingDomain_2dQ2(PetscReal tolerance,PetscInt max_its,
 
       residual2 = ( h[0]*h[0] + h[1]*h[1] );
       if (residual2 < tolerance2) {
-        if (monitor) PetscPrintf(PETSC_COMM_SELF,"%4D InverseMapping : converged : Norm of correction %1.8e \n", its, sqrt(residual2) );
+        if (monitor) PetscPrintf(PETSC_COMM_SELF,"%4" PetscInt_FMT " InverseMapping : converged : Norm of correction %1.8e \n", its, sqrt(residual2) );
         point_found = PETSC_TRUE;
         break;
       }
@@ -324,9 +324,9 @@ void InverseMappingDomain_2dQ2(PetscReal tolerance,PetscInt max_its,
 
     if (monitor && (point_found == PETSC_FALSE)){
       if (its >= max_its) {
-        PetscPrintf(PETSC_COMM_SELF,"%4D %s : Reached maximum iterations (%" PetscInt_FMT ") without converging. \n", its, PETSC_FUNCTION_NAME, max_its );
+        PetscPrintf(PETSC_COMM_SELF,"%4" PetscInt_FMT " %s : Reached maximum iterations (%" PetscInt_FMT ") without converging. \n", its, PETSC_FUNCTION_NAME, max_its );
       } else {
-        PetscPrintf(PETSC_COMM_SELF,"%4D %s : Newton broke down, diverged or stagnated after (%" PetscInt_FMT ") iterations without converging. \n", its, PETSC_FUNCTION_NAME, its );
+        PetscPrintf(PETSC_COMM_SELF,"%4" PetscInt_FMT " %s : Newton broke down, diverged or stagnated after (%" PetscInt_FMT ") iterations without converging. \n", its, PETSC_FUNCTION_NAME, its );
       }
     }
 
@@ -730,12 +730,12 @@ void InverseMappingDomain_3dQ2(PetscReal tolerance,PetscInt max_its,
 #endif
       _compute_F_3dQ2( Lxip, vertex, marker_p->coor, f );
 #ifdef PTAT3D_DBG_PointLocation
-      if (monitor) PetscPrintf(PETSC_COMM_SELF,"%4D InverseMapping : F = ( %+1.8e, %+1.8e, %+1.8e ) : xi = ( %+1.8e, %+1.8e, %+1.8e ) \n", its, f[0],f[1],f[2], Lxip[0],Lxip[1],Lxip[2] );
+      if (monitor) PetscPrintf(PETSC_COMM_SELF,"%4" PetscInt_FMT " InverseMapping : F = ( %+1.8e, %+1.8e, %+1.8e ) : xi = ( %+1.8e, %+1.8e, %+1.8e ) \n", its, f[0],f[1],f[2], Lxip[0],Lxip[1],Lxip[2] );
 #endif
       /* Check for convergence */
       F2 = (f[0]*f[0] + f[1]*f[1] + f[2]*f[2]);
       if (F2 < tolerance2) {
-        if (monitor) PetscPrintf(PETSC_COMM_SELF,"%4D InverseMapping : converged : Norm of F %1.8e \n", its, sqrt(F2) );
+        if (monitor) PetscPrintf(PETSC_COMM_SELF,"%4" PetscInt_FMT " InverseMapping : converged : Norm of F %1.8e \n", its, sqrt(F2) );
         point_found = PETSC_TRUE;
         break;
       }
@@ -756,7 +756,7 @@ void InverseMappingDomain_3dQ2(PetscReal tolerance,PetscInt max_its,
 #endif
       residual2 = ( h[0]*h[0] + h[1]*h[1] + h[2]*h[2] );
       if (residual2 < tolerance2) {
-        if (monitor) PetscPrintf(PETSC_COMM_SELF,"%4D InverseMapping : converged : Norm of correction %1.8e \n", its, sqrt(residual2) );
+        if (monitor) PetscPrintf(PETSC_COMM_SELF,"%4" PetscInt_FMT " InverseMapping : converged : Norm of correction %1.8e \n", its, sqrt(residual2) );
         point_found = PETSC_TRUE;
         break;
       }
@@ -817,9 +817,9 @@ void InverseMappingDomain_3dQ2(PetscReal tolerance,PetscInt max_its,
 
     if (monitor && (point_found == PETSC_FALSE)) {
       if (its >= max_its) {
-        PetscPrintf(PETSC_COMM_SELF,"%4D %s : Reached maximum iterations (%" PetscInt_FMT ") without converging. \n", its, PETSC_FUNCTION_NAME, max_its );
+        PetscPrintf(PETSC_COMM_SELF,"%4" PetscInt_FMT " %s : Reached maximum iterations (%" PetscInt_FMT ") without converging. \n", its, PETSC_FUNCTION_NAME, max_its );
       } else {
-        PetscPrintf(PETSC_COMM_SELF,"%4D %s : Newton broke down, diverged or stagnated after (%" PetscInt_FMT ") iterations without converging. \n", its, PETSC_FUNCTION_NAME, its );
+        PetscPrintf(PETSC_COMM_SELF,"%4" PetscInt_FMT " %s : Newton broke down, diverged or stagnated after (%" PetscInt_FMT ") iterations without converging. \n", its, PETSC_FUNCTION_NAME, its );
       }
     }
 

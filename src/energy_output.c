@@ -615,7 +615,7 @@ PetscErrorCode pTatin3d_ModelOutput_Temperature_Energy(pTatinCtx ctx,Vec X,const
 
   // PVTS + VTS
   if (prefix) { PetscSNPrintf(name, PETSC_MAX_PATH_LEN-1,"%s_energy",prefix);
-  } else {      PetscSNPrintf(name, PETSC_MAX_PATH_LEN-1,"energy",prefix);    }
+  } else {      PetscSNPrintf(name, PETSC_MAX_PATH_LEN-1,"%s", "energy");    }
 
   ierr = pTatinOutputParaViewMeshEnergy(daT,volQ,X,pvoutputdir,name);CHKERRQ(ierr);
   PetscTime(&t1);

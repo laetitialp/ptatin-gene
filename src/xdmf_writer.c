@@ -397,7 +397,7 @@ PetscErrorCode XDMFWriteDataItemByReference_DMDA(PetscViewer v,DM dm,const char 
   if (format == XDMFBinary) {
     PetscViewerASCIIPrintf(v,"  Format=\"%s\" Endian=\"%s\">\n",XDMFDataItemFormatNames[format],XDMFDataItemEndianNames[XDMFBigEndian]);
   } else {
-    PetscViewerASCIIPrintf(v,"  Format=\"%s\" Endian=\"%s\">\n",XDMFDataItemFormatNames[format]);
+    PetscViewerASCIIPrintf(v,"  Format=\"%s\"\">\n",XDMFDataItemFormatNames[format]);
   }
   PetscViewerASCIIPrintf(v,"  %s\n",filename);
   PetscViewerASCIIPrintf(v,"</DataItem>\n");

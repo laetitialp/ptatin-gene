@@ -1431,7 +1431,7 @@ PetscErrorCode pTatin3d_ModelOutput_MarkerCellFields(pTatinCtx ctx,const int nva
 
   // PVTS + VTS
   if (prefix) { PetscSNPrintf(name, PETSC_MAX_PATH_LEN-1,"%s_mpoints_cell",prefix);
-  } else {      PetscSNPrintf(name, PETSC_MAX_PATH_LEN-1,"mpoints_cell",prefix);    }
+  } else {      PetscSNPrintf(name, PETSC_MAX_PATH_LEN-1,"%s","mpoints_cell");    }
 
   ierr = pTatinGetMaterialPoints(ctx,&material_points,NULL);CHKERRQ(ierr);
   stokes_pack = ctx->stokes_ctx->stokes_pack;
