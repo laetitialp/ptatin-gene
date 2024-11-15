@@ -170,7 +170,7 @@ PetscErrorCode ModelInitialize_PAS(pTatinCtx ptatinctx,void *modelctx)
   {
     char logfile[PETSC_MAX_PATH_LEN];
 
-    sprintf(logfile,"%s/model.logfile",ptatinctx->outputpath);
+    PetscSNPrintf(logfile,PETSC_MAX_PATH_LEN-1,"%s/model.logfile",ptatinctx->outputpath);
     ierr = PetscViewerASCIIOpen(PETSC_COMM_WORLD,logfile,&modeldata->logviewer);CHKERRQ(ierr);
 
     PetscViewerASCIIPrintf(modeldata->logviewer,"# Model logfile\n");
@@ -476,4 +476,3 @@ PetscErrorCode pTatinModelRegister_PAS(void)
 
   PetscFunctionReturn(0);
 }
-
