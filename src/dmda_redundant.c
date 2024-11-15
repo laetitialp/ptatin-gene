@@ -92,6 +92,7 @@ PetscErrorCode DMDACreate3dRedundant(DM da,PetscInt si, PetscInt ei, PetscInt sj
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ierr = DMDAGetInfo( da, 0, &M,&N,&P, 0,0,0, &dof,&sw,&wrap[0],&wrap[1],&wrap[2],&st );CHKERRQ(ierr);
   /* check ranges */
   if( si < 0 || (ei-1) > M-1 ) {
@@ -223,6 +224,7 @@ PetscErrorCode DMDACreate3dSemiRedundant(DM da,PetscInt nred,PetscMPISubComm *su
   PetscInt si[3],gnx[3];
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   comm = PetscObjectComm((PetscObject)da);
 
   ierr = PetscMPISubCommCreate(comm,nred,&_sub);CHKERRQ(ierr);

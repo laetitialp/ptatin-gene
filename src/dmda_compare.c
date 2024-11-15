@@ -123,7 +123,6 @@ PetscErrorCode DMDA_CheckNodeIndex3d(DM da,PetscBool ghosted,PetscInt i,PetscInt
   PetscInt si,sj,sk,nx,ny,nz;
 
   PetscFunctionBegin;
-
   ierr = DMDAGetCorners(da,&si,&sj,&sk,&nx,&ny,&nz);CHKERRQ(ierr);
   if(ghosted==PETSC_TRUE) {
     ierr = DMDAGetGhostCorners(da,&si,&sj,0,&nx,&ny,0);CHKERRQ(ierr);

@@ -176,7 +176,6 @@ PetscBool DMDAVecTraverseIJK_Constant(PetscScalar pos[],PetscInt global_index[],
 PetscErrorCode DMDAVecTraverse3d_InterpCtxSetUp_X(DMDAVecTraverse3d_InterpCtx *c,PetscScalar a, PetscScalar b,PetscScalar ox)
 {
   PetscFunctionBegin;
-
   c->A[0] = a;
   c->B[0] = b;
   c->Ox[0] = ox;
@@ -239,7 +238,6 @@ PetscBool DMDAVecTraverse3d_ROTXZ_Z(PetscScalar pos[],PetscScalar *val,void *ctx
 PetscErrorCode DMDAVecTraverse3d_InterpCtxSetUp_Y(DMDAVecTraverse3d_InterpCtx *c,PetscScalar a, PetscScalar b,PetscScalar oy)
 {
   PetscFunctionBegin;
-
   c->A[1] = a;
   c->B[1] = b;
   c->Ox[1] = oy;
@@ -253,7 +251,6 @@ PetscErrorCode DMDAVecTraverse3d_InterpCtxSetUp_Y(DMDAVecTraverse3d_InterpCtx *c
 PetscErrorCode DMDAVecTraverse3d_InterpCtxSetUp_Z(DMDAVecTraverse3d_InterpCtx *c,PetscScalar a, PetscScalar b,PetscScalar oz)
 {
   PetscFunctionBegin;
-
   c->A[2] = a;
   c->B[2] = b;
   c->Ox[2] = oz;
@@ -267,7 +264,6 @@ PetscErrorCode DMDAVecTraverse3d_InterpCtxSetUp_Z(DMDAVecTraverse3d_InterpCtx *c
 PetscErrorCode DMDAVecTraverse3d_InterpCtxSetUp(DMDAVecTraverse3d_InterpCtx *c,PetscInt dir,PetscScalar a, PetscScalar b,PetscScalar ox)
 {
   PetscFunctionBegin;
-
   if (dir < 0) {
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"0 <= dir <=2");
   }
@@ -606,7 +602,6 @@ PetscErrorCode DMDACoordTraverseIJK(DM da,PetscInt plane,PetscInt index,PetscInt
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   if (plane >= 3) { SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_ARG_WRONG,"0 <= plane <= 2"); }
   if (coord_dof >= 3) { SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_ARG_WRONG,"0 <= coord_dof <= 2"); }
 

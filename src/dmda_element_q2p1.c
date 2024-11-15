@@ -375,8 +375,8 @@ PetscErrorCode DMDAGetElements_DA_Q2_3D(DM dm,PetscInt *nel,PetscInt *npe,const 
   PetscInt *el;
   PetscInt dof;
   PetscMPIInt rank;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&rank);CHKERRQ(ierr);
   ierr = DMDAGetInfo(dm,0, &M,&N,&P, 0,0,0, 0,&width, 0,0,0, 0);CHKERRQ(ierr);
   if (width!=2) {
@@ -472,6 +472,7 @@ PetscErrorCode DMDAGetElements_DA_Q2(DM dm,PetscInt *nel,PetscInt *nen,const Pet
 {
   PetscErrorCode ierr;
   PetscInt       dim;
+
   PetscFunctionBegin;
   ierr = DMGetDimension(dm,&dim);CHKERRQ(ierr);
   if (dim==-1) {
@@ -496,8 +497,8 @@ PetscErrorCode DMDAGetElements_DA_P0MD_3D(DM dm,PetscInt *nel,PetscInt *npe,cons
   PetscInt d,ei,ej,ek,elcnt,esi,esj,nid[100],width;
   PetscInt *el,M,N,P,dof;
   PetscMPIInt rank;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&rank);CHKERRQ(ierr);
   ierr = DMDAGetInfo(dm,0, &M,&N,&P, 0,0,0, 0,&width, 0,0,0, 0);CHKERRQ(ierr);
   if (width!=0) {
@@ -549,6 +550,7 @@ PetscErrorCode DMDAGetElements_DA_P1(DM dm,PetscInt *nel,PetscInt *nen,const Pet
 {
   PetscErrorCode ierr;
   PetscInt       dim;
+
   PetscFunctionBegin;
   ierr = DMGetDimension(dm,&dim);CHKERRQ(ierr);
   if (dim==-1) {
@@ -570,6 +572,7 @@ PetscErrorCode DMDAGetElements_pTatinQ2P1(DM dm,PetscInt *nel,PetscInt *nen,cons
   PetscErrorCode ierr;
   PetscInt dof,sw;
 
+  PetscFunctionBegin;
   ierr = DMDAGetInfo(dm, 0, 0,0,0, 0,0,0, &dof,&sw, 0,0,0, 0);CHKERRQ(ierr);
 
   if (sw == 2) {
@@ -703,6 +706,7 @@ PetscErrorCode DMDASetValuesLocalStencil_SetValues_DOF(PetscScalar *fields_F,Pet
 PetscErrorCode Q2GetElementLocalIndicesDOF(PetscInt el_localIndices[],PetscInt ndof,PetscInt elnid[])
 {
   PetscInt n,d;
+
   PetscFunctionBegin;
   for (d=0; d<ndof; d++) {
     for (n=0; n<U_BASIS_FUNCTIONS; n++) {
@@ -716,7 +720,8 @@ PetscErrorCode DMDAGetLocalSizeFacetQ2(DM dm, PetscInt *_nf)
 {
   PetscErrorCode ierr;
   PetscInt lmx,lmy,lmz,M,N,P,si,sj,sk,ni,nj,nk,nf;
-  
+
+  PetscFunctionBegin;  
   ierr = DMDAGetInfo(dm,NULL,&M,&N,&P, NULL,NULL,NULL,NULL, NULL,NULL,NULL,NULL,NULL);CHKERRQ(ierr);
   ierr = DMDAGetCorners(dm,&si,&sj,&sk,&ni,&nj,&nk);CHKERRQ(ierr);
   ierr = DMDAGetLocalSizeElementQ2(dm,&lmx,&lmy,&lmz);CHKERRQ(ierr);

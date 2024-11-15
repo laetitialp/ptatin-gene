@@ -122,8 +122,8 @@ PetscErrorCode DMDAGetElements_DA_Q1_3D(DM dm,PetscInt *nel,PetscInt *npe,const 
   PetscInt ei,ej,ek,i,j,k,elcnt,esi,esj,esk,gsi,gsj,gsk,nid[8],n,X,Y,Z,width;
   PetscInt *el;
   PetscMPIInt rank;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = MPI_Comm_rank(PetscObjectComm((PetscObject)dm),&rank);CHKERRQ(ierr);
   ierr = DMDAGetInfo(dm,0, &M,&N,&P, 0,0,0, 0,&width, 0,0,0, 0);CHKERRQ(ierr);
   if (width!=1) {
@@ -204,8 +204,8 @@ PetscErrorCode DMDAGetElementsQ1(DM dm,PetscInt *nel,PetscInt *npe,const PetscIn
 {
   PetscInt dim,sw;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = DMDAGetInfo(dm, &dim, 0,0,0, 0,0,0, 0,&sw, 0,0,0, 0);CHKERRQ(ierr);
   if (sw != 1) {
     SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_USER,"Stencil width must equal 1");
@@ -254,7 +254,6 @@ PetscErrorCode DMDAProjectCoordinatesQ2toOverlappingQ1_3d(DM daq2,DM daq1)
   DM cdaQ2,cdaQ1;
 
   PetscFunctionBegin;
-
   ierr = DMGetCoordinatesLocal(daq2,&coordsQ2);CHKERRQ(ierr);
   ierr = DMGetCoordinateDM(daq2,&cdaQ2);CHKERRQ(ierr);
   ierr = DMDAVecGetArray(cdaQ2,coordsQ2,&LA_coordsQ2);CHKERRQ(ierr);
@@ -326,7 +325,6 @@ PetscErrorCode DMDACreateOverlappingQ1FromQ2(DM dmq2,PetscInt ndofs,DM *dmq1)
   PetscMPIInt rank;
 
   PetscFunctionBegin;
-
   ierr = MPI_Comm_rank(PetscObjectComm((PetscObject)dmq2),&rank);CHKERRQ(ierr);
 
   ierr = DMDAGetCornersElementQ2(dmq2,&sei,&sej,&sek,&lmx,&lmy,&lmz);CHKERRQ(ierr);
@@ -472,7 +470,6 @@ PetscErrorCode DMDACreateNestedQ1FromQ2(DM dmq2,PetscInt ndofs,DM *dmq1)
   PetscMPIInt rank;
 
   PetscFunctionBegin;
-
   ierr = MPI_Comm_rank(PetscObjectComm((PetscObject)dmq2),&rank);CHKERRQ(ierr);
 
   ierr = DMDAGetCornersElementQ2(dmq2,&sei,&sej,&sek,&lmx,&lmy,&lmz);CHKERRQ(ierr);
@@ -642,7 +639,6 @@ PetscErrorCode DMDACreateQ1(MPI_Comm comm,PetscInt MX,PetscInt MY,PetscInt MZ,Pe
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = DMDACreate3d(comm,DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,DM_BOUNDARY_NONE, DMDA_STENCIL_BOX, MX+1,MY+1,MZ+1, PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE, ndofs,1, 0,0,0, &dm );CHKERRQ(ierr);
   ierr = DMSetUp(dm);CHKERRQ(ierr);
 
@@ -775,7 +771,6 @@ PetscErrorCode DMDAProjectVectorQ2toOverlappingQ1_3d(DM daq2,Vec x2,DM daq1,Vec 
   Vec            x2_local;
 
   PetscFunctionBegin;
-
   ierr = DMDAGetInfo(daq2,0, 0,0,0, 0,0,0, &ndofq2,0, 0,0,0, 0);CHKERRQ(ierr);
   ierr = DMDAGetInfo(daq1,0, 0,0,0, 0,0,0, &ndofq1,0, 0,0,0, 0);CHKERRQ(ierr);
 
@@ -830,7 +825,6 @@ PetscErrorCode DMDAProjectVectorQ2toNestedQ1_3d(DM daq2,Vec x2,DM daq1,Vec x1)
   PetscInt si2,sj2,sk2,nx2,ny2,nz2;
 
   PetscFunctionBegin;
-
   ierr = DMDAGetCorners(daq1,&si1,&sj1,&sk1 , &nx1,&ny1,&nz1);CHKERRQ(ierr);
   ierr = DMDAGetCorners(daq2,&si2,&sj2,&sk2 , &nx2,&ny2,&nz2);CHKERRQ(ierr);
 
@@ -854,7 +848,6 @@ PetscErrorCode DMDAProjectVectorQ2toQ1(DM daq2,Vec x2,DM daq1,Vec x1,PetscInt me
   PetscInt dim,ndofq2,ndofq1;
 
   PetscFunctionBegin;
-
   ierr = DMDAGetInfo(daq2,&dim, 0,0,0, 0,0,0, &ndofq2,0, 0,0,0, 0);CHKERRQ(ierr);
   ierr = DMDAGetInfo(daq1,0, 0,0,0, 0,0,0, &ndofq1,0, 0,0,0, 0);CHKERRQ(ierr);
   if (ndofq1 != ndofq2) {
@@ -891,7 +884,6 @@ PetscErrorCode DMDAProjectCoordinatesQ2toQ1(DM daq2,DM daq1,PetscInt mesh_type)
   Vec coordq2,coordq1;
 
   PetscFunctionBegin;
-
   ierr = DMGetCoordinateDM(daq2,&cdaq2);CHKERRQ(ierr);
   ierr = DMGetCoordinateDM(daq1,&cdaq1);CHKERRQ(ierr);
 

@@ -51,7 +51,6 @@ PetscErrorCode MatMult_MatEigenOperator(Mat A,Vec X,Vec Y)
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
-
   ierr = MatShellGetContext(A,(void**)&ctx);CHKERRQ(ierr);
 
   switch (ctx->side) {
@@ -83,7 +82,6 @@ PetscErrorCode MatDestroy_MatEigenOperator(Mat A)
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
-
   ierr = MatShellGetContext(A,(void**)&ctx);CHKERRQ(ierr);
 
   if (ctx->A) { ierr = MatDestroy(&ctx->A);CHKERRQ(ierr); }
@@ -105,7 +103,6 @@ PetscErrorCode MatCreateEigenOperatorFromKSPOperators(KSP ksp,Mat *A)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = KSPGetOperators(ksp,&Aop,&Bop);CHKERRQ(ierr);
   ierr = KSPGetPC(ksp,&pc);CHKERRQ(ierr);
   ierr = KSPGetPCSide(ksp,&side);CHKERRQ(ierr);
@@ -172,7 +169,6 @@ PetscErrorCode MatMult_MatEigenOperatorKSP(Mat A,Vec X,Vec Y)
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
-
   ierr = MatShellGetContext(A,(void**)&ctx);CHKERRQ(ierr);
   ierr = KSPSolve(ctx,X,Y);CHKERRQ(ierr);
 
@@ -186,7 +182,6 @@ PetscErrorCode MatCreateEigenOperatorFromKSP(KSP ksp,Mat *A)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = KSPGetOperators(ksp,&Aop,&Bop);CHKERRQ(ierr);
 
   ierr = MatGetSize(Aop,&MA,&NA);CHKERRQ(ierr);

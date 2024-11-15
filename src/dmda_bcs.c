@@ -33,6 +33,7 @@
 
 PetscErrorCode BCListIsDirichlet(PetscInt value,PetscBool *flg)
 {
+  PetscFunctionBegin;
   if (value == BCList_DIRICHLET) { *flg = PETSC_TRUE;  }
   else                           { *flg = PETSC_FALSE; }
 
@@ -43,6 +44,7 @@ PetscErrorCode BCListInitialize(BCList list)
 {
   PetscInt n;
 
+  PetscFunctionBegin;
   for (n=0; n<list->L; n++) {
     list->dofidx_global[n] = 0;
     list->scale_global[n]  = 1.0;
@@ -61,6 +63,7 @@ PetscErrorCode BCListReset(BCList list)
   PetscInt       n;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   for (n=0; n<list->L; n++) {
     list->scale_global[n]  = 1.0;
     list->vals_global[n]   = 0.0;
@@ -81,6 +84,7 @@ PetscErrorCode BCListCreate(BCList *list)
   BCList         ll;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   *list = NULL;
   ierr = PetscMalloc(sizeof(struct _p_BCList),&ll);CHKERRQ(ierr);
   ierr = PetscMemzero(ll,sizeof(struct _p_BCList));CHKERRQ(ierr);
@@ -94,6 +98,7 @@ PetscErrorCode BCListDestroy(BCList *list)
   BCList         ll = *list;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   {
     PetscBool isdir;
     PetscInt  n,cnt;
@@ -139,6 +144,7 @@ PetscErrorCode BCListSetSizes(BCList list,PetscInt bs,PetscInt N,PetscInt N_loca
   PetscReal      mem_usage = 0.0;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   list->blocksize = bs;
   list->N  = N;
   list->L  = bs * N;
@@ -178,6 +184,7 @@ PetscErrorCode BCListUpdateCache(BCList list)
   PetscBool      isdir;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   cnt = 0;
   for (n=0; n<list->L; n++) {
     ierr = BCListIsDirichlet(list->dofidx_global[n],&isdir);CHKERRQ(ierr);
@@ -197,6 +204,7 @@ PetscErrorCode BCListInitGlobal(BCList list)
   PetscScalar            *_dindices;
   PetscErrorCode         ierr;
 
+  PetscFunctionBegin;
   ierr = DMGetLocalToGlobalMapping(list->dm,&ltog);CHKERRQ(ierr);
   ierr = ISLocalToGlobalMappingGetSize(ltog,&max);CHKERRQ(ierr);
   ierr = ISLocalToGlobalMappingGetIndices(ltog,&indices);CHKERRQ(ierr);
@@ -239,6 +247,7 @@ PetscErrorCode BCListGlobalToLocal(BCList list)
   PetscBool      is_dirich;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   ierr = DMGetGlobalVector(list->dm,&dindices_g);CHKERRQ(ierr);
   ierr = DMGetLocalVector(list->dm,&dindices);CHKERRQ(ierr);
 
@@ -305,6 +314,7 @@ PetscErrorCode BCListLocalToGlobal(BCList list)
   PetscBool      is_dirich;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   ierr = DMGetGlobalVector(list->dm,&dindices_g);CHKERRQ(ierr);
   ierr = DMGetLocalVector(list->dm,&dindices);CHKERRQ(ierr);
 
@@ -371,6 +381,7 @@ PetscErrorCode DMDABCListCreate(DM da,BCList *list)
   PetscInt       si,sj,sk,nx,ny,nz,gsi,gsj,gsk,gnx,gny,gnz;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   ierr = DMDAGetInfo(da,NULL, NULL,NULL,NULL, NULL,NULL,NULL, &bs,NULL, NULL,NULL,NULL, NULL);CHKERRQ(ierr);
   ierr = DMDAGetCorners(da, NULL,NULL,NULL, &m,&n,&p);CHKERRQ(ierr);
   ierr = DMDAGetGhostCorners(da, NULL,NULL,NULL, &mg,&ng,&pg);CHKERRQ(ierr);
@@ -402,6 +413,7 @@ PetscErrorCode DMDABCListCreate(DM da,BCList *list)
 /* read/write */
 PetscErrorCode BCListGetGlobalIndices(BCList list,PetscInt *n,PetscInt **idx)
 {
+  PetscFunctionBegin;
   if (n)   { *n   = list->L; }
   if (idx) { *idx = list->dofidx_global; }
   PetscFunctionReturn(0);
@@ -409,6 +421,7 @@ PetscErrorCode BCListGetGlobalIndices(BCList list,PetscInt *n,PetscInt **idx)
 PetscErrorCode BCListRestoreGlobalIndices(BCList list,PetscInt *n,PetscInt **idx)
 {
   PetscErrorCode ierr;
+  PetscFunctionBegin;
   if (idx) {
     if (*idx != list->dofidx_global) {
       SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"idx doesn't match");
@@ -421,6 +434,7 @@ PetscErrorCode BCListRestoreGlobalIndices(BCList list,PetscInt *n,PetscInt **idx
 
 PetscErrorCode BCListGetGlobalValues(BCList list,PetscInt *n,PetscScalar **vals)
 {
+  PetscFunctionBegin;
   if (n)    {   *n  = list->L; }
   if (vals) { *vals = list->vals_global; }
   PetscFunctionReturn(0);
@@ -428,6 +442,7 @@ PetscErrorCode BCListGetGlobalValues(BCList list,PetscInt *n,PetscScalar **vals)
 
 PetscErrorCode BCListGetLocalValues(BCList list,PetscInt *n,PetscScalar **vals)
 {
+  PetscFunctionBegin;
   if (n)    {   *n  = list->L_local; }
   if (vals) { *vals = list->vals_local; }
   PetscFunctionReturn(0);
@@ -435,6 +450,7 @@ PetscErrorCode BCListGetLocalValues(BCList list,PetscInt *n,PetscScalar **vals)
 
 PetscErrorCode BCListGetDofIdx(BCList list,PetscInt *Lg,PetscInt **dofidx_global,PetscInt *Ll,PetscInt **dofidx_local)
 {
+  PetscFunctionBegin;
   if (Lg)            { *Lg   = list->L; }
   if (dofidx_global) { *dofidx_global = list->dofidx_global; }
   if (Ll)            { *Ll   = list->L_local; }
@@ -445,6 +461,7 @@ PetscErrorCode BCListGetDofIdx(BCList list,PetscInt *Lg,PetscInt **dofidx_global
 PetscErrorCode BCListGetLocalIndices(BCList list,PetscInt *n,PetscInt **idx)
 {
   PetscErrorCode ierr;
+  PetscFunctionBegin;
   ierr = BCListGetDofIdx(list,NULL,NULL,n,idx);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -455,6 +472,7 @@ PetscBool BCListEvaluator_constant( PetscScalar position[], PetscScalar *value, 
   PetscBool   impose_dirichlet = PETSC_TRUE;
   PetscScalar dv = *((PetscScalar*)ctx);
 
+  PetscFunctionBegin;
   *value = dv;
   return impose_dirichlet;
 }
@@ -696,6 +714,7 @@ PetscErrorCode BCListInsertDirichlet_MatMult(BCList list,const Vec X,Vec F)
  {
  PetscBool impose_dirichlet = PETSC_FALSE;
 
+ PetscFunctionBegin;
  if (position[0]<1.0) {
  *value = 10.0;
  impose_dirichlet = PETSC_TRUE;
@@ -721,6 +740,7 @@ PetscErrorCode DMDABCListTraverse3d(BCList list,DM da,DMDABCListConstraintLoc do
 
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   ierr = DMDAGetInfo(da,NULL, &M,&N,&P, NULL,NULL,NULL, &ndof,NULL, NULL,NULL,NULL, NULL);CHKERRQ(ierr);
   if (dof_idx >= ndof) { SETERRQ(PetscObjectComm((PetscObject)da),PETSC_ERR_ARG_WRONG,"dof_index >= dm->blocksize"); }
 
@@ -1167,6 +1187,7 @@ PetscErrorCode MatZeroRows_BCList(Mat A,BCList list,DM dmu,DM dmp)
   PetscReal *vals = NULL;
   
   
+  PetscFunctionBegin;
   ierr = BCListGetLocalIndices(list,&L,&idx);CHKERRQ(ierr);
 
   if (dmp) {
@@ -1254,6 +1275,7 @@ PetscErrorCode MatZeroCols_BCList(Mat A,BCList list,DM dmu,DM dmp)
   PetscReal *vals = NULL;
   
   
+  PetscFunctionBegin;
   ierr = BCListGetLocalIndices(list,&L,&idx);CHKERRQ(ierr);
   
   if (dmp) {

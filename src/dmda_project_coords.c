@@ -46,7 +46,6 @@ PetscErrorCode DMDARestrictCoordinatesHierarchy(DM da[],PetscInt nlevels)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   for (L=nlevels-1; L>0; L--) {
     daf = da[L];
     dac = da[L-1];
@@ -78,7 +77,6 @@ PetscErrorCode DMDARestrictCoordinates(DM daf,DM dac)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = DMGetCoordinateDM(dac,&cdac);CHKERRQ(ierr);
   ierr = DMGetCoordinateDM(daf,&cdaf);CHKERRQ(ierr);
 
@@ -98,6 +96,8 @@ PetscErrorCode DMDARestrictCoordinates(DM daf,DM dac)
 PetscErrorCode  DMDASetCoarseningFactor(DM da,PetscInt cx,PetscInt cy,PetscInt cz)
 {
   DM_DA *dd = (DM_DA*)da->data;
+  
+  PetscFunctionBegin;
   if (cx > 0) dd->coarsen_x = cx;
   if (cy > 0) dd->coarsen_y = cy;
   if (cz > 0) dd->coarsen_z = cz;

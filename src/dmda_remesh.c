@@ -237,7 +237,6 @@ PetscErrorCode DMDARemeshSetUniformCoordinatesBetweenKLayers3d_MPI( DM da, Petsc
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   /* build top and bottom surface da on my processor */
   ierr = DMDAGetCorners( da, &si,&sj,&sk, &nx,&ny,&nz );CHKERRQ(ierr);
   ierr = DMDACreate3dRedundant( da, si,si+nx, sj,sj+ny, startK,  startK+1, 1, &surface1_da );CHKERRQ(ierr);
@@ -399,7 +398,6 @@ PetscErrorCode DMDARemeshSetUniformCoordinatesBetweenJLayers3d_MPI( DM da, Petsc
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   /* build top and bottom surface da on my processor */
   ierr = DMDAGetCorners( da, &si,&sj,&sk, &nx,&ny,&nz );CHKERRQ(ierr);
   ierr = DMDACreate3dRedundant( da, si,si+nx, startJ,  startJ+1, sk,sk+nz, 1, &surface1_da );CHKERRQ(ierr);
@@ -509,7 +507,6 @@ PetscErrorCode DMDARemeshJMAX_UpdateHeightsFromInterior(DM da)
   DMDACoor3d ***LA_coords,***LA_gcoords;
 
   PetscFunctionBegin;
-
   ierr = DMDAGetInfo(da,0,&M,&N,&P,0,0,0, 0,0,0,0,0,0);CHKERRQ(ierr);
   ierr = DMDAGetCorners(da,&si,&sj,&sk,&nx,&ny,&nz);CHKERRQ(ierr);
 
@@ -586,7 +583,6 @@ PetscErrorCode DMDASetCoordinatesColumnRefinement(DM da,PetscInt dir,PetscReal f
 
 
   PetscFunctionBegin;
-
   if ((dir < 0) || (dir > 3)) {
     SETERRQ(PetscObjectComm((PetscObject)da),PETSC_ERR_SUP,"Value \"dir\" must be one of {0,1,2}");
   }
@@ -786,6 +782,7 @@ PetscErrorCode DMDACoordinateRefinementTransferFunction_OrthogonalFaces(DM da,Pe
   PetscScalar *LA_coords;
   MPI_Comm comm;
 
+  PetscFunctionBegin;
   ierr = PetscObjectGetComm((PetscObject)da,&comm);CHKERRQ(ierr);
   ierr = DMDAGetInfo(da,0,&M,&N,&P,0,0,0,0,0,0,0,0,0);CHKERRQ(ierr);
   ierr = DMDAGetCorners(da,&si,&sj,&sk,&nx,&ny,&nz);CHKERRQ(ierr);
@@ -870,6 +867,7 @@ PetscErrorCode DMDACoordinateRefinementTransferFunction_PreserveFaceGeometry(DM 
   PetscScalar *LA_coords;
   MPI_Comm comm;
 
+  PetscFunctionBegin;
   ierr = PetscObjectGetComm((PetscObject)da,&comm);CHKERRQ(ierr);
   ierr = DMDAGetInfo(da,0,&M,&N,&P,0,0,0,0,0,0,0,0,0);CHKERRQ(ierr);
   ierr = DMDAGetCorners(da,&si,&sj,&sk,&nx,&ny,&nz);CHKERRQ(ierr);
@@ -1040,6 +1038,7 @@ PetscErrorCode DMDACoordinateRefinementTransferFunction(DM da,PetscInt dir,Petsc
 {
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   if (!preserve_face_geometry) {
     ierr = DMDACoordinateRefinementTransferFunction_OrthogonalFaces(da,dir,npoints,xref,xnatural);CHKERRQ(ierr);
   } else {
@@ -1059,6 +1058,7 @@ PetscErrorCode _DMDACoordinateRefinementTransferFunction(DM da,PetscInt dir,Pets
   PetscScalar *LA_coords;
   MPI_Comm comm;
 
+  PetscFunctionBegin;
   ierr = PetscObjectGetComm((PetscObject)da,&comm);CHKERRQ(ierr);
   ierr = DMDAGetInfo(da,0,&M,&N,&P,0,0,0,0,0,0,0,0,0);CHKERRQ(ierr);
   ierr = DMDAGetCorners(da,&si,&sj,&sk,&nx,&ny,&nz);CHKERRQ(ierr);

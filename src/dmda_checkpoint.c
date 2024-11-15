@@ -168,7 +168,7 @@ PetscErrorCode DMDACheckpointWrite(DM da,const char jprefix[])
   Vec coords = NULL;
   PetscErrorCode ierr;
 
-
+  PetscFunctionBegin;
   ierr = PetscObjectGetComm((PetscObject)da,&comm);CHKERRQ(ierr);
   ierr = MPI_Comm_size(comm,&commsize);CHKERRQ(ierr);
   ierr = MPI_Comm_rank(comm,&commrank);CHKERRQ(ierr);
@@ -387,6 +387,7 @@ PetscErrorCode _DMDAParseLayout_JSON(cJSON *jdmda,MPI_Comm comm,
   char stencilTypeName[PETSC_MAX_PATH_LEN];
   char boundaryTypeName[PETSC_MAX_PATH_LEN];
 
+  PetscFunctionBegin;
   ierr = cJSONGetPetscString(comm,jdmda,"optionsPrefix",prefix,&found);CHKERRQ(ierr);
 
   ierr = cJSONGetPetscInt(comm,jdmda,"dim",dim,&found);CHKERRQ(ierr); if (!found) SETERRQ(comm,PETSC_ERR_USER,"Failed to locate key \"dim\"");
@@ -434,6 +435,7 @@ PetscErrorCode _DMDAParsePartition_JSON(cJSON *jdmda,MPI_Comm comm,PetscInt dim,
   int k,nf;
   PetscInt commsize,nvalues;
 
+  PetscFunctionBegin;
   if (jdmda) {
     part = cJSON_GetObjectItem(jdmda,"partition");
     if (!part) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Failed to locate key \"partition\"\n");
@@ -483,6 +485,7 @@ PetscErrorCode _DMDAParseRefine_JSON(cJSON *jdmda,MPI_Comm comm,PetscInt dim,
   PetscBool found;
   int k,nf;
 
+  PetscFunctionBegin;
   nf = (int)dim;
   if (jdmda) {
     dirlist = cJSON_GetObjectItem(jdmda,"directions");
@@ -513,6 +516,7 @@ PetscErrorCode DMDACheckpointLoad(MPI_Comm comm,const char jfilename[],DM *_da)
   PetscBool found,has_coords;
 
 
+  PetscFunctionBegin;
   ierr = MPI_Comm_size(comm,&nproc);CHKERRQ(ierr);
   ierr = MPI_Comm_rank(comm,&rank);CHKERRQ(ierr);
 

@@ -126,7 +126,6 @@ static PetscErrorCode ASMDump(PC pc)
   PetscErrorCode ierr;
 
   PetscFunctionBeginUser;
-
   ierr = PetscObjectTypeCompare((PetscObject)pc,PCFIELDSPLIT,&isfs);
   if(isfs){
     PetscInt n;
@@ -215,7 +214,6 @@ PetscErrorCode FormJacobian_Stokes(SNES snes,Vec X,Mat A,Mat B,void *ctx)
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
-
   user = (pTatinCtx)ctx;
 
   ierr = pTatinGetStokesContext(user,&stokes);CHKERRQ(ierr);
@@ -303,7 +301,6 @@ PetscErrorCode pTatin3dStokesBuildMeshHierarchy(DM dav,PetscInt nlevels,DM dav_h
   PetscInt k;
 
   PetscFunctionBegin;
-
   /* set up mg */
   dav->ops->coarsenhierarchy = DMCoarsenHierarchy2_DA;
 
@@ -339,7 +336,6 @@ PetscErrorCode pTatin3dStokesReportMeshHierarchy(PetscInt nlevels,DM dav_hierarc
   PetscMPIInt    rank;
 
   PetscFunctionBegin;
-
   MPI_Comm_rank(PETSC_COMM_WORLD,&rank);
 
   /* Report mesh sizes */
@@ -386,7 +382,6 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   dap = stokes_ctx->dap;
 
   /* A operator */
@@ -611,7 +606,6 @@ PetscErrorCode _slepc_eigen(Mat A,EPSProblemType prob_type,const char descriptio
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = PetscOptionsGetBool(NULL,NULL,"-slepc_compute_errors",&compute_errors,NULL);CHKERRQ(ierr);
 
   ierr = PetscPrintf(PETSC_COMM_WORLD,"===== EigenAnalysis: \"%s\" ===== \n",description);
@@ -693,7 +687,6 @@ PetscErrorCode ptatinEigenAnalyser_Stokes(SNES snes,PetscBool view)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = SNESGetKSP(snes,&ksp_stokes);CHKERRQ(ierr);
   ierr = KSPGetOperators(ksp_stokes,&As,&Bs);CHKERRQ(ierr);
   ierr = KSPGetPC(ksp_stokes,&pc_stokes);CHKERRQ(ierr);
@@ -711,7 +704,6 @@ PetscErrorCode ptatinEigenAnalyser_StokesPC(SNES snes,PetscBool view)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = SNESGetKSP(snes,&ksp_stokes);CHKERRQ(ierr);
   ierr = KSPGetOperators(ksp_stokes,&As,&Bs);CHKERRQ(ierr);
   ierr = KSPGetPC(ksp_stokes,&pc_stokes);CHKERRQ(ierr);
@@ -737,7 +729,6 @@ PetscErrorCode ptatinEigenAnalyser_A11PC(SNES snes,PetscBool view)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = SNESGetKSP(snes,&ksp_stokes);CHKERRQ(ierr);
   ierr = KSPGetOperators(ksp_stokes,&As,&Bs);CHKERRQ(ierr);
   ierr = KSPGetPC(ksp_stokes,&pc_stokes);CHKERRQ(ierr);
@@ -767,7 +758,6 @@ PetscErrorCode ptatinEigenAnalyser_A11PCToMatlab(SNES snes,PetscBool view)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = SNESGetKSP(snes,&ksp_stokes);CHKERRQ(ierr);
   ierr = KSPGetOperators(ksp_stokes,&As,&Bs);CHKERRQ(ierr);
   ierr = KSPGetPC(ksp_stokes,&pc_stokes);CHKERRQ(ierr);
@@ -827,7 +817,6 @@ PetscErrorCode ptatinEigenAnalyser_A11PCSmoother(SNES snes,PetscBool view)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = SNESGetKSP(snes,&ksp_stokes);CHKERRQ(ierr);
   ierr = KSPGetOperators(ksp_stokes,&As,&Bs);CHKERRQ(ierr);
   ierr = KSPGetPC(ksp_stokes,&pc_stokes);CHKERRQ(ierr);
@@ -881,7 +870,6 @@ PetscErrorCode ptatinEigenAnalyser_A11SmootherComputeExplicitOperator(SNES snes,
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = SNESGetKSP(snes,&ksp_stokes);CHKERRQ(ierr);
   ierr = KSPGetOperators(ksp_stokes,&As,&Bs);CHKERRQ(ierr);
   ierr = KSPGetPC(ksp_stokes,&pc_stokes);CHKERRQ(ierr);
@@ -949,7 +937,6 @@ PetscErrorCode ptatinEigenAnalyser_A11PCSmootherComputeExplicitOperator(SNES sne
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = SNESGetKSP(snes,&ksp_stokes);CHKERRQ(ierr);
   ierr = KSPGetOperators(ksp_stokes,&As,&Bs);CHKERRQ(ierr);
   ierr = KSPGetPC(ksp_stokes,&pc_stokes);CHKERRQ(ierr);
@@ -1040,7 +1027,6 @@ PetscErrorCode ptatinEigenAnalyser_A11KSPSmoother(SNES snes,PetscBool view)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = SNESGetKSP(snes,&ksp_stokes);CHKERRQ(ierr);
   ierr = KSPGetOperators(ksp_stokes,&As,&Bs);CHKERRQ(ierr);
   ierr = KSPGetPC(ksp_stokes,&pc_stokes);CHKERRQ(ierr);
@@ -1105,7 +1091,6 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
   PetscBool      asm_dump=PETSC_FALSE,block_dump=PETSC_FALSE;
 
   PetscFunctionBegin;
-
   /* PS: collect new flags for custom dumps */
   ierr = PetscOptionsGetBool(NULL,NULL,"-asm_dump",&asm_dump,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,NULL,"-block_dump",&block_dump,NULL);CHKERRQ(ierr);

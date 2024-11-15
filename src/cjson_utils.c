@@ -219,6 +219,7 @@ PetscErrorCode cJSONGetPetscInt(MPI_Comm comm,cJSON *cj,const char name[],PetscI
   int ival = 0;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   ierr = MPI_Comm_size(comm,&commsize);CHKERRQ(ierr);
   ierr = MPI_Comm_rank(comm,&commrank);CHKERRQ(ierr);
   *found = PETSC_FALSE;
@@ -242,6 +243,7 @@ PetscErrorCode cJSONGetPetscReal(MPI_Comm comm,cJSON *cj,const char name[],Petsc
   double dval = 0.0;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   ierr = MPI_Comm_size(comm,&commsize);CHKERRQ(ierr);
   ierr = MPI_Comm_rank(comm,&commrank);CHKERRQ(ierr);
   *found = PETSC_FALSE;
@@ -267,6 +269,7 @@ PetscErrorCode cJSONGetPetscRealArray(MPI_Comm comm,cJSON *cj,const char name[],
   PetscReal *_values = NULL;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   ierr = MPI_Comm_size(comm,&commsize);CHKERRQ(ierr);
   ierr = MPI_Comm_rank(comm,&commrank);CHKERRQ(ierr);
   *found = PETSC_FALSE;
@@ -310,6 +313,7 @@ PetscErrorCode cJSONGetPetscIntArray(MPI_Comm comm,cJSON *cj,const char name[],P
   PetscInt *_values = NULL;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   ierr = MPI_Comm_size(comm,&commsize);CHKERRQ(ierr);
   ierr = MPI_Comm_rank(comm,&commrank);CHKERRQ(ierr);
   *found = PETSC_FALSE;
@@ -355,6 +359,7 @@ PetscErrorCode cJSONGetPetscString(MPI_Comm comm,cJSON *cj,const char name[],cha
   PetscInt k;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   ierr = MPI_Comm_size(comm,&commsize);CHKERRQ(ierr);
   ierr = MPI_Comm_rank(comm,&commrank);CHKERRQ(ierr);
   *found = PETSC_FALSE;
@@ -385,6 +390,7 @@ PetscErrorCode cJSONGetPetscBool(MPI_Comm comm,cJSON *cj,const char name[],Petsc
   int ival = 0;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   ierr = MPI_Comm_size(comm,&commsize);CHKERRQ(ierr);
   ierr = MPI_Comm_rank(comm,&commrank);CHKERRQ(ierr);
   *found = PETSC_FALSE;
@@ -405,6 +411,7 @@ PetscErrorCode cJSONGetPetscBool(MPI_Comm comm,cJSON *cj,const char name[],Petsc
 /*
 PetscErrorCode SETERRQ_JSONKEY(MPI_Comm comm,const char keyname[])
 {
+  PetscFunctionBegin;
   SETERRQ(comm,PETSC_ERR_FILE_UNEXPECTED,"Failed to locate essential JSON key \"%s\"",keyname);
   PetscFunctionReturn(0);
 }
