@@ -201,7 +201,11 @@ $(ptatin-drivers-y.c:%.c=$(BINDIR)/%.app) : $(libptatin3dmodels) $(libptatin3d)
 .SECONDARY: $(ptatin-drivers-y.c:%.c=$(OBJDIR)/%.o)
 
 $(BINDIR)/%.app : $(OBJDIR)/%.o | $$(@D)/.DIR
-	$(call quiet,PCC_LINKER) $(TATIN_CFLAGS) -o $@ $^ $(PETSC_SNES_LIB) $(TATIN_LIB)
+# If linking against static libraries, this line will suffice
+#   $(call quiet,PCC_LINKER) $(TATIN_CFLAGS) -o $@ $^ $(PETSC_SNES_LIB) $(TATIN_LIB)
+#
+# If built with shared libs you will need to use the variable CC_LINKER_SLFLAG
+	$(call quiet,PCC_LINKER) $(TATIN_CFLAGS) -o $@ $^ $(CC_LINKER_SLFLAG)$(PETSC_DIR)/$(PETSC_ARCH)/lib  $(PETSC_LIB) $(TATIN_LIB)
 #@mv $@ $(BINDIR)
 	@ln -sf $(abspath $@) $(BINDIR)
 
