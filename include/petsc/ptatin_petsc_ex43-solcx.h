@@ -4,10 +4,10 @@
 /* version check */
 #include "petscversion.h"
 
-#if ((PETSC_VERSION_MAJOR == 3) && (PETSC_VERSION_MINOR >= 9) && (PETSC_VERSION_MINOR <= 17))
+#if ((PETSC_VERSION_MAJOR == 3) && (PETSC_VERSION_MINOR == 22))
   #include "src/ksp/ksp/tutorials/ex43-solcx.h"
 #else
-  #error "pTatin provided private petsc header for src/ksp/ksp/examples/tutorials/ex43-solcx.h is only valid for PETSc v3.9 --> v3.17"
+  #error "pTatin provided private petsc header for src/ksp/ksp/examples/tutorials/ex43-solcx.h is valid for PETSc v3.22"
 #endif
 
 #endif
