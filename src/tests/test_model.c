@@ -52,12 +52,14 @@ typedef struct {
 PetscErrorCode ModelTest_ApplyBoundaryCondition(pTatinCtx c,void *ctx)
 {
   UserModelCtx *data = (UserModelCtx*)ctx;
+  PetscFunctionBegin;
   printf("alpha = %lf \n", data->alpha );
   PetscFunctionReturn(0);
 }
 PetscErrorCode ModelTest_ApplyInitialMaterialGeometry(pTatinCtx c,void *ctx)
 {
   UserModelCtx *data = (UserModelCtx*)ctx;
+  PetscFunctionBegin;
   printf("beta = %lf \n", data->beta );
   PetscFunctionReturn(0);
 }
@@ -69,6 +71,7 @@ PetscErrorCode test_model(void)
   pTatinModel m,model;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   data = malloc(sizeof(UserModelCtx));
   data->alpha = 11.23;
   data->beta = 66.99;
@@ -112,10 +115,11 @@ int main(int argc,char **argv)
 {
   PetscErrorCode ierr;
 
-  ierr = pTatinInitialize(&argc,&argv,(char *)0,NULL);CHKERRQ(ierr);
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&argc,&argv,(char *)0,NULL));
 
   test_model();
 
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscCall(pTatinFinalize());
   return 0;
 }

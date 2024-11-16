@@ -43,8 +43,7 @@ PetscErrorCode eval_F_diffusion_SteadyState(SNES snes,Vec X,Vec F,void *data)
   PetscScalar       *_F;
   DM                dm;
   FVDA              fv = NULL;
-  
-  
+    
   PetscFunctionBegin;
   ierr = SNESGetApplicationContext(snes,(void*)&fv);CHKERRQ(ierr);
   ierr = SNESGetDM(snes,&dm);CHKERRQ(ierr);
@@ -96,7 +95,8 @@ PetscErrorCode eval_J_diffusion_SteadyState(SNES snes,Vec X,Mat Ja,Mat Jb,void *
   const PetscScalar *_X,*_fv_coor,*_geom_coor;
   DM                dm;
   FVDA              fv = NULL;
-  
+
+  PetscFunctionBegin;  
   ierr = SNESGetApplicationContext(snes,(void*)&fv);CHKERRQ(ierr);
   ierr = SNESGetDM(snes,&dm);CHKERRQ(ierr);
   dm = fv->dm_fv;
@@ -315,7 +315,6 @@ PetscErrorCode pTatin3d_SteadyStateDiffusion_TFV_driver(int argc,char **argv)
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
-
   ierr = pTatin3dCreateContext(&user);CHKERRQ(ierr);
   ierr = pTatin3dSetFromOptions(user);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,NULL,"-view_ic",&view_ic,NULL);CHKERRQ(ierr);
@@ -475,7 +474,8 @@ int main(int argc,char **argv)
   PetscErrorCode ierr;
   PetscMPIInt rank;
 
-  ierr = pTatinInitialize(&argc,&argv,0,NULL);CHKERRQ(ierr);
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&argc,&argv,0,NULL));
   ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&rank);CHKERRQ(ierr);
 
   ierr = PetscMemorySetGetMaximumUsage();CHKERRQ(ierr);
@@ -484,6 +484,6 @@ int main(int argc,char **argv)
 
   ierr = pTatinGetRangeMaximumMemoryUsage(NULL);CHKERRQ(ierr);
 
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscCall(pTatinFinalize());
   return 0;
 }

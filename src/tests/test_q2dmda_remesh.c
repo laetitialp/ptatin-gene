@@ -59,7 +59,6 @@ PetscErrorCode pTatin3d_remesh(void)
   Vec             X;
 
   PetscFunctionBegin;
-
   ierr = pTatin3dCreateContext(&user);CHKERRQ(ierr);
   ierr = pTatin3dSetFromOptions(user);CHKERRQ(ierr);
 
@@ -134,11 +133,12 @@ int main( int argc,char **argv )
 {
   PetscErrorCode ierr;
 
-  ierr = pTatinInitialize(&argc,&argv,(char *)0,NULL);CHKERRQ(ierr);
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&argc,&argv,(char *)0,NULL));
 
   ierr = pTatin3d_remesh();CHKERRQ(ierr);
 
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscCall(pTatinFinalize());
 
   return 0;
 }

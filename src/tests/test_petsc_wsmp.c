@@ -46,6 +46,7 @@ PetscErrorCode wssmp_ex1_serial_petsc_lu(void)
   PetscScalar vals[9],_v[] = { -3.0, -3.0, -4.0, -3.0, -3.0, -4.0, -4.0, 71.0, -4.0 };
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"%s:\n",PETSC_FUNCTION_NAME);
   ierr = MatCreate(PETSC_COMM_SELF,&A);CHKERRQ(ierr);
   ierr = MatSetSizes(A,PETSC_DECIDE,PETSC_DECIDE,m,m);CHKERRQ(ierr);
@@ -136,6 +137,7 @@ PetscErrorCode wssmp_ex1_serial_petsc_wsmp(void)
   PetscScalar vals[9],_v[] = { -3.0, -3.0, -4.0, -3.0, -3.0, -4.0, -4.0, 71.0, -4.0 };
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"%s:\n",PETSC_FUNCTION_NAME);
   ierr = MatCreate(PETSC_COMM_WORLD,&A);CHKERRQ(ierr);
   ierr = MatSetSizes(A,PETSC_DECIDE,PETSC_DECIDE,m,m);CHKERRQ(ierr);
@@ -243,6 +245,7 @@ PetscErrorCode wssmp_ex1_mpi_petsc_wsmp(void)
   PetscMPIInt size,rank;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"%s:\n",PETSC_FUNCTION_NAME);
 
   ierr = MPI_Comm_size(PETSC_COMM_WORLD,&size);CHKERRQ(ierr);
@@ -347,7 +350,8 @@ int main(int argc,char **argv)
   PetscErrorCode ierr;
   PetscMPIInt size;
 
-  ierr = pTatinInitialize(&argc,&argv,0,help);CHKERRQ(ierr);
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&argc,&argv,0,help));
 
   ierr = MPI_Comm_size(PETSC_COMM_WORLD,&size);CHKERRQ(ierr);
   if (size == 1) {
@@ -357,6 +361,6 @@ int main(int argc,char **argv)
     ierr = wssmp_ex1_mpi_petsc_wsmp();CHKERRQ(ierr);
   }
 
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscCall(pTatinFinalize());
   return 0;
 }

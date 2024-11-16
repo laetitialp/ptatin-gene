@@ -39,6 +39,7 @@ PetscErrorCode test_GeometryObjectParse_cJSON(char filename[])
   PetscInt        k,ngo;
   GeometryObject *golist;
 
+  PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"** test_GeometryObjectParse_cJSON **\n");
   ierr = GeometryObjectLoadJSON(filename,&ngo,&golist);CHKERRQ(ierr);
 
@@ -93,6 +94,7 @@ PetscErrorCode test_GeometryObjectParse2_cJSON(void)
   PetscLogDouble t0,t1;
   const char     filename[] = "fat_test_geom.json";
 
+  PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"** test_GeometryObjectParse2_cJSON **\n");
 
   ngo = 100;
@@ -143,6 +145,7 @@ PetscErrorCode render(void)
   cJSON *root,*parent,*item;
   char *j;
 
+  PetscFunctionBegin;
   root = cJSON_CreateObject();
 
   parent = cJSON_CreateObject();
@@ -173,6 +176,7 @@ PetscErrorCode render_units(void)
   cJSON *root,*parent,*array,*item;
   char *j;
 
+  PetscFunctionBegin;
   root = cJSON_CreateObject();
 
   {
@@ -215,7 +219,8 @@ int main(int argc,char **argv)
   PetscInt       i,test_id,nloops;
   char           filename1[PETSC_MAX_PATH_LEN] = "src/tests/test_geom.json";
 
-  ierr = pTatinInitialize(&argc,&argv,(char *)0,NULL);CHKERRQ(ierr);
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&argc,&argv,(char *)0,NULL));
 
   test_id = 1;
   PetscOptionsGetInt(NULL,NULL,"-test_id",&test_id,NULL);
@@ -245,6 +250,6 @@ int main(int argc,char **argv)
       break;
   }
 
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscCall(pTatinFinalize());
   return 0;
 }

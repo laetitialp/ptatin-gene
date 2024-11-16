@@ -159,8 +159,10 @@ PetscErrorCode test_lithostatic_pressure_solve(void)
 int main(int argc,char **args)
 {
   PetscErrorCode ierr;
-  ierr = PetscInitialize(&argc,&args,(char*)0,NULL);if (ierr) return ierr;
+
+  PetscFunctionBegin;
+  PetscCall(PetscInitialize(&argc,&args,(char*)0,NULL));
   ierr = test_lithostatic_pressure_solve();CHKERRQ(ierr);
-  ierr = PetscFinalize();
-  return ierr;
+  PetscCall(PetscFinalize());
+  return 0;
 }

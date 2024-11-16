@@ -65,7 +65,6 @@ PetscErrorCode pTatinSurfaceMeshCreate(DM dav, DM *da_spm,Vec *_height)
   Vec height;
 
   PetscFunctionBegin;
-
   comm = PetscObjectComm((PetscObject)dav);
   ierr = MPI_Comm_rank(comm,&rank);CHKERRQ(ierr);
 
@@ -154,12 +153,10 @@ PetscErrorCode pTatin_InjectSurfaceMeshOntoMechanicalDomain(DM da_surf,Vec heigh
   DMDACoor3d ***LA_coords_vol;
   MPI_Comm comm;
   int rank;
-
   PetscErrorCode ierr;
 
 
   PetscFunctionBegin;
-
   comm = PetscObjectComm((PetscObject)da_vol);
   ierr = MPI_Comm_rank(comm,&rank);CHKERRQ(ierr);
 
@@ -264,11 +261,9 @@ PetscErrorCode pTatin_InjectMechanicalDomainSurfaceOntoSurfaceMesh(DM da_vol,DM 
   PetscErrorCode  ierr;
 
   PetscFunctionBegin;
-
   ierr = DMDAGetInfo(da_vol,0,&M,&N,&P,0,0,0, 0,0,0,0,0,0);CHKERRQ(ierr);
   ierr = DMDAGetCorners(da_surf,&si2d,&sj2d,0,&nx2d,&ny2d,0);CHKERRQ(ierr);
   ierr = DMDACreate3dRedundant(da_vol,si2d,si2d+nx2d,N-1,N,sj2d,sj2d+ny2d, 1, &da_red_vol);CHKERRQ(ierr);
-
 
   ierr = DMGetCoordinates(da_surf,&coords_surf);CHKERRQ(ierr);
   ierr = DMGetCoordinates(da_red_vol,&coords_red_vol);CHKERRQ(ierr);
@@ -317,7 +312,6 @@ PetscErrorCode pTatin3d_material_points_check_ic(int argc,char **argv)
   DM              daspm;
 
   PetscFunctionBegin;
-
   ierr = pTatin3dCreateContext(&user);CHKERRQ(ierr);
   ierr = pTatin3dSetFromOptions(user);CHKERRQ(ierr);
 
@@ -460,10 +454,11 @@ int main(int argc,char **argv)
 {
   PetscErrorCode ierr;
 
-  ierr = pTatinInitialize(&argc,&argv,0,help);CHKERRQ(ierr);
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&argc,&argv,0,help));
 
   ierr = pTatin3d_material_points_check_ic(argc,argv);CHKERRQ(ierr);
 
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscCall(pTatinFinalize());
   return 0;
 }

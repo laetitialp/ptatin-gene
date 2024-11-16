@@ -38,9 +38,9 @@ static PetscErrorCode CreateGMSHCtx(GMSHCtx **data)
 {
   GMSHCtx        *ctx;
   PetscErrorCode ierr;
+
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
-
   ierr = PetscMalloc(sizeof(GMSHCtx),&ctx);CHKERRQ(ierr);
   ierr = PetscMemzero(ctx,sizeof(GMSHCtx));CHKERRQ(ierr);
   *data = ctx;
@@ -50,9 +50,9 @@ static PetscErrorCode CreateGMSHCtx(GMSHCtx **data)
 static PetscErrorCode DestroyGMSHCtx(GMSHCtx *data)
 {
   PetscErrorCode ierr;
+
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
-
   if (!data) { PetscFunctionReturn(0); }
   ierr = PetscFree(data->tag_table);CHKERRQ(ierr);
   ierr = PetscFree(data->region_table);CHKERRQ(ierr);
@@ -142,8 +142,8 @@ static PetscErrorCode TestLocationPointAlg_PointIdx(
   double         xip[] = {0.0,0.0,0.0};
   Facet          cell_facet;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = MeshFacetInfoGetCoords(fi);CHKERRQ(ierr);
   ierr = FacetCreate(&cell_facet);CHKERRQ(ierr);
 
@@ -176,6 +176,7 @@ static PetscErrorCode TestLocationPointAlg(pTatinCtx ptatin)
   PetscInt          tag,pidx_to_test;
   char              opt_name[PETSC_MAX_PATH_LEN],meshfile[PETSC_MAX_PATH_LEN],sc_name[PETSC_MAX_PATH_LEN];
   PetscErrorCode    ierr;
+
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
 
@@ -271,6 +272,7 @@ static PetscErrorCode MarkFacetsFromGMSH(GMSHCtx *data)
 {
   PetscInt       sf;
   PetscErrorCode ierr;
+
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
 
@@ -363,6 +365,7 @@ static PetscErrorCode ModelInitialize(pTatinCtx ptatin, GMSHCtx *data)
   PetscInt       nn;
   PetscBool      found;
   PetscErrorCode ierr;
+
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
 
@@ -429,6 +432,7 @@ static PetscErrorCode OutputSurfaceConstraint(pTatinCtx ptatin, GMSHCtx *data)
   PetscInt          nsc;
   char              root[PETSC_MAX_PATH_LEN];
   PetscErrorCode    ierr;
+
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
 
@@ -471,7 +475,6 @@ static PetscErrorCode pTatin3d_ICFromGMSH(int argc,char **argv)
   PetscErrorCode  ierr;
 
   PetscFunctionBegin;
-  
   ierr = pTatin3dCreateContext(&ptatin);CHKERRQ(ierr);
   ierr = pTatin3dSetFromOptions(ptatin);CHKERRQ(ierr);
 
@@ -535,10 +538,11 @@ int main(int argc,char **argv)
 {
   PetscErrorCode ierr;
 
-  ierr = pTatinInitialize(&argc,&argv,0,NULL);CHKERRQ(ierr);
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&argc,&argv,0,NULL));
 
   ierr = pTatin3d_ICFromGMSH(argc,argv);CHKERRQ(ierr);
 
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscCall(pTatinFinalize());
   return 0;
 }

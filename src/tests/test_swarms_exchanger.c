@@ -79,7 +79,7 @@ PetscErrorCode SwarmTest_Communication1(MPI_Comm comm)
   long int        L_global;
   PetscInt        num_items_recv;
 
-
+  PetscFunctionBegin;
   ierr = MPI_Comm_size(comm,&nproc);CHKERRQ(ierr);
   ierr = MPI_Comm_rank(comm,&rank);CHKERRQ(ierr);
 
@@ -330,7 +330,7 @@ PetscErrorCode SwarmTest_Communication2(MPI_Comm comm)
   MaterialPoint   *mp,*mp_recv;
   MaterialPointVP *mpv,*mpv_recv;
 
-
+  PetscFunctionBegin;
   ierr = MPI_Comm_size(comm,&nproc);CHKERRQ(ierr);
   ierr = MPI_Comm_rank(comm,&rank);CHKERRQ(ierr);
 
@@ -575,7 +575,7 @@ PetscErrorCode SwarmTest_Communication3(MPI_Comm comm)
   size_t          sizeof_marker_contents;
   void            *recv_buffer,*dbuf;
 
-
+  PetscFunctionBegin;
   ierr = MPI_Comm_size(comm,&nproc);CHKERRQ(ierr);
   ierr = MPI_Comm_rank(comm,&rank);CHKERRQ(ierr);
 
@@ -776,9 +776,10 @@ PetscErrorCode SwarmTest_Communication3(MPI_Comm comm)
 int main(int nargs,char **args)
 {
   int test_id;
-
   PetscErrorCode ierr;
-  ierr = PetscInitialize(&nargs,&args,(char*)0,NULL);CHKERRQ(ierr);
+
+  PetscFunctionBegin; 
+  PetscCall(PetscInitialize(&nargs,&args,(char*)0,NULL));
 
   if (nargs == 2) {
     test_id = atoi(args[1]);
@@ -801,7 +802,6 @@ int main(int nargs,char **args)
 
   }
 
-  ierr = PetscFinalize();CHKERRQ(ierr);
-
+  PetscCall(PetscFinalize());
   return 0;
 }

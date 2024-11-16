@@ -55,7 +55,6 @@ PetscErrorCode test_dmda_checkpoint_pack(void)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   /* create the da */
   nx = ny = nz = 10;
   PetscOptionsGetInt(NULL, NULL, "-mx", &nx, 0 );
@@ -188,10 +187,11 @@ int main( int argc,char **argv )
 {
   PetscErrorCode ierr;
 
-  ierr = pTatinInitialize(&argc,&argv,(char *)0,NULL);CHKERRQ(ierr);
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&argc,&argv,(char *)0,NULL));
 
   ierr = test_DMDACheckPoint();CHKERRQ(ierr);
 
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscCall(pTatinFinalize());
   return 0;
 }

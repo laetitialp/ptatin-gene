@@ -20,6 +20,7 @@ PetscErrorCode MaterialPointComputeCoordStats(DataBucket db,PetscReal stats[])
   double stats_[9],stats_g_[9];
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   for (p=0; p<3; p++) {
     stats_[p] = 1.0e32;
   }
@@ -83,7 +84,6 @@ PetscErrorCode ptatin_db_checkpoint(void)
   char           filename[PETSC_MAX_PATH_LEN];
 
   PetscFunctionBegin;
-
   ierr = pTatin3dCreateContext(&user);CHKERRQ(ierr);
   ierr = pTatin3dSetFromOptions(user);CHKERRQ(ierr);
 
@@ -231,10 +231,11 @@ int main(int argc,char **argv)
 {
   PetscErrorCode ierr;
 
-  ierr = pTatinInitialize(&argc,&argv,0,NULL);CHKERRQ(ierr);
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&argc,&argv,0,NULL));
 
   ierr = ptatin_db_checkpoint();CHKERRQ(ierr);
 
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscCall(pTatinFinalize());
   return 0;
 }

@@ -49,9 +49,7 @@ PetscErrorCode test_DMDAUpdateGhostedCoordinates(PetscInt nx,PetscInt ny,PetscIn
   Vec coords,x;
   PetscViewer vv;
 
-
   PetscFunctionBegin;
-
   ierr = DMDACreate3d(PETSC_COMM_WORLD,DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,DMDA_STENCIL_BOX,nx,ny,nz, PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE, 3,1, 0,0,0,&da);CHKERRQ(ierr);
   ierr = DMSetUp(da);CHKERRQ(ierr);
 
@@ -89,7 +87,8 @@ int main( int argc,char **argv )
   PetscErrorCode ierr;
   PetscInt mx,my,mz;
 
-  ierr = pTatinInitialize(&argc,&argv,(char *)0,NULL);CHKERRQ(ierr);
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&argc,&argv,(char *)0,NULL));
 
   mx = my = mz = 10;
   PetscOptionsGetInt(NULL, NULL, "-mx", &mx, 0 );
@@ -103,6 +102,6 @@ int main( int argc,char **argv )
   ierr = test_DMDASetCoordinatesU(mx,my,mz);CHKERRQ(ierr);
   ierr = test_DMDACloneCoordinates(mx,my,mz);CHKERRQ(ierr);
   */
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscCall(pTatinFinalize());
   return 0;
 }

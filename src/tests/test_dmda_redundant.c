@@ -111,7 +111,6 @@ PetscErrorCode test_DMDACreate3dRedundant(PetscInt nx,PetscInt ny,PetscInt nz)
   PetscInt nxs,nys,nzs,si,sj,sk;
 
   PetscFunctionBegin;
-
   ierr = DMDACreate3d(PETSC_COMM_WORLD,DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,DMDA_STENCIL_BOX,nx,ny,nz, PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE, 3,1, 0,0,0,&da);CHKERRQ(ierr);
   ierr = DMSetUp(da);CHKERRQ(ierr);
 
@@ -178,7 +177,8 @@ int main( int argc,char **argv )
   PetscErrorCode ierr;
   PetscInt mx,my,mz;
 
-  ierr = pTatinInitialize(&argc,&argv,(char *)0,NULL);CHKERRQ(ierr);
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&argc,&argv,(char *)0,NULL));
 
   mx = my = mz = 10;
   PetscOptionsGetInt(NULL, NULL, "-mx", &mx, 0 );
@@ -187,6 +187,6 @@ int main( int argc,char **argv )
 
   ierr = test_DMDACreate3dRedundant(mx,my,mz);CHKERRQ(ierr);
 
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscCall(pTatinFinalize());
   return 0;
 }

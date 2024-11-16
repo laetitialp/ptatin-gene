@@ -50,7 +50,6 @@ PetscErrorCode test_1(void)
 
 
   PetscFunctionBegin;
-
   M = 20;
   N = 20;
 
@@ -117,7 +116,6 @@ PetscErrorCode test_2(void)
 
 
   PetscFunctionBegin;
-
   M = 4;
   N = 5;
 
@@ -180,12 +178,12 @@ int main( int argc,char **argv )
 {
   PetscErrorCode ierr;
 
-
-  ierr = pTatinInitialize(&argc,&argv,(char *)0,NULL);CHKERRQ(ierr);
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&argc,&argv,(char *)0,NULL));
 
   ierr = test_1();CHKERRQ(ierr);
   ierr = test_2();CHKERRQ(ierr);
 
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscCall(pTatinFinalize());
   return 0;
 }

@@ -65,7 +65,6 @@ PetscErrorCode FormJacobian_Stokes(SNES snes,Vec X,Mat A,Mat B,void *ctx)
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
-
   user = (pTatinCtx)ctx;
 
   ierr = pTatinGetStokesContext(user,&stokes);CHKERRQ(ierr);
@@ -164,7 +163,6 @@ PetscErrorCode pTatin3d_material_points(int argc,char **argv)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = pTatin3dCreateContext(&user);CHKERRQ(ierr);
   ierr = pTatin3dSetFromOptions(user);CHKERRQ(ierr);
 
@@ -318,7 +316,6 @@ PetscErrorCode pTatin3d_material_points_restart(int argc,char **argv)
 
 
   PetscFunctionBegin;
-
   ierr = pTatin3dCreateContext(&user);CHKERRQ(ierr);
   ierr = pTatin3dSetFromOptions(user);CHKERRQ(ierr);
 
@@ -418,7 +415,8 @@ int main(int argc,char **argv)
   PetscBool restart;
   PetscErrorCode ierr;
 
-  ierr = pTatinInitialize(&argc,&argv,0,help);CHKERRQ(ierr);
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&argc,&argv,0,help));
 
   restart = PETSC_FALSE;
   PetscOptionsGetBool(NULL,NULL,"-test_restart",&restart,0);
@@ -428,7 +426,6 @@ int main(int argc,char **argv)
     ierr = pTatin3d_material_points(argc,argv);CHKERRQ(ierr);
   }
 
-
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscCall(pTatinFinalize());
   return 0;
 }

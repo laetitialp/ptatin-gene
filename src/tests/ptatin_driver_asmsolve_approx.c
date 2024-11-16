@@ -65,7 +65,6 @@ PetscErrorCode FormJacobian_Stokes(SNES snes,Vec X,Mat A,Mat B,void *ctx)
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
-
   user = (pTatinCtx)ctx;
 
   ierr = pTatinGetStokesContext(user,&stokes);CHKERRQ(ierr);
@@ -163,7 +162,6 @@ PetscErrorCode pTatin3d_material_points(int argc,char **argv)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = pTatin3dCreateContext(&user);CHKERRQ(ierr);
   ierr = pTatin3dSetFromOptions(user);CHKERRQ(ierr);
 
@@ -281,16 +279,13 @@ PetscErrorCode pTatin3d_galerkin_mg_material_points(int argc,char **argv)
   SNES      snes;
   KSP       ksp;
   PC        pc;
-
   PetscMPIInt    rank;
   DM             *dav_hierarchy;
   Mat            *interpolatation;
   PetscInt       nlevels,k;
-
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = pTatin3dCreateContext(&user);CHKERRQ(ierr);
   ierr = pTatin3dSetFromOptions(user);CHKERRQ(ierr);
 
@@ -496,22 +491,18 @@ PetscErrorCode pTatin3d_gmg_material_points(int argc,char **argv)
   SNES      snes;
   KSP       ksp;
   PC        pc;
-
   PetscMPIInt    rank;
   DM             *dav_hierarchy;
   Mat            *interpolatation;
   PetscInt       nlevels,k;
   Quadrature     volQ[10];
   BCList         u_bclist[10];
-
   Mat  R1[10];
   DM   scalarDA[10];
   Vec  sca[10];
-
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = pTatin3dCreateContext(&user);CHKERRQ(ierr);
   ierr = pTatin3dSetFromOptions(user);CHKERRQ(ierr);
 
@@ -836,7 +827,6 @@ PetscErrorCode pTatin3d_gmg2_material_points(int argc,char **argv)
   PC        pc;
   PetscBool flg;
   PetscInt  level_type[10];
-
   PetscMPIInt    rank;
   DM             dav_hierarchy[10];
   Mat            interpolatation_v[10],interpolatation_eta[10];
@@ -845,11 +835,9 @@ PetscErrorCode pTatin3d_gmg2_material_points(int argc,char **argv)
   BCList         u_bclist[10];
   PetscInt       kk;
   Quadrature     volQ_2x2x2[10];
-
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = pTatin3dCreateContext(&user);CHKERRQ(ierr);
   ierr = pTatin3dSetFromOptions(user);CHKERRQ(ierr);
 
@@ -1387,7 +1375,8 @@ int main(int argc,char **argv)
 {
   PetscErrorCode ierr;
 
-  ierr = pTatinInitialize(&argc,&argv,0,help);CHKERRQ(ierr);
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&argc,&argv,0,help));
 
 //  ierr = pTatin3d_material_points(argc,argv);CHKERRQ(ierr);
 
@@ -1403,7 +1392,6 @@ int main(int argc,char **argv)
 
   ierr = pTatin3d_gmg2_material_points(argc,argv);CHKERRQ(ierr);
 
-
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscCall(pTatinFinalize());
   return 0;
 }

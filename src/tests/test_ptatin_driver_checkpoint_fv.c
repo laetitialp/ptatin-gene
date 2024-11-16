@@ -90,7 +90,7 @@ PetscErrorCode MatAssembleMFGalerkin(DM dav_fine,BCList u_bclist_fine,Quadrature
   PetscLogDouble t0,t1,t[6];
   PetscErrorCode ierr;
   
-  
+  PetscFunctionBegin;  
   ierr = MatZeroEntries(Ac);CHKERRQ(ierr);
 #if 0
   {
@@ -398,6 +398,7 @@ PetscErrorCode SNESGetKSP_(SNES snes,SNES *this_snes,KSP *this_ksp)
   PetscBool is_ngmres = PETSC_FALSE;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   *this_snes = NULL;
   *this_ksp  = NULL;
   ierr = PetscObjectTypeCompare((PetscObject)snes,SNESNGMRES,&is_ngmres);CHKERRQ(ierr);
@@ -430,7 +431,6 @@ PetscErrorCode SNESDestroyMGCtx(SNES snes)
   PetscContainer container;
 
   PetscFunctionBegin;
-
   container = NULL;
   ierr = PetscObjectQuery((PetscObject)snes,"AuuMultiLevelCtx",(PetscObject*)&container);CHKERRQ(ierr);
   if (container) {
@@ -502,7 +502,6 @@ PetscErrorCode pTatin3dStokesBuildMeshHierarchy(DM dav,PetscInt nlevels,DM dav_h
   PetscInt k;
 
   PetscFunctionBegin;
-
   /* set up mg */
   dav->ops->coarsenhierarchy = DMCoarsenHierarchy2_DA;
 
@@ -536,7 +535,6 @@ PetscErrorCode pTatin3dStokesReportMeshHierarchy(PetscInt nlevels,DM dav_hierarc
   PetscMPIInt    rank,size;
 
   PetscFunctionBegin;
-
   ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&rank);CHKERRQ(ierr);
   ierr = MPI_Comm_size(PETSC_COMM_WORLD,&size);CHKERRQ(ierr);
 
@@ -591,7 +589,6 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   dap = stokes_ctx->dap;
 
   /* A operator */
@@ -837,7 +834,6 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
-
   user = (pTatinCtx)ctx;
 
   ierr = pTatinGetStokesContext(user,&stokes);CHKERRQ(ierr);
@@ -1519,8 +1515,7 @@ PetscErrorCode ProjectStokesVariablesOnQuadraturePoints(pTatinCtx user)
   PhysCompStokes    stokes;
   PetscErrorCode    ierr;
   
-  PetscFunctionBegin;
-  
+  PetscFunctionBegin;  
   /* Marker -> quadrature point projection */
   DataBucketGetDataFieldByName(user->materialpoint_db, MPntStd_classname     , &PField_std);
   DataBucketGetDataFieldByName(user->materialpoint_db, MPntPStokes_classname , &PField_stokes);
@@ -1591,8 +1586,7 @@ PetscErrorCode CheckpointWrite_EnergyFV(PhysCompEnergyFV energyfv,PetscBool writ
   char           vfilename[3][PETSC_MAX_PATH_LEN],daprefix[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
 
-  PetscFunctionBegin;
-  
+  PetscFunctionBegin;  
   fv = energyfv->fv;
   ierr = MPI_Comm_size(fv->comm,&commsize);CHKERRQ(ierr);
   ierr = MPI_Comm_rank(fv->comm,&commrank);CHKERRQ(ierr);
@@ -1723,7 +1717,6 @@ PetscErrorCode PhysCompLoad_EnergyFV(pTatinCtx user,DM dav,const char jfilename[
   PetscReal time,dt;
   MPI_Comm comm;
   PetscBool found;
-
 
   PetscFunctionBegin;
   ierr = PetscObjectGetComm((PetscObject)dav,&comm);CHKERRQ(ierr);
@@ -2077,7 +2070,6 @@ PetscErrorCode pTatin3dLoadState_FromFile_FV(pTatinCtx ctx,DM dmstokes,DM dmener
   char jfilename[PETSC_MAX_PATH_LEN];
   cJSON *jfile = NULL,*jptat = NULL,*jobj;
   PetscBool found,energy_activated;
-
 
   PetscFunctionBegin;
   comm = PETSC_COMM_WORLD;
@@ -3054,7 +3046,8 @@ int main(int argc,char *argv[])
   PetscBool      init = PETSC_FALSE,load = PETSC_FALSE, run = PETSC_FALSE;
   pTatinCtx      pctx = NULL;
 
-  ierr = pTatinInitialize(&argc,&argv,0,help);CHKERRQ(ierr);
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&argc,&argv,0,help));
   ierr = pTatinModelRegisterAll();CHKERRQ(ierr);
 
   ierr = PetscOptionsGetBool(NULL,NULL,"-init",&init,NULL);CHKERRQ(ierr);
@@ -3105,6 +3098,6 @@ int main(int argc,char *argv[])
   if (pctx) { ierr = pTatin3dDestroyContext(&pctx); }
 
   ierr = pTatinModelDeRegisterAll();CHKERRQ(ierr);
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscCall(pTatinFinalize());
   return(0);
 }

@@ -8,6 +8,7 @@ PetscErrorCode test_quantity_utils(void)
   PetscErrorCode ierr;
   PetscReal length_si,length_geo,length_model;
 
+  PetscFunctionBegin;
   PetscOptionsInsertString(NULL,"-ptatin_input_units geo");
   PetscOptionsInsertString(NULL,"-ptatin_q_length_mag 1000.0");
   ierr = ptatinQuantityCreate();CHKERRQ(ierr);
@@ -40,6 +41,7 @@ PetscErrorCode test_quantity_utils_2(void)
   PetscErrorCode ierr;
   PetscReal length_si,length_geo,length_model;
 
+  PetscFunctionBegin;
   PetscOptionsInsertString(NULL,"-ptatin_input_units si");
   PetscOptionsInsertString(NULL,"-ptatin_q_length_mag 1000.0e3");
   ierr = ptatinQuantityCreate();CHKERRQ(ierr);
@@ -73,6 +75,7 @@ PetscErrorCode test_quantity_utils_3(void)
   PetscReal visc_array[] = {1.0e18, 1.0e22, 1.0e24 };
   PetscReal visc_array2[3];
 
+  PetscFunctionBegin;
   PetscOptionsInsertString(NULL,"-ptatin_input_units si");
   PetscOptionsInsertString(NULL,"-ptatin_q_length_mag 1000.0e3");
   PetscOptionsInsertString(NULL,"-ptatin_q_velocity_mag 1.0e-10");
@@ -107,12 +110,13 @@ int main(int argc,char **argv)
 {
   PetscErrorCode ierr;
 
-  ierr = pTatinInitialize(&argc,&argv,0,NULL);CHKERRQ(ierr);
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&argc,&argv,0,NULL));
 
   ierr = test_quantity_utils();CHKERRQ(ierr);
   ierr = test_quantity_utils_2();CHKERRQ(ierr);
   ierr = test_quantity_utils_3();CHKERRQ(ierr);
 
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscCall(pTatinFinalize());
   return 0;
 }

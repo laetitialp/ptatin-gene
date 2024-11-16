@@ -43,6 +43,7 @@ PetscErrorCode test_single_write(PetscInt length_ref,PetscBool skip_header)
   long int bytes,bytes_sum_g;
   PetscLogDouble t0,t1;
 
+  PetscFunctionBegin;
   ierr = MPI_Comm_rank(MPI_COMM_WORLD,&rank);CHKERRQ(ierr);
   if (rank == root) {
     fp = fopen("test-ex1.bin","w");
@@ -82,6 +83,7 @@ PetscErrorCode test_single_read(PetscInt length_ref,PetscBool skip_header)
   double diff,diff_g;
   PetscLogDouble t0,t1;
 
+  PetscFunctionBegin;
   ierr = MPI_Comm_size(MPI_COMM_WORLD,&commsize);CHKERRQ(ierr);
   ierr = MPI_Comm_rank(MPI_COMM_WORLD,&rank);CHKERRQ(ierr);
   if (rank == root) {
@@ -143,6 +145,7 @@ PetscErrorCode test_multidata_write(PetscInt length_ref,PetscBool skip_header)
   long int bytes,bytes_sum_g;
   PetscLogDouble t0,t1;
 
+  PetscFunctionBegin;
   ierr = MPI_Comm_rank(MPI_COMM_WORLD,&rank);CHKERRQ(ierr);
 
   length[0] = length_ref + (rank+1)*3;
@@ -202,6 +205,7 @@ PetscErrorCode test_multidata_read(PetscInt length_ref,PetscBool skip_header)
   long int bytes,bytes_sum_g;
   PetscLogDouble t0,t1;
 
+  PetscFunctionBegin;
   ierr = MPI_Comm_rank(MPI_COMM_WORLD,&rank);CHKERRQ(ierr);
 
   length[0] = length_ref + (rank+1)*3;
@@ -278,7 +282,8 @@ int main(int argc,char **argv)
   PetscErrorCode ierr;
   PetscInt       test_id,length;
 
-  ierr = pTatinInitialize(&argc,&argv,(char *)0,NULL);CHKERRQ(ierr);
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&argc,&argv,(char *)0,NULL));
 
   test_id = 1;
   ierr = PetscOptionsGetInt(NULL,NULL,"-test_id",&test_id,NULL);CHKERRQ(ierr);
@@ -306,6 +311,6 @@ int main(int argc,char **argv)
       break;
   }
 
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscCall(pTatinFinalize());
   return 0;
 }

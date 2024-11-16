@@ -51,8 +51,8 @@ PetscErrorCode test_q1macrop1_a(void)
   PetscInt nels,*map,e;
   DM dav;
   PetscMPIInt rank;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   mx = my = mz = 4;
   PetscOptionsGetInt(NULL,NULL,"-mx",&mx,0);
   PetscOptionsGetInt(NULL,NULL,"-my",&my,0);
@@ -98,10 +98,11 @@ int main(int argc,char **argv)
 {
   PetscErrorCode ierr;
 
-  ierr = pTatinInitialize(&argc,&argv,0,help);CHKERRQ(ierr);
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&argc,&argv,0,help));
 
   ierr = test_q1macrop1_a();CHKERRQ(ierr);
 
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscCall(pTatinFinalize());
   return 0;
 }

@@ -57,7 +57,7 @@ PetscErrorCode _GenerateTestVector(DM da,PetscInt dofs,PetscInt index,Vec x)
   PetscInt NUM_GINDICES;
   const PetscInt *GINDICES;
 
-
+  PetscFunctionBegin;
   ierr = DMGetLocalToGlobalMapping(da, &ltog);CHKERRQ(ierr);
   ierr = ISLocalToGlobalMappingGetSize(ltog, &NUM_GINDICES);CHKERRQ(ierr);
   ierr = ISLocalToGlobalMappingGetIndices(ltog, &GINDICES);CHKERRQ(ierr);
@@ -105,7 +105,6 @@ PetscErrorCode compare_mf_A11(PhysCompStokes user,Quadrature volQ_2x2x2)
   PetscLogDouble t0,t1;
   double tl,timeMIN,timeMAX;
   PetscErrorCode ierr;
-
 
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"\n+  Test [%s]: Mesh %" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT " \n", PETSC_FUNCTION_NAME,user->mx,user->my,user->mz );
@@ -217,7 +216,6 @@ PetscErrorCode pTatin3d_assemble_stokes(int argc,char **argv)
   Quadrature      volQ_2x2x2;
 
   PetscFunctionBegin;
-
   ierr = pTatin3dCreateContext(&user);CHKERRQ(ierr);
   ierr = pTatin3dSetFromOptions(user);CHKERRQ(ierr);
 
@@ -315,10 +313,11 @@ int main(int argc,char **argv)
 {
   PetscErrorCode ierr;
 
-  ierr = pTatinInitialize(&argc,&argv,0,help);CHKERRQ(ierr);
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&argc,&argv,0,help));
 
   ierr = pTatin3d_assemble_stokes(argc,argv);CHKERRQ(ierr);
 
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscCall(pTatinFinalize());
   return 0;
 }

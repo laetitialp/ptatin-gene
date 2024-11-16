@@ -53,9 +53,7 @@ static const char help[] = "Stokes solver using Q2-Pm1 mixed finite elements.\n"
 
 PetscErrorCode FormJacobian_Stokes(SNES snes,Vec X,Mat A,Mat B,void *ctx)
 {
-
   PetscFunctionBegin;
-
   PetscFunctionReturn(0);
 }
 
@@ -77,7 +75,6 @@ PetscErrorCode test_pTatin3d_gmg_galerkin(int argc,char **argv)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = pTatin3dCreateContext(&user);CHKERRQ(ierr);
   ierr = pTatin3dSetFromOptions(user);CHKERRQ(ierr);
 
@@ -304,7 +301,6 @@ PetscErrorCode test_pTatin3d_gmg_mf(int argc,char **argv)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = pTatin3dCreateContext(&user);CHKERRQ(ierr);
   ierr = pTatin3dSetFromOptions(user);CHKERRQ(ierr);
 
@@ -571,7 +567,6 @@ PetscErrorCode test_putatin(int argc,char **argv)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = pTatin3dCreateContext(&user);CHKERRQ(ierr);
   ierr = pTatin3dSetFromOptions(user);CHKERRQ(ierr);
 
@@ -628,12 +623,13 @@ int main(int argc,char **argv)
 {
   PetscErrorCode ierr;
 
-  ierr = pTatinInitialize(&argc,&argv,0,help);CHKERRQ(ierr);
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&argc,&argv,0,help));
 
 //  ierr = test_pTatin3d_gmg_galerkin(argc,argv);CHKERRQ(ierr);
   ierr = test_pTatin3d_gmg_mf(argc,argv);CHKERRQ(ierr);
 //  ierr = test_putatin(argc,argv);CHKERRQ(ierr);
 
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscCall(pTatinFinalize());
   return 0;
 }

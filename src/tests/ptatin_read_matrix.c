@@ -45,7 +45,8 @@ int main(int argc,char **argv)
   Vec b,x;
   KSP ksp;
 
-  ierr = pTatinInitialize(&argc,&argv,0,help);CHKERRQ(ierr);
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&argc,&argv,0,help));
 
   flg = PETSC_FALSE;
   PetscOptionsGetString(NULL,NULL,"-matrix",filename,PETSC_MAX_PATH_LEN-1,&flg);
@@ -78,6 +79,6 @@ int main(int argc,char **argv)
   ierr = VecDestroy(&b);CHKERRQ(ierr);
   ierr = VecDestroy(&x);CHKERRQ(ierr);
 
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscCall(pTatinFinalize());
   return 0;
 }

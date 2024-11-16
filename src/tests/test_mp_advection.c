@@ -76,7 +76,6 @@ PetscErrorCode FormJacobian_Stokes(SNES snes,Vec X,Mat A,Mat B,void *ctx)
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
-
   user = (pTatinCtx)ctx;
 
   ierr = pTatinGetStokesContext(user,&stokes);CHKERRQ(ierr);
@@ -172,7 +171,6 @@ PetscErrorCode test_mp_advection(int argc,char **argv)
   PC        pc;
   PetscBool flg;
   PetscInt  level_type[10];
-
   PetscMPIInt    rank;
   DM             dav_hierarchy[10];
   Mat            interpolatation_v[10],interpolatation_eta[10];
@@ -180,11 +178,9 @@ PetscErrorCode test_mp_advection(int argc,char **argv)
   Quadrature     volQ[10];
   BCList         u_bclist[10];
   PetscInt       kk;
-
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = pTatin3dCreateContext(&user);CHKERRQ(ierr);
   ierr = pTatin3dSetFromOptions(user);CHKERRQ(ierr);
 
@@ -755,6 +751,7 @@ PetscErrorCode DefineTestVelocityField(PetscInt vfield_idx,DM dmv,Vec velocity)
   PetscErrorCode ierr;
   PetscInt dof_idx;
 
+  PetscFunctionBegin;
   switch (vfield_idx) {
     case 0:
       dof_idx = 0;
@@ -796,7 +793,6 @@ PetscErrorCode MaterialPointAdvectionTest2(void)
   PSwarm          pswarm,*pswarm2,*psi;
 
   PetscFunctionBegin;
-
   ierr = PetscOptionsGetInt(NULL,NULL,"-flow_field",&vfield_idx,NULL);CHKERRQ(ierr);
 
   ierr = pTatin3dCreateContext(&user);CHKERRQ(ierr);
@@ -1040,8 +1036,8 @@ int main(int argc,char **argv)
   PetscErrorCode ierr;
   PetscBool      model_vel_field = PETSC_FALSE;
 
-  ierr = pTatinInitialize(&argc,&argv,0,help);CHKERRQ(ierr);
-
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&argc,&argv,0,help));
 
   ierr = PetscOptionsGetBool(NULL,NULL,"-use_model_vel_field",&model_vel_field,NULL);CHKERRQ(ierr);
 
@@ -1055,6 +1051,6 @@ int main(int argc,char **argv)
     ierr = MaterialPointAdvectionTest2();CHKERRQ(ierr);
   }
 
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscCall(pTatinFinalize());
   return 0;
 }

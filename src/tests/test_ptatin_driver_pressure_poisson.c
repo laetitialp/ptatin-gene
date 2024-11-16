@@ -38,7 +38,6 @@ static PetscErrorCode ProjectStokesVariablesOnQuadraturePoints_PressurePoisson(p
   PetscErrorCode    ierr;
   
   PetscFunctionBegin;
-  
   /* Marker -> quadrature point projection */
   DataBucketGetDataFieldByName(ptatin->materialpoint_db, MPntStd_classname     , &PField_std);
   DataBucketGetDataFieldByName(ptatin->materialpoint_db, MPntPStokes_classname , &PField_stokes);
@@ -105,7 +104,6 @@ static PetscErrorCode pTatin3d_Solve_PoissonPressure(pTatinCtx ptatin, PDESolveL
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = DMSetMatType(poisson_pressure->da,MATAIJ);CHKERRQ(ierr);
   ierr = DMCreateMatrix(poisson_pressure->da,&J);CHKERRQ(ierr);
   ierr = MatSetFromOptions(J);CHKERRQ(ierr);
@@ -123,8 +121,7 @@ static PetscErrorCode OutputPoissonPressure(pTatinCtx ptatin, PDESolveLithoP poi
   char           fname[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
 
-  PetscFunctionBegin;
-  
+  PetscFunctionBegin; 
   if (vts) {
     ierr = PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/%sPoissonPressure.vts",ptatin->outputpath,stepname);CHKERRQ(ierr);
     ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
@@ -161,7 +158,6 @@ static PetscErrorCode pTatin3d_PoissonPressure_FromModelICState(int argc,char **
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
-
   ierr = PetscOptionsGetBool(NULL,NULL,"-output_vts",&output_vts,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,NULL,"-isostatic_remesh",&isostatic_remesh,NULL);CHKERRQ(ierr);
 
@@ -272,6 +268,7 @@ static PetscErrorCode pTatin3d_LoadModelDefinition_FromFile(pTatinCtx *pctx, Vec
   PetscLogDouble    time[2];
   PetscErrorCode    ierr;
 
+  PetscFunctionBegin;
   PetscTime(&time[0]);
   ierr = pTatin3dLoadContext_FromFile(&ptatin);CHKERRQ(ierr);
   PetscTime(&time[1]);
@@ -336,7 +333,6 @@ static PetscErrorCode pTatin3d_PoissonPressure_FromFile(pTatinCtx ptatin, Vec v1
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = PetscOptionsGetBool(NULL,NULL,"-output_vts",&output_vts,NULL);CHKERRQ(ierr);
 
   ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&rank);CHKERRQ(ierr);
@@ -389,7 +385,8 @@ int main(int argc,char **argv)
   PetscErrorCode ierr;
   PetscMPIInt rank;
 
-  ierr = pTatinInitialize(&argc,&argv,0,NULL);CHKERRQ(ierr);
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&argc,&argv,0,NULL));
   /* Register all models */
   ierr = pTatinModelRegisterAll();CHKERRQ(ierr);
   ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&rank);CHKERRQ(ierr);
@@ -435,6 +432,6 @@ int main(int argc,char **argv)
 
   ierr = pTatinGetRangeMaximumMemoryUsage(NULL);CHKERRQ(ierr);
 
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscCall(pTatinFinalize());
   return 0;
 }
