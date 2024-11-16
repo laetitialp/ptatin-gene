@@ -45,7 +45,6 @@ PetscErrorCode pTatinCheckCompilationFlags(const char flags[])
   int throw_warning = 0;
 
   PetscFunctionBegin;
-
   loc = strstr(flags,"-O0");
   if (loc != NULL) {
     throw_warning = 1;
@@ -64,8 +63,8 @@ PetscErrorCode pTatinCheckCompilationFlags(const char flags[])
 PetscErrorCode pTatinWritePreamble(void)
 {
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"** ======================================================================================\n");
   PetscPrintf(PETSC_COMM_WORLD,"**\n");
   PetscPrintf(PETSC_COMM_WORLD,"**             ___________                          _______\n");
@@ -170,8 +169,8 @@ PetscErrorCode pTatinInitialize(int *argc,char ***args,const char file[],const c
 {
   PetscErrorCode ierr;
   PetscBool      supress = PETSC_FALSE;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = PetscInitialize(argc,args,file,help);CHKERRQ(ierr);
 
   ierr = PetscLogDefaultBegin();CHKERRQ(ierr);
@@ -235,11 +234,10 @@ PetscErrorCode pTatinInitialize(int *argc,char ***args,const char file[],const c
 PetscErrorCode pTatinFinalize(void)
 {
   PetscErrorCode ierr;
+
   PetscFunctionBegin;
-
   ierr = pTatinModelDeRegisterAll();CHKERRQ(ierr);
-  ierr = PetscFinalize();CHKERRQ(ierr);
-
+  PetscCall(PetscFinalize());
   PetscFunctionReturn(0);
 }
 

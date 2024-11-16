@@ -79,6 +79,7 @@ PetscErrorCode GeometryObjectCreate(const char name[],GeometryObject *G)
   int            k;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   ierr = PetscMalloc(sizeof(struct _p_GeometryObject),&go);CHKERRQ(ierr);
   ierr = PetscMemzero(go,sizeof(struct _p_GeometryObject));CHKERRQ(ierr);
 
@@ -110,7 +111,7 @@ PetscErrorCode GeometryObjectDestroy(GeometryObject *G)
   GeometryObject go;
   PetscErrorCode ierr;
 
-
+  PetscFunctionBegin;
   if (!G) { PetscFunctionReturn(0); }
   go = *G;
   if (go->ref_cnt > 0) {
@@ -133,6 +134,7 @@ PetscErrorCode GeometryObjectView(GeometryObject G)
 {
   PetscInt k;
 
+  PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"GeometryObject(%s)\n",G->name);
   PetscPrintf(PETSC_COMM_WORLD,"  type: %s\n",GeomTypeNames[(int)G->type]);
   PetscPrintf(PETSC_COMM_WORLD,"  ref: %d\n",G->ref_cnt);
@@ -159,6 +161,7 @@ PetscErrorCode GeometryObjectRotate(GeometryObject go,GeomRotateAxis dir,double 
   double angle2;
 
 
+  PetscFunctionBegin;
   if (go->n_rotations == GEOM_SHAPE_MAX_ROTATIONS-1) {
     SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"No more rotations permitted");
   }
@@ -178,6 +181,7 @@ PetscErrorCode GeometryObjectPointInside(GeometryObject go,double pos[],int *ins
   int    nr;
   double posin[3],posout[3];
 
+  PetscFunctionBegin;
   PointBackTranslate(pos,go->centroid,posout);
 
   for (nr=go->n_rotations-1; nr>=0; nr--) {
@@ -199,6 +203,7 @@ PetscErrorCode GeometryObjectPointInside(GeometryObject go,double pos[],int *ins
 
 PetscErrorCode GeometryObjectSetCentroid(GeometryObject go,double cx[])
 {
+  PetscFunctionBegin;
   go->centroid[0] = cx[0];
   go->centroid[1] = cx[1];
   go->centroid[2] = cx[2];
@@ -213,6 +218,7 @@ PetscErrorCode GeomTypeNameGetId(const char name[],int *id)
   const char *item;
   int i,v;
 
+  PetscFunctionBegin;
   i = 0;
   item = GeomTypeNames[i];
 
@@ -235,6 +241,7 @@ PetscErrorCode GeometryObjectFindByName(GeometryObject G[],const char name[],Geo
   GeometryObject item;
   int i,v;
 
+  PetscFunctionBegin;
   *g = NULL;
 
   i = 0;
@@ -256,6 +263,7 @@ PetscErrorCode GeometryObjectIdFindByName(GeometryObject G[],const char name[],P
   GeometryObject item;
   int i,v;
 
+  PetscFunctionBegin;
   *GoId = -1;
 
   i = 0;
@@ -355,6 +363,7 @@ void PointBackRotate(double xin[],GeomRotateAxis axis,double angle,double xout[]
 /* BOX: implementation */
 PetscErrorCode GeometryObjectGetContext_Box(GeometryObject go,GeomTypeBox *b)
 {
+  PetscFunctionBegin;
   *b = (GeomTypeBox)(go->ctx);
   PetscFunctionReturn(0);
 }
@@ -365,6 +374,7 @@ PetscErrorCode GeometryObjectDestroy_Box(GeometryObject go)
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ierr = GeometryObjectGetContext_Box(go,&box);CHKERRQ(ierr);
   ierr = PetscFree(box);CHKERRQ(ierr);
 
@@ -380,6 +390,7 @@ PetscErrorCode GeometryObjectSetFromOptions_Box(GeometryObject go)
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ierr = GeometryObjectGetContext_Box(go,&box);CHKERRQ(ierr);
 
   sprintf(name,"%s_",go->name);
@@ -406,6 +417,7 @@ PetscErrorCode GeometryObjectPointInside_Box(GeometryObject go,double pos[],int 
   PetscErrorCode ierr;
   PetscInt i;
 
+  PetscFunctionBegin;
   ierr = GeometryObjectGetContext_Box(go,&box);CHKERRQ(ierr);
   *inside = 0;
 
@@ -424,6 +436,7 @@ PetscErrorCode GeometryObjectSetType_Box(GeometryObject go,double x0[],double Lx
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ierr = PetscMalloc(sizeof(struct _p_GeomTypeBox),&box);CHKERRQ(ierr);
   ierr = PetscMemzero(box,sizeof(struct _p_GeomTypeBox));CHKERRQ(ierr);
   box->Lx[0] = Lx[0];
@@ -448,6 +461,7 @@ PetscErrorCode GeometryObjectSetType_BoxCornerReference(GeometryObject go,double
   double c0[3];
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   c0[0] = x0[0] + 0.5 * Lx[0];
   c0[1] = x0[1] + 0.5 * Lx[1];
   c0[2] = x0[2] + 0.5 * Lx[2];
@@ -463,6 +477,7 @@ PetscErrorCode GeometryObjectDestroy_Sphere(GeometryObject go)
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ctx = (GeomTypeSphere)go->ctx;
   ierr = PetscFree(ctx);CHKERRQ(ierr);
 
@@ -478,6 +493,7 @@ PetscErrorCode GeometryObjectSetFromOptions_Sphere(GeometryObject go)
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ctx = (GeomTypeSphere)go->ctx;
 
   sprintf(name,"%s_",go->name);
@@ -500,6 +516,7 @@ PetscErrorCode GeometryObjectPointInside_Sphere(GeometryObject go,double pos[],i
   double r2,sep2;
 
 
+  PetscFunctionBegin;
   ctx = (GeomTypeSphere)go->ctx;
 
   r2 = ctx->radius * ctx->radius;
@@ -518,6 +535,7 @@ PetscErrorCode GeometryObjectSetType_Sphere(GeometryObject go,double x0[],double
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ierr = PetscMalloc(sizeof(struct _p_GeomTypeSphere),&ctx);CHKERRQ(ierr);
   ierr = PetscMemzero(ctx,sizeof(struct _p_GeomTypeSphere));CHKERRQ(ierr);
 
@@ -546,6 +564,7 @@ PetscErrorCode GeometryObjectDestroy_Ellipsoid(GeometryObject go)
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ctx = (GeomTypeEllipsoid)go->ctx;
   ierr = PetscFree(ctx);CHKERRQ(ierr);
 
@@ -561,6 +580,7 @@ PetscErrorCode GeometryObjectSetFromOptions_Ellipsoid(GeometryObject go)
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ctx = (GeomTypeEllipsoid)go->ctx;
 
   sprintf(name,"%s_",go->name);
@@ -586,6 +606,7 @@ PetscErrorCode GeometryObjectPointInside_Ellipsoid(GeometryObject go,double pos[
   GeomTypeEllipsoid ctx;
   double ra2,rb2,rc2,sep2;
 
+  PetscFunctionBegin;
   *inside = 0;
   ctx = (GeomTypeEllipsoid)go->ctx;
 
@@ -608,6 +629,7 @@ PetscErrorCode GeometryObjectSetType_Ellipsoid(GeometryObject go,double x0[],dou
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ierr = PetscMalloc(sizeof(struct _p_GeomTypeEllipsoid),&ctx);CHKERRQ(ierr);
   ierr = PetscMemzero(ctx,sizeof(struct _p_GeomTypeEllipsoid));CHKERRQ(ierr);
 
@@ -637,6 +659,7 @@ PetscErrorCode GeometryObjectDestroy_Cylinder(GeometryObject go)
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ctx = (GeomTypeCylinder)go->ctx;
   ierr = PetscFree(ctx);CHKERRQ(ierr);
 
@@ -653,6 +676,7 @@ PetscErrorCode GeometryObjectSetFromOptions_Cylinder(GeometryObject go)
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ctx = (GeomTypeCylinder)go->ctx;
 
   sprintf(name,"%s_",go->name);
@@ -681,6 +705,7 @@ PetscErrorCode GeometryObjectPointInside_Cylinder(GeometryObject go,double pos[]
   double r2,l2;
 
 
+  PetscFunctionBegin;
   ctx = (GeomTypeCylinder)go->ctx;
 
   r2 = ctx->radius * ctx->radius;
@@ -719,6 +744,7 @@ PetscErrorCode GeometryObjectSetType_Cylinder(GeometryObject go,double x0[],doub
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ierr = PetscMalloc(sizeof(struct _p_GeomTypeCylinder),&ctx);CHKERRQ(ierr);
   ierr = PetscMemzero(ctx,sizeof(struct _p_GeomTypeCylinder));CHKERRQ(ierr);
   go->centroid[0] = x0[0];
@@ -748,6 +774,7 @@ PetscErrorCode GeometryObjectDestroy_EllipticCylinder(GeometryObject go)
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ctx = (GeomTypeEllipticCylinder)go->ctx;
   ierr = PetscFree(ctx);CHKERRQ(ierr);
 
@@ -764,6 +791,7 @@ PetscErrorCode GeometryObjectSetFromOptions_EllipticCylinder(GeometryObject go)
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ctx = (GeomTypeEllipticCylinder)go->ctx;
 
   sprintf(name,"%s_",go->name);
@@ -795,6 +823,7 @@ PetscErrorCode GeometryObjectPointInside_EllipticCylinder(GeometryObject go,doub
   double ra2,rb2;
 
 
+  PetscFunctionBegin;
   ctx = (GeomTypeEllipticCylinder)go->ctx;
 
   ra2 = ctx->radia * ctx->radia;
@@ -834,6 +863,7 @@ PetscErrorCode GeometryObjectSetType_EllipticCylinder(GeometryObject go,double x
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ierr = PetscMalloc(sizeof(struct _p_GeomTypeEllipticCylinder),&ctx);CHKERRQ(ierr);
   ierr = PetscMemzero(ctx,sizeof(struct _p_GeomTypeEllipticCylinder));CHKERRQ(ierr);
 
@@ -868,6 +898,7 @@ PetscErrorCode GeometryObjectDestroy_InfLayer(GeometryObject go)
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ctx = (GeomTypeInfLayer)go->ctx;
   ierr = PetscFree(ctx);CHKERRQ(ierr);
 
@@ -884,6 +915,7 @@ PetscErrorCode GeometryObjectSetFromOptions_InfLayer(GeometryObject go)
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ctx = (GeomTypeInfLayer)go->ctx;
 
   sprintf(name,"%s_",go->name);
@@ -908,6 +940,7 @@ PetscErrorCode GeometryObjectPointInside_InfLayer(GeometryObject go,double pos[]
   GeomTypeInfLayer ctx;
 
 
+  PetscFunctionBegin;
   ctx = (GeomTypeInfLayer)go->ctx;
   *inside = 0;
   switch (ctx->axis) {
@@ -939,6 +972,7 @@ PetscErrorCode GeometryObjectSetType_InfLayer(GeometryObject go,double x0[],doub
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ierr = PetscMalloc(sizeof(struct _p_GeomTypeInfLayer),&ctx);CHKERRQ(ierr);
   ierr = PetscMemzero(ctx,sizeof(struct _p_GeomTypeInfLayer));CHKERRQ(ierr);
   go->centroid[0] = x0[0];
@@ -966,6 +1000,7 @@ PetscErrorCode GeometryObjectDestroy_HalfSpace(GeometryObject go)
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ctx = (GeomTypeHalfSpace)go->ctx;
   ierr = PetscFree(ctx);CHKERRQ(ierr);
 
@@ -982,6 +1017,7 @@ PetscErrorCode GeometryObjectSetFromOptions_HalfSpace(GeometryObject go)
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ctx = (GeomTypeHalfSpace)go->ctx;
 
   sprintf(name,"%s_",go->name);
@@ -1006,6 +1042,7 @@ PetscErrorCode GeometryObjectPointInside_HalfSpace(GeometryObject go,double pos[
   GeomTypeHalfSpace ctx;
 
 
+  PetscFunctionBegin;
   ctx = (GeomTypeHalfSpace)go->ctx;
   *inside = 0;
   if (ctx->sign == SIGN_POSITIVE) {
@@ -1059,6 +1096,7 @@ PetscErrorCode GeometryObjectSetType_HalfSpace(GeometryObject go,double x0[],Geo
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ierr = PetscMalloc(sizeof(struct _p_GeomTypeHalfSpace),&ctx);CHKERRQ(ierr);
   ierr = PetscMemzero(ctx,sizeof(struct _p_GeomTypeHalfSpace));CHKERRQ(ierr);
   go->centroid[0] = x0[0];
@@ -1086,6 +1124,7 @@ PetscErrorCode GeometryObjectDestroy_SetOperation(GeometryObject go)
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ctx = (GeomTypeSetOperation)go->ctx;
 
   if (ctx->A) { ierr = GeometryObjectDestroy(&ctx->A);CHKERRQ(ierr); }
@@ -1103,6 +1142,7 @@ PetscErrorCode GeometryObjectPointInside_SetOperation(GeometryObject go,double x
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ctx = (GeomTypeSetOperation)go->ctx;
 
   /* Undo the coordinate shift performed by the first call to GeometryObjectPointInside() which was applied to the set */
@@ -1151,6 +1191,7 @@ PetscErrorCode GeometryObjectSetType_SetOperation(GeometryObject go,GeomSetOpera
   GeomTypeSetOperation ctx;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   if (x0) {
     go->centroid[0] = x0[0];
     go->centroid[1] = x0[1];
@@ -1182,6 +1223,7 @@ PetscErrorCode GeometryObjectSetType_SetOperationDefault(GeometryObject go,GeomS
   GeomTypeSetOperation ctx;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   go->centroid[0] = 0.5 * ( A->centroid[0] + B->centroid[0] );
   go->centroid[1] = 0.5 * ( A->centroid[1] + B->centroid[1] );
   go->centroid[2] = 0.5 * ( A->centroid[2] + B->centroid[2] );

@@ -15,6 +15,8 @@
 PetscErrorCode FunctionSpaceSet_VelocityQ1(FunctionSpace *s)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = PetscMemzero(s,sizeof(FunctionSpace));CHKERRQ(ierr);
   s->basis  = BASIS_Q1_3;
   s->nbasis = Q1_NODES_PER_EL_3D;
@@ -25,6 +27,8 @@ PetscErrorCode FunctionSpaceSet_VelocityQ1(FunctionSpace *s)
 PetscErrorCode FunctionSpaceSet_VelocityQ2(FunctionSpace *s)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = PetscMemzero(s,sizeof(FunctionSpace));CHKERRQ(ierr);
   s->basis  = BASIS_Q2_3;
   s->nbasis = Q2_NODES_PER_EL_3D;
@@ -35,6 +39,8 @@ PetscErrorCode FunctionSpaceSet_VelocityQ2(FunctionSpace *s)
 PetscErrorCode FunctionSpaceSet_PressureP0(FunctionSpace *s)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = PetscMemzero(s,sizeof(FunctionSpace));CHKERRQ(ierr);
   s->basis  = BASIS_P0_1;
   s->nbasis = 1;
@@ -45,6 +51,8 @@ PetscErrorCode FunctionSpaceSet_PressureP0(FunctionSpace *s)
 PetscErrorCode FunctionSpaceSet_PressureP1(FunctionSpace *s)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = PetscMemzero(s,sizeof(FunctionSpace));CHKERRQ(ierr);
   s->basis  = BASIS_P1_1;
   s->nbasis = P_BASIS_FUNCTIONS;
@@ -55,6 +63,8 @@ PetscErrorCode FunctionSpaceSet_PressureP1(FunctionSpace *s)
 PetscErrorCode FunctionSpaceSet_Q2P1(FunctionSpace *u,FunctionSpace *p)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = FunctionSpaceSet_VelocityQ2(u);CHKERRQ(ierr);
   ierr = FunctionSpaceSet_PressureP1(p);CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -63,6 +73,8 @@ PetscErrorCode FunctionSpaceSet_Q2P1(FunctionSpace *u,FunctionSpace *p)
 PetscErrorCode StokeFormSetFunctionSpace_Q2P1(StokesForm *f)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = FunctionSpaceSet_VelocityQ2(&f->u);CHKERRQ(ierr);
   ierr = FunctionSpaceSet_PressureP1(&f->p);CHKERRQ(ierr);
   f->X[0] = &f->u;
@@ -72,6 +84,7 @@ PetscErrorCode StokeFormSetFunctionSpace_Q2P1(StokesForm *f)
 
 PetscErrorCode StokesFormSetType(StokesForm *f,FormType type)
 {
+  PetscFunctionBegin;
   f->type = type;
   PetscFunctionReturn(0);
 }
@@ -79,6 +92,8 @@ PetscErrorCode StokesFormSetType(StokesForm *f,FormType type)
 PetscErrorCode StokesFormInit(StokesForm *f,FormType type,SurfaceConstraint sc)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = PetscMemzero(f,sizeof(StokesForm));CHKERRQ(ierr);
   f->type = type;
   if (sc) { f->sc = sc; }
@@ -95,6 +110,7 @@ PetscErrorCode StokesFormInit(StokesForm *f,FormType type,SurfaceConstraint sc)
 */
 PetscErrorCode StokesFormFlush(StokesForm *f)
 {
+  PetscFunctionBegin;
   f->u.W = NULL;
   f->u.Wx = NULL;
   f->u.Wy = NULL;
@@ -170,7 +186,8 @@ PetscErrorCode generic_facet_action(StokesForm *form,
   SurfaceConstraint sc;
   PetscLogDouble t0,t1;
   MPI_Comm comm;
-  
+
+  PetscFunctionBegin;
   /* error checking */
   comm = PetscObjectComm((PetscObject)dm);
   if (!form->apply) SETERRQ(comm,PETSC_ERR_USER,"Form cannot be applied. form->apply() is NULL");
@@ -455,8 +472,9 @@ PetscErrorCode generic_facet_assemble(StokesForm *form,
   SurfaceConstraint sc;
   PetscLogDouble t0,t1;
   MPI_Comm comm;
-  
-  
+
+
+  PetscFunctionBegin;  
   /* error checking */
   comm = PetscObjectComm((PetscObject)dm);
   if (!form->apply) SETERRQ(comm,PETSC_ERR_USER,"Form cannot be applied. form->apply() is NULL");
@@ -729,8 +747,9 @@ PetscErrorCode generic_facet_assemble_diagonal(StokesForm *form,
   SurfaceConstraint sc;
   PetscLogDouble t0,t1;
   MPI_Comm comm;
-  
-  
+
+
+  PetscFunctionBegin;
   /* error checking */
   comm = PetscObjectComm((PetscObject)dm);
   if (!form->apply) SETERRQ(comm,PETSC_ERR_USER,"Form cannot be applied. form->apply() is NULL");

@@ -279,12 +279,9 @@ PetscErrorCode pTatin3d_energy_tester(int argc,char **argv)
 
 int main(int argc,char **argv)
 {
-  PetscErrorCode ierr;
-
-  ierr = pTatinInitialize(&argc,&argv,0,help);CHKERRQ(ierr);
-
-  ierr = pTatin3d_energy_tester(argc,argv);CHKERRQ(ierr);
-
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&argc,&argv,0,help));
+  PetscCall(pTatin3d_energy_tester(argc,argv));
+  PetscCall(pTatinFinalize());
   return 0;
 }

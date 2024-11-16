@@ -55,7 +55,8 @@ PetscErrorCode SurfaceConstraintCreate(SurfaceConstraint *_sc)
 {
   SurfaceConstraint sc;
   PetscErrorCode    ierr;
-  
+
+  PetscFunctionBegin;  
   ierr = PetscMalloc(sizeof(struct _p_SurfaceConstraint),&sc);CHKERRQ(ierr);
   ierr = PetscMemzero(sc,sizeof(struct _p_SurfaceConstraint));CHKERRQ(ierr);
   
@@ -73,7 +74,8 @@ PetscErrorCode SurfaceConstraintDestroy(SurfaceConstraint *_sc)
 {
   SurfaceConstraint sc;
   PetscErrorCode    ierr;
-  
+
+  PetscFunctionBegin;  
   if (!_sc) PetscFunctionReturn(0);
   sc = *_sc;
   if (!sc) PetscFunctionReturn(0);
@@ -95,7 +97,8 @@ PetscErrorCode SurfaceConstraintCreateWithFacetInfo(MeshFacetInfo mfi,SurfaceCon
 {
   PetscErrorCode    ierr;
   SurfaceConstraint sc;
-  
+
+  PetscFunctionBegin;  
   ierr = SurfaceConstraintCreate(&sc);CHKERRQ(ierr);
   ierr = MeshFacetInfoIncrementRef(mfi);CHKERRQ(ierr);
   sc->fi = mfi;
@@ -118,7 +121,8 @@ PetscErrorCode SurfaceConstraintCreateWithFacetInfo(MeshFacetInfo mfi,SurfaceCon
 PetscErrorCode SurfaceConstraintSetDM(SurfaceConstraint sc, DM dm)
 {
   PetscErrorCode ierr;
-  
+
+  PetscFunctionBegin;  
   if (sc->dm) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"DM is already set");
   if (sc->fi) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"MeshFacetInfo is already set");
   sc->dm = dm;
@@ -138,6 +142,8 @@ PetscErrorCode SurfaceConstraintSetDM(SurfaceConstraint sc, DM dm)
 PetscErrorCode SurfaceConstraintSetName(SurfaceConstraint sc, const char name[])
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = PetscFree(sc->name);CHKERRQ(ierr);
   sc->name = NULL;
   if (name) {
@@ -149,6 +155,8 @@ PetscErrorCode SurfaceConstraintSetName(SurfaceConstraint sc, const char name[])
 PetscErrorCode SurfaceConstraintReset(SurfaceConstraint sc)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = MeshEntityReset(sc->facets);CHKERRQ(ierr);
   DataBucketSetSizes(sc->properties_db,0,-1);
   sc->user_set_values = NULL;
@@ -161,6 +169,8 @@ PetscErrorCode SurfaceConstraintReset(SurfaceConstraint sc)
 PetscErrorCode SurfaceConstraintViewer(SurfaceConstraint sc,PetscViewer v)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   if (sc->name) { PetscViewerASCIIPrintf(v,"SurfaceConstraint: %s\n",sc->name); }
   else { PetscViewerASCIIPrintf(v,"SurfaceConstraint:\n"); }
   PetscViewerASCIIPushTab(v);
@@ -173,6 +183,8 @@ PetscErrorCode SurfaceConstraintViewer(SurfaceConstraint sc,PetscViewer v)
 PetscErrorCode SurfaceConstraintSetOperatorOnly(SurfaceConstraint sc)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   switch (sc->type) {
     case SC_NONE:
       PetscPrintf(PETSC_COMM_SELF,"[Warning] SurfaceConstraintSetOperatorOnly: operator_only = true has no effect with type SC_NONE as it does not support operators");
@@ -190,6 +202,8 @@ PetscErrorCode SurfaceConstraintSetOperatorOnly(SurfaceConstraint sc)
 PetscErrorCode SurfaceConstraintSetResidualOnly(SurfaceConstraint sc)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   switch (sc->type) {
     case SC_NONE:
       PetscPrintf(PETSC_COMM_SELF,"[Warning] SurfaceConstraintSetResidualOnly: residual_only = true has no effect with type SC_NONE as it does not support operators");
@@ -208,6 +222,7 @@ PetscErrorCode SurfaceConstraintSetType(SurfaceConstraint sc, SurfaceConstraintT
 {
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   if (sc->type != SC_NONE) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"SurfaceConstraint type already set");
   /*
   if (type == sc->type) {
@@ -273,6 +288,7 @@ PetscErrorCode SurfaceConstraintSetType(SurfaceConstraint sc, SurfaceConstraintT
 
 PetscErrorCode SurfaceConstraintSetQuadrature(SurfaceConstraint sc, SurfaceQuadrature q)
 {
+  PetscFunctionBegin;
   sc->quadrature = q;
   PetscFunctionReturn(0);
 }
@@ -280,6 +296,7 @@ PetscErrorCode SurfaceConstraintSetQuadrature(SurfaceConstraint sc, SurfaceQuadr
 /*
 PetscErrorCode SurfaceConstraintSetFacets(SurfaceConstraint sc, MeshEntity facets)
 {
+  PetscFunctionBegin;
   // increment self
   MeshEntityIncrementRef(facets);
   // destroy self
@@ -319,6 +336,8 @@ PetscErrorCode SurfaceConstraintDuplicate(SurfaceConstraint sc, MeshFacetInfo mf
 {
   PetscErrorCode ierr;
   SurfaceConstraint dup;
+
+  PetscFunctionBegin;
   *_dup = NULL;
   
   ierr = SurfaceConstraintCreateWithFacetInfo(mfi,&dup);CHKERRQ(ierr);
@@ -336,6 +355,8 @@ PetscErrorCode SurfaceConstraintDuplicateOperatorA11(SurfaceConstraint sc, MeshF
 {
   PetscErrorCode ierr;
   SurfaceConstraint dup;
+
+  PetscFunctionBegin;
   *_dup = NULL;
 
   ierr = SurfaceConstraintDuplicate(sc,mfi,surfQ,&dup);CHKERRQ(ierr);
@@ -358,6 +379,7 @@ PetscErrorCode SurfaceConstraintDuplicateOperatorA11(SurfaceConstraint sc, MeshF
 
 static PetscErrorCode _ops_residual_only(SurfaceConstraint sc)
 {
+  PetscFunctionBegin;
   sc->ops.action_A = NULL;
 
   sc->ops.action_Auu = NULL;
@@ -375,6 +397,7 @@ static PetscErrorCode _ops_residual_only(SurfaceConstraint sc)
 
 static PetscErrorCode _ops_operator_only(SurfaceConstraint sc)
 {
+  PetscFunctionBegin;
   sc->ops.residual_F  = NULL;
   sc->ops.residual_Fu = NULL;
   sc->ops.residual_Fp = NULL;
@@ -384,6 +407,8 @@ static PetscErrorCode _ops_operator_only(SurfaceConstraint sc)
 PetscErrorCode _resize_facet_quadrature_data(SurfaceConstraint sc)
 {
   PetscInt nfacets;
+
+  PetscFunctionBegin;
   if (!sc->facets->set_values_called) {
     SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Facets have not been selected");
   }
@@ -405,6 +430,8 @@ PetscErrorCode _sc_check_sizes(SurfaceConstraint sc)
 {
   PetscErrorCode ierr;
   PetscInt nfacets,nfields,nquadpoints;
+
+  PetscFunctionBegin;
   nfacets = sc->facets->n_entities;
   DataBucketGetDataFields(sc->properties_db,&nfields,NULL);
   if (nfields) {
@@ -420,6 +447,8 @@ PetscErrorCode SurfaceConstraintOps_EvaluateF(SurfaceConstraint sc,
                                               PetscBool error_if_null)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   if (sc->ops.residual_F) {
     ierr = _sc_check_sizes(sc);CHKERRQ(ierr);
     ierr = sc->ops.residual_F(sc,dau,ufield,dap,pfield,Ru);CHKERRQ(ierr);
@@ -434,6 +463,8 @@ PetscErrorCode SurfaceConstraintOps_EvaluateFu(SurfaceConstraint sc,
                                               PetscBool error_if_null)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   if (sc->ops.residual_Fu) {
     ierr = _sc_check_sizes(sc);CHKERRQ(ierr);
     ierr = sc->ops.residual_Fu(sc,dau,ufield,dap,pfield,Ru);CHKERRQ(ierr);
@@ -448,6 +479,8 @@ PetscErrorCode SurfaceConstraintOps_EvaluateFp(SurfaceConstraint sc,
                                               PetscBool error_if_null)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   if (sc->ops.residual_Fp) {
     ierr = _sc_check_sizes(sc);CHKERRQ(ierr);
     ierr = sc->ops.residual_Fp(sc,dau,ufield,dap,pfield,Ru);CHKERRQ(ierr);
@@ -465,6 +498,8 @@ PetscErrorCode SurfaceConstraintOps_ActionA(SurfaceConstraint sc,
                                               PetscBool error_if_null)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   if (sc->ops.action_A) {
     ierr = _sc_check_sizes(sc);CHKERRQ(ierr);
     ierr = sc->ops.action_A(sc,dau,ufield,dap,pfield,Yu,Yp);CHKERRQ(ierr);
@@ -480,6 +515,8 @@ PetscErrorCode SurfaceConstraintOps_ActionA11(SurfaceConstraint sc,
                                             PetscBool error_if_null)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   if (sc->ops.action_Auu) {
     ierr = _sc_check_sizes(sc);CHKERRQ(ierr);
     ierr = sc->ops.action_Auu(sc,dau,ufield,Yu);CHKERRQ(ierr);
@@ -496,6 +533,8 @@ PetscErrorCode SurfaceConstraintOps_ActionA12(SurfaceConstraint sc,
                                             PetscBool error_if_null)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   if (sc->ops.action_Aup) {
     ierr = _sc_check_sizes(sc);CHKERRQ(ierr);
     ierr = sc->ops.action_Aup(sc,dau,dap,pfield,Yu);CHKERRQ(ierr);
@@ -512,6 +551,8 @@ PetscErrorCode SurfaceConstraintOps_ActionA21(SurfaceConstraint sc,
                                             PetscBool error_if_null)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   if (sc->ops.action_Apu) {
     ierr = _sc_check_sizes(sc);CHKERRQ(ierr);
     ierr = sc->ops.action_Apu(sc,dau,ufield,dap,Yp);CHKERRQ(ierr);
@@ -527,6 +568,8 @@ PetscErrorCode SurfaceConstraintOps_AssembleA11(SurfaceConstraint sc,
                                               PetscBool error_if_null)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   if (sc->ops.asmb_Auu) {
     ierr = _sc_check_sizes(sc);CHKERRQ(ierr);
     ierr = sc->ops.asmb_Auu(sc,dau,A);CHKERRQ(ierr);
@@ -543,6 +586,8 @@ PetscErrorCode SurfaceConstraintOps_AssembleA12(SurfaceConstraint sc,
                                               PetscBool error_if_null)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   if (sc->ops.asmb_Aup) {
     ierr = _sc_check_sizes(sc);CHKERRQ(ierr);
     ierr = sc->ops.asmb_Aup(sc,dau,dap,A);CHKERRQ(ierr);
@@ -559,6 +604,8 @@ PetscErrorCode SurfaceConstraintOps_AssembleA21(SurfaceConstraint sc,
                                               PetscBool error_if_null)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   if (sc->ops.asmb_Apu) {
     ierr = _sc_check_sizes(sc);CHKERRQ(ierr);
     ierr = sc->ops.asmb_Apu(sc,dau,dap,A);CHKERRQ(ierr);
@@ -574,6 +621,8 @@ PetscErrorCode SurfaceConstraintOps_AssembleDiagA11(SurfaceConstraint sc,
                                                 PetscBool error_if_null)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   if (sc->ops.diag_Auu) {
     ierr = _sc_check_sizes(sc);CHKERRQ(ierr);
     ierr = sc->ops.diag_Auu(sc,dau,diagA);CHKERRQ(ierr);
@@ -589,6 +638,7 @@ PetscErrorCode SurfaceConstraintOps_AssembleDiagA11(SurfaceConstraint sc,
 /* NONE */
 static PetscErrorCode _SetType_NONE(SurfaceConstraint sc)
 {
+  PetscFunctionBegin;
   /* set methods */
   sc->ops.setup = NULL;
   sc->ops.destroy = NULL;
@@ -604,6 +654,8 @@ PetscErrorCode user_traction_set_constant(Facet F,
                                           void *data)
 {
   PetscReal *input;
+  
+  PetscFunctionBegin;
   input = (PetscReal*)data;
   traction[0] = input[0];
   traction[1] = input[1];
@@ -625,7 +677,7 @@ PetscErrorCode SurfaceConstraintSetValues_TRACTION(SurfaceConstraint sc,
   PetscInt       nel,nen;
   double         elcoords[3*Q2_NODES_PER_EL_3D];
 
-
+  PetscFunctionBegin;
   if (sc->type != SC_TRACTION) {
     PetscPrintf(PetscObjectComm((PetscObject)sc->dm),"[ignoring] SurfaceConstraintSetValues_TRACTION() called with different type on object with name \"%s\"\n",sc->name);
     PetscFunctionReturn(0);
@@ -793,6 +845,7 @@ static PetscErrorCode _FormFunctionLocal_Fu_TRACTION(SurfaceConstraint sc,DM dau
 
 static PetscErrorCode _SetType_TRACTION(SurfaceConstraint sc)
 {
+  PetscFunctionBegin;
   /* set methods */
   //sc->ops.setup = _SetUp_TRACTION;
   sc->ops.residual_F  = NULL;
@@ -821,6 +874,8 @@ static PetscErrorCode _Destroy_FSSA(SurfaceConstraint sc)
 {
   FSSA_Context *ctx;
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   if (sc->data) {
     ctx = (FSSA_Context*)sc->data;
     ierr = PetscFree(ctx);CHKERRQ(ierr);
@@ -834,6 +889,7 @@ static PetscErrorCode _SetType_FSSA(SurfaceConstraint sc)
   FSSA_Context *ctx;
   PetscErrorCode ierr;
   
+  PetscFunctionBegin;
   /* set methods */
   sc->ops.setup = NULL;
   sc->ops.destroy = _Destroy_FSSA;
@@ -855,31 +911,33 @@ static PetscErrorCode _SetType_FSSA(SurfaceConstraint sc)
 
 static PetscErrorCode _FormFunctionLocal_Fu_FSSA_diag(SurfaceConstraint sc,DM dau,const PetscScalar ufield[],DM dap,const PetscScalar pfield[],PetscScalar Ru[])
 {
-  PetscErrorCode ierr;
+  PetscFunctionBegin;
   PetscFunctionReturn(0);
 }
 
 static PetscErrorCode _FormFunctionLocal_Fu_FSSA(SurfaceConstraint sc,DM dau,const PetscScalar ufield[],DM dap,const PetscScalar pfield[],PetscScalar Ru[])
 {
-  PetscErrorCode ierr;
+  PetscFunctionBegin;
   PetscFunctionReturn(0);
 }
 
 static PetscErrorCode _FormJacobianCell_A11_FSSA_diag(SurfaceConstraint sc,DM dau,Mat A)
 {
-  PetscErrorCode ierr;
+  PetscFunctionBegin;
   PetscFunctionReturn(0);
 }
 
 static PetscErrorCode _FormJacobianCell_A11_FSSA(SurfaceConstraint sc,DM dau,Mat A)
 {
-  PetscErrorCode ierr;
+  PetscFunctionBegin;
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode SurfaceConstraintFSSA_SetParams(SurfaceConstraint sc,PetscBool use_diag,PetscReal theta)
 {
   FSSA_Context *ctx;
+
+  PetscFunctionBegin;
   if (sc->type != SC_FSSA) PetscFunctionReturn(0);
   ctx = (FSSA_Context*)sc->data;
   ctx->use_diag_approximation = use_diag;
@@ -899,6 +957,8 @@ PetscErrorCode SurfaceConstraintFSSA_SetParams(SurfaceConstraint sc,PetscBool us
 PetscErrorCode SurfaceConstraintFSSA_SetTimestep(SurfaceConstraint sc,PetscReal dt)
 {
   FSSA_Context *ctx;
+
+  PetscFunctionBegin;
   if (sc->type != SC_FSSA) PetscFunctionReturn(0);
   ctx = (FSSA_Context*)sc->data;
   ctx->dt = dt;
@@ -910,6 +970,7 @@ PetscErrorCode SurfaceConstraintSetValues(SurfaceConstraint sc,SurfCSetValuesGen
 {
   PetscErrorCode ierr;
   
+  PetscFunctionBegin;
   if (!sc->dm) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->dm. Must call SurfaceConstraintSetDM() first");
   if (!sc->quadrature) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Missing sc->surfQ. Must call SurfaceConstraintSetQuadrature() first");
   if (!sc->facets->set_values_called) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Facets have not been selected");
@@ -1283,7 +1344,8 @@ PetscErrorCode _sc_get_hF(HexElementFace side,PetscReal elcoor[],PetscReal *hf)
   PetscInt k,d;
   const PetscInt center = 4;
   PetscReal dx,dx2,maxh = 0.0;
-  
+
+  PetscFunctionBegin; 
   switch (side) {
     case HEX_FACE_Pxi:
     {
@@ -1390,6 +1452,7 @@ PetscErrorCode compute_surface_volume_ratio(SurfaceConstraint sc,PetscInt fe,Pet
   double __GNi[3 * 27];
   const double *GNi[] = { &__GNi[0], &__GNi[27], &__GNi[2*27] };
   
+  PetscFunctionBegin;
   element = sc->fi->element;
   facet_index = sc->facets->local_index[fe]; /* facet local index */
   cell_side  = sc->fi->facet_label[facet_index]; /* side label */
@@ -1429,6 +1492,8 @@ PetscErrorCode compute_penalty_nitsche_warburton(SurfaceConstraint sc,PetscInt f
   PetscReal p = 2.0; // poly degree
   PetscReal d = 3.0; // spatial dimension
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = compute_surface_volume_ratio(sc,fe,elcoords,&A_on_V);CHKERRQ(ierr);
   *penalty = ((p + 1.0) * (p + d) / d) * A_on_V;
   PetscFunctionReturn(0);
@@ -1446,6 +1511,8 @@ PetscErrorCode compute_penalty_nitsche_hillewaert(SurfaceConstraint sc,PetscInt 
   PetscReal A_on_V;
   PetscReal p = 2.0; // poly degree
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = compute_surface_volume_ratio(sc,fe,elcoords,&A_on_V);CHKERRQ(ierr);
   *penalty = (p + 1.0) * (p + 1.0) * A_on_V;
   PetscFunctionReturn(0);
@@ -1460,6 +1527,7 @@ PetscErrorCode compute_global_penalty_nitsche(SurfaceConstraint sc,PetscInt type
   PetscInt       nel,nen;
   double         elcoords[3*Q2_NODES_PER_EL_3D];
   
+  PetscFunctionBegin;
   ierr = MeshFacetInfoGetCoords(sc->fi);CHKERRQ(ierr);
   ierr = DMDAGetElements_pTatinQ2P1(sc->fi->dm,&nel,&nen,&elnidx);CHKERRQ(ierr);
 
@@ -1516,7 +1584,6 @@ PetscErrorCode DMDABCListTraverseFacets3d(BCList list,DM da,SurfaceConstraint sc
   PetscMPIInt    rank;
 
   PetscFunctionBegin;
-
   comm = PetscObjectComm((PetscObject)da);
   ierr = MPI_Comm_rank(comm,&rank);CHKERRQ(ierr);
 

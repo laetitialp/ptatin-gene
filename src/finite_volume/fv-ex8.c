@@ -22,7 +22,8 @@ PetscErrorCode bcset_west(FVDA fv,
                           void *ctx)
 {
   PetscInt f;
-  
+
+  PetscFunctionBegin;  
   for (f=0; f<nfaces; f++) {
     flux[f] = FVFLUX_DIRICHLET_CONSTRAINT;
     bcvalue[f] = 0.3;
@@ -74,7 +75,8 @@ PetscErrorCode ale_update_mesh_geometry_ex1(PetscReal time,DM dmg,Vec xk,Vec xk1
   PetscInt        k,len;
   const PetscReal *_xk;
   PetscReal       *_xk1;
-  
+
+  PetscFunctionBegin;  
   ierr = VecGetLocalSize(xk,&len);CHKERRQ(ierr);
   len = len / 3;
   ierr = VecGetArrayRead(xk,&_xk);CHKERRQ(ierr);
@@ -110,6 +112,7 @@ PetscErrorCode ale_compute_source(FVDA fv,Vec xk,Vec xk1,PetscReal dt,Vec S)
   PetscReal         cell_coor[3*DACELL3D_VERTS],dV0,dV1;
 
 
+  PetscFunctionBegin;
   ierr = VecZeroEntries(S);CHKERRQ(ierr);
   ierr = VecGetOwnershipRange(S,&offset,NULL);CHKERRQ(ierr);
 
@@ -161,7 +164,8 @@ PetscErrorCode t7(void)
   PetscInt       nt,max;
   PetscReal      time = 0, *dt = NULL;
   
-  
+
+  PetscFunctionBegin;  
   ierr = FVDACreate(PETSC_COMM_WORLD,&fv);CHKERRQ(ierr);
   ierr = FVDASetDimension(fv,3);CHKERRQ(ierr);
   ierr = FVDASetSizes(fv,NULL,m);CHKERRQ(ierr);
@@ -408,7 +412,8 @@ PetscErrorCode t6_ale(void)
   PetscInt       nt,max;
   PetscReal      *dt = NULL;
   
-  
+
+  PetscFunctionBegin;  
   ierr = FVDACreate(PETSC_COMM_WORLD,&fv);CHKERRQ(ierr);
   ierr = FVDASetDimension(fv,3);CHKERRQ(ierr);
   ierr = FVDASetSizes(fv,NULL,m);CHKERRQ(ierr);
@@ -520,10 +525,11 @@ PetscErrorCode t6_ale(void)
 int main(int argc,char **args)
 {
   PetscErrorCode ierr;
-  
-  ierr = PetscInitialize(&argc,&args,(char*)0,NULL);if (ierr) return ierr;
+ 
+  PetscFunctionBegin; 
+  PetscCall(PetscInitialize(&argc,&args,(char*)0,NULL));
   ierr = t7();CHKERRQ(ierr);
   //ierr = t6_ale();CHKERRQ(ierr);
-  ierr = PetscFinalize();
-  return ierr;
+  PetscCall(PetscFinalize());
+  return 0;
 }

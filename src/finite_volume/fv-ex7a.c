@@ -24,6 +24,7 @@ PetscErrorCode bcset_x_dir_right(FVDA fv,
 {
   PetscInt f;
   
+  PetscFunctionBegin;
   for (f=0; f<nfaces; f++) {
     flux[f] = FVFLUX_DIRICHLET_CONSTRAINT;
     bcvalue[f] = 0.1;
@@ -43,7 +44,8 @@ PetscErrorCode bcset_x_dir_NULL(FVDA fv,
                            void *ctx)
 {
   PetscInt f;
-  
+
+  PetscFunctionBegin;  
   for (f=0; f<nfaces; f++) {
     flux[f] = FVFLUX_DIRICHLET_CONSTRAINT;
     bcvalue[f] = 0.0;
@@ -63,7 +65,8 @@ PetscErrorCode bcset_x_dir_NULL_n(FVDA fv,
                                 void *ctx)
 {
   PetscInt f;
-  
+
+  PetscFunctionBegin;  
   for (f=0; f<nfaces; f++) {
     flux[f] = FVFLUX_NEUMANN_CONSTRAINT;
     bcvalue[f] = 0.0;
@@ -83,7 +86,8 @@ PetscErrorCode bcset_x_dir(FVDA fv,
                           void *ctx)
 {
   PetscInt f;
-  
+
+  PetscFunctionBegin;  
   for (f=0; f<nfaces; f++) {
     flux[f] = FVFLUX_DIRICHLET_CONSTRAINT;
     bcvalue[f] = 0.3;
@@ -103,7 +107,8 @@ PetscErrorCode ale_update_mesh_geometry_ex1(DM dmg,Vec xk,Vec xk1,PetscReal dt)
   PetscInt        k,len;
   const PetscReal *_xk;
   PetscReal       *_xk1;
-  
+
+  PetscFunctionBegin;
   ierr = VecGetLocalSize(xk,&len);CHKERRQ(ierr);
   len = len / 3;
   ierr = VecGetArrayRead(xk,&_xk);CHKERRQ(ierr);
@@ -138,7 +143,8 @@ PetscErrorCode ale_compute_v_mesh(DM dmg,Vec x0,Vec x1,PetscReal dt,Vec v)
   PetscInt        k,d,len;
   const PetscReal *_x0,*_x1;
   PetscReal       *_v;
-  
+
+  PetscFunctionBegin;  
   ierr = VecGetLocalSize(x0,&len);CHKERRQ(ierr);
   len = len / 3;
   ierr = VecGetArrayRead(x0,&_x0);CHKERRQ(ierr);
@@ -175,7 +181,8 @@ PetscErrorCode ale_compute_face_v_mesh(DM dmg,Vec x0,Vec v,FVDA fv,const char fa
   PetscInt        dm_nel,dm_nen;
   const PetscInt  *dm_element,*element;
   PetscReal       cell_v[3*DACELL3D_VERTS];
-  
+
+  PetscFunctionBegin;  
   ierr = DMCreateLocalVector(dmg,&vl);CHKERRQ(ierr);
   ierr = DMGlobalToLocal(dmg,v,INSERT_VALUES,vl);CHKERRQ(ierr);
   ierr = VecGetArrayRead(vl,&_vl);CHKERRQ(ierr);
@@ -233,7 +240,7 @@ PetscErrorCode ale_forward_compute_source(FVDA fv,Vec xk,Vec xk1,PetscReal dt,Ve
   const PetscInt    *dm_element,*element;
   PetscReal         cell_coor[3*DACELL3D_VERTS],dV0,dV1;
 
-
+  PetscFunctionBegin;
   ierr = VecZeroEntries(S);CHKERRQ(ierr);
   ierr = VecGetOwnershipRange(S,&offset,NULL);CHKERRQ(ierr);
 
@@ -292,7 +299,7 @@ PetscErrorCode t7_forward(void)
   PetscInt       nt,max;
   PetscReal      *dt = NULL;
   
-  
+  PetscFunctionBegin;  
   ierr = FVDACreate(PETSC_COMM_WORLD,&fv);CHKERRQ(ierr);
   ierr = FVDASetDimension(fv,3);CHKERRQ(ierr);
   ierr = FVDASetSizes(fv,NULL,m);CHKERRQ(ierr);
@@ -543,7 +550,7 @@ PetscErrorCode t7_backward(void)
   PetscInt       nt,max;
   PetscReal      *dt = NULL;
   
-  
+  PetscFunctionBegin;  
   ierr = FVDACreate(PETSC_COMM_WORLD,&fv);CHKERRQ(ierr);
   ierr = FVDASetDimension(fv,3);CHKERRQ(ierr);
   ierr = FVDASetSizes(fv,NULL,m);CHKERRQ(ierr);
@@ -771,10 +778,11 @@ PetscErrorCode t7_backward(void)
 int main(int argc,char **args)
 {
   PetscErrorCode ierr;
-  
-  ierr = PetscInitialize(&argc,&args,(char*)0,NULL);if (ierr) return ierr;
+
+  PetscFunctionBegin;  
+  PetscCall(PetscInitialize(&argc,&args,(char*)0,NULL));
   ierr = t7_forward();CHKERRQ(ierr);
   //ierr = t7_backward();CHKERRQ(ierr);
-  ierr = PetscFinalize();
-  return ierr;
+  PetscCall(PetscFinalize());
+  return 0;
 }

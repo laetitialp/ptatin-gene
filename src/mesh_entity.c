@@ -12,6 +12,8 @@ const char *MeshEntityTypeNames[] = { "cell", "facet", "vertex", 0 };
 PetscErrorCode MeshEntityView(MeshEntity e)
 {
   MPI_Comm comm = PetscObjectComm((PetscObject)e->dm);
+
+  PetscFunctionBegin;
   if (e->name) { PetscPrintf(comm,"MeshEntity: %s\n",e->name); }
   else { PetscPrintf(comm,"MeshEntity:\n"); }
   PetscPrintf(comm,"  type: %s\n",MeshEntityTypeNames[(PetscInt)e->type]);
@@ -24,6 +26,7 @@ PetscErrorCode MeshEntityView(MeshEntity e)
 
 PetscErrorCode MeshEntityViewer(MeshEntity e,PetscViewer v)
 {
+  PetscFunctionBegin;
   if (e->name) { PetscViewerASCIIPrintf(v,"MeshEntity: %s\n",e->name); }
   else { PetscViewerASCIIPrintf(v,"MeshEntity:\n"); }
   PetscViewerASCIIPushTab(v);
@@ -41,6 +44,7 @@ PetscErrorCode MeshEntityCreate(MeshEntity *_e)
   MeshEntity     e;
   PetscErrorCode ierr;
   
+  PetscFunctionBegin;
   ierr = PetscMalloc(sizeof(struct _p_MeshEntity),&e);CHKERRQ(ierr);
   ierr = PetscMemzero(e,sizeof(struct _p_MeshEntity));CHKERRQ(ierr);
   e->n_entities = 0;
@@ -56,6 +60,7 @@ PetscErrorCode MeshEntityDestroy(MeshEntity *_e)
   MeshEntity     e;
   PetscErrorCode ierr;
   
+  PetscFunctionBegin;
   if (!_e) PetscFunctionReturn(0);
   e = *_e;
   if (!e) PetscFunctionReturn(0);
@@ -71,6 +76,7 @@ PetscErrorCode MeshEntityDestroy(MeshEntity *_e)
 
 PetscErrorCode MeshEntityIncrementRef(MeshEntity e)
 {
+  PetscFunctionBegin;
   e->ref_cnt++;
   PetscFunctionReturn(0);
 }
@@ -78,6 +84,8 @@ PetscErrorCode MeshEntityIncrementRef(MeshEntity e)
 PetscErrorCode MeshEntitySetName(MeshEntity e, const char name[])
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = PetscFree(e->name);CHKERRQ(ierr);
   e->name = NULL;
   if (name) {
@@ -89,6 +97,8 @@ PetscErrorCode MeshEntitySetName(MeshEntity e, const char name[])
 PetscErrorCode MeshEntityReset(MeshEntity e)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = PetscFree(e->local_index);CHKERRQ(ierr);
   e->local_index = NULL;
   e->n_entities = 0;
@@ -99,6 +109,7 @@ PetscErrorCode MeshEntityReset(MeshEntity e)
 
 PetscErrorCode MeshEntitySetRange(MeshEntity e,const PetscInt range[])
 {
+  PetscFunctionBegin;
   e->range_index[0] = range[0];
   e->range_index[1] = range[1];
   PetscFunctionReturn(0);
@@ -106,6 +117,7 @@ PetscErrorCode MeshEntitySetRange(MeshEntity e,const PetscInt range[])
 
 PetscErrorCode MeshEntitySetDM(MeshEntity e,DM dm)
 {
+  PetscFunctionBegin;
   e->dm = dm;
   PetscFunctionReturn(0);
 }
@@ -117,6 +129,7 @@ PetscErrorCode MeshEntitySetValues(MeshEntity e,PetscInt len, const PetscInt val
   PetscInt i,nnew;
   PetscErrorCode ierr;
   
+  PetscFunctionBegin;
   /* count */
   nnew = 0;
   for (i=0; i<len; i++) {
@@ -151,6 +164,8 @@ PetscErrorCode FacetCreate(Facet *_f)
 {
   Facet  f;
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   //ierr = PetscMalloc1(1,&f);CHKERRQ(ierr);
   ierr = PetscMalloc(sizeof(struct _p_Facet),&f);CHKERRQ(ierr);
   ierr = PetscMemzero(f,sizeof(struct _p_Facet));CHKERRQ(ierr);
@@ -164,6 +179,7 @@ PetscErrorCode FacetDestroy(Facet *_f)
   Facet  f;
   PetscErrorCode ierr;
   
+  PetscFunctionBegin;
   if (!_f) PetscFunctionReturn(0);
   f = *_f;
   ierr = PetscFree(f);CHKERRQ(ierr);
@@ -173,6 +189,7 @@ PetscErrorCode FacetDestroy(Facet *_f)
 
 PetscErrorCode MeshFacetInfoIncrementRef(MeshFacetInfo e)
 {
+  PetscFunctionBegin;
   e->ref_cnt++;
   PetscFunctionReturn(0);
 }
@@ -182,6 +199,7 @@ PetscErrorCode MeshFacetInfoCreate(MeshFacetInfo *_e)
   MeshFacetInfo  e;
   PetscErrorCode ierr;
   
+  PetscFunctionBegin;
   //ierr = PetscMalloc1(1,&e);CHKERRQ(ierr);
   ierr = PetscMalloc(sizeof(struct _p_MeshFacetInfo),&e);CHKERRQ(ierr);
   ierr = PetscMemzero(e,sizeof(struct _p_MeshFacetInfo));CHKERRQ(ierr);
@@ -198,6 +216,7 @@ PetscErrorCode MeshFacetInfoDestroy(MeshFacetInfo *_e)
   MeshFacetInfo  e;
   PetscErrorCode ierr;
   
+  PetscFunctionBegin;
   if (!_e) PetscFunctionReturn(0);
   e = *_e;
   if (!e) PetscFunctionReturn(0);
@@ -224,7 +243,6 @@ static PetscErrorCode _MeshFacetInfoSetUp(MeshFacetInfo e)
   PetscInt cnt,elidx;
   
   PetscFunctionBegin;
-  
   ierr = DMDAGetInfo(e->dm,NULL,&M,&N,&P, NULL,NULL,NULL,NULL, NULL,NULL,NULL,NULL,NULL);CHKERRQ(ierr);
   ierr = DMDAGetCorners(e->dm,&si,&sj,&sk,&ni,&nj,&nk);CHKERRQ(ierr);
   ierr = DMDAGetLocalSizeElementQ2(e->dm,&lmx,&lmy,&lmz);CHKERRQ(ierr);
@@ -317,6 +335,7 @@ PetscErrorCode MeshFacetInfoSetUp(MeshFacetInfo e, DM dm)
   PetscInt nface_list[HEX_EDGES];
   PetscInt lmx,lmy,lmz,M,N,P,si,sj,sk,ni,nj,nk,k;
   
+  PetscFunctionBegin;
   if (e->setup) PetscFunctionReturn(0);
   e->dm = dm;
 
@@ -362,6 +381,8 @@ PetscErrorCode MeshFacetInfoCreate2(DM dm,MeshFacetInfo *_e)
 {
   PetscErrorCode ierr;
   MeshFacetInfo e;
+
+  PetscFunctionBegin;
   ierr = MeshFacetInfoCreate(&e);CHKERRQ(ierr);
   ierr = MeshFacetInfoSetUp(e,dm);CHKERRQ(ierr);
   *_e = e;
@@ -372,6 +393,8 @@ PetscErrorCode MeshFacetInfoCreate2(DM dm,MeshFacetInfo *_e)
 PetscErrorCode MeshFacetInfoGetCoords(MeshFacetInfo e)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   if (!e->setup) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Must call MeshFacetInfoSetUp() first");
   
   ierr = DMGetCoordinatesLocal(e->dm,&e->coor);CHKERRQ(ierr);
@@ -384,6 +407,8 @@ PetscErrorCode MeshFacetInfoGetCoords(MeshFacetInfo e)
 PetscErrorCode MeshFacetInfoRestoreCoords(MeshFacetInfo e)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   if (!e->setup) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Must call MeshFacetInfoSetUp() first");
   if (!e->_mesh_coor) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Must call MeshFacetInfoGetCoords() first");
   
@@ -396,6 +421,7 @@ PetscErrorCode MeshFacetCreate(const char name[], DM dm, MeshEntity *e)
 {
   PetscErrorCode ierr;
   
+  PetscFunctionBegin;
   ierr = MeshEntityCreate(e);CHKERRQ(ierr);
   (*e)->type = MESH_ENTITY_FACET;
   ierr = MeshEntitySetName(*e,name);CHKERRQ(ierr);
@@ -416,6 +442,8 @@ PetscErrorCode MeshFacetCreate(const char name[], DM dm, MeshEntity *e)
 PetscErrorCode MeshFacetDestroy(MeshEntity *e)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = MeshEntityDestroy(e);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -440,6 +468,7 @@ PetscErrorCode FacetPack(Facet f, PetscInt index, MeshFacetInfo fi)
 
   ConformingElementFamily element = fi->element;
 
+  PetscFunctionBegin;
   f->index = index; /* facet local index */
   f->label = fi->facet_label[index]; /* side label */
   f->cell_index = fi->facet_cell_index[index];
@@ -497,6 +526,7 @@ PetscErrorCode MeshFacetMark(MeshEntity e, MeshFacetInfo fi, PetscBool (*mark)(F
   PetscBool selected;
   Facet cell_facet;
   
+  PetscFunctionBegin;
   if (e->type != MESH_ENTITY_FACET) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Only valid for MESH_ENTITY_FACET");
 
   if (e->dm != fi->dm) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Only valid if DMs refer to the same object");
@@ -537,6 +567,7 @@ PetscErrorCode MeshFacetMarkDomainFaces(
   PetscInt *facet_to_keep,nmarked=0,f,k,f_start,f_end;
   PetscInt side_mark[HEX_EDGES];
   
+  PetscFunctionBegin;
   if (e->type != MESH_ENTITY_FACET) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Only valid for MESH_ENTITY_FACET");
   
   if (e->dm != fi->dm) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Only valid if DMs refer to the same object");
@@ -579,7 +610,8 @@ PetscErrorCode MeshFacetMarkDomainFaceSubset(
   PetscInt *facet_to_keep,nmarked=0,f,k,f_start,f_end;
   PetscInt side_mark[HEX_EDGES];
   Facet cell_facet;
-  
+
+  PetscFunctionBegin;
   if (e->type != MESH_ENTITY_FACET) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Only valid for MESH_ENTITY_FACET");
   
   if (e->dm != fi->dm) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Only valid if DMs refer to the same object");
@@ -649,6 +681,8 @@ PetscErrorCode MeshFacetMarkDomainFaceSubset(
 PetscErrorCode MarkDomainFaceContextInit(MarkDomainFaceContext *ctx)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ctx->n_domain_faces = 0;
   ierr = PetscMemzero(ctx->domain_face,30*sizeof(HexElementFace));
   ctx->mark = NULL;
@@ -660,7 +694,8 @@ PetscErrorCode MeshFacetMarkByBoundary(MeshEntity e, MeshFacetInfo fi, PetscBool
 {
   PetscErrorCode ierr;
   MarkDomainFaceContext *ctx = NULL;
-  
+
+  PetscFunctionBegin;
   if (!data) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Require non-NULL data. Expected pointer to MarkDomainFaceContext");
   ctx = (MarkDomainFaceContext*)data;
 
@@ -700,7 +735,8 @@ PetscErrorCode _MeshEntityView_Facet(MeshEntity me, PetscInt tag, PetscInt filei
   const PetscInt *elnidx;
   PetscInt       nel,nen;
   PetscMPIInt    rank;
-  
+
+  PetscFunctionBegin;
   ierr = MeshFacetInfoCreate(&fi);CHKERRQ(ierr);
   ierr = MeshFacetInfoSetUp(fi,me->dm);CHKERRQ(ierr);
 
@@ -819,6 +855,7 @@ PetscErrorCode MeshEntityViewPV(PetscInt n,MeshEntity m[])
   PetscInt k,tag;
   MeshEntityType type;
 
+  PetscFunctionBegin;
   type = m[0]->type;
   for (k=1; k<n; k++) {
     if (type != m[k]->type) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"All types must be the same");
@@ -868,8 +905,8 @@ PetscErrorCode MeshFacetMarkFromMesh(MeshEntity e, MeshFacetInfo fi, Mesh mesh, 
   PetscInt       *facet_to_keep;
   Facet          cell_facet;
   PetscErrorCode ierr;
+
   PetscFunctionBegin;
-  
   if (e->type != MESH_ENTITY_FACET) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Only valid for MESH_ENTITY_FACET");
   if (e->dm != fi->dm) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Only valid if DMs refer to the same object");
 

@@ -56,7 +56,6 @@ PetscErrorCode SwarmMPntStd_AssignUniquePointIdentifiers(MPI_Comm comm,DataBucke
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = MPI_Comm_rank(comm,&rank);CHKERRQ(ierr);
   DataBucketGetDataFieldByName(db,MPntStd_classname,&PField);
   DataFieldGetAccess(PField);
@@ -114,7 +113,6 @@ PetscErrorCode SwarmMPntStd_CoordAssignment_LatticeLayout3d(DM da,PetscInt Nxp[]
 
 
   PetscFunctionBegin;
-
   PetscOptionsGetReal(NULL,NULL,"-lattice_layout_perturb", &perturb, NULL );
   PetscOptionsGetInt(NULL,NULL,"-lattice_layout_Nx", &Nxp[0], NULL );
   PetscOptionsGetInt(NULL,NULL,"-lattice_layout_Ny", &Nxp[1], NULL );
@@ -234,7 +232,6 @@ PetscErrorCode SwarmMPntStd_CoordAssignment_GaussLayout3d(DM da,DataBucket db)
 
 
   PetscFunctionBegin;
-
   ierr = DMDAGetElements_pTatinQ2P1(da,&nel,&nen,&elnidx);CHKERRQ(ierr);
 
   QuadratureCreateGauss_3pnt_3D(&nqp,&q_coor,&q_weight);
@@ -316,7 +313,6 @@ PetscErrorCode SwarmMPntStd_CoordAssignment_RandomLayout3d(DM da,PetscInt nPerCe
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   PetscOptionsGetInt(NULL,NULL,"-random_layout_Np", &nPerCell, NULL );
 
   // re-size //
@@ -416,7 +412,6 @@ PetscErrorCode SwarmMPntStd_CoordAssignment_FaceLatticeLayout3d(DM da,PetscInt N
 
 
   PetscFunctionBegin;
-
   ierr = DMDAGetElements_pTatinQ2P1(da,&nel,&nen,&elnidx);CHKERRQ(ierr);
   ncells = nel;
   ierr = DMDAGetLocalSizeElementQ2(da,&lmx,&lmy,&lmz);CHKERRQ(ierr);
@@ -664,7 +659,6 @@ PetscErrorCode SwarmMPntStd_CoordAssignment_FaceLatticeLayout3d_epsilon(DM da,Pe
 
 
   PetscFunctionBegin;
-
   ierr = DMDAGetElements_pTatinQ2P1(da,&nel,&nen,&elnidx);CHKERRQ(ierr);
   ncells = nel;
   ierr = DMDAGetLocalSizeElementQ2(da,&lmx,&lmy,&lmz);CHKERRQ(ierr);
@@ -911,7 +905,6 @@ PetscErrorCode SwarmMPntStd_CoordAssignmentFromElementList_FaceLatticeLayout3d(D
 
 
   PetscFunctionBegin;
-
   if ((!cell_list) && (ncells_list != 0)) {
     SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"A cell list must be provided. Use SwarmMPntStd_CoordAssignment_FaceLatticeLayout3d() if you want to assign points to a face of the domain defined by the DMDA");
   }
@@ -1364,7 +1357,6 @@ PetscErrorCode __SwarmView_MPntStd_PVTU(const char prefix[],const char name[])
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   if ((vtk_fp = fopen ( name, "w")) == NULL)  {
     SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
   }
@@ -1427,7 +1419,6 @@ PetscErrorCode SwarmOutputParaView_MPntStd(DataBucket db,const char path[],const
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = pTatinGenerateParallelVTKName(prefix,"vtu",&vtkfilename);CHKERRQ(ierr);
   if (path) {
     if (asprintf(&filename,"%s/%s",path,vtkfilename) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
@@ -1477,6 +1468,7 @@ PetscErrorCode SwarmMPntStd_CoordAssignment_InsertWithinPlane(DataBucket db,DM d
   int            _region_idx;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   Npxi  = Nxp2[0];
   Npeta = Nxp2[1];
 
@@ -1567,6 +1559,7 @@ PetscErrorCode SwarmMPntStd_CoordAssignment_InsertFromList(DataBucket db,DM dav,
   int            n_points_orig,n_points_curr,np_local,_region_idx;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   tolerance         = 1.0e-10;
   max_its           = 10;
   use_nonzero_guess = PETSC_FALSE;

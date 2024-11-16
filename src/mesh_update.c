@@ -600,6 +600,7 @@ PetscErrorCode UpdateMeshGeometry_ComputeSurfaceCourantTimestep(DM dav,Vec veloc
   MPI_Comm comm;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   dt_min_local = 1.0e32;
 
   ierr = DMDAGetInfo(dav,0,&M,&N,&P, 0,0,0, 0,0,0,0,0,0);CHKERRQ(ierr);

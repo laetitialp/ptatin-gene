@@ -48,6 +48,8 @@ static PetscErrorCode _destroy_demo(SurfaceConstraint sc)
 {
   SCContextDemo *ctx;
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   if (sc->data) {
     ctx = (SCContextDemo*)sc->data;
     ierr = PetscFree(ctx);CHKERRQ(ierr);
@@ -64,7 +66,8 @@ static PetscErrorCode _form_access_demo(StokesForm *form)
   SurfaceQuadrature boundary_q;
   SCContextDemo     *scdata = NULL;
   FormContextDemo   *formdata = NULL;
-  
+ 
+  PetscFunctionBegin; 
   printf("Form[Demo]: access()\n");
   sc = form->sc;
   scdata = (SCContextDemo*)sc->data;
@@ -86,7 +89,8 @@ static PetscErrorCode _form_restore_demo(StokesForm *form)
 {
   SurfaceConstraint sc;
   FormContextDemo   *formdata = NULL;
-  
+
+  PetscFunctionBegin;
   printf("Form[Demo]: restore()\n");
   formdata = (FormContextDemo*)form->data;
   
@@ -102,7 +106,8 @@ static PetscErrorCode _form_restore_demo(StokesForm *form)
 static PetscErrorCode StokesFormSetupContext_Demo(StokesForm *F,FormContextDemo *formdata)
 {
   PetscErrorCode ierr;
-  
+
+  PetscFunctionBegin;  
   /* data */
   ierr = PetscMemzero(formdata,sizeof(FormContextDemo));CHKERRQ(ierr);
   F->data = (void*)formdata;
@@ -118,6 +123,8 @@ static PetscErrorCode StokesFormSetupContext_Demo(StokesForm *F,FormContextDemo 
 static PetscErrorCode StokesFormSetup_Demo(StokesForm *form,SurfaceConstraint sc,FormContextDemo *formdata)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = StokesFormInit(form,FORM_UNINIT,sc);CHKERRQ(ierr);
   ierr = StokeFormSetFunctionSpace_Q2P1(form);CHKERRQ(ierr);
   ierr = StokesFormSetupContext_Demo(form,formdata);CHKERRQ(ierr);
@@ -136,6 +143,7 @@ static PetscErrorCode _form_residual_F1(StokesForm *form,PetscReal ds[],PetscRea
   double             *normal,eta;
   //FunctionSpace      *test = form->test;
   
+  PetscFunctionBegin;
   //printf("  Form[Demo]: apply_F1()\n");
   
   scdata   = (SCContextDemo*)form->sc->data;
@@ -180,13 +188,16 @@ static PetscErrorCode _form_residual_F1(StokesForm *form,PetscReal ds[],PetscRea
 
 static PetscErrorCode _form_residual_F2(StokesForm *form,PetscReal ds[],PetscReal F[])
 {
+  PetscFunctionBegin;
   PetscFunctionReturn(0);
-  }
+}
 
 /* point-wise kernel configuration */
 static PetscErrorCode StoksFormConfigureAction_Residual(StokesForm *form,StokesSubVec op)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = StokesFormSetType(form,FORM_RESIDUAL);CHKERRQ(ierr);
   switch (op) {
     case V_X1:
@@ -209,7 +220,8 @@ static PetscErrorCode sc_residual_F1(
   PetscErrorCode  ierr;
   StokesForm      F;
   FormContextDemo formdata;
-  
+
+  PetscFunctionBegin;
   printf("_Residual_F1\n");
   ierr = StokesFormSetup_Demo(&F,sc,&formdata);CHKERRQ(ierr);
   ierr = StoksFormConfigureAction_Residual(&F,V_X1);CHKERRQ(ierr);
@@ -223,7 +235,8 @@ static PetscErrorCode sc_residual_F2(
   PetscErrorCode  ierr;
   StokesForm      F;
   FormContextDemo formdata;
-  
+
+  PetscFunctionBegin;
   printf("_Residual_F2\n");
   ierr = StokesFormSetup_Demo(&F,sc,&formdata);CHKERRQ(ierr);
   ierr = StoksFormConfigureAction_Residual(&F,V_X2);CHKERRQ(ierr);
@@ -236,16 +249,19 @@ static PetscErrorCode sc_residual_F2(
 /* point-wise kernels */
 static PetscErrorCode _form_spmv_A11(StokesForm *form,PetscReal ds[],PetscReal F[])
 {
+  PetscFunctionBegin;
   PetscFunctionReturn(0);
 }
 
 static PetscErrorCode _form_spmv_A12(StokesForm *form,PetscReal ds[],PetscReal F[])
 {
+  PetscFunctionBegin;
   PetscFunctionReturn(0);
 }
 
 static PetscErrorCode _form_spmv_A21(StokesForm *form,PetscReal ds[],PetscReal F[])
 {
+  PetscFunctionBegin;
   PetscFunctionReturn(0);
 }
 
@@ -253,6 +269,8 @@ static PetscErrorCode _form_spmv_A21(StokesForm *form,PetscReal ds[],PetscReal F
 static PetscErrorCode StoksFormConfigureAction_SpMV(StokesForm *form,StokesSubMat op)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = StokesFormSetType(form,FORM_SPMV);CHKERRQ(ierr);
   switch (op) {
     case M_A11:
@@ -278,7 +296,8 @@ static PetscErrorCode sc_spmv_A11(
   PetscErrorCode  ierr;
   StokesForm      F;
   FormContextDemo formdata;
-  
+
+  PetscFunctionBegin;
   printf("_SpMV_A11\n");
   ierr = StokesFormSetup_Demo(&F,sc,&formdata);CHKERRQ(ierr);
   ierr = StoksFormConfigureAction_SpMV(&F,M_A11);CHKERRQ(ierr);
@@ -292,7 +311,8 @@ static PetscErrorCode sc_spmv_A12(
   PetscErrorCode  ierr;
   StokesForm      F;
   FormContextDemo formdata;
-  
+
+  PetscFunctionBegin;
   printf("_SpMV_A12\n");
   ierr = StokesFormSetup_Demo(&F,sc,&formdata);CHKERRQ(ierr);
   ierr = StoksFormConfigureAction_SpMV(&F,M_A12);CHKERRQ(ierr);
@@ -306,7 +326,8 @@ static PetscErrorCode sc_spmv_A21(
   PetscErrorCode  ierr;
   StokesForm      F;
   FormContextDemo formdata;
-  
+
+  PetscFunctionBegin;
   printf("_SpMV_A21\n");
   ierr = StokesFormSetup_Demo(&F,sc,&formdata);CHKERRQ(ierr);
   ierr = StoksFormConfigureAction_SpMV(&F,M_A21);CHKERRQ(ierr);
@@ -320,16 +341,19 @@ static PetscErrorCode sc_spmv_A21(
 /* point-wise kernels */
 static PetscErrorCode _form_asmb_A11(StokesForm *form,PetscReal ds[],PetscReal A[])
 {
+  PetscFunctionBegin;
   PetscFunctionReturn(0);
 }
 
 static PetscErrorCode _form_asmb_A12(StokesForm *form,PetscReal ds[],PetscReal A[])
 {
+  PetscFunctionBegin;
   PetscFunctionReturn(0);
 }
 
 static PetscErrorCode _form_asmb_A21(StokesForm *form,PetscReal ds[],PetscReal A[])
 {
+  PetscFunctionBegin;
   PetscFunctionReturn(0);
 }
 
@@ -337,6 +361,8 @@ static PetscErrorCode _form_asmb_A21(StokesForm *form,PetscReal ds[],PetscReal A
 static PetscErrorCode StoksFormConfigureAction_Assemble(StokesForm *form,StokesSubMat op)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = StokesFormSetType(form,FORM_ASSEMBLE);CHKERRQ(ierr);
   switch (op) {
     case M_A11:
@@ -361,7 +387,8 @@ static PetscErrorCode sc_asmb_A11(SurfaceConstraint sc, DM dmu, Mat A)
   PetscErrorCode  ierr;
   StokesForm      F;
   FormContextDemo formdata;
-  
+
+  PetscFunctionBegin;
   printf("_Assemble_A11\n");
   ierr = StokesFormSetup_Demo(&F,sc,&formdata);CHKERRQ(ierr);
   ierr = StoksFormConfigureAction_Assemble(&F,M_A11);CHKERRQ(ierr);
@@ -374,7 +401,8 @@ static PetscErrorCode sc_asmb_A12(SurfaceConstraint sc, DM dmu, DM dmp, Mat A)
   PetscErrorCode  ierr;
   StokesForm      F;
   FormContextDemo formdata;
-  
+
+  PetscFunctionBegin;
   printf("_Assemble_A12\n");
   ierr = StokesFormSetup_Demo(&F,sc,&formdata);CHKERRQ(ierr);
   ierr = StoksFormConfigureAction_Assemble(&F,M_A12);CHKERRQ(ierr);
@@ -387,7 +415,8 @@ static PetscErrorCode sc_asmb_A21(SurfaceConstraint sc, DM dmu, DM dmp, Mat A)
   PetscErrorCode  ierr;
   StokesForm      F;
   FormContextDemo formdata;
-  
+
+  PetscFunctionBegin;
   printf("_Assemble_A21\n");
   ierr = StokesFormSetup_Demo(&F,sc,&formdata);CHKERRQ(ierr);
   ierr = StoksFormConfigureAction_Assemble(&F,M_A21);CHKERRQ(ierr);
@@ -401,6 +430,7 @@ static PetscErrorCode sc_asmb_A21(SurfaceConstraint sc, DM dmu, DM dmp, Mat A)
 /* point-wise kernels */
 static PetscErrorCode _form_asmbdiag_A11(StokesForm *form,PetscReal ds[],PetscReal diagA[])
 {
+  PetscFunctionBegin;
   PetscFunctionReturn(0);
 }
 
@@ -408,6 +438,8 @@ static PetscErrorCode _form_asmbdiag_A11(StokesForm *form,PetscReal ds[],PetscRe
 static PetscErrorCode StoksFormConfigureAction_AssembleDiagonal(StokesForm *form,StokesSubMat op)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = StokesFormSetType(form,FORM_ASSEMBLE_DIAG);CHKERRQ(ierr);
   switch (op) {
     case M_A11:
@@ -426,7 +458,8 @@ static PetscErrorCode sc_asmbdiag_A11(SurfaceConstraint sc, DM dmu, Vec diagA)
   PetscErrorCode  ierr;
   StokesForm      F;
   FormContextDemo formdata;
-  
+
+  PetscFunctionBegin;
   printf("_AssembleDiagonal_A11\n");
   ierr = StokesFormSetup_Demo(&F,sc,&formdata);CHKERRQ(ierr);
   ierr = StoksFormConfigureAction_AssembleDiagonal(&F,M_A11);CHKERRQ(ierr);
@@ -437,17 +470,21 @@ static PetscErrorCode sc_asmbdiag_A11(SurfaceConstraint sc, DM dmu, Vec diagA)
 
 static PetscErrorCode _form_spmv_wA(StokesForm *form,PetscReal ds[],PetscReal F[])
 {
+  PetscFunctionBegin;
   PetscFunctionReturn(0);
 }
 
 static PetscErrorCode _form_spmv_qA(StokesForm *form,PetscReal ds[],PetscReal F[])
 {
+  PetscFunctionBegin;
   PetscFunctionReturn(0);
 }
 
 static PetscErrorCode StoksFormConfigureAction_AuResidual(StokesForm *form,StokesSubVec op)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = StokesFormSetType(form,FORM_RESIDUAL);CHKERRQ(ierr);
   switch (op) {
     case V_X1:
@@ -472,7 +509,8 @@ static PetscErrorCode sc_spmv_A(
   PetscErrorCode  ierr;
   StokesForm      F;
   FormContextDemo formdata;
-  
+
+  PetscFunctionBegin;
   printf("_SpMV_A\n");
   
   printf("_Residual_A11X1_A12X2\n");
@@ -492,7 +530,8 @@ PetscErrorCode _SetType_DEMO(SurfaceConstraint sc)
 {
   SCContextDemo  *ctx;
   PetscErrorCode ierr;
-  
+
+  PetscFunctionBegin;
   /* set methods */
   sc->ops.setup   = NULL; /* always null */
   sc->ops.destroy = _destroy_demo;

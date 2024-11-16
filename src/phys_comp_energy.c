@@ -303,8 +303,8 @@ PetscErrorCode VolumeQuadratureGetAllCellData_Energy(Quadrature Q,QPntVolCoefEne
 {
   QPntVolCoefEnergy *quadraturepoint_data;
   DataField          PField;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   DataBucketGetDataFieldByName(Q->properties_db, QPntVolCoefEnergy_classname ,&PField);
   quadraturepoint_data = PField->data;
   *coeffs = quadraturepoint_data;

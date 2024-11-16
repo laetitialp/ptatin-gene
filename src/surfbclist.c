@@ -12,7 +12,8 @@ static PetscBool _find_name_and_index(SurfBCList sl, const char name[], PetscInt
   PetscInt k;
   PetscBool found = PETSC_FALSE;
   PetscErrorCode ierr;
-  
+
+  PetscFunctionBegin;  
   *_index = -1;
   for (k=0; k<sl->sc_nreg; k++) {
     ierr = PetscStrcmp(sl->sc_list[k]->name,name,&found);
@@ -29,7 +30,8 @@ PetscErrorCode SurfBCListDestroy(SurfBCList *_sl)
   PetscErrorCode ierr;
   SurfBCList sl;
   PetscInt k;
-  
+
+  PetscFunctionBegin;  
   if (!_sl) PetscFunctionReturn(0);
   sl = *_sl;
   if (!sl) PetscFunctionReturn(0);
@@ -49,7 +51,8 @@ PetscErrorCode SurfBCListCreate(DM dm, SurfaceQuadrature surfQ, MeshFacetInfo mf
 {
   SurfBCList sl;
   PetscErrorCode ierr;
-  
+
+  PetscFunctionBegin;  
   ierr = PetscMalloc(sizeof(struct _p_SurfBCList),&sl);CHKERRQ(ierr);
   ierr = PetscMemzero(sl,sizeof(struct _p_SurfBCList));CHKERRQ(ierr);
   sl->dm = dm;
@@ -72,7 +75,8 @@ PetscErrorCode SurfBCListAddConstraint(SurfBCList sl, const char name[], Surface
   PetscInt index;
   SurfaceConstraint sc;
   PetscErrorCode ierr;
-  
+
+  PetscFunctionBegin;  
   if (!sl->mfi) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"SurfBCList requires a non-NULL MeshFacetInfo object");
   if (!sl->surfQ) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"SurfBCList requires a non-NULL SurfaceQuadrature object");
   
@@ -98,7 +102,8 @@ PetscErrorCode SurfBCListGetConstraint(SurfBCList sl, const char name[], Surface
 {
   PetscBool found;
   PetscInt index;
-  
+
+  PetscFunctionBegin;  
   *_sc = NULL;
   found = _find_name_and_index(sl,name,&index);
   //if (!found) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"SurfaceConstraint with name %s has not been registered",name);
@@ -111,7 +116,8 @@ PetscErrorCode SurfBCListInsertConstraint(SurfBCList sl, SurfaceConstraint sc, P
   PetscBool found;
   PetscInt index;
   PetscErrorCode ierr;
-  
+
+  PetscFunctionBegin;  
   if (inserted) { *inserted = PETSC_FALSE; }
   if (!sc) { PetscFunctionReturn(0); }
   
@@ -131,7 +137,7 @@ PetscErrorCode SurfBCListInsertConstraint(SurfBCList sl, SurfaceConstraint sc, P
 
 PetscErrorCode SurfBCListEvaluate(SurfBCList sl)
 {
-  
+  PetscFunctionBegin;  
   PetscFunctionReturn(0);
 }
 
@@ -140,6 +146,8 @@ PetscErrorCode SurfBCListViewer(SurfBCList sl,PetscViewer v)
 {
   PetscErrorCode ierr;
   PetscInt k;
+
+  PetscFunctionBegin;
   PetscViewerASCIIPrintf(v,"SurfBCList:\n");
   PetscViewerASCIIPushTab(v);
   PetscViewerASCIIPrintf(v,"n_constraints: %" PetscInt_FMT "\n",sl->sc_nreg);
@@ -161,7 +169,8 @@ PetscErrorCode SurfBCList_EvaluateFuFp(SurfBCList surfbc,
 {
   PetscErrorCode ierr;
   PetscInt k;
-  
+
+  PetscFunctionBegin;  
   if (!surfbc) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"SurfBCList is NULL. This indiates a setup error has occurred");
   for (k=0; k<surfbc->sc_nreg; k++) {
     ierr = SurfaceConstraintOps_EvaluateFu(surfbc->sc_list[k],dau,ufield,dap,pfield,Ru, PETSC_FALSE);CHKERRQ(ierr);
@@ -178,6 +187,7 @@ PetscErrorCode SurfBCList_ActionA(SurfBCList surfbc,
   PetscErrorCode ierr;
   PetscInt k;
   
+  PetscFunctionBegin;
   if (!surfbc) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"SurfBCList is NULL. This indiates a setup error has occurred");
   for (k=0; k<surfbc->sc_nreg; k++) {
     ierr = SurfaceConstraintOps_ActionA(surfbc->sc_list[k],dau,ufield,dap,pfield,Ru,Rp, PETSC_FALSE);CHKERRQ(ierr);
@@ -191,7 +201,8 @@ PetscErrorCode SurfBCList_ActionA11(SurfBCList surfbc,
 {
   PetscErrorCode ierr;
   PetscInt k;
-  
+
+  PetscFunctionBegin;  
   if (!surfbc) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"SurfBCList is NULL. This indiates a setup error has occurred");
   for (k=0; k<surfbc->sc_nreg; k++) {
     ierr = SurfaceConstraintOps_ActionA11(surfbc->sc_list[k],dau,ufield,Yu, PETSC_FALSE);CHKERRQ(ierr);
@@ -205,7 +216,8 @@ PetscErrorCode SurfBCList_ActionA12(SurfBCList surfbc,
 {
   PetscErrorCode ierr;
   PetscInt k;
-  
+
+  PetscFunctionBegin;  
   if (!surfbc) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"SurfBCList is NULL. This indiates a setup error has occurred");
   for (k=0; k<surfbc->sc_nreg; k++) {
     ierr = SurfaceConstraintOps_ActionA12(surfbc->sc_list[k],dau,dap,pfield,Yu, PETSC_FALSE);CHKERRQ(ierr);
@@ -220,7 +232,8 @@ PetscErrorCode SurfBCList_ActionA21(SurfBCList surfbc,
 {
   PetscErrorCode ierr;
   PetscInt k;
-  
+
+  PetscFunctionBegin;  
   if (!surfbc) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"SurfBCList is NULL. This indiates a setup error has occurred");
   for (k=0; k<surfbc->sc_nreg; k++) {
     ierr = SurfaceConstraintOps_ActionA21(surfbc->sc_list[k],dau,ufield,dap,Rp, PETSC_FALSE);CHKERRQ(ierr);
@@ -239,7 +252,8 @@ PetscErrorCode SurfBCList_AssembleAij(SurfBCList surfbc,
 {
   PetscErrorCode ierr;
   PetscInt k;
-  
+
+  PetscFunctionBegin;  
   if (!surfbc) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"SurfBCList is NULL. This indiates a setup error has occurred");
   for (k=0; k<surfbc->sc_nreg; k++) {
     if (ij[0] == 0 && ij[1] == 0) {
@@ -259,7 +273,8 @@ PetscErrorCode SurfBCList_AssembleDiagA11(SurfBCList surfbc,
 {
   PetscErrorCode ierr;
   PetscInt k;
-  
+
+  PetscFunctionBegin;  
   if (!surfbc) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"SurfBCList is NULL. This indiates a setup error has occurred");
   for (k=0; k<surfbc->sc_nreg; k++) {
     ierr = SurfaceConstraintOps_AssembleDiagA11(surfbc->sc_list[k],dau,diagA, PETSC_FALSE);CHKERRQ(ierr);

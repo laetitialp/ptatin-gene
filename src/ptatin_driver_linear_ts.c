@@ -98,6 +98,7 @@ PetscErrorCode MatAssembleMFGalerkin(DM dav_fine,BCList u_bclist_fine,Quadrature
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ierr = MatZeroEntries(Ac);CHKERRQ(ierr);
 
   ierr = DMDAGetLocalSizeElementQ2(dav_fine,&lmi,&lmj,&lmk);CHKERRQ(ierr);
@@ -398,7 +399,6 @@ PetscErrorCode FormJacobian_Stokes(SNES snes,Vec X,Mat A,Mat B,void *ctx)
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
-
   user = (pTatinCtx)ctx;
 
   ierr = pTatinGetStokesContext(user,&stokes);CHKERRQ(ierr);
@@ -486,7 +486,6 @@ PetscErrorCode pTatin3dStokesBuildMeshHierarchy(DM dav,PetscInt nlevels,DM dav_h
   PetscInt k;
 
   PetscFunctionBegin;
-
   /* set up mg */
   dav->ops->coarsenhierarchy = DMCoarsenHierarchy2_DA;
 
@@ -522,7 +521,6 @@ PetscErrorCode pTatin3dStokesReportMeshHierarchy(PetscInt nlevels,DM dav_hierarc
   PetscMPIInt    rank;
 
   PetscFunctionBegin;
-
   ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&rank);CHKERRQ(ierr);
 
   /* Report mesh sizes */
@@ -571,7 +569,6 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = PetscOptionsGetBool(NULL,NULL,"-A11_allow_galerkin_from_mf",&allow_galerkin,&flg);CHKERRQ(ierr);
 
   dap = stokes_ctx->dap;
@@ -906,11 +903,9 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
   PetscLogDouble time[2];
   PetscReal      surface_displacement_max = 1.0e32;
   PetscBool      write_icbc = PETSC_FALSE;
-
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = pTatin3dCreateContext(&user);CHKERRQ(ierr);
   ierr = pTatin3dSetFromOptions(user);CHKERRQ(ierr);
 
@@ -1393,12 +1388,9 @@ PetscErrorCode pTatin3d_linear_viscous_forward_model_driver(int argc,char **argv
 
 int main(int argc,char **argv)
 {
-  PetscErrorCode ierr;
-
-  ierr = pTatinInitialize(&argc,&argv,0,help);CHKERRQ(ierr);
-
-  ierr = pTatin3d_linear_viscous_forward_model_driver(argc,argv);CHKERRQ(ierr);
-
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&argc,&argv,0,help));
+  PetscCall(pTatin3d_linear_viscous_forward_model_driver(argc,argv));
+  PetscCall(pTatinFinalize());
   return 0;
 }

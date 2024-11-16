@@ -50,7 +50,6 @@ PetscErrorCode RheologyConstantsInitialise(RheologyConstants *R)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   R->nphases_active = 0;
 
   /* Define defaults for the viscosity cut-offs */
@@ -200,8 +199,8 @@ PetscErrorCode pTatin_EvaluateRheologyNonlinearitiesMarkers(pTatinCtx user,DM da
 PetscErrorCode pTatin_EvaluateRheologyNonlinearities(pTatinCtx user,DM dau,PetscScalar u[],DM dap,PetscScalar p[])
 {
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = pTatin_EvaluateRheologyNonlinearitiesMarkers(user,dau,u,dap,p);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
@@ -216,7 +215,6 @@ PetscErrorCode pTatin_EvaluateCoefficientNonlinearities_Stokes(pTatinCtx ptatin,
   PhysCompStokes    stokes;
 
   PetscFunctionBegin;
-
   ierr = pTatinGetStokesContext(ptatin,&stokes);CHKERRQ(ierr);
   stokes_pack = stokes->stokes_pack;
 
@@ -250,7 +248,6 @@ PetscErrorCode pTatin_StokesCoefficient_UpdateTimeDependentQuantities(pTatinCtx 
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
-
   ierr = pTatinGetRheology(user,&rheo);
 
   switch (rheo->rheology_type) {
@@ -309,7 +306,6 @@ PetscErrorCode pTatin_UpdateCoefficientTemporalDependence_Stokes(pTatinCtx ptati
   PhysCompStokes    stokes;
 
   PetscFunctionBegin;
-
   ierr = pTatinGetStokesContext(ptatin,&stokes);CHKERRQ(ierr);
   stokes_pack = stokes->stokes_pack;
 
@@ -336,8 +332,8 @@ PetscErrorCode pTatin_ApplyStokesGravityModel(pTatinCtx ctx)
   PhysCompStokes    stokes;
   PetscInt          e,nel,q,nqp;
   QPntVolCoefStokes *all_gausspoints,*cell_gausspoints;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = pTatinGetStokesContext(ctx,&stokes);CHKERRQ(ierr);
 
   nel = stokes->volQ->n_elements;

@@ -656,6 +656,7 @@ PetscErrorCode FormFunctionLocal_LithoPressure_dV(PDESolveLithoP data,DM da,Pets
 
 PetscErrorCode FormFunctionLocal_LithoPressure_dS(PDESolveLithoP data,DM da,PetscScalar *LA_phi,PetscScalar *LA_R)
 {
+  PetscFunctionBegin;
   PetscFunctionReturn(0);
 }
 
@@ -762,8 +763,8 @@ PetscErrorCode PoissonPressureOutput_PVD(pTatinCtx ptatin, const char prefix[], 
 {
   char           pvdfilename[PETSC_MAX_PATH_LEN],vtkfilename[PETSC_MAX_PATH_LEN],stepprefix[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
+
   PetscFunctionBegin;
-  
   ierr = PetscSNPrintf(pvdfilename,PETSC_MAX_PATH_LEN-1,"%s/timeseries_poisson_P.pvd",ptatin->outputpath);CHKERRQ(ierr);
   if (prefix) { PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "%s_poisson_P.pvts",prefix);
   } else {      PetscSNPrintf(vtkfilename, PETSC_MAX_PATH_LEN-1, "poisson_P.pvts");           }
@@ -784,8 +785,8 @@ PetscErrorCode PoissonPressureOutput_PetscVec(PDESolveLithoP poisson_pressure, c
   PetscViewer    viewer;
   char           fname[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s.pbvec",prefix);CHKERRQ(ierr);
   ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
   ierr = PetscViewerSetType(viewer,PETSCVIEWERBINARY);CHKERRQ(ierr);
@@ -802,8 +803,8 @@ PetscErrorCode PoissonPressureOutput_VTS(PDESolveLithoP poisson_pressure, const 
   PetscViewer    viewer;
   char           fname[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s.vts",prefix);CHKERRQ(ierr);
   ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
   ierr = PetscViewerSetType(viewer,PETSCVIEWERVTK);CHKERRQ(ierr);
@@ -821,8 +822,8 @@ PetscErrorCode PoissonPressureOutput(pTatinCtx ptatin, const char prefix[], Pets
   PetscBool      active_poisson,found;
   char           fname[PETSC_MAX_PATH_LEN],root[PETSC_MAX_PATH_LEN],pvoutputdir[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = pTatinContextValid_LithoP(ptatin,&active_poisson);CHKERRQ(ierr);
   if (!active_poisson) { PetscFunctionReturn(0); }
 

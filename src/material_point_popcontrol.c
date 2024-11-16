@@ -122,7 +122,6 @@ PetscErrorCode _find_min(double pos[],PetscInt point_count,double patch_point_co
   double   sep,min_sep;
 
   PetscFunctionBegin;
-
   min_sep = 1.0e32;
   *idx = -1;
 
@@ -157,7 +156,6 @@ PetscErrorCode _find_min_fast(double pos[],PetscInt point_count,double patch_poi
   double   *p1,*p2;
 
   PetscFunctionBegin;
-
   closest = 0;
   p1 = &patch_point_coords[3*closest];
 
@@ -185,7 +183,6 @@ PetscErrorCode _find_min_sep_brute_force(double pos[],PetscInt point_count,NNSor
   double   sep,min_sep;
 
   PetscFunctionBegin;
-
   for (p=0; p<point_count; p++) {
     dx = (pos[0] - patch_points[p].coor[0]);
     dy = (pos[1] - patch_points[p].coor[1]);
@@ -214,7 +211,6 @@ PetscErrorCode _find_min_sep_qsort(double pos[],PetscInt point_count,NNSortCtx p
   double   sep;
 
   PetscFunctionBegin;
-
   for (p=0; p<point_count; p++) {
     dx = (pos[0] - patch_points[p].coor[0]);
     dy = (pos[1] - patch_points[p].coor[1]);
@@ -290,8 +286,6 @@ PetscErrorCode apply_mppc_nn_patch(
   PetscErrorCode  ierr;
 
   PetscFunctionBegin;
-
-
   ierr = DMDAGetElements_pTatinQ2P1(da,&nel,&nen,&elnidx);CHKERRQ(ierr);
 
   /* get mx,my from the da */
@@ -558,8 +552,6 @@ PetscErrorCode apply_mppc_nn_patch2(
   PetscErrorCode  ierr;
 
   PetscFunctionBegin;
-
-
   ierr = DMDAGetElements_pTatinQ2P1(da,&nel,&nen,&elnidx);CHKERRQ(ierr);
 
   /* get mx,my from the da */
@@ -827,7 +819,6 @@ PetscErrorCode MPPC_NearestNeighbourPatch(PetscInt np_lower,PetscInt np_upper,Pe
   PetscErrorCode  ierr;
 
   PetscFunctionBegin;
-
   ierr = PetscLogEventBegin(PTATIN_MaterialPointPopulationControlInsert,0,0,0,0);CHKERRQ(ierr);
 #if (MPPC_LOG_LEVEL >= 1)
   PetscPrintf(PetscObjectComm((PetscObject)da),"[LOG] %s: \n", PETSC_FUNCTION_NAME);
@@ -1083,7 +1074,6 @@ PetscErrorCode MaterialPointPopulationControl_v1(pTatinCtx ctx)
   MPI_Comm       comm;
 
   PetscFunctionBegin;
-
   /* options for control number of points per cell */
   np_lower = 0;
   np_upper = 60;
@@ -1161,8 +1151,6 @@ PetscErrorCode apply_mppc_region_assignment(
   PetscErrorCode  ierr;
 
   PetscFunctionBegin;
-
-
   /* get mx,my from the da */
   ierr = DMDAGetLocalSizeElementQ2(da,&mx,&my,&mz);CHKERRQ(ierr);
 
@@ -1390,7 +1378,6 @@ PetscErrorCode MaterialPointRegionAssignment_v1(DataBucket db,DM da)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
 #if (MPPC_LOG_LEVEL >= 1)
   PetscPrintf(PetscObjectComm((PetscObject)da),"[LOG] %s: \n", __FUNCTION__);
 #endif
@@ -1515,8 +1502,6 @@ PetscErrorCode apply_mppc_region_assignment_v2(
   PetscErrorCode  ierr;
 
   PetscFunctionBegin;
-
-
   /* get mx,my from the da */
   ierr = DMDAGetLocalSizeElementQ2(da,&mx,&my,&mz);CHKERRQ(ierr);
 
@@ -1721,7 +1706,6 @@ PetscErrorCode MaterialPointRegionAssignment_v2(DataBucket db,DM da)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
 #if (MPPC_LOG_LEVEL >= 1)
   PetscPrintf(PetscObjectComm((PetscObject)da),"[LOG] %s: \n", __FUNCTION__);
 #endif
@@ -1842,7 +1826,6 @@ PetscErrorCode MPPCCreateSortedCtx(DataBucket db,DM da,PetscInt *_np,PetscInt *_
   PetscErrorCode  ierr;
 
   PetscFunctionBegin;
-
   ierr = DMDAGetElements_pTatinQ2P1(da,&nel,&nen,&elnidx);CHKERRQ(ierr);
 
   ierr = PetscMalloc(sizeof(PetscInt)*(nel+1),&pcell_list);CHKERRQ(ierr);
@@ -1895,7 +1878,6 @@ PetscErrorCode MPPCDestroySortedCtx(DataBucket db,DM da,PSortCtx **_plist,PetscI
   PetscErrorCode  ierr;
 
   PetscFunctionBegin;
-
   if (_plist)      {
     plist      = *_plist;
     ierr = PetscFree(plist);CHKERRQ(ierr);
@@ -1914,6 +1896,7 @@ PetscErrorCode MPPCSortedCtxGetNumberOfPointsPerCell(DataBucket db,PetscInt cell
 {
   PetscInt       points_per_cell;
 
+  PetscFunctionBegin;
   points_per_cell = pcell_list[cell_idx+1] - pcell_list[cell_idx];
   *np = points_per_cell;
 
@@ -1927,6 +1910,7 @@ PetscErrorCode MPPCSortedCtxGetPointByCell(DataBucket db,PetscInt cell_idx,Petsc
   MPntStd        *mp_std,*marker_p;
   PetscInt       pid,pid_unsorted;
 
+  PetscFunctionBegin;
   points_per_cell = pcell_list[cell_idx+1] - pcell_list[cell_idx];
   if (pidx >= points_per_cell) {
     SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Requesting a marker index which is larger than the number of points per cell");
@@ -1957,7 +1941,7 @@ PetscErrorCode MaterialPointRegionAssignment_KDTree(DataBucket db,PetscBool clon
   DataField       PField;
   MPntStd         *marker_p;
   
-  
+  PetscFunctionBegin;
   DataBucketGetSizes(db,&npoints,NULL,NULL);
   DataBucketGetDataFieldByName(db,MPntStd_classname,&PField);
   DataFieldGetAccess(PField);

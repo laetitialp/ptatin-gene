@@ -56,6 +56,7 @@ PetscErrorCode SNESGetKSP_(SNES snes,SNES *this_snes,KSP *this_ksp)
   PetscBool is_ngmres = PETSC_FALSE;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   *this_snes = NULL;
   *this_ksp  = NULL;
   ierr = PetscObjectTypeCompare((PetscObject)snes,SNESNGMRES,&is_ngmres);CHKERRQ(ierr);
@@ -88,7 +89,6 @@ PetscErrorCode SNESDestroyMGCtx(SNES snes)
   PetscContainer container;
 
   PetscFunctionBegin;
-
   container = NULL;
   ierr = PetscObjectQuery((PetscObject)snes,"AuuMultiLevelCtx",(PetscObject*)&container);CHKERRQ(ierr);
   if (container) {
@@ -160,7 +160,6 @@ PetscErrorCode pTatin3dStokesBuildMeshHierarchy(DM dav,PetscInt nlevels,DM dav_h
   PetscInt k;
 
   PetscFunctionBegin;
-
   /* set up mg */
   dav->ops->coarsenhierarchy = DMCoarsenHierarchy2_DA;
 
@@ -194,7 +193,6 @@ PetscErrorCode pTatin3dStokesReportMeshHierarchy(PetscInt nlevels,DM dav_hierarc
   PetscMPIInt    rank,size;
 
   PetscFunctionBegin;
-
   ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&rank);CHKERRQ(ierr);
   ierr = MPI_Comm_size(PETSC_COMM_WORLD,&size);CHKERRQ(ierr);
 
@@ -273,7 +271,6 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   dap = stokes_ctx->dap;
 
   /* A operator */
@@ -484,7 +481,6 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
-
   user = (pTatinCtx)ctx;
 
   ierr = pTatinGetStokesContext(user,&stokes);CHKERRQ(ierr);
@@ -804,7 +800,6 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
   PetscErrorCode   ierr;
 
   PetscFunctionBegin;
-
   ierr = pTatin3dCreateContext(&user);CHKERRQ(ierr);
   ierr = pTatin3dSetFromOptions(user);CHKERRQ(ierr);
   ierr = PetscOptionsGetBool(NULL,NULL,"-monitor_stages",&monitor_stages,NULL);CHKERRQ(ierr);
@@ -1783,12 +1778,11 @@ int main(int argc,char **argv)
 {
   PetscBool experimental_driver,experimental_driver1;
   PetscErrorCode ierr;
-  PetscMPIInt rank;
 
-  ierr = pTatinInitialize(&argc,&argv,0,help);CHKERRQ(ierr);
-  ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&rank);CHKERRQ(ierr);
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&argc,&argv,0,help));
 
-  ierr = PetscMemorySetGetMaximumUsage();CHKERRQ(ierr);
+  PetscCall(PetscMemorySetGetMaximumUsage());
 
   experimental_driver = PETSC_FALSE;
   PetscOptionsGetBool(NULL,NULL,"-experimental",&experimental_driver,NULL);
@@ -1799,13 +1793,13 @@ int main(int argc,char **argv)
   if (experimental_driver) {
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"-nonlinear_driver_v1 only");
   } else if (experimental_driver1) {
-    ierr = pTatin3d_nonlinear_viscous_forward_model_driver_v1(argc,argv);CHKERRQ(ierr);
+    PetscCall(pTatin3d_nonlinear_viscous_forward_model_driver_v1(argc,argv));
   } else {
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"-nonlinear_driver_v1 only");
   }
 
-  ierr = pTatinGetRangeMaximumMemoryUsage(NULL);CHKERRQ(ierr);
+  PetscCall(pTatinGetRangeMaximumMemoryUsage(NULL));
 
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscCall(pTatinFinalize());
   return 0;
 }

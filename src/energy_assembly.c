@@ -178,7 +178,6 @@ PetscErrorCode AdvDiff3dComputeElementPecletNumber_qp( PetscScalar el_coords[],P
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = AdvDiff3dComputeAverageCellSize(el_coords,DX);CHKERRQ(ierr);
 
   u_xi[0] = u_xi[1] = u_xi[2] = 0.0;
@@ -214,7 +213,6 @@ PetscErrorCode DASUPG3dComputeElementTimestep_qp(PetscScalar el_coords[],PetscSc
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = AdvDiff3dComputeAverageCellSize(el_coords,DX);CHKERRQ(ierr);
 
   u_xi[0] = u_xi[1] = u_xi[2] = 0.0;
@@ -281,7 +279,6 @@ PetscErrorCode AdvDiff3dComputeElementTimestep_qp(PetscScalar el_coords[],PetscS
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = AdvDiff3dComputeAverageCellSize(el_coords,DX);CHKERRQ(ierr);
 
   u_xi[0] = u_xi[1] = u_xi[2] = 0.0;
@@ -320,7 +317,6 @@ PetscErrorCode DASUPG3dComputeElementStreamlineDiffusion_qp(PetscScalar el_coord
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   /* average velocity - cell centre velocity */
   ierr = AdvDiff3dComputeAverageCellSize(el_coords,DX);CHKERRQ(ierr);
 
@@ -907,7 +903,6 @@ PetscErrorCode TS_FormFunctionEnergy(PetscReal time,Vec X,PetscReal dt,Vec F,voi
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = pTatinGetContext_Energy(ptatin,&data);CHKERRQ(ierr);
   da = data->daT;
 
@@ -1005,7 +1000,6 @@ PetscErrorCode AdvDiffComputeTau_BrooksHughes(PetscScalar el_coords[],PetscScala
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   /* average velocity - cell centre velocity */
   ierr = AdvDiff3dComputeAverageCellSize(el_coords,DX);CHKERRQ(ierr);
 
@@ -1045,7 +1039,6 @@ PetscErrorCode AdvDiffComputeTau_TezduyarOsawa(PetscScalar el_coords[],PetscScal
   const PetscScalar r = 1.0; /* or 0.5 */
 
   PetscFunctionBegin;
-
   ierr = AdvDiff3dComputeAverageCellSize(el_coords,DX);CHKERRQ(ierr);
   h_cell = sqrt( DX[0]*DX[0] + DX[1]*DX[1] + DX[2]*DX[2] );
 
@@ -1083,11 +1076,9 @@ PetscErrorCode AdvDiffComputeTau_UserDefinedConstant(PetscScalar const_t,PetscSc
   static int been_here;
   static PetscReal user_tau=0.0;
   PetscBool flg;
-
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   if (been_here==0) {
     flg = PETSC_FALSE;
     ierr = PetscOptionsGetReal(NULL,NULL,"-adv_diff_stab_tau",&user_tau,&flg);CHKERRQ(ierr);
@@ -1146,7 +1137,6 @@ PetscErrorCode AElement_FormJacobian_T_tau(
   PetscScalar kappa_3[NSD][NSD],u_cross_u[NSD][NSD],d_dx_kappa_d_dx,grad_i[NSD],grad_j[NSD];
 
   PetscFunctionBegin;
-
   /* evaluate integral */
   for (p=0; p<ngp; p++) {
     P3D_ConstructNi_Q1_3D(&gp_xi[NSD*p],Ni_p);

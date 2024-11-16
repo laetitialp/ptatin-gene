@@ -19,7 +19,8 @@ PetscErrorCode bcset_west(FVDA fv,
                           void *ctx)
 {
   PetscInt f;
-  
+
+  PetscFunctionBegin;  
   for (f=0; f<nfaces; f++) {
     flux[f] = FVFLUX_DIRICHLET_CONSTRAINT;
     bcvalue[f] = 0.3;
@@ -54,7 +55,8 @@ PetscErrorCode bcset_default(FVDA fv,
                              void *ctx)
 {
   PetscInt f;
-  
+
+  PetscFunctionBegin;  
   for (f=0; f<nfaces; f++) {
     flux[f] = FVFLUX_DIRICHLET_CONSTRAINT;
     bcvalue[f] = 0.3;
@@ -74,7 +76,8 @@ PetscErrorCode bcset_default_neumann(FVDA fv,
                              void *ctx)
 {
   PetscInt f;
-  
+
+  PetscFunctionBegin;  
   for (f=0; f<nfaces; f++) {
     flux[f] = FVFLUX_NEUMANN_CONSTRAINT;
     bcvalue[f] = 0.0;
@@ -94,7 +97,7 @@ PetscErrorCode t4(void)
   DM             dm;
   SNES           snes;
   
-  
+  PetscFunctionBegin;  
   ierr = FVDACreate(PETSC_COMM_WORLD,&fv);CHKERRQ(ierr);
   ierr = FVDASetDimension(fv,3);CHKERRQ(ierr);
   ierr = FVDASetSizes(fv,NULL,m);CHKERRQ(ierr);
@@ -281,9 +284,10 @@ PetscErrorCode t4(void)
 int main(int argc,char **args)
 {
   PetscErrorCode ierr;
-  
-  ierr = PetscInitialize(&argc,&args,(char*)0,NULL);if (ierr) return ierr;
+
+  PetscFunctionBegin;
+  PetscCall(PetscInitialize(&argc,&args,(char*)0,NULL));
   ierr = t4();CHKERRQ(ierr);
-  ierr = PetscFinalize();
-  return ierr;
+  PetscCall(PetscFinalize());
+  return 0;
 }

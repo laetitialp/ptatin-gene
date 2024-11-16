@@ -42,7 +42,6 @@ PetscErrorCode QuadratureCreate(Quadrature *quadrature)
   PetscErrorCode  ierr;
 
   PetscFunctionBegin;
-
   ierr = PetscMalloc(sizeof(struct _p_Quadrature),&Q);CHKERRQ(ierr);
   ierr = PetscMemzero(Q,sizeof(struct _p_Quadrature));CHKERRQ(ierr);
 
@@ -57,7 +56,6 @@ PetscErrorCode QuadratureDestroy(Quadrature *quadrature)
   PetscErrorCode  ierr;
 
   PetscFunctionBegin;
-
   if (!quadrature) { PetscFunctionReturn(0); }
   Q = *quadrature;
 
@@ -73,9 +71,7 @@ PetscErrorCode QuadratureDestroy(Quadrature *quadrature)
 
 PetscErrorCode QuadratureView(Quadrature q)
 {
-
   PetscFunctionBegin;
-
   PetscPrintf(PETSC_COMM_WORLD,"QuadratureView:\n");
   PetscPrintf(PETSC_COMM_WORLD,"  dim    %" PetscInt_FMT "\n", q->dim);
   PetscPrintf(PETSC_COMM_WORLD,"  type    %" PetscInt_FMT "\n", (PetscInt)q->type);
@@ -89,6 +85,7 @@ PetscErrorCode QuadratureView(Quadrature q)
 
 PetscErrorCode QuadratureSetSize(Quadrature Q)
 {
+  PetscFunctionBegin;
   if (!Q->properties_db) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Q->properties_db is NULL");
   if (Q->properties_db->finalised == BFALSE) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Q->properties_db fields are not finalized - must call DataBucketFinalize() first");
   //if (Q->n_elements == 0 || Q->npoints == 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Q->n_elements or Q->npoints is 0");
@@ -172,7 +169,6 @@ PetscErrorCode VolumeQuadratureCreateGaussLegendre(PetscInt dim,PetscInt ncells,
   PetscErrorCode ierr;
   
   PetscFunctionBegin;
-  
   ierr = QuadratureCreate(&Q);CHKERRQ(ierr);
   if (dim != 3) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Only a DM defined in 3D is supported");
   Q->dim  = dim;
@@ -211,7 +207,6 @@ PetscErrorCode SurfaceQuadratureCreate(SurfaceQuadrature *quadrature)
   PetscErrorCode  ierr;
 
   PetscFunctionBegin;
-
   ierr = PetscMalloc(sizeof(struct _p_SurfaceQuadrature),&Q);CHKERRQ(ierr);
   ierr = PetscMemzero(Q,sizeof(struct _p_SurfaceQuadrature));CHKERRQ(ierr);
 
@@ -236,6 +231,7 @@ PetscErrorCode SurfaceQuadratureDestroy(SurfaceQuadrature *quadrature)
 
 PetscErrorCode SurfaceQuadratureGetQuadratureInfo(SurfaceQuadrature q,HexElementFace faceid,PetscInt *nqp,QPoint2d **qp2,QPoint3d **qp3)
 {
+  PetscFunctionBegin;
   if (nqp) { *nqp = q->npoints; }
   if (qp2) { *qp2 = q->gp2[faceid]; }
   if (qp3) { *qp3 = q->gp3[faceid]; }
@@ -244,6 +240,7 @@ PetscErrorCode SurfaceQuadratureGetQuadratureInfo(SurfaceQuadrature q,HexElement
 
 PetscErrorCode SurfaceQuadratureGetFaceInfo(SurfaceQuadrature q,PetscInt *nfaces)
 {
+  PetscFunctionBegin;
   if (nfaces) { *nfaces = q->n_facets; }
   PetscFunctionReturn(0);
 }
@@ -254,6 +251,7 @@ PetscErrorCode SurfaceQuadratureInterpolate3D(SurfaceQuadrature q,QPoint3d *qp3d
   int    k,d;
   double Ni[27];
 
+  PetscFunctionBegin;
   q->e->basis_NI_3D(qp3d,Ni);
 
   for (d=0; d<ndof; d++) {
@@ -268,6 +266,7 @@ PetscErrorCode SurfaceQuadratureInterpolate3D(SurfaceQuadrature q,QPoint3d *qp3d
 
 PetscErrorCode SurfaceQuadratureSetSize(SurfaceQuadrature Q)
 {
+  PetscFunctionBegin;
   if (!Q->properties_db) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Q->properties_db is NULL");
   if (Q->properties_db->finalised == BFALSE) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Q->properties_db fields are not finalized - must call DataBucketFinalize() first");
   if (Q->n_facets != 0) {

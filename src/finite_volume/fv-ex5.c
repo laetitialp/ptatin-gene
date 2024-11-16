@@ -18,7 +18,7 @@ PetscErrorCode t5_iflux(void)
   PetscReal      sum;
   PetscBool      found = PETSC_FALSE;
   
-  
+  PetscFunctionBegin;  
   m[0] = m[1] = m[2] = mx;
   ierr = PetscOptionsGetInt(NULL,NULL,"-mx",&mx,&found);CHKERRQ(ierr);
   if (found) { m[0] = m[1] = m[2] = mx; }
@@ -129,7 +129,8 @@ PetscErrorCode t5_pp(void)
   Vec            F;
   DM             dm;
   PetscBool      found = PETSC_FALSE;
-  
+
+  PetscFunctionBegin;  
   m[0] = m[1] = m[2] = mx;
   found = PETSC_FALSE; ierr = PetscOptionsGetInt(NULL,NULL,"-mx",&mx,&found);CHKERRQ(ierr);
   if (found) { m[0] = m[1] = m[2] = mx; }
@@ -216,10 +217,11 @@ PetscErrorCode t5_pp(void)
 int main(int argc,char **args)
 {
   PetscErrorCode ierr;
-  
-  ierr = PetscInitialize(&argc,&args,(char*)0,NULL);if (ierr) return ierr;
+
+  PetscFunctionBegin;
+  PetscCall(PetscInitialize(&argc,&args,(char*)0,NULL));
   //ierr = t5_iflux();CHKERRQ(ierr);
   ierr = t5_pp();CHKERRQ(ierr);
-  ierr = PetscFinalize();
-  return ierr;
+  PetscCall(PetscFinalize());
+  return 0;
 }

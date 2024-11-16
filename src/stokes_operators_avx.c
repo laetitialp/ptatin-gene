@@ -55,6 +55,7 @@ PetscErrorCode TensorContractNEV_AVX(PetscReal Rf[][3],PetscReal Sf[][3],PetscRe
   PetscReal u[3][NQP][NEV] ALIGN32,v[3][NQP][NEV] ALIGN32;
   PetscInt i,j,k,l,kj,ji,a,b,c;
 
+  PetscFunctionBegin;
   for (j=0; j<3; j++) {
     for (i=0; i<3; i++) {
       R[i][j] = i<3 ? (gmode == GRAD ? Rf[i][j] : Rf[j][i]) : 0.;
@@ -116,6 +117,7 @@ PetscErrorCode JacobianInvertNEV_AVX(PetscScalar dx[3][3][NQP][NEV],PetscScalar 
 {
   PetscInt i,j,k,e;
 
+  PetscFunctionBegin;
   for (i=0; i<NQP; i++) {
     PetscScalar a[3][3][NEV] ALIGN32;
     for (e=0; e<NEV; e++) {
@@ -155,6 +157,7 @@ PetscErrorCode QuadratureAction_A11_AVX(const QPntVolCoefStokes *gausspt[],
 {
   PetscInt i,l,k,e;
 
+  PetscFunctionBegin;
   for (i=0; i<NQP; i++) {
     PetscScalar Du[6][NEV] ALIGN32,Dv[6][NEV] ALIGN32; /* Symmetric gradient with respect to physical coordinates, xx, yy, zz, xy+yx, xz+zx, yz+zy */
     __m256d dux[3][3],mhalf = _mm256_set1_pd(0.5),dvx[3][3];
@@ -384,6 +387,7 @@ static PetscErrorCode QuadratureAction_A_AVX(const QPntVolCoefStokes *gausspt[],
 {
   PetscInt i,l,k,e;
 
+  PetscFunctionBegin;
   for (i=0; i<NQP; i++) {
     PetscScalar Du[6][NEV] ALIGN32,Dv[6][NEV] ALIGN32; /* Symmetric gradient with respect to physical coordinates, xx, yy, zz, xy+yx, xz+zx, yz+zy */
     __m256d dux[3][3],mhalf = _mm256_set1_pd(0.5),dvx[3][3];
@@ -646,6 +650,7 @@ static PetscErrorCode QuadratureAction_A12_AVX(
 {
   PetscInt i,l,k,e;
 
+  PetscFunctionBegin;
   for (i=0; i<NQP; i++) {
     PetscScalar Dp[NEV] ALIGN32;
     __m256d dvx[3][3];

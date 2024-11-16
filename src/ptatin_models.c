@@ -53,8 +53,8 @@ PetscErrorCode pTatinModelCreate(pTatinModel *model)
 {
   PetscErrorCode ierr;
   pTatinModel m;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = PetscMalloc(sizeof(struct _p_pTatinModel),&m);CHKERRQ(ierr);
   ierr = PetscMemzero(m,sizeof(struct _p_pTatinModel));CHKERRQ(ierr);
 
@@ -169,7 +169,6 @@ PetscErrorCode pTatinModelSetModelData(pTatinModel ctx,const char name[],void *d
 PetscErrorCode pTatinModelSetFunctionPointer(pTatinModel model,pTatinModelOperation type,void(*func)(void))
 {
   PetscFunctionBegin;
-
   switch (type) {
     case PTATIN_MODEL_INIT:
       model->FP_pTatinModel_Initialize = ( PetscErrorCode(*)(pTatinCtx,void*) )func;
@@ -218,6 +217,7 @@ PetscErrorCode ptatin_match_model_index(const char modelname[],PetscInt *index)
   pTatinModel item;
   int cnt;
 
+  PetscFunctionBegin;
   *index = -1;
   cnt = 0;
   if (registered_model_list) {
@@ -242,8 +242,8 @@ PetscErrorCode pTatinModelRegister(pTatinModel model)
   pTatinModel ii;
   pTatinModel *tmp;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   if (registered_model_list == NULL) {
     registered_model_list = malloc( sizeof(pTatinModel) );
     registered_model_list[0] = NULL;
@@ -304,8 +304,8 @@ PetscErrorCode pTatinModelStaticGetByName(const char name[],pTatinModel *model)
 {
   PetscErrorCode ierr;
   PetscInt index;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   *model = NULL;
   ierr = ptatin_match_model_index(name,&index);CHKERRQ(ierr);
   if (index == -1) {
@@ -342,7 +342,6 @@ PetscErrorCode pTatinModelGetByName(const char name[],pTatinModel *model)
   pTatinModel model_s = NULL, model_d = NULL;
 
   PetscFunctionBegin;
-
   if (!registered_model_list && !ptatin_registered_model_flist) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"  [pTatinModel]: No pTatin models have been registered");
 
   *model = NULL;
@@ -380,8 +379,8 @@ PetscErrorCode (*FP_pTatin2d_ModelDestroy)(void*);
 PetscErrorCode pTatinModel_Destroy(pTatinModel model,pTatinCtx ctx)
 {
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   if (model->FP_pTatinModel_Destroy) {
     ierr = model->FP_pTatinModel_Destroy(ctx,model->model_data);CHKERRQ(ierr);
   }
@@ -393,8 +392,8 @@ PetscErrorCode pTatinModel_Destroy(pTatinModel model,pTatinCtx ctx)
 PetscErrorCode pTatinModel_Output(pTatinModel model,pTatinCtx ctx,Vec X,const char name[])
 {
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = PetscLogEventBegin(PTATIN_ModelOutput,0,0,0,0);CHKERRQ(ierr);
   if (!model->disable_output) {
     if (model->FP_pTatinModel_Output) {
@@ -409,8 +408,8 @@ PetscErrorCode pTatinModel_Output(pTatinModel model,pTatinCtx ctx,Vec X,const ch
 PetscErrorCode pTatinModel_ApplyInitialSolution(pTatinModel model,pTatinCtx ctx,Vec X)
 {
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = PetscLogEventBegin(PTATIN_ModelApplyInitialSolution,0,0,0,0);CHKERRQ(ierr);
   if (!model->disable_initial_solution) {
     if (model->FP_pTatinModel_ApplyInitialSolution) {
@@ -425,8 +424,8 @@ PetscErrorCode pTatinModel_ApplyInitialSolution(pTatinModel model,pTatinCtx ctx,
 PetscErrorCode pTatinModel_ApplyInitialStokesVariableMarkers(pTatinModel model,pTatinCtx ctx,Vec X)
 {
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = PetscLogEventBegin(PTATIN_ModelApplyInitialStokesVariableMarkers,0,0,0,0);CHKERRQ(ierr);
   if (!model->disable_initial_stokes_variables) {
     if (model->FP_pTatinModel_ApplyInitialStokesVariableMarkers) {
@@ -441,8 +440,8 @@ PetscErrorCode pTatinModel_ApplyInitialStokesVariableMarkers(pTatinModel model,p
 PetscErrorCode pTatinModel_UpdateMeshGeometry(pTatinModel model,pTatinCtx ctx,Vec X)
 {
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = PetscLogEventBegin(PTATIN_ModelUpdateMeshGeometry,0,0,0,0);CHKERRQ(ierr);
   if (!model->disable_update_mesh_geometry) {
     if (model->FP_pTatinModel_UpdateMeshGeometry) {
@@ -457,8 +456,8 @@ PetscErrorCode pTatinModel_UpdateMeshGeometry(pTatinModel model,pTatinCtx ctx,Ve
 PetscErrorCode pTatinModel_ApplyInitialMaterialGeometry(pTatinModel model,pTatinCtx ctx)
 {
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = PetscLogEventBegin(PTATIN_ModelApplyInitialMaterialGeometry,0,0,0,0);CHKERRQ(ierr);
   if (!model->disable_initial_material_geometry) {
     if (model->FP_pTatinModel_ApplyInitialMaterialGeometry) {
@@ -473,8 +472,8 @@ PetscErrorCode pTatinModel_ApplyInitialMaterialGeometry(pTatinModel model,pTatin
 PetscErrorCode pTatinModel_ApplyInitialMeshGeometry(pTatinModel model,pTatinCtx ctx)
 {
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = PetscLogEventBegin(PTATIN_ModelApplyInitialMeshGeometry,0,0,0,0);CHKERRQ(ierr);
   if (!model->disable_initial_mesh_geometry) {
     if (model->FP_pTatinModel_ApplyInitialMeshGeometry) {
@@ -489,8 +488,8 @@ PetscErrorCode pTatinModel_ApplyInitialMeshGeometry(pTatinModel model,pTatinCtx 
 PetscErrorCode pTatinModel_Initialize(pTatinModel model,pTatinCtx ctx)
 {
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = PetscLogEventBegin(PTATIN_ModelInitialize,0,0,0,0);CHKERRQ(ierr);
   if (model->FP_pTatinModel_Initialize) {
     ierr = model->FP_pTatinModel_Initialize(ctx,model->model_data);CHKERRQ(ierr);
@@ -503,8 +502,8 @@ PetscErrorCode pTatinModel_Initialize(pTatinModel model,pTatinCtx ctx)
 PetscErrorCode pTatinModel_ApplyBoundaryCondition(pTatinModel model,pTatinCtx ctx)
 {
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = PetscLogEventBegin(PTATIN_ModelApplyBoundaryCondition,0,0,0,0);CHKERRQ(ierr);
   if (!model->disable_apply_bc) {
     if (model->FP_pTatinModel_ApplyBoundaryCondition) {
@@ -519,8 +518,8 @@ PetscErrorCode pTatinModel_ApplyBoundaryCondition(pTatinModel model,pTatinCtx ct
 PetscErrorCode pTatinModel_ApplyBoundaryConditionMG(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[],pTatinModel model,pTatinCtx ctx)
 {
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = PetscLogEventBegin(PTATIN_ModelApplyBoundaryConditionMG,0,0,0,0);CHKERRQ(ierr);
   if (!model->disable_apply_bc_mg) {
     if (model->FP_pTatinModel_ApplyBoundaryConditionMG) {
@@ -537,8 +536,8 @@ PetscErrorCode pTatinModel_ApplyBoundaryConditionMG(PetscInt nl,BCList bclist[],
 PetscErrorCode pTatinModel_AdaptMaterialPointResolution(pTatinModel model,pTatinCtx ctx)
 {
   PetscErrorCode ierr;
-  PetscFunctionBegin;
-  
+
+  PetscFunctionBegin;  
   ierr = PetscLogEventBegin(PTATIN_ModelAdaptMaterialPointResolution,0,0,0,0);CHKERRQ(ierr);
   if (!model->disable_adapt_mp_resolution) {
     if (model->FP_pTatinModel_AdaptMaterialPointResolution) {
@@ -560,6 +559,7 @@ PetscErrorCode pTatinModelDeRegisterAll(void)
   PetscInt i;
   pTatinModel item;
 
+  PetscFunctionBegin;
   if (registered_model_list) {
     i = 0;
     item = registered_model_list[0];

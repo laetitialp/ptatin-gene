@@ -454,8 +454,8 @@ PetscErrorCode VolumeQuadratureGetAllCellData_Stokes(Quadrature Q,QPntVolCoefSto
 {
   QPntVolCoefStokes *quadraturepoint_data;
   DataField          PField;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   DataBucketGetDataFieldByName(Q->properties_db, QPntVolCoefStokes_classname ,&PField);
   quadraturepoint_data = PField->data;
   *coeffs = quadraturepoint_data;
@@ -580,8 +580,8 @@ PetscErrorCode SurfaceQuadratureGetAllCellData_Stokes(SurfaceQuadrature Q,QPntSu
 {
   QPntSurfCoefStokes *quadraturepoint_data;
   DataField          PField;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   if (Q->n_facets) {
     DataBucketGetDataFieldByName(Q->properties_db, QPntSurfCoefStokes_classname ,&PField);
     quadraturepoint_data = PField->data;
@@ -735,6 +735,7 @@ PetscErrorCode PetscOptionsInsertPrefixString(const char prefix[],const char opt
   PetscErrorCode ierr;
   char opt[PETSC_MAX_PATH_LEN];
 
+  PetscFunctionBegin;
   if (option[0] != '-') {
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Option must start with a -");
   }
@@ -752,9 +753,9 @@ PetscErrorCode PetscOptionsInsertPrefixString(const char prefix[],const char opt
 PetscErrorCode SNESStokesPCSetOptions_A(SNES snes)
 {
   const char *prefix;
-
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   ierr = SNESGetOptionsPrefix(snes,&prefix);CHKERRQ(ierr);
 
   ierr = PetscOptionsInsertPrefixString(prefix,"-ksp_type fgmres");CHKERRQ(ierr);
@@ -789,9 +790,9 @@ PetscErrorCode SNESStokesPCMGSetOptions(SNES snes,PetscInt maxits,PetscBool mglo
 {
   const char *prefix;
   char opt[PETSC_MAX_PATH_LEN];
-
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   ierr = SNESGetOptionsPrefix(snes,&prefix);CHKERRQ(ierr);
 
   ierr = PetscOptionsInsertPrefixString(prefix,"-fieldsplit_u_mg_pc_type mg");CHKERRQ(ierr);
@@ -836,9 +837,9 @@ PetscErrorCode SNESStokesPCMGCoarseSetOptions_IterativeASM(SNES snes,PetscReal r
 {
   const char *prefix;
   char opt[PETSC_MAX_PATH_LEN];
-
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   ierr = SNESGetOptionsPrefix(snes,&prefix);CHKERRQ(ierr);
 
   ierr = PetscOptionsInsertPrefixString(prefix,"-fieldsplit_u_mg_coarse_ksp_type gmres");CHKERRQ(ierr);
@@ -863,9 +864,9 @@ PetscErrorCode SNESStokesPCMGCoarseSetOptions_NestedIterativeASM(SNES snes,Petsc
 {
   const char *prefix;
   char opt[PETSC_MAX_PATH_LEN];
-
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   ierr = SNESGetOptionsPrefix(snes,&prefix);CHKERRQ(ierr);
 
   ierr = PetscOptionsInsertPrefixString(prefix,"-fieldsplit_u_mg_coarse_ksp_type fgmres");CHKERRQ(ierr);
@@ -902,6 +903,7 @@ PetscErrorCode SNESStokesPCMGCoarseSetOptions_SparseDirect(SNES snes)
   PetscErrorCode ierr;
   PetscMPIInt nproc;
 
+  PetscFunctionBegin;
   ierr = SNESGetOptionsPrefix(snes,&prefix);CHKERRQ(ierr);
 
   ierr = PetscObjectGetComm((PetscObject)snes,&comm);CHKERRQ(ierr);
@@ -920,56 +922,67 @@ PetscErrorCode SNESStokesPCMGCoarseSetOptions_SparseDirect(SNES snes)
 
 PetscErrorCode PhysCompStokesGetDMComposite(PhysCompStokes stokes,DM *dmc)
 {
-    if (dmc) { *dmc = stokes->stokes_pack; }
+  PetscFunctionBegin;
+  if (dmc) { *dmc = stokes->stokes_pack; }
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode PhysCompStokesGetDMs(PhysCompStokes stokes,DM *dmv,DM *dmp)
 {
-    if (dmv) { *dmv = stokes->dav; }
-    if (dmp) { *dmp = stokes->dap; }
+  PetscFunctionBegin;
+  if (dmv) { *dmv = stokes->dav; }
+  if (dmp) { *dmp = stokes->dap; }
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode PhysCompStokesGetBCList(PhysCompStokes stokes,BCList *ulist,BCList *plist)
 {
-    if (ulist) { *ulist = stokes->u_bclist; }
-    if (plist) { *plist = stokes->p_bclist; }
+  PetscFunctionBegin;
+  if (ulist) { *ulist = stokes->u_bclist; }
+  if (plist) { *plist = stokes->p_bclist; }
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode PhysCompStokesGetVolumeQuadrature(PhysCompStokes stokes,Quadrature *q)
 {
-    if (q) { *q = stokes->volQ; }
+  PetscFunctionBegin;
+  if (q) { *q = stokes->volQ; }
   PetscFunctionReturn(0);
 }
 PetscErrorCode PhysCompStokesGetVolumeQuadratureAllCellData(PhysCompStokes stokes,QPntVolCoefStokes *coeffs[])
 {
-    PetscErrorCode ierr;
-    if (coeffs) {
-        ierr = VolumeQuadratureGetAllCellData_Stokes(stokes->volQ,coeffs);CHKERRQ(ierr);
-    }
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  if (coeffs) {
+    ierr = VolumeQuadratureGetAllCellData_Stokes(stokes->volQ,coeffs);CHKERRQ(ierr);
+  }
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode PhysCompStokesGetSurfaceQuadrature(PhysCompStokes stokes,SurfaceQuadrature *sq)
 {
-    if (sq) { *sq = stokes->surfQ; };
-    PetscFunctionReturn(0);
+  PetscFunctionBegin;
+  if (sq) { *sq = stokes->surfQ; };
+  PetscFunctionReturn(0);
 }
 
 PetscErrorCode PhysCompStokesGetSurfaceQuadratureAllCellData(PhysCompStokes stokes,QPntSurfCoefStokes *coeffs[])
 {
   PetscErrorCode ierr;
-    if (coeffs) {
-      ierr = SurfaceQuadratureGetAllCellData_Stokes(stokes->surfQ,coeffs);CHKERRQ(ierr);
-    }
+
+  PetscFunctionBegin;
+  if (coeffs) {
+    ierr = SurfaceQuadratureGetAllCellData_Stokes(stokes->surfQ,coeffs);CHKERRQ(ierr);
+  }
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode PhysCompStokesUpdateSurfaceQuadratureGeometry(PhysCompStokes ctx)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = SurfaceQuadratureGeometryUpdate_Stokes(ctx->surfQ,ctx->mfi);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -978,34 +991,32 @@ PetscErrorCode Stokes_KSPConvergenceTest_ScaledResiduals(KSP ksp,PetscInt it,Pet
 {
   PetscErrorCode  ierr;
   pTatinCtx       ctx;
-    const char      *names[] = { "U", "V", "W", "P" };
-    PetscInt        s,component_cnt;
+  const char      *names[] = { "U", "V", "W", "P" };
+  PetscInt        s,component_cnt;
   PetscReal       norms[4],max[4],maxX[4],minX[4],fabs_minX[4];
   Vec             X,Xu,Xp,F,Fu,Fp,v,w;
   Mat             A;
   PetscReal       atol,rtol;
-    static PetscReal initial_norms[4];
-    PetscBool       relative_component_norm_rtol;
+  static PetscReal initial_norms[4];
+  PetscBool       relative_component_norm_rtol;
 
   PetscFunctionBegin;
-
-    if (it < 2) {
-        PetscPrintf(PETSC_COMM_WORLD,"  *** Stokes_KSPConvergenceTest_ScaledResiduals: always do two iterations ***\n");
-        *reason = KSP_CONVERGED_ITERATING;
-        PetscFunctionReturn(0);
-    }
-
+  if (it < 2) {
+    PetscPrintf(PETSC_COMM_WORLD,"  *** Stokes_KSPConvergenceTest_ScaledResiduals: always do two iterations ***\n");
+    *reason = KSP_CONVERGED_ITERATING;
+    PetscFunctionReturn(0);
+  }
 
   ctx = (pTatinCtx)data;
 
-    ierr = KSPGetTolerances(ksp,&rtol,&atol,NULL,NULL);CHKERRQ(ierr);
+  ierr = KSPGetTolerances(ksp,&rtol,&atol,NULL,NULL);CHKERRQ(ierr);
 
   ierr = KSPGetOperators(ksp,&A,0);CHKERRQ(ierr);
   ierr = MatCreateVecs(A,&w,&v);CHKERRQ(ierr);
 
   ierr = KSPBuildResidual(ksp,v,w,&F);CHKERRQ(ierr);
-    ierr = VecAbs(F);CHKERRQ(ierr);
-    ierr = VecFilter(F,1.0e-12);CHKERRQ(ierr);
+  ierr = VecAbs(F);CHKERRQ(ierr);
+  ierr = VecFilter(F,1.0e-12);CHKERRQ(ierr);
 
   ierr = DMCompositeGetAccess(ctx->stokes_ctx->stokes_pack,F,&Fu,&Fp);CHKERRQ(ierr);
 
@@ -1014,37 +1025,37 @@ PetscErrorCode Stokes_KSPConvergenceTest_ScaledResiduals(KSP ksp,PetscInt it,Pet
   ierr = VecStrideNorm(Fu,2,NORM_2,&norms[2]);CHKERRQ(ierr);
   ierr = VecNorm(Fp,NORM_2,&norms[3]);CHKERRQ(ierr);
 
-    PetscPrintf(PETSC_COMM_WORLD,"  *** Stokes_KSPConvergenceTest_ScaledResiduals:        ResidualNorms(%s,%s,%s,%s) = [ %1.4e %1.4e %1.4e %1.4e ] ***\n",
+  PetscPrintf(PETSC_COMM_WORLD,"  *** Stokes_KSPConvergenceTest_ScaledResiduals:        ResidualNorms(%s,%s,%s,%s) = [ %1.4e %1.4e %1.4e %1.4e ] ***\n",
                 names[0],names[1],names[2],names[3],norms[0],norms[1],norms[2],norms[3]);
 
-    if (it == 2) {
-        initial_norms[0] = norms[0];
-        initial_norms[1] = norms[1];
-        initial_norms[2] = norms[2];
-        initial_norms[3] = norms[3];
-        PetscPrintf(PETSC_COMM_WORLD,"  *** Stokes_KSPConvergenceTest_ScaledResiduals: InitialResidualNorms(%s,%s,%s,%s) = [ %1.4e %1.4e %1.4e %1.4e ] ***\n",
+  if (it == 2) {
+    initial_norms[0] = norms[0];
+    initial_norms[1] = norms[1];
+    initial_norms[2] = norms[2];
+    initial_norms[3] = norms[3];
+    PetscPrintf(PETSC_COMM_WORLD,"  *** Stokes_KSPConvergenceTest_ScaledResiduals: InitialResidualNorms(%s,%s,%s,%s) = [ %1.4e %1.4e %1.4e %1.4e ] ***\n",
                     names[0],names[1],names[2],names[3],initial_norms[0],initial_norms[1],initial_norms[2],initial_norms[3]);
-    }
+  }
 
   ierr = VecStrideMax(Fu,0,NULL,&max[0]);CHKERRQ(ierr);
   ierr = VecStrideMax(Fu,1,NULL,&max[1]);CHKERRQ(ierr);
   ierr = VecStrideMax(Fu,2,NULL,&max[2]);CHKERRQ(ierr);
   ierr = VecMax(Fp,NULL,&max[3]);CHKERRQ(ierr);
 
-    PetscPrintf(PETSC_COMM_WORLD,"  *** Stokes_KSPConvergenceTest_ScaledResiduals:              max(r%s,r%s,r%s,r%s) = [ %1.4e %1.4e %1.4e %1.4e ] ***\n",
+  PetscPrintf(PETSC_COMM_WORLD,"  *** Stokes_KSPConvergenceTest_ScaledResiduals:              max(r%s,r%s,r%s,r%s) = [ %1.4e %1.4e %1.4e %1.4e ] ***\n",
                 names[0],names[1],names[2],names[3],max[0],max[1],max[2],max[3]);
 
 
-    *reason = KSP_CONVERGED_ITERATING;
+  *reason = KSP_CONVERGED_ITERATING;
 
-    relative_component_norm_rtol = PETSC_TRUE;
-    for (s=0; s<4; s++) {
-        if (max[s] > atol) {
-            relative_component_norm_rtol = PETSC_FALSE;
-        }
+  relative_component_norm_rtol = PETSC_TRUE;
+  for (s=0; s<4; s++) {
+    if (max[s] > atol) {
+      relative_component_norm_rtol = PETSC_FALSE;
     }
+  }
 
-    /* residuals have been reduced sufficiently, compare with the solution we have */
+  /* residuals have been reduced sufficiently, compare with the solution we have */
   ierr = KSPBuildSolution(ksp,v,&X);CHKERRQ(ierr);
   ierr = DMCompositeGetAccess(ctx->stokes_ctx->stokes_pack,X,&Xu,&Xp);CHKERRQ(ierr);
 
@@ -1079,39 +1090,39 @@ PetscErrorCode Stokes_KSPConvergenceTest_ScaledResiduals(KSP ksp,PetscInt it,Pet
   }
   */
 
-    /* more relaxed vector-wise hecking */
-    ierr = VecStrideMin(Xu,0,NULL,&minX[0]);CHKERRQ(ierr);
-    ierr = VecStrideMin(Xu,1,NULL,&minX[1]);CHKERRQ(ierr);
-    ierr = VecStrideMin(Xu,2,NULL,&minX[2]);CHKERRQ(ierr);
-    ierr = VecMin(Xp,NULL,&minX[3]);CHKERRQ(ierr);
+  /* more relaxed vector-wise hecking */
+  ierr = VecStrideMin(Xu,0,NULL,&minX[0]);CHKERRQ(ierr);
+  ierr = VecStrideMin(Xu,1,NULL,&minX[1]);CHKERRQ(ierr);
+  ierr = VecStrideMin(Xu,2,NULL,&minX[2]);CHKERRQ(ierr);
+  ierr = VecMin(Xp,NULL,&minX[3]);CHKERRQ(ierr);
 
-    ierr = VecStrideMax(Xu,0,NULL,&maxX[0]);CHKERRQ(ierr);
-    ierr = VecStrideMax(Xu,1,NULL,&maxX[1]);CHKERRQ(ierr);
-    ierr = VecStrideMax(Xu,2,NULL,&maxX[2]);CHKERRQ(ierr);
-    ierr = VecMax(Xp,NULL,&maxX[3]);CHKERRQ(ierr);
+  ierr = VecStrideMax(Xu,0,NULL,&maxX[0]);CHKERRQ(ierr);
+  ierr = VecStrideMax(Xu,1,NULL,&maxX[1]);CHKERRQ(ierr);
+  ierr = VecStrideMax(Xu,2,NULL,&maxX[2]);CHKERRQ(ierr);
+  ierr = VecMax(Xp,NULL,&maxX[3]);CHKERRQ(ierr);
 
-    for (s=0; s<4; s++) {
-        fabs_minX[s] = PetscMin(PetscAbsReal(minX[s]),PetscAbsReal(maxX[s]));
-    }
-    PetscPrintf(PETSC_COMM_WORLD,"  *** Stokes_KSPConvergenceTest_ScaledResiduals:             fmin(X%s,X%s,X%s,X%s) = [ %1.4e %1.4e %1.4e %1.4e ] ***\n",
+  for (s=0; s<4; s++) {
+    fabs_minX[s] = PetscMin(PetscAbsReal(minX[s]),PetscAbsReal(maxX[s]));
+  }
+  PetscPrintf(PETSC_COMM_WORLD,"  *** Stokes_KSPConvergenceTest_ScaledResiduals:             fmin(X%s,X%s,X%s,X%s) = [ %1.4e %1.4e %1.4e %1.4e ] ***\n",
                 names[0],names[1],names[2],names[3],fabs_minX[0],fabs_minX[1],fabs_minX[2],fabs_minX[3]);
 
-    if (relative_component_norm_rtol) {
-        component_cnt = 0;
-        for (s=0; s<4; s++) {
-            if (max[s] < rtol * fabs_minX[s]) {
-                PetscPrintf(PETSC_COMM_WORLD,"  *** Stokes_KSPConvergenceTest_ScaledResiduals:                    ++ max(r%s) < %1.1e min(X%s) ***\n",names[s],rtol,names[s]);
-                component_cnt++;
-            } else {
-                PetscPrintf(PETSC_COMM_WORLD,"  *** Stokes_KSPConvergenceTest_ScaledResiduals:                    -- max(r%s) > %1.1e min(X%s) ***\n",names[s],rtol,names[s]);
-            }
-        }
-        // all residuals pass //
-        *reason = KSP_CONVERGED_ITERATING;
-        if (component_cnt == 4) {
-            *reason = KSP_CONVERGED_RTOL;
-        }
+  if (relative_component_norm_rtol) {
+    component_cnt = 0;
+    for (s=0; s<4; s++) {
+      if (max[s] < rtol * fabs_minX[s]) {
+        PetscPrintf(PETSC_COMM_WORLD,"  *** Stokes_KSPConvergenceTest_ScaledResiduals:                    ++ max(r%s) < %1.1e min(X%s) ***\n",names[s],rtol,names[s]);
+        component_cnt++;
+      } else {
+        PetscPrintf(PETSC_COMM_WORLD,"  *** Stokes_KSPConvergenceTest_ScaledResiduals:                    -- max(r%s) > %1.1e min(X%s) ***\n",names[s],rtol,names[s]);
+      }
     }
+    // all residuals pass //
+    *reason = KSP_CONVERGED_ITERATING;
+    if (component_cnt == 4) {
+      *reason = KSP_CONVERGED_RTOL;
+    }
+  }
 
   ierr = DMCompositeRestoreAccess(ctx->stokes_ctx->stokes_pack,X,&Xu,&Xp);CHKERRQ(ierr);
   ierr = DMCompositeRestoreAccess(ctx->stokes_ctx->stokes_pack,F,&Fu,&Fp);CHKERRQ(ierr);
@@ -1128,7 +1139,6 @@ PetscErrorCode SNESStokes_KSPSetConvergenceTest_ScaledResiduals(SNES snes,pTatin
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = SNESGetOptionsPrefix(snes,&prefix);CHKERRQ(ierr);
   PetscPrintf(PETSC_COMM_WORLD,"Activating \"KSPSetConvergenceTest_ScaledResiduals\" on SNES->KSP (%s)\n",prefix);
 

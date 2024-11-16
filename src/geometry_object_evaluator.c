@@ -43,6 +43,7 @@ PetscErrorCode GeometryObjectEvalCreate(const char name[],GeometryObjectEval *G)
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ierr = PetscMalloc(sizeof(struct _p_GeometryObjectEval),&goe);CHKERRQ(ierr);
   ierr = PetscMemzero(goe,sizeof(struct _p_GeometryObjectEval));CHKERRQ(ierr);
 
@@ -59,6 +60,7 @@ PetscErrorCode GeometryObjectEvalDestroy(GeometryObjectEval *G)
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   if (!G) { PetscFunctionReturn(0); }
   goe = *G;
 
@@ -76,6 +78,7 @@ PetscErrorCode GeometryObjectEvalSetGeometryObject(GeometryObjectEval goe,Geomet
 {
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   if (goe->go) {
     ierr = GeometryObjectDestroy(&goe->go);CHKERRQ(ierr);
   }
@@ -89,6 +92,7 @@ PetscErrorCode GeometryObjectEvalSetGeometryObject(GeometryObjectEval goe,Geomet
 
 PetscErrorCode GeometryObjectEvalGetGeometryObject(GeometryObjectEval goe,GeometryObject *go)
 {
+  PetscFunctionBegin;
   if (go) {
     *go = goe->go;
   }
@@ -97,18 +101,21 @@ PetscErrorCode GeometryObjectEvalGetGeometryObject(GeometryObjectEval goe,Geomet
 
 PetscErrorCode GeometryObjectEvalSetRegionIndex(GeometryObjectEval goe,int region_id)
 {
+  PetscFunctionBegin;
   goe->region_index = region_id;
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode GeometryObjectEvalSetRegionValue(GeometryObjectEval goe,double value)
 {
+  PetscFunctionBegin;
   goe->region_value = value;
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode GeometryObjectEvalSetRegionFunction(GeometryObjectEval goe,double (*func)(double*,void*),void *data)
 {
+  PetscFunctionBegin;
   goe->data = data;
   goe->evaluate_region_function = func;
   PetscFunctionReturn(0);
@@ -119,6 +126,7 @@ PetscErrorCode GeometryObjectEvaluateRegionIndex(GeometryObjectEval goe,double p
   int inside;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   inside = 0;
   ierr = GeometryObjectPointInside(goe->go,pos,&inside);CHKERRQ(ierr);
 
@@ -146,6 +154,7 @@ PetscErrorCode GeometryObjectEvaluateRegionValue(GeometryObjectEval goe,double p
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   inside = 0;
   ierr = GeometryObjectPointInside(goe->go,pos,&inside);CHKERRQ(ierr);
 
@@ -173,6 +182,7 @@ PetscErrorCode GeometryObjectEvaluateRegionFunction(GeometryObjectEval goe,doubl
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   inside = 0;
   ierr = GeometryObjectPointInside(goe->go,pos,&inside);CHKERRQ(ierr);
 
@@ -204,6 +214,7 @@ PetscErrorCode GeometryObjectEvalFindByName(GeometryObjectEval G[],const char na
   GeometryObjectEval item;
   int i,v;
 
+  PetscFunctionBegin;
   *g = NULL;
 
   i = 0;
@@ -228,6 +239,7 @@ PetscErrorCode GeometryObjectEvalIdFindByName(GeometryObjectEval G[],const char 
   GeometryObjectEval item;
   int i,v;
 
+  PetscFunctionBegin;
   *GoId = -1;
 
   i = 0;

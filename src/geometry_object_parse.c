@@ -42,6 +42,7 @@ PetscErrorCode GeometryObjectLoadJSON(const char filename[],PetscInt *n,Geometry
   int            nlist;
   GeometryObject *list;
 
+  PetscFunctionBegin;
   /* perform file validation */
 
   /* open file in a cJSON object */
@@ -146,6 +147,7 @@ PetscErrorCode GeometryObjectListParseJSON(cJSON *jfile,int *_nlist,GeometryObje
   PetscBool      *constructed_list;
   int            missing_objects,recursion;
 
+  PetscFunctionBegin;
   gobject = cJSON_GetObjectItem(jfile,"GeometryObjectList");
   if (!gobject) {
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"<GeometryObjectParser> Failed to locate list named \"GeometryObjectList\" in JSON file");
@@ -311,6 +313,7 @@ PetscErrorCode GeometryObjectQueryFromJSONIsSetOperation(cJSON *obj,PetscBool *i
   char      *type;
   PetscBool same;
 
+  PetscFunctionBegin;
   *isset = PETSC_FALSE;
   cJSON_GetObjectValue_char(obj,"type",&found,&type);
   if (found == cJSON_False) {
@@ -330,6 +333,7 @@ PetscErrorCode GeometryObjectParseDetermineAxis(const char axisname[],GeomRotate
 {
   PetscBool same;
 
+  PetscFunctionBegin;
   *a = ROTATE_AXIS_UNDEFINED;
 
   same = PETSC_FALSE; PetscStrcmp(axisname,"x",&same); if (same) { *a = ROTATE_AXIS_X; }
@@ -356,6 +360,7 @@ PetscErrorCode GeometryObjectParseDetermineSign(const char name[],GeomSign *a)
 {
   PetscBool same;
 
+  PetscFunctionBegin;
   *a = SIGN_UNDEFINED;
 
   same = PETSC_FALSE; PetscStrcmp(name,"+",&same); if (same) { *a = SIGN_POSITIVE; }
@@ -377,6 +382,7 @@ PetscErrorCode GeometryObjectParseDetermineSetOperatorType(const char name[],Geo
 {
   PetscBool same;
 
+  PetscFunctionBegin;
   *a = GeomSet_Undefined;
 
   same = PETSC_FALSE; PetscStrcmp(name,"union",&same); if (same) { *a = GeomSet_Union; }
@@ -409,6 +415,7 @@ PetscErrorCode GeometryObjectPrimitiveLoadFromJSON(cJSON *obj,GeometryObject *g)
   GeometryObject go;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   /* fetch type */
   cJSON_GetObjectValue_char(obj,"type",&found,&type);
   if (!type) {

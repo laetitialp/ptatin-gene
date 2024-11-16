@@ -972,6 +972,7 @@ PetscErrorCode FVDAView_JSON(FVDA fv,const char path[],const char prefix[])
   char           jprefix_geom[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   {
     if (path) {
       if (prefix) { PetscSNPrintf(jprefix_fv,PETSC_MAX_PATH_LEN-1,"%s/%s_fvda_fvspace",path,prefix); }
@@ -1141,6 +1142,7 @@ PetscErrorCode PetscVecWriteJSON(Vec x,PetscInt format,const char suffix[])
   const char     *suffix_tail;*/
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   ierr = PetscObjectGetComm((PetscObject)x,&comm);CHKERRQ(ierr);
   ierr = MPI_Comm_rank(comm,&commrank);CHKERRQ(ierr);
 
@@ -1266,7 +1268,7 @@ PetscErrorCode FVDAView_Heavy(FVDA fv,const char path[],const char suffix[])
   char           fname1[PETSC_MAX_PATH_LEN],fname[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
   
-  
+  PetscFunctionBegin;  
   if (path) {
     if (suffix) { PetscSNPrintf(fname1,PETSC_MAX_PATH_LEN-1,"%s/%s_fvda_cellcoeff",path,suffix); }
     else { PetscSNPrintf(fname1,PETSC_MAX_PATH_LEN-1,"%s/fvda_cellcoeff",path); }

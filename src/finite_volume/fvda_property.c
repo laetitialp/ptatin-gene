@@ -244,6 +244,7 @@ PetscErrorCode FVDACellPropertyQuery(FVDA fv,const char name[],PetscBool *found)
 {
   PetscErrorCode ierr;
   PetscInt       c;
+
   PetscFunctionBegin;
   *found = PETSC_FALSE;
   if (!fv->setup) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Must call FVDASetUp() first");
@@ -259,6 +260,7 @@ PetscErrorCode FVDAFacePropertyQuery(FVDA fv,const char name[],PetscBool *found)
 {
   PetscErrorCode ierr;
   PetscInt       c;
+
   PetscFunctionBegin;
   *found = PETSC_FALSE;
   if (!fv->setup) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Must call FVDASetUp() first");
@@ -410,6 +412,7 @@ PetscErrorCode FVArrayCreateFromData(FVPrimitiveType t,PetscInt n,PetscInt b,con
 PetscErrorCode FVArrayZeroEntries(FVArray a)
 {
   PetscErrorCode ierr;
+
   PetscFunctionBegin;
   ierr = PetscMemzero(a->v,sizeof(PetscReal)*a->len);CHKERRQ(ierr);
   PetscFunctionReturn(0);

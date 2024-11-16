@@ -27,28 +27,32 @@ PetscInt test_function_type = 1;
 
 PetscErrorCode func_1(PetscScalar x[],PetscScalar val[])
 {
+  PetscFunctionBegin;
   val[0] = x[0] * x[0] * 2.2 + x[1] + x[1] * x[2] * 0.2;
-  return 0;
+  PetscFunctionReturn(0);
 }
 
 PetscErrorCode grad_func_1(PetscScalar x[],PetscScalar val[])
 {
+  PetscFunctionBegin;
   val[0] = x[0] * 4.4;
   val[1] = 1.0 + x[2] * 0.2;
   val[2] = x[1] * 0.2;
-  return 0;
+  PetscFunctionReturn(0);
 }
 
 PetscErrorCode func_2(PetscScalar x[],PetscScalar val[])
 {
+  PetscFunctionBegin;
   val[0] = x[0] * PetscSinReal(PETSC_PI * 3.3 * x[0]) * PetscCosReal(PETSC_PI * 1.2 * x[1])
          + x[1] * PetscSinReal(PETSC_PI * 3.3 * x[1]) * PetscCosReal(PETSC_PI * 1.2 * x[2])
          + x[2] * PetscSinReal(PETSC_PI * 3.3 * x[0]) * PetscCosReal(PETSC_PI * 1.2 * x[2]);
-  return 0;
+  PetscFunctionReturn(0);
 }
 
 PetscErrorCode grad_func_2(PetscScalar x[],PetscScalar val[])
 {
+  PetscFunctionBegin;
   val[0] = PetscSinReal(PETSC_PI * 3.3 * x[0]) * PetscCosReal(PETSC_PI * 1.2 * x[1])
          + x[0] * PETSC_PI * 3.3 * PetscCosReal(PETSC_PI * 3.3 * x[0]) * PetscCosReal(PETSC_PI * 1.2 * x[1])
          + x[2] * PETSC_PI * 3.3 * PetscCosReal(PETSC_PI * 3.3 * x[0]) * PetscCosReal(PETSC_PI * 1.2 * x[2]);
@@ -60,12 +64,14 @@ PetscErrorCode grad_func_2(PetscScalar x[],PetscScalar val[])
   val[2] = -x[1] * PetscSinReal(PETSC_PI * 3.3 * x[1]) * PetscSinReal(PETSC_PI * 1.2 * x[2]) * PETSC_PI * 1.2
          + PetscSinReal(PETSC_PI * 3.3 * x[0]) * PetscCosReal(PETSC_PI * 1.2 * x[2])
          - x[2] * PetscSinReal(PETSC_PI * 3.3 * x[0]) * PetscSinReal(PETSC_PI * 1.2 * x[2]) * PETSC_PI * 1.2;
-  return 0;
+  PetscFunctionReturn(0);
 }
 
 PetscErrorCode func(PetscScalar x[],PetscScalar val[])
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   switch (test_function_type) {
     case 1:
       ierr = func_1(x,val);CHKERRQ(ierr);
@@ -77,12 +83,14 @@ PetscErrorCode func(PetscScalar x[],PetscScalar val[])
       SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Unknown test function selected");
       break;
   }
-  return 0;
+  PetscFunctionReturn(0);
 }
 
 PetscErrorCode grad_func(PetscScalar x[],PetscScalar val[])
 {
   PetscErrorCode ierr;
+  
+  PetscFunctionBegin;
   switch (test_function_type) {
     case 1:
       ierr = grad_func_1(x,val);CHKERRQ(ierr);
@@ -94,7 +102,7 @@ PetscErrorCode grad_func(PetscScalar x[],PetscScalar val[])
       SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Unknown gradient test function selected");
       break;
   }
-  return 0;
+  PetscFunctionReturn(0);
 }
 
 
@@ -130,7 +138,8 @@ PetscErrorCode t1(void)
   PetscReal            N[8][8],gradN_xi[8][3][8],gradN_x[8][8],gradN_y[8][8],gradN_z[8][8],detJ[8];
   PetscLogDouble       t0,t1,dt[2];
   
-  
+ 
+  PetscFunctionBegin; 
   ierr = PetscOptionsGetBool(NULL,NULL,"-view",&view,NULL);CHKERRQ(ierr);
   found = PETSC_FALSE; ierr = PetscOptionsGetInt(NULL,NULL,"-mx",&mx,&found);CHKERRQ(ierr);
   if (found) {
@@ -356,7 +365,8 @@ PetscErrorCode t2(void)
   PetscReal            N[8][8],gradN_xi[8][3][8],gradN_x[8][8],gradN_y[8][8],gradN_z[8][8],detJ[8];
   FVArray              Qa,gradQa;
   PetscLogDouble       t0,t1;
-  
+
+  PetscFunctionBegin; 
   ierr = PetscOptionsGetBool(NULL,NULL,"-view",&view,NULL);CHKERRQ(ierr);
   found = PETSC_FALSE; ierr = PetscOptionsGetInt(NULL,NULL,"-mx",&mx,&found);CHKERRQ(ierr);
   if (found) {
@@ -598,7 +608,8 @@ int main(int argc,char **args)
   PetscErrorCode ierr;
   PetscInt       tid = 0;
   
-  ierr = PetscInitialize(&argc,&args,(char*)0,doc);if (ierr) return ierr;
+  PetscFunctionBegin;
+  PetscCall(PetscInitialize(&argc,&args,(char*)0,doc));
   test_function_type = 1;
   ierr = PetscOptionsGetInt(NULL,NULL,"-test_func",&test_function_type,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetInt(NULL,NULL,"-tid",&tid,NULL);CHKERRQ(ierr);
@@ -612,6 +623,6 @@ int main(int argc,char **args)
     default: SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Valid values for -tid {0,1}");
       break;
   }
-  ierr = PetscFinalize();
-  return ierr;
+  PetscCall(PetscFinalize());
+  return 0;
 }

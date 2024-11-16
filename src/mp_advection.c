@@ -126,10 +126,10 @@ PetscErrorCode SwarmUpdatePosition_ComputeCourantStep(DM da,Vec velocity,PetscRe
 
 
   PetscFunctionBegin;
-    /* setup for coords */
-    ierr = DMGetCoordinateDM(da,&cda);CHKERRQ(ierr);
-    ierr = DMGetCoordinatesLocal(da,&gcoords);CHKERRQ(ierr);
-    ierr = VecGetArray(gcoords,&LA_coords);CHKERRQ(ierr);
+  /* setup for coords */
+  ierr = DMGetCoordinateDM(da,&cda);CHKERRQ(ierr);
+  ierr = DMGetCoordinatesLocal(da,&gcoords);CHKERRQ(ierr);
+  ierr = VecGetArray(gcoords,&LA_coords);CHKERRQ(ierr);
 
   /* setup velocity */
   ierr = DMGetLocalVector(da,&Lvelocity);CHKERRQ(ierr);
@@ -186,8 +186,8 @@ PetscErrorCode SwarmUpdatePosition_ComputeCourantStep(DM da,Vec velocity,PetscRe
     if (dtz < dt_min_local) { dt_min_local = dtz; }
   }
 
-    ierr = VecRestoreArray(gcoords,&LA_coords);CHKERRQ(ierr);
-    ierr = VecRestoreArray(Lvelocity,&LA_velocity);CHKERRQ(ierr);
+  ierr = VecRestoreArray(gcoords,&LA_coords);CHKERRQ(ierr);
+  ierr = VecRestoreArray(Lvelocity,&LA_velocity);CHKERRQ(ierr);
   ierr = DMRestoreLocalVector(da,&Lvelocity);CHKERRQ(ierr);
 
   ierr = PetscObjectGetComm((PetscObject)da,&comm);CHKERRQ(ierr);

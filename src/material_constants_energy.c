@@ -33,6 +33,7 @@
 
 PetscErrorCode MaterialConstantsEnergyInitialize(DataBucket db)
 {
+  PetscFunctionBegin;
   DataBucketRegisterField(db,EnergyMaterialConstants_classname,       sizeof(EnergyMaterialConstants),NULL);
   DataBucketRegisterField(db,EnergyConductivityConst_classname,       sizeof(EnergyConductivityConst),NULL);
   DataBucketRegisterField(db,EnergyConductivityThreshold_classname,       sizeof(EnergyConductivityThreshold),NULL);
@@ -49,6 +50,7 @@ PetscErrorCode MaterialConstantsEnergySetDefaults(DataBucket db)
   int       nregions;
   DataField dfield;
 
+  PetscFunctionBegin;
   DataBucketGetSizes(db,&nregions,NULL,NULL);
   {
     EnergyMaterialConstants *data;
@@ -114,6 +116,7 @@ PetscErrorCode MaterialConstantsEnergyScaleAll(DataBucket db,const int region_id
   int st,type;
   PetscReal k_scale,H_scale,Cp_scale,density_scale;
 
+  PetscFunctionBegin;
   density_scale = pressure_scale * (time_scale*time_scale) / (length_scale*length_scale);
 
   k_scale = pressure_scale * length_scale * length_scale / time_scale;  /* W/(m.K) = kg.m.s^-3.K^-1 = (kg/m^3).m^4.s^-3 */
@@ -241,6 +244,7 @@ PetscErrorCode MaterialConstantsEnergyPrintAll(DataBucket db,const int region_id
   DataField dfield;
   EnergyMaterialConstants *data;
 
+  PetscFunctionBegin;
   DataBucketGetDataFieldByName(db,EnergyMaterialConstants_classname,&dfield);
   DataFieldGetEntries(dfield,(void**)&data);
 

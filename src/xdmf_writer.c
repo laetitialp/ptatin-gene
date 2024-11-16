@@ -17,6 +17,7 @@ PetscErrorCode _XDMFMeta_XDMFOpenClose(MPI_Comm comm,const char name[],PetscBool
 {
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   if (open) {
     ierr = PetscViewerASCIIOpen(comm,name,v);CHKERRQ(ierr);
 
@@ -34,6 +35,7 @@ PetscErrorCode _XDMFMeta_XDMFOpenClose(MPI_Comm comm,const char name[],PetscBool
 
 PetscErrorCode _XDMFMeta_DomainOpenClose(PetscViewer v,const char name[],PetscBool open)
 {
+  PetscFunctionBegin;
   if (open) {
     if (name) {
       PetscViewerASCIIPrintf(v,"<Domain Name=\"%s\">\n",name);
@@ -49,6 +51,7 @@ PetscErrorCode _XDMFMeta_GridOpenClose_DMDA(PetscViewer v,DM da,const char suffi
 {
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   if (open) {
     PetscInt M,N,P;
 
@@ -132,6 +135,7 @@ PetscErrorCode _XDMFMeta_AddAttributeField_DMDA(PetscViewer v,DM da,Vec x,
   PetscInt          d,ndof,M,N,P;
   PetscErrorCode    ierr;
 
+  PetscFunctionBegin;
   if (!meshname) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"XDMF_AddField requires meshname"); }
   if (!fieldname) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"XDMF_AddField requires fieldname"); }
 
@@ -250,6 +254,7 @@ PetscErrorCode XDMFDataWriteField_Generic(Vec x,
   char           name[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   ierr = PetscObjectGetComm((PetscObject)x,&comm);CHKERRQ(ierr);
 
   switch (format) {
@@ -316,6 +321,7 @@ PetscErrorCode XDMFDataWriteField_GenericDMDA(DM dm,Vec x,
   Vec            xn;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   ierr = DMDACreateNaturalVector(dm,&xn);CHKERRQ(ierr);
   ierr = PetscObjectGetComm((PetscObject)xn,&comm);CHKERRQ(ierr);
   ierr = DMDAGlobalToNaturalBegin(dm,x,INSERT_VALUES,xn);CHKERRQ(ierr);
@@ -370,6 +376,7 @@ PetscErrorCode XDMFWriteAttribute_DMDA(PetscViewer v,DM da,Vec x,
   char           filename[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   if (!v) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"XDMF file pointer is corrupt"); }
 
   ierr = _XDMFMeta_AddAttributeField_DMDA(v,da,x,suffix,meshname,fieldname,c_type,format);CHKERRQ(ierr);
@@ -389,6 +396,7 @@ PetscErrorCode XDMFWriteDataItemByReference_DMDA(PetscViewer v,DM dm,const char 
   PetscInt       ndof,M,N,P;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   ierr = DMDAGetInfo(dm,0,&M,&N,&P,0,0,0,&ndof,0,0,0,0,0);CHKERRQ(ierr);
 
   PetscViewerASCIIPrintf(v,"<DataItem Name=\"ref_%s\" Dimensions=\"%" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT " %" PetscInt_FMT "\"\n",fieldname,P,N,M,ndof);
@@ -415,6 +423,7 @@ PetscErrorCode _XDMFMeta_AddAttributeFunctionField_DMDA(PetscViewer v,const char
   char              reference_key[PETSC_MAX_PATH_LEN];
   PetscErrorCode    ierr;
 
+  PetscFunctionBegin;
   if (!meshname) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"XDMF_AddField requires meshname"); }
   if (!fieldname) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"XDMF_AddField requires fieldname"); }
 
@@ -480,6 +489,7 @@ PetscErrorCode XDMFWriteAttributeFunction_DMDA(PetscViewer v,const char function
 {
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   if (!v) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"XDMF file pointer is corrupt"); }
 
   ierr = _XDMFMeta_AddAttributeFunctionField_DMDA(v,function,da,x,suffix,meshname,fieldname,c_type,format);CHKERRQ(ierr);
@@ -491,6 +501,7 @@ PetscErrorCode XDMFMetaXDMFOpen(MPI_Comm comm,const char name[],PetscViewer *v)
 {
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   ierr = _XDMFMeta_XDMFOpenClose(comm,name,PETSC_TRUE,v);CHKERRQ(ierr);
   ierr = PetscViewerASCIIPushTab(*v);CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -500,6 +511,7 @@ PetscErrorCode XDMFMetaXDMFClose(PetscViewer *v)
 {
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   ierr = PetscViewerASCIIPopTab(*v);CHKERRQ(ierr);
   ierr = _XDMFMeta_XDMFOpenClose(MPI_COMM_NULL,NULL,PETSC_FALSE,v);CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -509,6 +521,7 @@ PetscErrorCode XDMFMetaDomainOpen(PetscViewer v,const char name[])
 {
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   if (!v) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"XDMF file pointer is corrupt"); }
   ierr = _XDMFMeta_DomainOpenClose(v,name,PETSC_TRUE);CHKERRQ(ierr);
   ierr = PetscViewerASCIIPushTab(v);CHKERRQ(ierr);
@@ -519,6 +532,7 @@ PetscErrorCode XDMFMetaDomainClose(PetscViewer v)
 {
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   if (!v) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"XDMF file pointer is corrupt"); }
   ierr = PetscViewerASCIIPopTab(v);CHKERRQ(ierr);
   ierr = _XDMFMeta_DomainOpenClose(v,NULL,PETSC_FALSE);CHKERRQ(ierr);
@@ -527,6 +541,7 @@ PetscErrorCode XDMFMetaDomainClose(PetscViewer v)
 
 PetscErrorCode XDMFMetaWriteTime(PetscViewer v,PetscReal value)
 {
+  PetscFunctionBegin;
   if (!v) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"XDMF file pointer is corrupt"); }
   PetscViewerASCIIPrintf(v,"<Time Value=\"%1.6e\"/>\n",value);
   PetscFunctionReturn(0);
@@ -534,6 +549,7 @@ PetscErrorCode XDMFMetaWriteTime(PetscViewer v,PetscReal value)
 
 PetscErrorCode XDMFMetaWriteInformationString(PetscViewer v,const char name[],const char value[])
 {
+  PetscFunctionBegin;
   if (!v) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"XDMF file pointer is corrupt"); }
   PetscViewerASCIIPrintf(v,"<Information Name=\"%s\" Value=\"%s\"/>\n",name,value);
   PetscFunctionReturn(0);
@@ -541,6 +557,7 @@ PetscErrorCode XDMFMetaWriteInformationString(PetscViewer v,const char name[],co
 
 PetscErrorCode XDMFMetaWriteInformationInt(PetscViewer v,const char name[],PetscInt value)
 {
+  PetscFunctionBegin;
   if (!v) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"XDMF file pointer is corrupt"); }
   PetscViewerASCIIPrintf(v,"<Information Name=\"%s\" Value=\"%" PetscInt_FMT "\"/>\n",name,value);
   PetscFunctionReturn(0);
@@ -548,6 +565,7 @@ PetscErrorCode XDMFMetaWriteInformationInt(PetscViewer v,const char name[],Petsc
 
 PetscErrorCode XDMFMetaWriteInformationReal(PetscViewer v,const char name[],PetscReal value)
 {
+  PetscFunctionBegin;
   if (!v) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"XDMF file pointer is corrupt"); }
   PetscViewerASCIIPrintf(v,"<Information Name=\"%s\" Value=\"%1.6e\"/>\n",name,value);
   PetscFunctionReturn(0);
@@ -558,6 +576,7 @@ PetscErrorCode XDMFMetaWriteInformationRealList(PetscViewer v,const char name[],
   PetscInt       i;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   if (!v) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"XDMF file pointer is corrupt"); }
   PetscViewerASCIIPrintf(v,"<Information Name=\"%s\">\n",name);
   ierr = PetscViewerASCIIPushTab(v);CHKERRQ(ierr);
@@ -578,6 +597,7 @@ PetscErrorCode XDMFGridOpen_DMDA(PetscViewer v,DM dm,const char path[],const cha
   DM             cdm;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   if (!v) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"XDMF file pointer is corrupt"); }
   ierr = _XDMFMeta_GridOpenClose_DMDA(v,dm,suffix,meshname,format,PETSC_TRUE);CHKERRQ(ierr);
 
@@ -598,6 +618,7 @@ PetscErrorCode XDMFGridClose_DMDA(PetscViewer v)
 {
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   if (!v) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"XDMF file pointer is corrupt"); }
   ierr = _XDMFMeta_GridOpenClose_DMDA(v,NULL,NULL,NULL,XDMFBinary,PETSC_FALSE);CHKERRQ(ierr);
 
@@ -619,6 +640,7 @@ PetscErrorCode ptatin3d_StokesOutput_VelocityXDMF(pTatinCtx ctx,Vec X,const char
   pTatinModel    model;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   ierr = pTatinGetStokesContext(ctx,&stokes);CHKERRQ(ierr);
   ierr = PhysCompStokesGetDMComposite(stokes,&dmstokes);
   ierr = DMCompositeGetEntries(dmstokes,&dmv,&dmp);CHKERRQ(ierr);

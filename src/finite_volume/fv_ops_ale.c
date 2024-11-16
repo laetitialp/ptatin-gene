@@ -621,7 +621,6 @@ PetscErrorCode EnergyFV_RK2SSP(SNES snes,const PetscReal range[],PetscReal time,
   Vec            X_1,F,vol_zero,vol_half,vol_one;
   
   PetscFunctionBegin;
-  
   ierr = SNESGetApplicationContext(snes,(void*)&fv);CHKERRQ(ierr);
   if (!fv->q_dot) SETERRQ(PetscObjectComm((PetscObject)fv->dm_fv),PETSC_ERR_USER,"FVDA must be configured as time-dependent/ALE to use this residual evaluator");
   ctx = (FVALE)fv->ctx;
@@ -737,7 +736,6 @@ PetscErrorCode EnergyFV_RK1(SNES snes,const PetscReal range[],PetscReal time,Pet
   Vec            X_1,F,vol_zero,vol_half,vol_one;
   
   PetscFunctionBegin;
-  
   ierr = SNESGetApplicationContext(snes,(void*)&fv);CHKERRQ(ierr);
   if (!fv->q_dot) SETERRQ(PetscObjectComm((PetscObject)fv->dm_fv),PETSC_ERR_USER,"FVDA must be configured as time-dependent/ALE to use this residual evaluator");
   ctx = (FVALE)fv->ctx;

@@ -19,7 +19,8 @@ PetscErrorCode bcset_west(FVDA fv,
                           void *ctx)
 {
   PetscInt f;
-  
+
+  PetscFunctionBegin;  
   for (f=0; f<nfaces; f++) {
     flux[f] = FVFLUX_DIRICHLET_CONSTRAINT;
     bcvalue[f] = 0.3;
@@ -55,7 +56,8 @@ PetscErrorCode bcset_def(FVDA fv,
                           void *ctx)
 {
   PetscInt f;
-  
+
+  PetscFunctionBegin;  
   for (f=0; f<nfaces; f++) {
     flux[f] = FVFLUX_DIRICHLET_CONSTRAINT;
     bcvalue[f] = 0.3;
@@ -74,7 +76,8 @@ PetscErrorCode t2(void)
   DM             dm;
   SNES           snes;
   
-  
+
+  PetscFunctionBegin;  
   ierr = FVDACreate(PETSC_COMM_WORLD,&fv);CHKERRQ(ierr);
   ierr = FVDASetDimension(fv,3);CHKERRQ(ierr);
   ierr = FVDASetSizes(fv,NULL,m);CHKERRQ(ierr);
@@ -175,7 +178,8 @@ PetscErrorCode t2_hr(void)
   DM             dm;
   SNES           snes;
   
-  
+
+  PetscFunctionBegin;  
   ierr = FVDACreate(PETSC_COMM_WORLD,&fv);CHKERRQ(ierr);
   ierr = FVDASetDimension(fv,3);CHKERRQ(ierr);
   ierr = FVDASetSizes(fv,NULL,m);CHKERRQ(ierr);
@@ -315,7 +319,8 @@ PetscErrorCode t2_ssp(void)
   Vec            X,F;
   DM             dm;
   const PetscReal range[]={0.3,1.3};
-  
+
+  PetscFunctionBegin;  
   ierr = FVDACreate(PETSC_COMM_WORLD,&fv);CHKERRQ(ierr);
   ierr = FVDASetDimension(fv,3);CHKERRQ(ierr);
   ierr = FVDASetSizes(fv,NULL,m);CHKERRQ(ierr);
@@ -431,7 +436,8 @@ int main(int argc,char **args)
   PetscErrorCode ierr;
   PetscInt       tid = 0;
   
-  ierr = PetscInitialize(&argc,&args,(char*)0,NULL);if (ierr) return ierr;
+  PetscFunctionBegin;
+  PetscCall(PetscInitialize(&argc,&args,(char*)0,NULL));
   ierr = PetscOptionsGetInt(NULL,NULL,"-tid",&tid,NULL);CHKERRQ(ierr);
   switch (tid) {
     case 0:
@@ -446,6 +452,6 @@ int main(int argc,char **args)
     default: SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Valid values for -tid {0,1,2}");
       break;
   }
-  ierr = PetscFinalize();
-  return ierr;
+  PetscCall(PetscFinalize());
+  return 0;
 }

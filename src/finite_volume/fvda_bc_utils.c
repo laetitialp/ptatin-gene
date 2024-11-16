@@ -20,7 +20,8 @@ PetscErrorCode FVDABCMethod_SetNatural(FVDA fv,
                              void *ctx)
 {
   PetscInt f;
-  
+
+  PetscFunctionBegin;  
   for (f=0; f<nfaces; f++) {
     flux[f] = FVFLUX_NEUMANN_CONSTRAINT;
     bcvalue[f] = 0.0;
@@ -46,7 +47,8 @@ PetscErrorCode FVDABCMethod_SetDirichlet(FVDA fv,
 {
   PetscInt f;
   PetscReal *dirichlet_value = (PetscReal*)ctx;
-  
+
+  PetscFunctionBegin;  
   if (!dirichlet_value) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Expected non-NULL context (Arg 10)");
   
   for (f=0; f<nfaces; f++) {
@@ -69,7 +71,8 @@ PetscErrorCode FVDABCMethod_SetNeumann(FVDA fv,
 {
   PetscInt f;
   PetscReal *neumann_value = (PetscReal*)ctx;
-  
+
+  PetscFunctionBegin;  
   for (f=0; f<nfaces; f++) {
     flux[f] = FVFLUX_NEUMANN_CONSTRAINT;
     bcvalue[f] = *neumann_value;
@@ -90,7 +93,8 @@ PetscErrorCode FVDABCMethod_SetNeumannWithVector(FVDA fv,
 {
   PetscInt f;
   PetscReal *neumann_value = (PetscReal*)ctx;
-  
+
+  PetscFunctionBegin;  
   if (!normal) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Method requires normal vectors. Must call iterator FVDAFaceIterator() with require_normals = PETSC_TRUE");
   for (f=0; f<nfaces; f++) {
     flux[f] = FVFLUX_NEUMANN_CONSTRAINT;

@@ -65,7 +65,6 @@ PetscErrorCode MarkerCellFieldsP0_ProjectIntegerField(DataBucket db,MaterialPoin
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   if (variable == MPV_viscosity) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"MPV_viscosity is not an integer type and cannot be projected");
   if (variable == MPV_density) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"MPV_density is not an integer and cannot be projected");
   if (variable == MPV_diffusivity) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"MPV_diffusivity is not an integer type and cannot be projected");
@@ -144,7 +143,6 @@ PetscErrorCode MarkerCellFieldsP0_ProjectScalarField(DataBucket db,MaterialPoint
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   if (variable == MPV_yield_indicator) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"MPV_yield_indicator is not a floating point type and cannot be projected");
   if (variable == MPV_region) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"MPV_region is not a floating point type and cannot be projected");
 
@@ -211,7 +209,6 @@ PetscErrorCode MarkerCellFieldsP0_CountPointsPerCell(DM dmp0,DataBucket db,Vec p
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = VecZeroEntries(pointcounts);CHKERRQ(ierr);
   ierr = VecGetArray(pointcounts,&LA_pointcounts);CHKERRQ(ierr);
   DataBucketGetSizes(db,&n_mp,NULL,NULL);
@@ -267,7 +264,6 @@ PetscErrorCode MarkerCellFieldsP0Write_ParaViewVTS(DM dmscalar,DM dmp0,Vec scala
   int            offset,bytes;
 
   PetscFunctionBegin;
-
   if (material_points && basename) {
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Must specify one of either material points or basename of petsc vec file to load");
   }
@@ -558,7 +554,6 @@ PetscErrorCode MarkerCellFieldsP0Write_ParaView(DM pack,DataBucket material_poin
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&rank);CHKERRQ(ierr);
 
   ierr = pTatinGenerateParallelVTKName(prefix,"vts",&vtkfilename);CHKERRQ(ierr);

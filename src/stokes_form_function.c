@@ -115,8 +115,8 @@ PetscErrorCode FormFunctionLocal_U(PhysCompStokes user,DM dau,PetscScalar ufield
   QPntVolCoefStokes *all_gausspoints,*cell_gausspoints;
   PetscReal WEIGHT[NQP],XI[NQP][3],NI[NQP][NPE],GNI[NQP][3][NPE],NIp[NQP][P_BASIS_FUNCTIONS];
   PetscReal detJ[NQP],dNudx[NQP][NPE],dNudy[NQP][NPE],dNudz[NQP][NPE];
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   /* quadrature */
   ngp = user->volQ->npoints;
   P3D_prepare_elementQ2(ngp,WEIGHT,XI,NI,GNI);
@@ -382,8 +382,8 @@ PetscErrorCode FormFunctionLocal_P(PhysCompStokes user,DM dau,PetscScalar ufield
   QPntVolCoefStokes *all_gausspoints,*cell_gausspoints;
   PetscReal WEIGHT[NQP],XI[NQP][3],NI[NQP][NPE],GNI[NQP][3][NPE],NIp[NQP][P_BASIS_FUNCTIONS];
   PetscReal detJ[NQP],dNudx[NQP][NPE],dNudy[NQP][NPE],dNudz[NQP][NPE];
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   /* quadrature */
   ngp = user->volQ->npoints;
   P3D_prepare_elementQ2(ngp,WEIGHT,XI,NI,GNI);
@@ -754,8 +754,8 @@ PetscErrorCode FormFunctionLocal_U_QuasiNewtonX(PhysCompStokes user,DM dau,Petsc
   QPntVolCoefStokes *all_gausspoints,*cell_gausspoints;
   PetscReal WEIGHT[NQP],XI[NQP][3],NI[NQP][NPE],GNI[NQP][3][NPE],NIp[NQP][P_BASIS_FUNCTIONS];
   PetscReal detJ[NQP],dNudx[NQP][NPE],dNudy[NQP][NPE],dNudz[NQP][NPE];
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   /* quadrature */
   ngp = user->volQ->npoints;
   P3D_prepare_elementQ2(ngp,WEIGHT,XI,NI,GNI);
@@ -892,8 +892,8 @@ PetscErrorCode FormFunctionLocal_P_QuasiNewtonX(PhysCompStokes user,DM dau,Petsc
   QPntVolCoefStokes *all_gausspoints,*cell_gausspoints;
   PetscReal WEIGHT[NQP],XI[NQP][3],NI[NQP][NPE],GNI[NQP][3][NPE],NIp[NQP][P_BASIS_FUNCTIONS];
   PetscReal detJ[NQP],dNudx[NQP][NPE],dNudy[NQP][NPE],dNudz[NQP][NPE];
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   /* quadrature */
   ngp = user->volQ->npoints;
   P3D_prepare_elementQ2(ngp,WEIGHT,XI,NI,GNI);
@@ -1295,6 +1295,7 @@ PetscErrorCode MatDestroy_StokesJctx(MatMFFD ctx)
   PetscErrorCode ierr;
   pTatinStokesFields *J_ctx;
 
+  PetscFunctionBegin;
   J_ctx = (pTatinStokesFields*)ctx->funcctx;
   if (J_ctx->refcnt > 0) { J_ctx->refcnt--; }
   else {
@@ -1324,6 +1325,7 @@ PetscErrorCode MatCreateStokesJux(pTatinCtx ctx,void *Jctx,Mat *_Jux)
   MPI_Comm           comm;
 
 
+  PetscFunctionBegin;
   ierr = pTatinGetStokesContext(ctx,&stokes);CHKERRQ(ierr);
   stokes_pack = stokes->stokes_pack;
   ierr = DMCompositeGetEntries(stokes_pack,&dau,&dap);CHKERRQ(ierr);
@@ -1381,6 +1383,7 @@ PetscErrorCode MatCreateStokesJuu(pTatinCtx ctx,void *Jctx,Mat *_Juu)
   MPI_Comm           comm;
 
 
+  PetscFunctionBegin;
   ierr = pTatinGetStokesContext(ctx,&stokes);CHKERRQ(ierr);
   stokes_pack = stokes->stokes_pack;
   ierr = DMCompositeGetEntries(stokes_pack,&dau,&dap);CHKERRQ(ierr);
@@ -1438,6 +1441,7 @@ PetscErrorCode MatCreateStokesJpx(pTatinCtx ctx,void *Jctx,Mat *_Jpx)
   MPI_Comm           comm;
 
 
+  PetscFunctionBegin;
   ierr = pTatinGetStokesContext(ctx,&stokes);CHKERRQ(ierr);
   stokes_pack = stokes->stokes_pack;
   ierr = DMCompositeGetEntries(stokes_pack,&dau,&dap);CHKERRQ(ierr);
@@ -1488,6 +1492,7 @@ PetscErrorCode MatStokesJijGetContext(Mat J,void **data)
   MatMFFD            mffd_ctx;
   pTatinStokesFields *J_ctx;
 
+  PetscFunctionBegin;
   mffd_ctx = (MatMFFD)J->data;
   J_ctx    = (pTatinStokesFields*)mffd_ctx->funcctx;
 
@@ -1502,6 +1507,7 @@ PetscErrorCode MatStokesJijUpdateGlobalFields(Mat J,Vec u,Vec p,Vec x)
   MatMFFD            mffd_ctx;
   pTatinStokesFields *J_ctx;
 
+  PetscFunctionBegin;
   mffd_ctx = (MatMFFD)J->data;
   J_ctx    = (pTatinStokesFields*)mffd_ctx->funcctx;
 
@@ -1518,6 +1524,7 @@ PetscErrorCode MatStokesJijUpdateLocalFields(Mat J,Vec u,Vec p,Vec x)
   MatMFFD            mffd_ctx;
   pTatinStokesFields *J_ctx;
 
+  PetscFunctionBegin;
   mffd_ctx = (MatMFFD)J->data;
   J_ctx    = (pTatinStokesFields*)mffd_ctx->funcctx;
 
@@ -1532,6 +1539,7 @@ PetscErrorCode patch_MatMFFDSetBase_MFFD(Mat J,Vec U,Vec F)
 {
   MatMFFD        ctx = (MatMFFD)J->data;
 
+  PetscFunctionBegin;
   MatMFFDResetHHistory(J);
 
   ctx->current_u = U;

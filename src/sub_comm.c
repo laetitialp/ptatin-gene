@@ -35,6 +35,7 @@ PetscErrorCode _PetscMPISubCommCreate(PetscMPISubComm *scomm)
 {
   PetscMPISubComm comm;
 
+  PetscFunctionBegin;
   PetscMalloc(sizeof(struct _p_PetscMPISubComm),&comm);
   PetscMemzero(comm,sizeof(struct _p_PetscMPISubComm));
 
@@ -48,6 +49,7 @@ PetscErrorCode PetscMPISubCommDestroy(PetscMPISubComm *scomm)
   PetscMPISubComm comm;
   PetscErrorCode  ierr;
 
+  PetscFunctionBegin;
   if (scomm) { comm = *scomm; }
   else { PetscFunctionReturn(0); }
 
@@ -61,30 +63,35 @@ PetscErrorCode PetscMPISubCommDestroy(PetscMPISubComm *scomm)
 
 PetscErrorCode PetscMPISubCommGetActive(PetscMPISubComm sc,PetscBool *a)
 {
+  PetscFunctionBegin;
   *a = sc->parent_rank_active_in_subcomm;
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode PetscMPISubCommGetParentComm(PetscMPISubComm sc,MPI_Comm *a)
 {
+  PetscFunctionBegin;
   *a = sc->parent_comm;
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode PetscMPISubCommGetComm(PetscMPISubComm sc,MPI_Comm *a)
 {
+  PetscFunctionBegin;
   *a = sc->sub_comm;
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode PetscMPISubCommGetNumSubRanks(PetscMPISubComm sc,PetscMPIInt *a)
 {
+  PetscFunctionBegin;
   *a = sc->nranks_from_parent;
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode PetscMPISubCommGetActiveRanks(PetscMPISubComm sc,PetscMPIInt **a)
 {
+  PetscFunctionBegin;
   *a = sc->ranks_from_parent;
   PetscFunctionReturn(0);
 }
@@ -98,6 +105,7 @@ PetscErrorCode PetscMPISubCommCreate_Stride(MPI_Comm parent_comm,PetscInt parent
   PetscBool       active;
   PetscErrorCode  ierr;
 
+  PetscFunctionBegin;
   if (parent_reduction_factor < 1) {
     parent_reduction_factor = 1;
     PetscPrintf(parent_comm,"Warning:PetscMPISubCommCreate: parent_reduction_factor >=1\n");
@@ -162,6 +170,7 @@ PetscErrorCode PetscMPISubCommCreate(MPI_Comm parent_comm,PetscInt parent_reduct
   PetscInt       creation_type;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   creation_type = 1;
   ierr = PetscOptionsGetInt(NULL,NULL,"-petsc_mpi_subcomm_creation_type",&creation_type,NULL);CHKERRQ(ierr);
   if (creation_type == 1) {

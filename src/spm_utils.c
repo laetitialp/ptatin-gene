@@ -478,6 +478,7 @@ PetscErrorCode test_spm_utils_MPItoSEQ(DM dav)
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ierr = DMDAGatherIKRedundantSurfaceDMDA(dav,&dm_spmsurf0);CHKERRQ(ierr);
   if (dm_spmsurf0) {
     ierr = DMDAViewPetscVTK(dm_spmsurf0,NULL,"surf_extraction_ic.vts");CHKERRQ(ierr);
@@ -806,6 +807,7 @@ PetscErrorCode test_spm_utils_MPItoMPI(DM dav)
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ierr = DMDAGatherIKSurfaceDMDA(dav,&dm_spmsurf,&height);CHKERRQ(ierr);
   ierr = DMDAViewPetscVTK(dm_spmsurf,height,"surf_extraction_ic.vts");CHKERRQ(ierr);
 
@@ -957,6 +959,7 @@ PetscErrorCode test_nested_spm_utils_MPItoMPI(DM dav)
   PetscErrorCode ierr;
 
 
+  PetscFunctionBegin;
   ierr = DMDAGatherIKNestedSurfaceDMDA(dav,ref,&dm_spmsurf_overlap,&R,&dm_spmsurf,&height);CHKERRQ(ierr);
   ierr = DMDAViewPetscVTK(dm_spmsurf,height,"surf_extraction_ic.vts");CHKERRQ(ierr);
 

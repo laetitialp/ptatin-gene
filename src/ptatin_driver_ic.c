@@ -62,7 +62,6 @@ PetscErrorCode pTatin3d_material_points_check_ic(int argc,char **argv)
   PhysCompEnergyFV energyfv;
 
   PetscFunctionBegin;
-
   ierr = pTatin3dCreateContext(&user);CHKERRQ(ierr);
   ierr = pTatin3dSetFromOptions(user);CHKERRQ(ierr);
 
@@ -202,12 +201,9 @@ PetscErrorCode pTatin3d_material_points_check_ic(int argc,char **argv)
 
 int main(int argc,char **argv)
 {
-  PetscErrorCode ierr;
-
-  ierr = pTatinInitialize(&argc,&argv,0,help);CHKERRQ(ierr);
-
-  ierr = pTatin3d_material_points_check_ic(argc,argv);CHKERRQ(ierr);
-
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&argc,&argv,0,help));
+  PetscCall(pTatin3d_material_points_check_ic(argc,argv));
+  PetscCall(pTatinFinalize());
   return 0;
 }

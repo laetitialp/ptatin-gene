@@ -18,7 +18,8 @@ PetscErrorCode default_setter(FVDA fv,
                               void *ctx)
 {
   PetscInt f;
-  
+
+  PetscFunctionBegin;  
   for (f=0; f<nfaces; f++) {
     flux[f] = FVFLUX_DIRICHLET_CONSTRAINT;
   }
@@ -33,6 +34,7 @@ PetscErrorCode t1_default(void)
   FVDA           fv;
   PetscBool      found = PETSC_FALSE;
 
+  PetscFunctionBegin;
   ierr = PetscOptionsGetInt(NULL,NULL,"-mx",&mx,&found);CHKERRQ(ierr);
   if (found) {
     m[0] = mx;
@@ -288,7 +290,8 @@ PetscErrorCode t1_geom(void)
   PetscInt       mx = 24;
   const PetscInt m[] = {mx,mx,4};
   FVDA           fv;
-  
+
+  PetscFunctionBegin;  
   ierr = FVDACreate(PETSC_COMM_WORLD,&fv);CHKERRQ(ierr);
   ierr = FVDASetDimension(fv,3);CHKERRQ(ierr);
   ierr = FVDASetSizes(fv,NULL,m);CHKERRQ(ierr);
@@ -358,8 +361,7 @@ PetscErrorCode t1_usergeom(void)
   PetscInt       Nv[]={0,0,0},mi[]={0,0,0},ncells,nen;
   const PetscInt *e;
 
-  
-  
+  PetscFunctionBegin;  
   ierr = DMDACreate3d(PETSC_COMM_WORLD,
                       DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,
                       DMDA_STENCIL_BOX,
@@ -464,7 +466,8 @@ int main(int argc,char **args)
   PetscErrorCode ierr;
   PetscInt       tid = 0;
   
-  ierr = PetscInitialize(&argc,&args,(char*)0,doc);if (ierr) return ierr;
+  PetscFunctionBegin;
+  PetscCall(PetscInitialize(&argc,&args,(char*)0,doc));
   ierr = PetscOptionsGetInt(NULL,NULL,"-tid",&tid,NULL);CHKERRQ(ierr);
   switch (tid) {
     case 0:
@@ -479,6 +482,6 @@ int main(int argc,char **args)
     default: SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Valid values for -tid {0,1,2}");
       break;
   }
-  ierr = PetscFinalize();
-  return ierr;
+  PetscCall(PetscFinalize());
+  return 0;
 }

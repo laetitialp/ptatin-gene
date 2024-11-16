@@ -572,7 +572,8 @@ int main(int nargs,char *args[])
   PetscBool      write_cell_data = PETSC_FALSE;
   PetscBool      write_mp_data = PETSC_FALSE;
 
-  ierr = pTatinInitialize(&nargs,&args,0,ptatin_driver_help);CHKERRQ(ierr);
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&nargs,&args,0,ptatin_driver_help));
 
 
   PetscOptionsGetBool(NULL,NULL,"-write_stokes",&write_stokes,NULL);
@@ -624,6 +625,6 @@ int main(int nargs,char *args[])
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"MaterialPoint writer not implemented");
   }
 
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscCall(pTatinFinalize());
   return 0;
 }

@@ -196,6 +196,7 @@ PetscErrorCode FVDASetDimension(FVDA fv,PetscInt dim)
 PetscErrorCode FVDASetSizes(FVDA fv,const PetscInt mi[],const PetscInt Mi[])
 {
   PetscInt d;
+
   PetscFunctionBegin;
   if (mi) {
     for (d=0; d<fv->dim; d++) {
@@ -419,6 +420,7 @@ PetscErrorCode FVDASetGeometryDM(FVDA fv,DM dm)
 {
   PetscErrorCode ierr;
   PetscInt bs,dim;
+
   PetscFunctionBegin;
   if (fv->dim < 0) SETERRQ(fv->comm,PETSC_ERR_SUP,"Must call FVDASetDimension() first");
   ierr = DMGetDimension(dm,&dim);CHKERRQ(ierr);
@@ -461,6 +463,7 @@ PetscErrorCode FVDAGetGeometryCoordinates(FVDA fv,Vec *c)
 PetscErrorCode FVDAUpdateGeometry(FVDA fv)
 {
   PetscErrorCode ierr;
+
   PetscFunctionBegin;
   switch (fv->dim) {
     case 2:
@@ -615,6 +618,7 @@ static PetscErrorCode private_FVDAUpdateGeometry3d(FVDA fv)
 PetscErrorCode FVDAGetBoundaryFaceIndicesRead(FVDA fv,DACellFace face,PetscInt *len,const PetscInt *indices[])
 {
   PetscInt offset;
+
   PetscFunctionBegin;
   if (!fv->setup) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Must call FVDASetUp() first");
   offset = fv->boundary_ranges[ (PetscInt)face ];
@@ -890,6 +894,7 @@ PetscErrorCode DACellGeometry2d_GetFaceIndices(DM dm,DACellFace face,PetscInt fi
     0,1, /* south */
     2,3  /* north */
   };
+
   PetscFunctionBegin;
   face_location = (PetscInt)face;
   ierr = PetscMemcpy(fidx,&cell_face_labels[4*face_location],sizeof(PetscInt)*4);CHKERRQ(ierr);
@@ -942,6 +947,7 @@ PetscErrorCode DACellGeometry3d_GetFaceIndices(DM dm,DACellFace face,PetscInt fi
     1,0,3,2, /* back */
     4,5,6,7  /* front */
   };
+
   PetscFunctionBegin;
   face_location = (PetscInt)face;
   ierr = PetscMemcpy(fidx,&cell_face_labels[4*face_location],sizeof(PetscInt)*4);CHKERRQ(ierr);
@@ -951,6 +957,7 @@ PetscErrorCode DACellGeometry3d_GetFaceIndices(DM dm,DACellFace face,PetscInt fi
 PetscErrorCode DACellGeometry2d_GetCoordinates(const PetscInt element[],const PetscReal mesh_coor[],PetscReal coor[])
 {
   PetscInt i,d,vidx;
+
   PetscFunctionBegin;
   for (i=0; i<DACELL2D_Q1_SIZE; i++) {
     vidx = element[i];
@@ -964,6 +971,7 @@ PetscErrorCode DACellGeometry2d_GetCoordinates(const PetscInt element[],const Pe
 PetscErrorCode DACellGeometry3d_GetCoordinates(const PetscInt element[],const PetscReal mesh_coor[],PetscReal coor[])
 {
   PetscInt i,d,vidx;
+
   PetscFunctionBegin;
   for (i=0; i<DACELL3D_Q1_SIZE; i++) {
     vidx = element[i];
@@ -1237,6 +1245,7 @@ PetscErrorCode cart_convert_2d(PetscInt r,const PetscInt mp[],PetscInt rij[])
 PetscErrorCode cart_convert_3d(PetscInt r,const PetscInt mp[],PetscInt rijk[])
 {
   PetscInt rij;
+
   PetscFunctionBegin;
   rijk[2] = r / (mp[0] * mp[1]);
   rij = r - rijk[2] * mp[0] * mp[1];
@@ -1251,6 +1260,7 @@ PetscErrorCode cart_convert_3d(PetscInt r,const PetscInt mp[],PetscInt rijk[])
 PetscErrorCode _cart_convert_index_to_ijk(PetscInt r,const PetscInt mp[],PetscInt rijk[])
 {
   PetscInt rij;
+
   PetscFunctionBegin;
   rijk[2] = r / (mp[0] * mp[1]);
   rij = r - rijk[2] * mp[0] * mp[1];
@@ -1759,7 +1769,8 @@ static PetscErrorCode private_FVDACreateElementFaceLabels3d(FVDA fv)
   PetscInt *ncnt,*e2f;
   PetscErrorCode ierr;
   PetscInt f,c;
-  
+
+  PetscFunctionBegin;
   ierr = PetscCalloc1(fv->ncells*DACELL3D_NFACES,&e2f);CHKERRQ(ierr);
   ierr = PetscCalloc1(fv->ncells,&ncnt);CHKERRQ(ierr);
   for (c=0; c<fv->ncells; c++) {
@@ -3067,7 +3078,8 @@ PetscErrorCode eval_J(SNES snes,Vec X,Mat Ja,Mat Jb,void *data)
   const PetscScalar *_X,*_fv_coor,*_geom_coor;
   DM                dm;
   FVDA              fv = NULL;
-  
+
+  PetscFunctionBegin;  
   ierr = SNESGetApplicationContext(snes,(void*)&fv);CHKERRQ(ierr);
   ierr = SNESGetDM(snes,&dm);CHKERRQ(ierr);
   dm = fv->dm_fv;
@@ -3125,7 +3137,8 @@ PetscErrorCode bcset_natural(FVDA fv,
                              void *ctx)
 {
   PetscInt f;
-  
+
+  PetscFunctionBegin;  
   for (f=0; f<nfaces; f++) {
     flux[f] = FVFLUX_NEUMANN_CONSTRAINT;
     bcvalue[f] = 0.0;
@@ -3652,6 +3665,8 @@ PetscErrorCode eval_F_upwind_hr_local(FVDA fv,const PetscReal domain_geom_coor[]
 {
   PetscErrorCode  ierr;
   PetscMPIInt     commsize;
+
+  PetscFunctionBegin;
   ierr = MPI_Comm_size(fv->comm,&commsize);CHKERRQ(ierr);
   if (commsize == 1) {
     ierr = eval_F_upwind_hr_local_SEQ(fv,domain_geom_coor,fv_coor,X,F);CHKERRQ(ierr);
@@ -4506,7 +4521,8 @@ PetscErrorCode FVDAVecTraverse(FVDA fv,Vec X,PetscReal time,PetscInt dof,
   PetscScalar       vals[10];
   PetscBool         impose;
   PetscErrorCode    ierr;
-  
+
+  PetscFunctionBegin;  
   ierr = DMDAGetInfo(fv->dm_fv,NULL,NULL,NULL,NULL,NULL,NULL,NULL,&bs,NULL,NULL,NULL,NULL,NULL);CHKERRQ(ierr);
   if (bs > 10) SETERRQ(PetscObjectComm((PetscObject)fv->dm_fv),PETSC_ERR_SUP,"Need to increase static allocation of block-size");
   ierr = DMGetCoordinates(fv->dm_fv,&cellcoor);CHKERRQ(ierr);

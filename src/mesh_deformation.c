@@ -58,7 +58,6 @@ PetscErrorCode MeshDeformation_GaussianBump_YMAX(DM da,PetscReal gbump_amp,Petsc
   PetscBool flg;
 
   PetscFunctionBegin;
-
   {
     PetscReal tmp;
 
@@ -240,7 +239,6 @@ PetscErrorCode DMDASetUniformCoordinates1D(DM da,PetscInt dir,PetscReal X0,Petsc
   PetscReal delta;
 
   PetscFunctionBegin;
-
   ierr = DMDAGetInfo(da,0,&M,&N,&P, 0,0,0, 0,0,0,0,0,0);CHKERRQ(ierr);
   ierr = DMDAGetCorners(da,&si,&sj,&sk,&nx,&ny,&nz);CHKERRQ(ierr);
 
@@ -308,7 +306,6 @@ PetscErrorCode DMDASetGraduatedCoordinates1D(DM da,PetscInt dir,PetscInt side,Pe
 
 
   PetscFunctionBegin;
-
   if ((dir < 0) || (dir > 3)) {
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Value \"dir\" must be one of {0,1,2}");
   }
@@ -400,7 +397,6 @@ PetscErrorCode DMDASetCoordinatesCentralSqueeze1D(DM da,PetscInt dir,PetscReal f
 
 
   PetscFunctionBegin;
-
   if ((dir < 0) || (dir > 3)) {
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Value \"dir\" must be one of {0,1,2}");
   }
@@ -483,8 +479,8 @@ PetscErrorCode DMDASetStructuredArbitraryHexahedronCoordinates(DM da, PetscReal 
   PetscInt       M,N,P,istart,jstart,kstart,isize,jsize,ksize;
   PetscInt       cnt,i,j,k;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = DMDAGetInfo(da,NULL,&M,&N,&P,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL);CHKERRQ(ierr);
   ierr = DMDAGetCorners(da, &istart, &jstart, &kstart, &isize, &jsize, &ksize);CHKERRQ(ierr);
   ierr = DMGetCoordinateDM(da, &cda);CHKERRQ(ierr);

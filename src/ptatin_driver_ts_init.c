@@ -1570,55 +1570,56 @@ int main(int argc,char *argv[])
   PetscBool      init = PETSC_FALSE,load = PETSC_FALSE, run = PETSC_FALSE;
   pTatinCtx      pctx = NULL;
 
-  ierr = pTatinInitialize(&argc,&argv,0,help);CHKERRQ(ierr);
-  ierr = pTatinModelRegisterAll();CHKERRQ(ierr);
+  PetscFunctionBegin;
+  PetscCall(pTatinInitialize(&argc,&argv,0,help));
+  PetscCall(pTatinModelRegisterAll());
 
-  ierr = PetscOptionsGetBool(NULL,NULL,"-init",&init,NULL);CHKERRQ(ierr);
+  PetscOptionsGetBool(NULL,NULL,"-init",&init,NULL);
   if (init) {
-    ierr = GenerateICStateFromModelDefinition(&pctx);CHKERRQ(ierr);
-    if (pctx) { ierr = pTatin3dDestroyContext(&pctx); }
+    PetscCall(GenerateICStateFromModelDefinition(&pctx));
+    if (pctx) { PetscCall(pTatin3dDestroyContext(&pctx)); }
     pctx = NULL;
   }
 
-  ierr = PetscOptionsGetBool(NULL,NULL,"-load",&load,NULL);CHKERRQ(ierr);
+  PetscOptionsGetBool(NULL,NULL,"-load",&load,NULL);
   if (load) {
-    ierr = LoadICStateFromModelDefinition(&pctx,NULL,NULL,PETSC_TRUE);CHKERRQ(ierr);
+    PetscCall(LoadICStateFromModelDefinition(&pctx,NULL,NULL,PETSC_TRUE));
     /* do something */
-    if (pctx) { ierr = pTatin3dDestroyContext(&pctx); }
+    if (pctx) { PetscCall(pTatin3dDestroyContext(&pctx)); }
     pctx = NULL;
   }
 
-  ierr = PetscOptionsGetBool(NULL,NULL,"-run",&run,NULL);CHKERRQ(ierr);
+  PetscOptionsGetBool(NULL,NULL,"-run",&run,NULL);
   if (run || (!init && !load)) {
     Vec       Xup,Xt;
     PetscBool restart_string_found = PETSC_FALSE,flg = PETSC_FALSE;
     char      outputpath[PETSC_MAX_PATH_LEN];
 
     /* look for a default restart file */
-    ierr = PetscOptionsGetString(NULL,NULL,"-output_path",outputpath,PETSC_MAX_PATH_LEN-1,&flg);CHKERRQ(ierr);
+    PetscOptionsGetString(NULL,NULL,"-output_path",outputpath,PETSC_MAX_PATH_LEN-1,&flg);
     if (flg) {
       char fname[PETSC_MAX_PATH_LEN];
 
-      ierr = PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/restart.default",outputpath);CHKERRQ(ierr);
-      ierr = pTatinTestFile(fname,'r',&restart_string_found);CHKERRQ(ierr);
+      PetscSNPrintf(fname,PETSC_MAX_PATH_LEN-1,"%s/restart.default",outputpath);
+      PetscCall(pTatinTestFile(fname,'r',&restart_string_found));
       if (restart_string_found) {
         PetscPrintf(PETSC_COMM_WORLD,"[pTatin] Detected default restart option file helper: %s\n",fname);
-        //ierr = PetscOptionsInsertFile(PETSC_COMM_WORLD,NULL,fname,PETSC_TRUE);CHKERRQ(ierr);
-        ierr = PetscOptionsInsert(NULL,&argc,&argv,fname);CHKERRQ(ierr);
+        //PetscOptionsInsertFile(PETSC_COMM_WORLD,NULL,fname,PETSC_TRUE);
+        PetscOptionsInsert(NULL,&argc,&argv,fname);
       }
     }
 
-    ierr = LoadICStateFromModelDefinition(&pctx,&Xup,&Xt,PETSC_FALSE);CHKERRQ(ierr);
+    PetscCall(LoadICStateFromModelDefinition(&pctx,&Xup,&Xt,PETSC_FALSE));
 
-    ierr = DummyRun(pctx,Xup,Xt);CHKERRQ(ierr);
+    PetscCall(DummyRun(pctx,Xup,Xt));
 
-    ierr = VecDestroy(&Xup);CHKERRQ(ierr);
-    ierr = VecDestroy(&Xt);CHKERRQ(ierr);
+    PetscCall(VecDestroy(&Xup));
+    PetscCall(VecDestroy(&Xt));
   }
 
-  if (pctx) { ierr = pTatin3dDestroyContext(&pctx); }
+  if (pctx) { PetscCall(pTatin3dDestroyContext(&pctx)); }
 
-  ierr = pTatinModelDeRegisterAll();CHKERRQ(ierr);
-  ierr = pTatinFinalize();CHKERRQ(ierr);
+  PetscCall(pTatinModelDeRegisterAll());
+  PetscCall(pTatinFinalize());
   return(0);
 }

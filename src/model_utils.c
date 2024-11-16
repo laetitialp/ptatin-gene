@@ -238,6 +238,7 @@ PetscErrorCode detrend(PetscReal array[],PetscInt n)
   PetscReal sy = 0.0,sxy = 0.0,sxx = 0.0;
   PetscInt  i;
 
+  PetscFunctionBegin;
   for (i=0, x=(-n/2.0+0.5); i<n; i++, x+=1.0) {
     y = array[i];
     sy += y;
@@ -259,7 +260,6 @@ PetscErrorCode rednoise(PetscReal rnoise[],PetscInt n,PetscInt seed)
   PetscReal      maxi;
 
   PetscFunctionBegin;
-
   srand(seed);
   rnoise[0] = 2.0 * rand()/(RAND_MAX+1.0) - 1.0;
 
@@ -330,7 +330,6 @@ PetscErrorCode DMDAComputeMeshVolume(DM dm,PetscReal *value)
   PetscErrorCode  ierr;
 
   PetscFunctionBegin;
-
   /* setup quadrature */
   ngp = 27;
   P3D_prepare_elementQ2(ngp,WEIGHT,XI,NI,GNI);
@@ -362,6 +361,7 @@ PetscErrorCode DMDAComputeMeshVolume(DM dm,PetscReal *value)
 
 PetscErrorCode pTatin3d_DefineVelocityMeshQuasi2D(pTatinCtx c)
 {
+  PetscFunctionBegin;
   c->mz = 1;
   PetscFunctionReturn(0);
 }
@@ -374,6 +374,7 @@ PetscErrorCode pTatin3d_DefineVelocityMeshGeometryQuasi2D(pTatinCtx c)
   PetscBool      geom_max;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   ierr = pTatinGetStokesContext(c,&stokes);CHKERRQ(ierr);
   stokes_pack = stokes->stokes_pack;
   ierr = DMCompositeGetEntries(stokes_pack,&dav,&dap);CHKERRQ(ierr);
@@ -416,7 +417,6 @@ PetscErrorCode DMDAComputeQ2ElementBoundingBox(DM dm,PetscReal gmin[],PetscReal 
   PetscErrorCode  ierr;
 
   PetscFunctionBegin;
-
   /* setup for coords */
   ierr = DMGetCoordinateDM(dm,&cda);CHKERRQ(ierr);
   ierr = DMGetCoordinatesLocal(dm,&gcoords);CHKERRQ(ierr);
@@ -463,7 +463,6 @@ PetscErrorCode DMDAComputeQ2LocalBoundingBox(DM dm,PetscReal gmin[],PetscReal gm
   PetscErrorCode  ierr;
 
   PetscFunctionBegin;
-
   /* setup for coords */
   ierr = DMGetCoordinateDM(dm,&cda);CHKERRQ(ierr);
   ierr = DMGetCoordinatesLocal(dm,&gcoords);CHKERRQ(ierr);
@@ -525,7 +524,6 @@ PetscErrorCode DMDAFieldViewAscii(DM dm,Vec field,const char filename[])
 
 
   PetscFunctionBegin;
-
   ierr = DMDACreateNaturalVector(dm,&natural_field);CHKERRQ(ierr);
   ierr = DMDAGlobalToNaturalBegin(dm,field,INSERT_VALUES,natural_field);CHKERRQ(ierr);
   ierr = DMDAGlobalToNaturalEnd(dm,field,INSERT_VALUES,natural_field);CHKERRQ(ierr);
@@ -592,7 +590,6 @@ PetscErrorCode ModelUtilsComputeAiryIsostaticHeights_SEQ(PhysCompStokes stokes)
   PetscErrorCode  ierr;
 
   PetscFunctionBegin;
-
   /* setup quadrature */
   nqp = 27;
   P3D_prepare_elementQ2(nqp,WEIGHT,XI,NI,GNI);
@@ -652,10 +649,8 @@ PetscErrorCode ModelUtilsComputeAiryIsostaticHeights(PhysCompStokes stokes)
 {
   PetscErrorCode ierr;
 
-
+  PetscFunctionBegin;
   ierr = ModelUtilsComputeAiryIsostaticHeights_SEQ(stokes);CHKERRQ(ierr);
-
-
   PetscFunctionReturn(0);
 }
 
@@ -668,7 +663,6 @@ PetscErrorCode MPntStdComputeBoundingBox(DataBucket materialpoint_db,PetscReal g
   PetscErrorCode   ierr;
 
   PetscFunctionBegin;
-
   /* initialize */
   min[0] = PETSC_MAX_REAL;
   min[1] = PETSC_MAX_REAL;
@@ -707,7 +701,6 @@ PetscErrorCode MPntStdComputeBoundingBoxInRange(DataBucket materialpoint_db,Pets
   PetscErrorCode   ierr;
 
   PetscFunctionBegin;
-
   /* initialize */
   min[0] = PETSC_MAX_REAL;
   min[1] = PETSC_MAX_REAL;
@@ -771,7 +764,6 @@ PetscErrorCode MPntStdComputeBoundingBoxInRangeInRegion(DataBucket materialpoint
   PetscErrorCode   ierr;
 
   PetscFunctionBegin;
-
   /* initialize */
   min[0] = PETSC_MAX_REAL;
   min[1] = PETSC_MAX_REAL;
@@ -850,6 +842,7 @@ PetscErrorCode DMDAComputeBoundingBoxBoundaryFace(DM dav,BoundaryFaceType ft,Pet
   PetscReal gmin[3],gmax[3];
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   ierr = DMGetCoordinateDM(dav,&cda);CHKERRQ(ierr);
   ierr = DMGetCoordinates(dav,&coords);CHKERRQ(ierr);
   ierr = DMDAGetInfo(dav,0,&M,&N,&P,0,0,0,0,0,0,0,0,0);CHKERRQ(ierr);
@@ -980,6 +973,7 @@ PetscErrorCode DMDAComputeCoordinateAverageBoundaryFace(DM dav,BoundaryFaceType 
   PetscReal      gavg[3];
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   ierr = DMGetCoordinateDM(dav,&cda);CHKERRQ(ierr);
   ierr = DMGetCoordinates(dav,&coords);CHKERRQ(ierr);
   ierr = DMDAGetInfo(dav,0,&M,&N,&P,0,0,0,0,0,0,0,0,0);CHKERRQ(ierr);
@@ -1104,7 +1098,6 @@ PetscErrorCode StokesComputeVRMS(DM dav,Vec v,PetscReal *value_vrms,PetscReal *v
   PetscErrorCode  ierr;
 
   PetscFunctionBegin;
-
   /* setup quadrature */
   nqp = 27;
   P3D_prepare_elementQ2(nqp,WEIGHT,XI,NI,GNI);
@@ -1189,7 +1182,6 @@ PetscErrorCode StokesComputeViscousDissipation(DM dav,DM dap,Vec sv,Vec sp,Quadr
 
 
   PetscFunctionBegin;
-
   /* setup quadrature */
   nqp = volQ->npoints;
   P3D_prepare_elementQ2(nqp,WEIGHT,XI,NI,GNI);
@@ -1353,7 +1345,6 @@ PetscErrorCode MPntStdIdentifyFromPosition(DataBucket materialpoint_db,PetscReal
   PetscErrorCode   ierr;
 
   PetscFunctionBegin;
-
   tol2 = tolerance*tolerance;
   min2 = PETSC_MAX_REAL;
 
@@ -1711,8 +1702,8 @@ PetscErrorCode MPntStdSetRegionIndexFromMesh(DataBucket material_points, Mesh me
 { 
   DataField      PField_std;
   int            p,n_mp_points;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   DataBucketGetSizes(material_points,&n_mp_points,0,0);
   DataBucketGetDataFieldByName(material_points,MPntStd_classname,&PField_std);
   DataFieldGetAccess(PField_std);
@@ -1758,8 +1749,8 @@ PetscErrorCode pTatin_MPntStdSetRegionIndexFromMesh(pTatinCtx ptatin, const char
   DataBucket     material_points;
   long int       *region_idx = NULL;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   /* Get user mesh from file */
   parse_mesh(PETSC_COMM_WORLD,mesh_file,&mesh);
   if (!mesh) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"mesh from file %s = NULL. Aborting.\n",mesh_file); }
@@ -1787,7 +1778,6 @@ PetscErrorCode pTatin_ModelLoadTemperatureInitialSolution_FromFile(pTatinCtx pta
   PetscErrorCode   ierr;
 
   PetscFunctionBegin;
-
   ierr = pTatinGetContext_EnergyFV(ptatin,&energy);CHKERRQ(ierr);
   /* If job is restarted skip that part (Temperature is loaded from checkpointed file) */
   if (!ptatin->restart_from_file) {

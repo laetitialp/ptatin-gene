@@ -85,6 +85,7 @@ PetscErrorCode PhysCompEnergyFVSetFromOptions(PhysCompEnergyFV energy)
   PetscErrorCode ierr;
   PetscInt n=3,sub[]={0,0,0};
   PetscBool found = PETSC_FALSE;
+
   PetscFunctionBegin;
   ierr = PetscOptionsGetIntArray(NULL,NULL,"-ptatin_energyfv_nsub",sub,&n,&found);CHKERRQ(ierr);
   if (found) {
@@ -252,9 +253,7 @@ PetscErrorCode PhysCompEnergyFVUpdateGeometry(PhysCompEnergyFV energy,PhysCompSt
   PetscInt         gni[]={0,0,0};
   PetscErrorCode   ierr;
   
-  PetscFunctionBegin;
-  
-  
+  PetscFunctionBegin;  
   ierr = PhysCompStokesGetDMs(stokes,&dmv,NULL);CHKERRQ(ierr);
   dmv_fv = energy->dmv;
   
@@ -653,7 +652,8 @@ PetscErrorCode dmda3d_create_q1_from_element_partition(MPI_Comm comm,PetscInt bs
   PetscMPIInt    commsize,commsize2;
   PetscInt       i,*ni,*nj,*nk,M[]={0,0,0};
   PetscInt       *target_mi,*target_mj,*target_mk;
-  
+
+  PetscFunctionBegin; 
   ierr = MPI_Comm_size(comm,&commsize);CHKERRQ(ierr);
   commsize2 = target_decomp[0] * target_decomp[1] * target_decomp[2];
   if (commsize != commsize2) SETERRQ(comm,PETSC_ERR_USER,"Communicator size does not match request i-j-k decomposition");
@@ -740,6 +740,7 @@ PetscErrorCode dmda3d_create_q1_from_element_partition(MPI_Comm comm,PetscInt bs
 PetscErrorCode fvgeometry_dmda3d_create_from_element_partition(MPI_Comm comm,PetscInt target_decomp[],const PetscInt m[],DM *dm)
 {
   PetscErrorCode ierr;
+
   PetscFunctionBegin;
   ierr = dmda3d_create_q1_from_element_partition(comm,3,target_decomp,m,dm);CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -795,8 +796,7 @@ PetscErrorCode pTatinPhysCompEnergyFV_Initialise(PhysCompEnergyFV e,Vec T)
   Vec            gcoor;
   PetscErrorCode ierr;
   
-  PetscFunctionBegin;
-  
+  PetscFunctionBegin;  
   /* update solution */
   ierr = VecCopy(T,e->Told);CHKERRQ(ierr);
   
@@ -825,7 +825,8 @@ PetscErrorCode ptatin_macro_point_location_sub(PetscInt q2_cell,const PetscInt q
   PetscInt  q2[3];
   PetscInt  ii[3];
   PetscReal dxi[3];
-  
+
+  PetscFunctionBegin; 
   /* convert q2_cell index into i,j,k */
   _cart_convert_index_to_ijk(q2_cell,q2_m,q2);
   
@@ -850,6 +851,7 @@ PetscErrorCode ptatin_macro_get_nested_fv_rank_local(PetscInt q2_cell,const Pets
 {
   PetscInt q2[3],fv[3],ii,jj,kk,c;
   
+  PetscFunctionBegin;
   /* convert q2_cell index into i,j,k */
   _cart_convert_index_to_ijk(q2_cell,q2_m,q2);
   c = 0;
@@ -904,8 +906,7 @@ PetscErrorCode EnergyFVEvaluateCoefficients_MaterialPoints(pTatinCtx user,PetscR
   PhysCompStokes stokes;
   PetscReal *grav_vec;
   
-  PetscFunctionBegin;
-  
+  PetscFunctionBegin;  
   /* Get bucket of material constants */
   ierr = pTatinGetMaterialConstants(user,&material_constants);CHKERRQ(ierr);
   
@@ -1172,7 +1173,6 @@ PetscErrorCode EnergyFVEvaluateCoefficients(pTatinCtx user,PetscReal time,PhysCo
   PetscErrorCode ierr;
   
   PetscFunctionBegin;
-
   /* Get velocity */
   ierr = pTatinGetStokesContext(user,&stokes);CHKERRQ(ierr);
   stokes_pack = stokes->stokes_pack;
@@ -1335,7 +1335,7 @@ PetscErrorCode pTatinPhysCompEnergyFV_CreateGetCornersFVCell(PhysCompEnergyFV ef
 */
 PetscErrorCode pTatinPhysCompEnergyFV_MPProjection_MacroP0DG(void)
 {
-  
+  PetscFunctionBegin;  
   PetscFunctionReturn(0);
 }
 
@@ -1502,9 +1502,9 @@ PetscErrorCode pTatinPhysCompEnergyFV_MPProjection_FVP0DG(PhysCompEnergyFV efv,p
 PetscErrorCode pTatinPhysCompEnergyFV_MPProjection(PhysCompEnergyFV efv,pTatinCtx pctx)
 {
   PetscErrorCode ierr;
-  
+
+  PetscFunctionBegin;  
   ierr = pTatinPhysCompEnergyFV_MPProjection_FVP0DG(efv,pctx);CHKERRQ(ierr);
-  
   PetscFunctionReturn(0);
 }
 
@@ -1520,7 +1520,7 @@ PetscErrorCode pTatinPhysCompEnergyFV_ComputeALESource(FVDA fv,Vec xk,Vec xk1,Pe
   const PetscInt    *dm_element,*element;
   PetscReal         cell_coor[3*DACELL3D_VERTS],dV0,dV1;
   
-  
+  PetscFunctionBegin;  
   ierr = VecZeroEntries(S);CHKERRQ(ierr);
   ierr = VecGetOwnershipRange(S,&offset,NULL);CHKERRQ(ierr);
   
@@ -1573,7 +1573,8 @@ PetscErrorCode pTatinPhysCompEnergyFV_ComputeALEVelocity(DM dmg,Vec x0,Vec x1,Pe
   PetscInt        k,d,len;
   const PetscReal *_x0,*_x1;
   PetscReal       *_v;
-  
+
+  PetscFunctionBegin;  
   ierr = VecGetLocalSize(x0,&len);CHKERRQ(ierr);
   len = len / 3;
   ierr = VecGetArrayRead(x0,&_x0);CHKERRQ(ierr);
@@ -1702,7 +1703,6 @@ PetscErrorCode EvalRHS_HeatProd(FVDA fv,Vec F)
   const PetscInt  *dm_element,*element;
   
   PetscFunctionBegin;
-  
   ierr = VecZeroEntries(F);CHKERRQ(ierr);
   ierr = VecGetArray(F,&_F);CHKERRQ(ierr);
   

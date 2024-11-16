@@ -42,6 +42,7 @@ PetscErrorCode MPIWrite_Blocking(FILE *fp,void *data,long int len,size_t size,in
   MPI_Status     status;
 
 
+  PetscFunctionBegin;
   ierr = MPI_Comm_size(comm,&commsize);CHKERRQ(ierr);
   ierr = MPI_Comm_rank(comm,&rank);CHKERRQ(ierr);
 
@@ -160,6 +161,7 @@ PetscErrorCode MPIRead_Blocking(FILE *fp,void **data,long int len,size_t size,in
   long           byte_offset;
 
 
+  PetscFunctionBegin;
   ierr = MPI_Comm_size(comm,&commsize);CHKERRQ(ierr);
   ierr = MPI_Comm_rank(comm,&rank);CHKERRQ(ierr);
 

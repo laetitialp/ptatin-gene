@@ -503,7 +503,6 @@ static PetscErrorCode xxx_PCWSMP_ExtractUpperTriangularAIJ(Mat A,PetscBool reuse
 static PetscErrorCode PCWSMP_call_wsmp(MPI_Comm comm,PC_WSMP *wsmp)
 {
   PetscFunctionBegin;
-
   if (wsmp->sequential) {
     #ifdef TATIN_HAVE_WSSMP
       wssmp_ ( &wsmp->Nlocal, wsmp->IA, wsmp->JA, wsmp->AVALS, wsmp->DIAG, wsmp->PERM, wsmp->INVP, wsmp->B, &wsmp->LDB, &wsmp->NRHS,

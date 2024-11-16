@@ -16,7 +16,8 @@ PetscErrorCode setup_lhs(PetscInt target,PetscInt nneigh,const PetscInt neigh[],
   const PetscReal *cell_target_x;
   PetscReal t4, t6, t8, t10, t12, t14, t17;
   PetscInt  k;
-  
+
+  PetscFunctionBegin;  
   cell_target_x = &cell_x[3*target];
   
   A[0][0] = A[0][1] = A[0][2] = 0.0;
@@ -76,7 +77,8 @@ PetscErrorCode setup_coeff(FVDA fv,PetscInt target,PetscInt nneigh,const PetscIn
   ////
   PetscInt       s[3],w[3],cij;
   CellTuple      cell,cellglobal;
-  
+
+  PetscFunctionBegin;  
   ierr = DMDAGetGhostCorners(fv->dm_fv,&s[0],&s[1],&s[2],&w[0],&w[1],&w[2]);CHKERRQ(ierr);
   
   cell.k = target / (w[0]*w[1]);
@@ -129,6 +131,7 @@ PetscErrorCode FVDAReconstructP1Evaluate(FVDA fv,
                   PetscReal coeff[],
                   PetscReal Q_hr[])
 {
+  PetscFunctionBegin;
   Q_hr[0] = coeff[0] * (x[0] - cell_target_x[0])
           + coeff[1] * (x[1] - cell_target_x[1])
           + coeff[2] * (x[2] - cell_target_x[2])
@@ -163,7 +166,8 @@ PetscErrorCode FVDAGetReconstructionStencil_AtCell(FVDA fv,PetscInt cijk,PetscIn
   //PetscBool      interior = PETSC_TRUE;
   DM             dm = fv->dm_fv;
   PetscErrorCode ierr;
-  
+
+  PetscFunctionBegin;  
   ierr = DMDAGetGhostCorners(dm,&s[0],&s[1],&s[2],&w[0],&w[1],&w[2]);CHKERRQ(ierr);
   
   /* convert cijk into i,j,k in local dm_fv space */
@@ -317,7 +321,8 @@ PetscErrorCode FVReconstructionP1Create(FVReconstructionCell *cell,
                                         const PetscReal _fv_coor[],const PetscReal _fv_field[])
 {
   PetscErrorCode    ierr;
-  
+
+  PetscFunctionBegin;  
   cell->target_cell = local_fv_cell_index;
   cell->target_Q = _fv_field[local_fv_cell_index];
   ierr = PetscMemcpy(cell->target_x,&_fv_coor[3*local_fv_cell_index],3*sizeof(PetscReal));CHKERRQ(ierr);
@@ -332,6 +337,7 @@ PetscErrorCode FVReconstructionP1Create(FVReconstructionCell *cell,
 
 PetscErrorCode FVReconstructionP1Interpolate(FVReconstructionCell *cell,const PetscReal x[],PetscReal ival[])
 {
+  PetscFunctionBegin;
   ival[0] = cell->coeff[0] * (x[0] - cell->target_x[0])
           + cell->coeff[1] * (x[1] - cell->target_x[1])
           + cell->coeff[2] * (x[2] - cell->target_x[2])

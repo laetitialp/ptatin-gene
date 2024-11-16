@@ -41,6 +41,7 @@ Quantity *PTATIN_GEO_QLIST = NULL;
 
 PetscErrorCode QuantityView(Quantity q)
 {
+  PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"  \"%20s\" %1.4e %s \n",q->name,q->magnitude,q->unit);
   PetscFunctionReturn(0);
 }
@@ -50,6 +51,7 @@ PetscErrorCode QuantityCreate(Quantity *q)
   Quantity       qq;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   ierr = PetscMalloc1(1,&qq);CHKERRQ(ierr);
   ierr = PetscMemzero(qq,sizeof(struct _p_Quantity));
   qq->magnitude = 1.0;
@@ -60,6 +62,7 @@ PetscErrorCode QuantityCreate(Quantity *q)
 
 PetscErrorCode QuantitySetValues(Quantity q,const char name[],const char unit[],PetscReal mag)
 {
+  PetscFunctionBegin;
   PetscSNPrintf(q->name,PETSC_MAX_PATH_LEN,"%s",name);
   PetscSNPrintf(q->unit,PETSC_MAX_PATH_LEN,"%s",unit);
   q->magnitude = mag;
@@ -69,6 +72,7 @@ PetscErrorCode QuantitySetValues(Quantity q,const char name[],const char unit[],
 
 PetscErrorCode QuantitySetMagnitude(Quantity q,PetscReal mag)
 {
+  PetscFunctionBegin;
   q->magnitude = mag;
   q->recip_magnitude = 1.0/mag;
   PetscFunctionReturn(0);
@@ -76,6 +80,7 @@ PetscErrorCode QuantitySetMagnitude(Quantity q,PetscReal mag)
 
 PetscErrorCode QuantitySetUnit(Quantity q,const char unit[])
 {
+  PetscFunctionBegin;
   PetscSNPrintf(q->unit,PETSC_MAX_PATH_LEN,"%s",unit);
   PetscFunctionReturn(0);
 }
@@ -91,6 +96,8 @@ PetscErrorCode QuantitySetUnit(Quantity q,const char unit[])
 inline PetscErrorCode pQConvert_GeoUnits2ModelUnits_Vec(QuantityType type,Vec x)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   if (type > QNull) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"unknown quantity detected");
   if (type == QNull) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"NULL type detected");
   ierr = VecScale(x,QuantityGetRecipMagnitude(PTATIN_GEO_QLIST[type]));CHKERRQ(ierr);
@@ -100,6 +107,8 @@ inline PetscErrorCode pQConvert_GeoUnits2ModelUnits_Vec(QuantityType type,Vec x)
 inline PetscErrorCode pQConvert_GeoUnits2ModelUnits_ArrayInPlace(QuantityType type,PetscInt len,PetscReal vals[])
 {
   PetscInt i;
+
+  PetscFunctionBegin;
   if (type > QNull) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"unknown quantity detected");
   if (type == QNull) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"NULL type detected");
   for (i=0; i<len; i++) {
@@ -111,6 +120,8 @@ inline PetscErrorCode pQConvert_GeoUnits2ModelUnits_ArrayInPlace(QuantityType ty
 inline PetscErrorCode pQConvert_GeoUnits2ModelUnits_Array(QuantityType type,PetscInt len,PetscReal ain[],PetscReal aout[])
 {
   PetscInt i;
+
+  PetscFunctionBegin;
   if (type > QNull) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"unknown quantity detected");
   if (type == QNull) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"NULL type detected");
   for (i=0; i<len; i++) {
@@ -124,6 +135,8 @@ inline PetscErrorCode pQConvert_GeoUnits2ModelUnits_Array(QuantityType type,Pets
 inline PetscErrorCode pQConvert_ModelUnits2GeoUnits_Vec(QuantityType type,Vec x)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   if (type > QNull) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"unknown quantity detected");
   if (type == QNull) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"NULL type detected");
   ierr = VecScale(x,QuantityGetMagnitude(PTATIN_GEO_QLIST[type]));CHKERRQ(ierr);
@@ -133,6 +146,8 @@ inline PetscErrorCode pQConvert_ModelUnits2GeoUnits_Vec(QuantityType type,Vec x)
 inline PetscErrorCode pQConvert_ModelUnits2GeoUnits_ArrayInPlace(QuantityType type,PetscInt len,PetscReal vals[])
 {
   PetscInt i;
+
+  PetscFunctionBegin;
   if (type > QNull) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"unknown quantity detected");
   if (type == QNull) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"NULL type detected");
   for (i=0; i<len; i++) {
@@ -144,6 +159,8 @@ inline PetscErrorCode pQConvert_ModelUnits2GeoUnits_ArrayInPlace(QuantityType ty
 inline PetscErrorCode pQConvert_ModelUnits2GeoUnits_Array(QuantityType type,PetscInt len,PetscReal ain[],PetscReal aout[])
 {
   PetscInt i;
+
+  PetscFunctionBegin;
   if (type > QNull) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"unknown quantity detected");
   if (type == QNull) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"NULL type detected");
   for (i=0; i<len; i++) {
@@ -157,6 +174,7 @@ inline PetscErrorCode pQConvert_ModelUnits2GeoUnits_Array(QuantityType type,Pets
 /*
 inline PetscErrorCode pQConvert_SIUnits2ModelUnits(QuantityType type,PetscReal *a)
 {
+  PetscFunctionBegin;
   if (type > QNull) printf("unknown type detected\n");
   if (type == QNull) printf("NULL type detected\n");
   *a = QuantityApplyND(PTATIN_SI_QLIST[type],*a);
@@ -167,6 +185,8 @@ inline PetscErrorCode pQConvert_SIUnits2ModelUnits(QuantityType type,PetscReal *
 inline PetscErrorCode pQConvert_SIUnits2ModelUnits_Vec(QuantityType type,Vec x)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   if (type > QNull) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"unknown quantity detected");
   if (type == QNull) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"NULL type detected");
   ierr = VecScale(x,QuantityGetRecipMagnitude(PTATIN_SI_QLIST[type]));CHKERRQ(ierr);
@@ -176,6 +196,8 @@ inline PetscErrorCode pQConvert_SIUnits2ModelUnits_Vec(QuantityType type,Vec x)
 inline PetscErrorCode pQConvert_SIUnits2ModelUnits_ArrayInPlace(QuantityType type,PetscInt len,PetscReal vals[])
 {
   PetscInt i;
+
+  PetscFunctionBegin;
   if (type > QNull) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"unknown quantity detected");
   if (type == QNull) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"NULL type detected");
   for (i=0; i<len; i++) {
@@ -187,6 +209,8 @@ inline PetscErrorCode pQConvert_SIUnits2ModelUnits_ArrayInPlace(QuantityType typ
 inline PetscErrorCode pQConvert_SIUnits2ModelUnits_Array(QuantityType type,PetscInt len,PetscReal ain[],PetscReal aout[])
 {
   PetscInt i;
+
+  PetscFunctionBegin;
   if (type > QNull) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"unknown quantity detected");
   if (type == QNull) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"NULL type detected");
   for (i=0; i<len; i++) {
@@ -200,6 +224,8 @@ inline PetscErrorCode pQConvert_SIUnits2ModelUnits_Array(QuantityType type,Petsc
 inline PetscErrorCode pQConvert_ModelUnits2SIUnits_Vec(QuantityType type,Vec x)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   if (type > QNull) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"unknown quantity detected");
   if (type == QNull) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"NULL type detected");
   ierr = VecScale(x,QuantityGetMagnitude(PTATIN_SI_QLIST[type]));CHKERRQ(ierr);
@@ -209,6 +235,8 @@ inline PetscErrorCode pQConvert_ModelUnits2SIUnits_Vec(QuantityType type,Vec x)
 inline PetscErrorCode pQConvert_ModelUnits2SIUnits_ArrayInPlace(QuantityType type,PetscInt len,PetscReal vals[])
 {
   PetscInt i;
+
+  PetscFunctionBegin;
   if (type > QNull) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"unknown quantity detected");
   if (type == QNull) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"NULL type detected");
   for (i=0; i<len; i++) {
@@ -220,6 +248,8 @@ inline PetscErrorCode pQConvert_ModelUnits2SIUnits_ArrayInPlace(QuantityType typ
 inline PetscErrorCode pQConvert_ModelUnits2SIUnits_Array(QuantityType type,PetscInt len,PetscReal ain[],PetscReal aout[])
 {
   PetscInt i;
+
+  PetscFunctionBegin;
   if (type > QNull) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"unknown quantity detected");
   if (type == QNull) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"NULL type detected");
   for (i=0; i<len; i++) {
@@ -232,6 +262,7 @@ PetscErrorCode ptatinQuantitySetupSIUnitList_UsingLVEScales(PetscReal LengScale,
 {
   PetscReal Tstar;
 
+  PetscFunctionBegin;
   // geo scales //
   QuantitySetMagnitude(PTATIN_SI_QLIST[QLength],LengScale);
   QuantitySetMagnitude(PTATIN_SI_QLIST[QVelocity],VeloScale);
@@ -256,6 +287,7 @@ PetscErrorCode ptatinQuantitySetupGeoUnitList(void)
 {
   PetscReal secondsPerYear,secondsPerkyr;
 
+  PetscFunctionBegin;
   /* geo units */
   /* reset scale factors */
   QuantitySetMagnitude(PTATIN_GEO_QLIST[QLength],QuantityGetMagnitude(PTATIN_SI_QLIST[QLength])/1.0e3);
@@ -285,6 +317,7 @@ PetscErrorCode ptatinQuantitySetup_UsingLVEScales(ptatinInputUnits units)
   PetscReal      secondsPerYear,secondsPerkyr;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   if (units == UNITS_GEO) PetscPrintf(PETSC_COMM_WORLD,"pTatin: \"geo\" units are <length, velocity, time, stress, strain-rate> are <km, cm/yr, kyr, MPa, 1/kyr>\n");
   Ls = 1.0;
   Vs = 1.0;
@@ -346,6 +379,7 @@ PetscErrorCode ptatinQuantityCreate(void)
   ptatinInputUnits value;
   PetscErrorCode   ierr;
 
+  PetscFunctionBegin;
   n = (PetscInt)QNull;
   ierr = PetscMalloc1(n,&si_list);CHKERRQ(ierr);
   ierr = PetscMalloc1(n,&geo_list);CHKERRQ(ierr);
@@ -380,6 +414,7 @@ PetscErrorCode ptatinQuantityDestroy(void)
 {
   PetscInt i,n;
 
+  PetscFunctionBegin;
   n = (PetscInt)QNull;
   if (PTATIN_SI_QLIST) {
     for (i=0; i<n; i++) {

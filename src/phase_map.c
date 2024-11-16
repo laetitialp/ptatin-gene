@@ -223,6 +223,7 @@ PetscErrorCode pTatinScalePhaseMap(PhaseMap phasemap,PetscScalar value_bar,Petsc
   PetscInt i,j,index; 
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   phasemap->dy = phasemap->dy/y_bar;
   phasemap->y0 = phasemap->y0/y_bar;
   phasemap->y1 = phasemap->y1/y_bar;

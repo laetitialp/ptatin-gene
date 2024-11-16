@@ -61,7 +61,6 @@ PetscErrorCode EnergyEvaluateCoefficients_MaterialPoints(pTatinCtx user,PetscRea
   PetscReal *grav_vec;
 
   PetscFunctionBegin;
-
   /* Get bucket of material constants */
   ierr = pTatinGetMaterialConstants(user,&material_constants);CHKERRQ(ierr);
 
@@ -282,7 +281,6 @@ PetscErrorCode EnergyEvaluateCoefficients(pTatinCtx user,PetscReal time,DM dmT,P
   PhysCompEnergy energy;
 
   PetscFunctionBegin;
-
   /* Evaluate physics on material points */
   ierr = EnergyEvaluateCoefficients_MaterialPoints(user,time,dmT,LA_T,LA_U);CHKERRQ(ierr);
 

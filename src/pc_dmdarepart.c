@@ -70,6 +70,7 @@ PetscErrorCode _DMDARepartitionDetermineRankFromGlobalIJK(PetscInt i,PetscInt j,
 {
   PetscInt pi,pj,pk,n;
 
+  PetscFunctionBegin;
   pi = pj = pk = -1;
   for (n=0; n<Mp; n++) {
     if ( (i >= start_i[n]) && (i < start_i[n]+span_i[n]) ) {
@@ -106,6 +107,7 @@ PetscErrorCode _DMDARepartitionDetermineGlobalS0(PetscMPIInt rank_re,PetscInt Mp
 {
   PetscInt i,j,k,start_IJK;
 
+  PetscFunctionBegin;
   start_IJK = 0;
   for (k=0; k<Pp_re; k++) {
     for (j=0; j<Np_re; j++) {
@@ -141,6 +143,7 @@ PetscErrorCode _DMDARepart_SetupScatters(PC pc,PC_DMDARepart *red)
   VecScatter     scatter;
   Mat            B;
 
+  PetscFunctionBegin;
   ierr = PetscObjectGetComm((PetscObject)pc,&comm);CHKERRQ(ierr);
   ierr = PCGetOperators(pc,NULL,&B);CHKERRQ(ierr);
   ierr = MatCreateVecs(B,&x,NULL);CHKERRQ(ierr);
@@ -236,6 +239,7 @@ PetscErrorCode _DMDARepart_SetupPMatrix(PC pc,PC_DMDARepart *red)
   PetscMPIInt    rank;
   Vec            V;
 
+  PetscFunctionBegin;
   ierr = PCGetDM(pc,&dm);CHKERRQ(ierr);
   ierr = PetscObjectGetComm((PetscObject)dm,&comm);CHKERRQ(ierr);
   ierr = MPI_Comm_rank(comm,&rank);CHKERRQ(ierr);
@@ -327,6 +331,7 @@ PetscErrorCode _DMDARepart_UpdateOperator(PC pc,PC_DMDARepart *red)
   IS             isrow,iscol;
   Mat            Blocal,*_Blocal,Bsub;
 
+  PetscFunctionBegin;
   ierr = PCGetDM(pc,&dm);CHKERRQ(ierr);
   ierr = PCGetOperators(pc,NULL,&B);CHKERRQ(ierr);
   ierr = PetscObjectGetComm((PetscObject)B,&comm);CHKERRQ(ierr);

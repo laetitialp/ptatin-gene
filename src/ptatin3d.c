@@ -114,8 +114,8 @@ PetscErrorCode default_pTatin3d_ModelOutput_VelocityPressure_Stokes(pTatinCtx ct
   Vec            UP;
   PetscLogDouble t0,t1;
   static PetscBool beenhere=PETSC_FALSE;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   PetscTime(&t0);
   // PVD
   {
@@ -194,6 +194,7 @@ PetscErrorCode pTatin3d_ModelOutput_VelocityPressure_Stokes_per_dir(pTatinCtx ct
   PetscBool found;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   // create a snapshot directory based on step
   ierr = PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"%s/step%" PetscInt_FMT "",ctx->outputpath,ctx->step);CHKERRQ(ierr);
   ierr = pTatinTestDirectory(name,'w',&found);CHKERRQ(ierr);
@@ -210,6 +211,7 @@ PetscErrorCode pTatin3d_ModelOutput_VelocityPressure_Stokes_flat(pTatinCtx ctx,V
   char fileprefix[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   // create a file prefix based on step
   ierr = PetscSNPrintf(fileprefix,PETSC_MAX_PATH_LEN-1,"step%1.6" PetscInt_FMT "",ctx->step);CHKERRQ(ierr);
   ierr = _pTatin3d_ModelOutput_VelocityPressure_Stokes(ctx,X,ctx->outputpath,NULL,fileprefix);CHKERRQ(ierr);
@@ -222,6 +224,7 @@ PetscErrorCode pTatin3d_ModelOutput_VelocityPressure_Stokes(pTatinCtx ctx,Vec X,
   PetscBool found;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   // create a snapshot directory based on step
   ierr = PetscSNPrintf(name,PETSC_MAX_PATH_LEN-1,"%s/step%" PetscInt_FMT "",ctx->outputpath,ctx->step);CHKERRQ(ierr);
   ierr = pTatinTestDirectory(name,'w',&found);CHKERRQ(ierr);
@@ -366,7 +369,6 @@ PetscErrorCode SwarmDMDA3dDataExchangerCreate(DM da,DataEx *_de)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = MPI_Comm_rank(PetscObjectComm((PetscObject)da),&rank);CHKERRQ(ierr);
   ierr = DMDAGetNeighbors(da,&neighborranks);CHKERRQ(ierr);
 
@@ -772,6 +774,7 @@ PetscErrorCode pTatinCtxGetModelDataPetscObject(pTatinCtx ctx,const char name[],
 PetscErrorCode pTatinCtxAttachModelDataPetscObject(pTatinCtx ctx,const char name[],PetscObject data)
 {
   PetscErrorCode ierr;
+
   PetscFunctionBegin;
   if (!ctx->model_data) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"The PetscContainer in pTatinCtx is NULL");
   {
@@ -790,6 +793,7 @@ PetscErrorCode pTatin3dSetFromOptions(pTatinCtx ctx)
   PetscBool      flg;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   /* parse options */
   ierr = PetscOptionsGetInt(NULL,NULL,"-mx",&ctx->mx,&flg);CHKERRQ(ierr);
   ierr = PetscOptionsGetInt(NULL,NULL,"-my",&ctx->my,&flg);CHKERRQ(ierr);
@@ -874,18 +878,21 @@ PetscErrorCode pTatinModelLoad(pTatinCtx ctx)
 
 PetscErrorCode pTatinGetTime(pTatinCtx ctx,PetscReal *time)
 {
+  PetscFunctionBegin;
   if (time) { *time = ctx->time; }
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode pTatinGetTimestep(pTatinCtx ctx,PetscReal *dt)
 {
+  PetscFunctionBegin;
   if (dt) { *dt = ctx->dt; }
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode pTatinGetMaterialPoints(pTatinCtx ctx,DataBucket *db,DataEx *de)
 {
+  PetscFunctionBegin;
   if (db) { *db = ctx->materialpoint_db; }
   if (de) { *de = ctx->materialpoint_ex; }
   PetscFunctionReturn(0);
@@ -893,30 +900,35 @@ PetscErrorCode pTatinGetMaterialPoints(pTatinCtx ctx,DataBucket *db,DataEx *de)
 
 PetscErrorCode pTatinGetMaterialConstants(pTatinCtx ctx,DataBucket *db)
 {
+  PetscFunctionBegin;
   if (db) { *db = ctx->material_constants; }
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode pTatinGetModel(pTatinCtx ctx,pTatinModel *m)
 {
+  PetscFunctionBegin;
   if (m) { *m = ctx->model; }
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode pTatinGetRheology(pTatinCtx ctx,RheologyConstants **r)
 {
+  PetscFunctionBegin;
   if (r) { *r = &ctx->rheology_constants; }
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode pTatinGetStokesContext(pTatinCtx ctx,PhysCompStokes *s)
 {
+  PetscFunctionBegin;
   if (s) { *s = ctx->stokes_ctx; }
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode pTatin3dCheckpoint(pTatinCtx ctx,Vec X,const char prefix[])
 {
+  PetscFunctionBegin;
   SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"pTatin3dCheckpoint is deprecated");
   PetscFunctionReturn(0);
 }

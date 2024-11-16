@@ -89,6 +89,7 @@ PetscErrorCode pTatinWriteOptionsFile(const char filename[])
   char prgname[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   if (!filename) {
     ierr = PetscViewerASCIIOpen(PETSC_COMM_WORLD,"ptatin.options",&viewer);CHKERRQ(ierr);
   } else {
@@ -245,6 +246,7 @@ PetscErrorCode pTatinGetRangeMaximumMemoryUsage(PetscReal range[])
   PetscLogDouble mem;
   double min,max,_mem;
 
+  PetscFunctionBegin;
   ierr = PetscMallocGetMaximumUsage(&mem);CHKERRQ(ierr);
   _mem = (double)mem;
   ierr = MPI_Allreduce(&_mem,&min,1,MPI_DOUBLE,MPI_MIN,PETSC_COMM_WORLD);CHKERRQ(ierr);
@@ -266,6 +268,7 @@ PetscErrorCode pTatinGetRangeCurrentMemoryUsage(PetscReal range[])
   PetscLogDouble mem;
   double min,max,_mem;
 
+  PetscFunctionBegin;
   ierr = PetscMallocGetCurrentUsage(&mem);CHKERRQ(ierr);
   _mem = (double)mem;
   ierr = MPI_Allreduce(&_mem,&min,1,MPI_DOUBLE,MPI_MIN,PETSC_COMM_WORLD);CHKERRQ(ierr);

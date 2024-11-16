@@ -217,8 +217,8 @@ static inline PetscErrorCode MaterialConstantsSetup(pTatinCtx ptatin, MaterialDa
   MaterialConst_SoftLin                *SoftLin_data;
   MaterialConst_SoftExpo               *SoftExpo_data;
   PetscErrorCode                       ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = PetscMemzero(material_data,sizeof(MaterialData));CHKERRQ(ierr);
 
   /* access material constants */
@@ -291,8 +291,8 @@ static inline PetscErrorCode EvaluateLinearSoftening(
   PetscReal             emin,emax;
   float                 damage;
   int                   region_idx,plastic_type;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   region_idx   = mp_data->std->phase;
   plastic_type = material_data->MatType_data[ region_idx ].plastic_type;
   SoftLin_data = &material_data->SoftLin_data[ region_idx ];
@@ -339,8 +339,8 @@ static inline PetscErrorCode EvaluateExponentialSoftening(
   PetscReal              emin,efold;
   float                  damage;
   int                    region_idx,plastic_type;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   region_idx    = mp_data->std->phase;
   SoftExpo_data = &material_data->SoftExpo_data[ region_idx ];
   plastic_type  = material_data->MatType_data[ region_idx ].plastic_type;
@@ -385,6 +385,7 @@ static inline PetscErrorCode EvaluateSofteningOnMarker(
   int region_idx     = data->mp_data->std->phase;
   int softening_type = data->material_data->MatType_data[ region_idx ].softening_type;
   PetscErrorCode ierr;
+
   PetscFunctionBegin;
   switch (softening_type) {
   case SOFTENING_NONE: 
@@ -421,8 +422,8 @@ static inline PetscErrorCode ViscosityArrheniusDislocationCreep(
   PetscReal T_arrh    = *data->T + Tref ;
   PetscReal sr, pressure;
   double    D_mp[NSD][NSD], inv2_D_mp;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ComputeStrainRate3d(data->ux,data->uy,data->uz,data->dNudx,data->dNudy,data->dNudz,D_mp);
   ComputeSecondInvariant3d(D_mp,&inv2_D_mp);
 
@@ -474,7 +475,6 @@ static inline PetscErrorCode ViscosityArrheniusDislocationDiffusionCreep(
   PetscScalar D_mp[NSD][NSD], inv2_D_mp;
     
     PetscFunctionBegin;
-
     ComputeStrainRate3d(data->ux,data->uy,data->uz,data->dNudx,data->dNudy,data->dNudz,D_mp);
     ComputeSecondInvariant3d(D_mp,&inv2_D_mp);
     
@@ -508,8 +508,8 @@ static inline PetscErrorCode ViscosityPlasticMises(RheologyData *data)
   double                     tau_yield_mp, inv2_D_mp, inv2_Tpred_mp;
   double                     Tpred_mp[NSD][NSD], D_mp[NSD][NSD];
   PetscErrorCode             ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   mp_data    = data->mp_data;
   region_idx = mp_data->std->phase;
   Mises_data = &data->material_data->PlasticMises_data[ region_idx ];
@@ -546,8 +546,8 @@ static inline PetscErrorCode ViscosityPlasticMisesH(RheologyData *data)
   double                     tau_yield_mp, eta_flow_mp, eta_yield_mp, inv2_D_mp;;
   double                     D_mp[NSD][NSD];
   PetscErrorCode             ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   mp_data    = data->mp_data;
   region_idx = mp_data->std->phase;
   Mises_data = &data->material_data->PlasticMises_data[ region_idx ];
@@ -579,8 +579,8 @@ static inline PetscErrorCode ViscosityPlasticDruckerPrager(RheologyData *data)
   int                     region_idx;
   short                   yield_type;
   PetscErrorCode          ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   mp_data    = data->mp_data;
   region_idx = mp_data->std->phase;
   DP_data    = &data->material_data->PlasticDP_data[ region_idx ];
@@ -633,8 +633,8 @@ static inline PetscErrorCode EvaluateViscosityOnMarker_Viscous(RheologyData *dat
   MPntStd        *mp_std        = data->mp_data->std;
   int            region_idx,viscous_type;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
-  
+
+  PetscFunctionBegin;  
   region_idx   = mp_std->phase;
   viscous_type = material_data->MatType_data[ region_idx ].visc_type;
 
@@ -690,8 +690,8 @@ static inline PetscErrorCode EvaluateViscosityOnMarker_Plastic(RheologyData *dat
 {
   int            plastic_type = data->material_data->MatType_data[ data->mp_data->std->phase ].plastic_type;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   switch (plastic_type) {
     case PLASTIC_NONE: 
       break;
@@ -722,6 +722,7 @@ static inline PetscErrorCode EvaluateViscosityOnMarker_Plastic(RheologyData *dat
 static inline PetscErrorCode EvaluateViscosityOnMarker(RheologyData *data)
 {
   PetscErrorCode ierr;
+
   PetscFunctionBegin;
   ierr = EvaluateViscosityOnMarker_Viscous(data);CHKERRQ(ierr);
   ierr = EvaluateViscosityOnMarker_Plastic(data);CHKERRQ(ierr);
@@ -734,8 +735,8 @@ static inline PetscErrorCode EvaluateDensityOnMarker(RheologyData *data)
   MaterialPointData *mp_data;
   MPntPStokes       *mp_stokes;
   int               region_idx,density_type;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   material_data = data->material_data;
   mp_data       = data->mp_data;
   mp_stokes     = mp_data->stokes;
@@ -809,8 +810,8 @@ PetscErrorCode HealPlasticStrainMarker(
   int region_idx, plastic_type;
   double healing_rate;
   float damage;
-  PetscFunctionBegin;
-  
+
+  PetscFunctionBegin;  
   MPntStdGetField_phase_index(mpprop_std,&region_idx);
   
   plastic_type = MatType_data[ region_idx ].plastic_type;
@@ -870,8 +871,8 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx use
   RheologyData      rheology_data;
   PetscLogDouble    t0,t1;
   PetscErrorCode    ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   PetscTime(&t0);
 
   /* access material point information */
@@ -1073,7 +1074,6 @@ PetscErrorCode private_EvaluateRheologyNonlinearitiesMarkers_VPSTD_FV(pTatinCtx 
   PetscLogDouble       t0,t1;
   
   PetscFunctionBegin;
-  
   PetscTime(&t0);
   
   /* access material point information */
@@ -1255,7 +1255,6 @@ PetscErrorCode EvaluateRheologyNonlinearitiesMarkers_VPSTD(pTatinCtx user,DM dau
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = pTatinContextValid_Energy(user,&found);CHKERRQ(ierr);
   ierr = pTatinContextValid_EnergyFV(user,&found_fv);CHKERRQ(ierr);
   if (found) {
@@ -1322,7 +1321,6 @@ PetscErrorCode ApplyViscosityCutOffMarkers_VPSTD(pTatinCtx user)
   long int          npoints_cutoff[2],npoints_cutoff_g[2];
 
   PetscFunctionBegin;
-
   PetscTime(&t0);
 
   /* access material point information */
@@ -1419,8 +1417,8 @@ PetscErrorCode StokesCoefficient_UpdateTimeDependentQuantities_VPSTD(pTatinCtx u
   MaterialConst_MaterialType *MatType_data;
   MaterialConst_PlasticMises *PlasticMises_data;
   MaterialConst_PlasticDP    *PlasticDP_data;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   /* access current time step */
   ierr = pTatinGetTimestep(user,&dt);CHKERRQ(ierr);
 

@@ -146,8 +146,8 @@ PetscErrorCode _check_for_empty_cells_double(const PetscInt mx,const PetscInt my
   int uei,uej,uek;
   int e,ei,ej,ek,eid2,ii,jj,kk;
   int constant_conversion_occurred;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   constant_conversion_occurred = 0;
   for (e=0; e<mx*my*mz; e++) {
     if (cell_count[e] == 0) {
@@ -224,8 +224,8 @@ PetscErrorCode _check_for_empty_cells_float(const PetscInt mx,const PetscInt my,
   int uei,uej,uek;
   int e,ei,ej,ek,eid2,ii,jj,kk;
   int constant_conversion_occurred;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   constant_conversion_occurred = 0;
   for (e=0; e<mx*my*mz; e++) {
     if (cell_count[e] == 0) {
@@ -309,7 +309,6 @@ PetscErrorCode _compute_cell_value_double(DataBucket db,MaterialPointVariable va
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   umx = mx/2;
   umy = my/2;
 
@@ -402,7 +401,6 @@ PetscErrorCode _compute_cell_value_float(DataBucket db,MaterialPointVariable var
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   umx = mx/2;
   umy = my/2;
 
@@ -499,7 +497,6 @@ PetscErrorCode _compute_cell_composition(DM dau,PetscScalar LA_gcoords[],DataBuc
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   umx = mx/2;
   umy = my/2;
 
@@ -740,7 +737,6 @@ PetscErrorCode _compute_cell_nearest_point(DM dau,PetscScalar LA_gcoords[],DataB
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   umx = mx/2;
   umy = my/2;
 
@@ -948,6 +944,7 @@ PetscErrorCode _compute_cell_value_short(DataBucket db,MaterialPointVariable var
   MPAccess X;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   DataBucketGetSizes(db,&n_mp,NULL,NULL);
   ierr = MaterialPointGetAccess(db,&X);CHKERRQ(ierr);
   for (e=0; e<ncells; e++) {
@@ -1368,7 +1365,6 @@ PetscErrorCode pTatinOutputParaViewMarkerFields(DM pack,DataBucket material_poin
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&rank);CHKERRQ(ierr);
 
   ierr = pTatinGenerateParallelVTKName(prefix,"vts",&vtkfilename);CHKERRQ(ierr);

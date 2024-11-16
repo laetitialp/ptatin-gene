@@ -50,6 +50,7 @@
 PetscErrorCode _apply_threshold(PetscScalar x[],const PetscInt N,const PetscScalar threshold,const PetscScalar value)
 {
   PetscInt i;
+
   PetscFunctionBegin;
   for (i=0; i<N; i++) {
     PetscScalar abs;

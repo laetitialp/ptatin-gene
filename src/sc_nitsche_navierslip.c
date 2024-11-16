@@ -965,6 +965,8 @@ static PetscErrorCode _destroy_demo(SurfaceConstraint sc)
 {
   SCContextDemo *ctx;
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   if (sc->data) {
     ctx = (SCContextDemo*)sc->data;
     ierr = PetscFree(ctx);CHKERRQ(ierr);
@@ -983,6 +985,7 @@ static PetscErrorCode _form_access_demo(StokesForm *form)
   FormContextDemo   *formdata = NULL;
   int               bs;
   
+  PetscFunctionBegin;
 #ifdef SC_DEBUG
   printf("Form[-]: access()\n");
 #endif
@@ -1004,7 +1007,8 @@ static PetscErrorCode _form_restore_demo(StokesForm *form)
 {
   SurfaceConstraint sc;
   FormContextDemo   *formdata = NULL;
-  
+ 
+  PetscFunctionBegin; 
 #ifdef SC_DEBUG
   printf("Form[-]: restore()\n");
 #endif
@@ -1023,7 +1027,8 @@ static PetscErrorCode _form_restore_demo(StokesForm *form)
 static PetscErrorCode StokesFormSetupContext_Demo(StokesForm *F,FormContextDemo *formdata)
 {
   PetscErrorCode ierr;
-  
+ 
+  PetscFunctionBegin; 
   /* data */
   ierr = PetscMemzero(formdata,sizeof(FormContextDemo));CHKERRQ(ierr);
   F->data = (void*)formdata;
@@ -1039,6 +1044,8 @@ static PetscErrorCode StokesFormSetupContext_Demo(StokesForm *F,FormContextDemo 
 static PetscErrorCode StokesFormSetup_Demo(StokesForm *form,SurfaceConstraint sc,FormContextDemo *formdata)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = StokesFormInit(form,FORM_UNINIT,sc);CHKERRQ(ierr);
   ierr = StokeFormSetFunctionSpace_Q2P1(form);CHKERRQ(ierr);
   ierr = StokesFormSetupContext_Demo(form,formdata);CHKERRQ(ierr);
@@ -1054,6 +1061,7 @@ static PetscErrorCode _form_residual_F1(StokesForm *form,PetscReal ds[],PetscRea
   PetscInt        qp_offset;
   PetscReal       gamma,eta,uDn,*normal;
   
+  PetscFunctionBegin;
   scdata   = (void*)form->sc->data;
   formdata = (void*)form->data;
   
@@ -1082,7 +1090,8 @@ static PetscErrorCode _form_residual_F2(StokesForm *form,PetscReal ds[],PetscRea
   FormContextDemo *formdata;
   PetscInt        qp_offset;
   PetscReal       gamma,eta,uDn,*normal;
-  
+ 
+  PetscFunctionBegin; 
   scdata   = (void*)form->sc->data;
   formdata = (void*)form->data;
   
@@ -1108,6 +1117,8 @@ static PetscErrorCode _form_residual_F2(StokesForm *form,PetscReal ds[],PetscRea
 static PetscErrorCode StoksFormConfigureAction_Residual(StokesForm *form,StokesSubVec op)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = StokesFormSetType(form,FORM_RESIDUAL);CHKERRQ(ierr);
   switch (op) {
     case V_X1:
@@ -1130,7 +1141,8 @@ static PetscErrorCode sc_residual_F1(
   PetscErrorCode  ierr;
   StokesForm      F;
   FormContextDemo formdata;
-  
+ 
+  PetscFunctionBegin;  
 #ifdef SC_DEBUG
   printf("_Residual_F1\n");
 #endif
@@ -1146,7 +1158,8 @@ static PetscErrorCode sc_residual_F2(
   PetscErrorCode  ierr;
   StokesForm      F;
   FormContextDemo formdata;
-  
+
+  PetscFunctionBegin; 
 #ifdef SC_DEBUG
   printf("_Residual_F2\n");
 #endif
@@ -1166,6 +1179,7 @@ static PetscErrorCode _form_spmv_A11(StokesForm *form,PetscReal ds[],PetscReal F
   PetscInt        qp_offset;
   PetscReal       gamma,eta,uDn,*normal;
   
+  PetscFunctionBegin;
   scdata   = (void*)form->sc->data;
   formdata = (void*)form->data;
   
@@ -1191,7 +1205,8 @@ static PetscErrorCode _form_spmv_A12(StokesForm *form,PetscReal ds[],PetscReal F
   FormContextDemo *formdata;
   PetscInt        qp_offset;
   PetscReal       gamma,eta,uDn,*normal;
-  
+ 
+  PetscFunctionBegin; 
   scdata   = (void*)form->sc->data;
   formdata = (void*)form->data;
   
@@ -1217,7 +1232,8 @@ static PetscErrorCode _form_spmv_A21(StokesForm *form,PetscReal ds[],PetscReal F
   FormContextDemo *formdata;
   PetscInt        qp_offset;
   PetscReal       gamma,eta,uDn,*normal;
-  
+ 
+  PetscFunctionBegin; 
   scdata   = (void*)form->sc->data;
   formdata = (void*)form->data;
   
@@ -1241,6 +1257,8 @@ static PetscErrorCode _form_spmv_A21(StokesForm *form,PetscReal ds[],PetscReal F
 static PetscErrorCode StoksFormConfigureAction_SpMV(StokesForm *form,StokesSubMat op)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = StokesFormSetType(form,FORM_SPMV);CHKERRQ(ierr);
   switch (op) {
     case M_A11:
@@ -1266,7 +1284,8 @@ static PetscErrorCode sc_spmv_A11(
   PetscErrorCode  ierr;
   StokesForm      F;
   FormContextDemo formdata;
-  
+
+  PetscFunctionBegin;
 #ifdef SC_DEBUG
   printf("_SpMV_A11\n");
 #endif
@@ -1282,7 +1301,8 @@ static PetscErrorCode sc_spmv_A12(
   PetscErrorCode  ierr;
   StokesForm      F;
   FormContextDemo formdata;
-  
+
+  PetscFunctionBegin; 
 #ifdef SC_DEBUG
   printf("_SpMV_A12\n");
 #endif
@@ -1298,7 +1318,8 @@ static PetscErrorCode sc_spmv_A21(
   PetscErrorCode  ierr;
   StokesForm      F;
   FormContextDemo formdata;
-  
+
+  PetscFunctionBegin;  
 #ifdef SC_DEBUG
   printf("_SpMV_A21\n");
 #endif
@@ -1319,6 +1340,7 @@ static PetscErrorCode _form_asmb_A11(StokesForm *form,PetscReal ds[],PetscReal A
   PetscInt        qp_offset;
   PetscReal       gamma,eta,uDn,*normal;
 
+  PetscFunctionBegin;
   scdata   = (void*)form->sc->data;
   formdata = (void*)form->data;
   
@@ -1346,6 +1368,7 @@ static PetscErrorCode _form_asmb_A12(StokesForm *form,PetscReal ds[],PetscReal A
   PetscInt        qp_offset;
   PetscReal       gamma,eta,uDn,*normal;
   
+  PetscFunctionBegin;
   scdata   = (void*)form->sc->data;
   formdata = (void*)form->data;
   
@@ -1370,7 +1393,8 @@ static PetscErrorCode _form_asmb_A21(StokesForm *form,PetscReal ds[],PetscReal A
   FormContextDemo *formdata;
   PetscInt        qp_offset;
   PetscReal       gamma,eta,uDn,*normal;
-  
+
+  PetscFunctionBegin;  
   scdata   = (void*)form->sc->data;
   formdata = (void*)form->data;
   
@@ -1393,6 +1417,8 @@ static PetscErrorCode _form_asmb_A21(StokesForm *form,PetscReal ds[],PetscReal A
 static PetscErrorCode StoksFormConfigureAction_Assemble(StokesForm *form,StokesSubMat op)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = StokesFormSetType(form,FORM_ASSEMBLE);CHKERRQ(ierr);
   switch (op) {
     case M_A11:
@@ -1417,7 +1443,8 @@ static PetscErrorCode sc_asmb_A11(SurfaceConstraint sc, DM dmu, Mat A)
   PetscErrorCode  ierr;
   StokesForm      F;
   FormContextDemo formdata;
-  
+
+  PetscFunctionBegin;  
 #ifdef SC_DEBUG
   printf("_Assemble_A11\n");
 #endif
@@ -1432,7 +1459,8 @@ static PetscErrorCode sc_asmb_A12(SurfaceConstraint sc, DM dmu, DM dmp, Mat A)
   PetscErrorCode  ierr;
   StokesForm      F;
   FormContextDemo formdata;
-  
+ 
+  PetscFunctionBegin; 
 #ifdef SC_DEBUG
   printf("_Assemble_A12\n");
 #endif
@@ -1447,7 +1475,8 @@ static PetscErrorCode sc_asmb_A21(SurfaceConstraint sc, DM dmu, DM dmp, Mat A)
   PetscErrorCode  ierr;
   StokesForm      F;
   FormContextDemo formdata;
-  
+
+  PetscFunctionBegin; 
 #ifdef SC_DEBUG
   printf("_Assemble_A21\n");
 #endif
@@ -1466,7 +1495,8 @@ static PetscErrorCode _form_asmbdiag_A11(StokesForm *form,PetscReal ds[],PetscRe
   SCContextDemo   *scdata;
   FormContextDemo *formdata;
   PetscReal       gamma,eta,*normal;
-  
+
+  PetscFunctionBegin;  
   scdata   = (void*)form->sc->data;
   formdata = (void*)form->data;
   
@@ -1486,6 +1516,8 @@ static PetscErrorCode _form_asmbdiag_A11(StokesForm *form,PetscReal ds[],PetscRe
 static PetscErrorCode StoksFormConfigureAction_AssembleDiagonal(StokesForm *form,StokesSubMat op)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = StokesFormSetType(form,FORM_ASSEMBLE_DIAG);CHKERRQ(ierr);
   switch (op) {
     case M_A11:
@@ -1505,6 +1537,7 @@ static PetscErrorCode sc_asmbdiag_A11(SurfaceConstraint sc, DM dmu, Vec diagA)
   StokesForm      F;
   FormContextDemo formdata;
   
+  PetscFunctionBegin;
 #ifdef SC_DEBUG
   printf("_AssembleDiagonal_A11\n");
 #endif
@@ -1520,7 +1553,8 @@ static PetscErrorCode _form_spmv_wA(StokesForm *form,PetscReal ds[],PetscReal F[
   SCContextDemo   *scdata;
   FormContextDemo *formdata;
   PetscReal       gamma,eta,*normal;
-  
+
+  PetscFunctionBegin;  
   scdata   = (void*)form->sc->data;
   formdata = (void*)form->data;
   
@@ -1561,7 +1595,8 @@ static PetscErrorCode _form_spmv_qA(StokesForm *form,PetscReal ds[],PetscReal F[
   SCContextDemo   *scdata;
   FormContextDemo *formdata;
   PetscReal       gamma,eta,*normal;
-  
+
+  PetscFunctionBegin; 
   scdata   = (void*)form->sc->data;
   formdata = (void*)form->data;
   
@@ -1592,6 +1627,8 @@ static PetscErrorCode _form_spmv_qA(StokesForm *form,PetscReal ds[],PetscReal F[
 static PetscErrorCode StoksFormConfigureAction_AuResidual(StokesForm *form,StokesSubVec op)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = StokesFormSetType(form,FORM_RESIDUAL);CHKERRQ(ierr);
   switch (op) {
     case V_X1:
@@ -1616,7 +1653,8 @@ static PetscErrorCode sc_spmv_A(
   PetscErrorCode  ierr;
   StokesForm      F;
   FormContextDemo formdata;
-  
+
+  PetscFunctionBegin; 
 #ifdef SC_DEBUG
   printf("_SpMV_A\n");
   printf("_Residual_A11X1_A12X2\n");
@@ -1635,12 +1673,12 @@ static PetscErrorCode sc_spmv_A(
   PetscFunctionReturn(0);
 }
 
-
 PetscErrorCode _SetType_NITSCHE_NAVIER_SLIP(SurfaceConstraint sc)
 {
   SCContextDemo  *ctx;
   PetscErrorCode ierr;
-  
+
+  PetscFunctionBegin;  
   /* set methods */
   sc->ops.setup   = NULL; /* always null */
   sc->ops.destroy = _destroy_demo;
@@ -1679,6 +1717,8 @@ PetscErrorCode user_nitsche_navier_slip_set_constant(Facet F,
                                           void *data)
 {
   PetscReal *input;
+
+  PetscFunctionBegin;
   input = (PetscReal*)data;
   *uD = input[0];
   PetscFunctionReturn(0);
@@ -1700,7 +1740,8 @@ PetscErrorCode SurfaceConstraintSetValues_NITSCHE_NAVIER_SLIP(SurfaceConstraint 
   PetscInt       nel,nen;
   double         elcoords[3*Q2_NODES_PER_EL_3D];
   
-  
+
+  PetscFunctionBegin;  
   if (sc->type != SC_NITSCHE_NAVIER_SLIP) {
     PetscPrintf(PetscObjectComm((PetscObject)sc->dm),"[ignoring] SurfaceConstraintSetValues_NITSCHE_NAVIER_SLIP() called with different type on object with name \"%s\"\n",sc->name);
     PetscFunctionReturn(0);
@@ -1761,6 +1802,8 @@ PetscErrorCode SurfaceConstraintSetValues_NITSCHE_NAVIER_SLIP(SurfaceConstraint 
 PetscErrorCode SurfaceConstraintNitscheNavierSlip_SetPenalty(SurfaceConstraint sc,PetscReal penalty)
 {
   SCContextDemo   *scdata = NULL;
+
+  PetscFunctionBegin;
   if (sc->type != SC_NITSCHE_NAVIER_SLIP) PetscFunctionReturn(0);
   scdata = (SCContextDemo*)sc->data;
   scdata->penalty = penalty;

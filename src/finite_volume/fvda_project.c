@@ -875,6 +875,8 @@ PetscErrorCode FVDAFieldProjectReconstructionToVertex_Q1(FVDA fv,Vec fv_field,Pe
 static PetscErrorCode FVProjectSetUp_Natural(FVProject proj)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   proj->dmf = proj->fv->dm_fv;
   ierr = PetscObjectReference((PetscObject)proj->fv->dm_fv);CHKERRQ(ierr);
   proj->gf = proj->q;
@@ -889,6 +891,8 @@ static PetscErrorCode FVProjectSetUp_Natural(FVProject proj)
 static PetscErrorCode FVProjectSetUp_P0(FVProject proj)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = FVDAFieldSetUpProjectToVertex_Q1(proj->fv,&proj->dmf,&proj->gf);CHKERRQ(ierr);
   ierr = DMCreateLocalVector(proj->dmf,&proj->lf);CHKERRQ(ierr);
   proj->bs = 1;
@@ -902,6 +906,8 @@ static PetscErrorCode FVProjectSetUp_P0(FVProject proj)
 static PetscErrorCode FVProjectSetUp_PointwiseP1(FVProject proj)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   ierr = FVDAFieldSetUpProjectToVertex_Q1(proj->fv,&proj->dmf,&proj->gf);CHKERRQ(ierr);
   ierr = DMCreateLocalVector(proj->dmf,&proj->lf);CHKERRQ(ierr);
   proj->bs = 1;
@@ -914,8 +920,7 @@ static PetscErrorCode FVProjectSetUp_PointwiseP1(FVProject proj)
 
 static PetscErrorCode FVProjectSetUp_L2P1(FVProject proj)
 {
-  //PetscErrorCode ierr;
-  
+  PetscFunctionBegin; 
   PetscFunctionReturn(0);
 }
 
@@ -974,6 +979,7 @@ PetscErrorCode FVProjectSetBounds(FVProject proj,const PetscReal r[])
 PetscErrorCode FVProjectDestroyGlobalSpace(FVProject proj)
 {
   PetscErrorCode ierr;
+
   PetscFunctionBegin;
   if (!proj->issetup) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Must call FVProjectSetup() before FVProjectDestroyGlobalSpace().");
   if (proj->gf) {
@@ -985,6 +991,7 @@ PetscErrorCode FVProjectDestroyGlobalSpace(FVProject proj)
 PetscErrorCode FVProjectSetup(FVProject proj)
 {
   PetscErrorCode ierr;
+
   PetscFunctionBegin;
   if (proj->issetup) PetscFunctionReturn(0);
   if (proj->setup) {

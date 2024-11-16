@@ -95,6 +95,7 @@ static PetscErrorCode JacobianInvertNEV(PetscScalar dx[3][3][NQP][NEV],PetscScal
 {
   PetscInt i,j,k,e;
 
+  PetscFunctionBegin;
   for (i=0; i<NQP; i++) {
     PetscScalar a[3][3][NEV];
     for (e=0; e<NEV; e++) {
@@ -133,6 +134,7 @@ static PetscErrorCode QuadratureAction(const QPntVolCoefStokes *gausspt[],
 {
   PetscInt i,l,k,e;
 
+  PetscFunctionBegin;
   for (i=0; i<NQP; i++) {
     PetscScalar Du[6][NEV],Dv[6][NEV]; /* Symmetric gradient with respect to physical coordinates, xx, yy, zz, xy+yx, xz+zx, yz+zy */
     for (e=0; e<NEV; e++) {

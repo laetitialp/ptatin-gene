@@ -58,7 +58,6 @@ PetscErrorCode MaterialPointGeneric_VTKWriteBinaryAppendedHeaderAllFields(FILE *
   int n,npoints;
 
   PetscFunctionBegin;
-
   DataBucketGetSizes(db,&npoints,NULL,NULL);
   for (n=0; n<nfields; n++) {
     switch (list[n]) {
@@ -134,7 +133,6 @@ PetscErrorCode MaterialPointGeneric_VTKWriteBinaryAppendedDataAllFields(FILE *vt
   int n,npoints;
 
   PetscFunctionBegin;
-
   DataBucketGetSizes(db,&npoints,NULL,NULL);
   for (n=0; n<nfields; n++) {
     switch (list[n]) {
@@ -210,7 +208,6 @@ PetscErrorCode MaterialPointGeneric_PVTUWriteAllPPointDataFields(FILE *vtk_fp,co
   int n;
 
   PetscFunctionBegin;
-
   for (n=0; n<nfields; n++) {
     switch (list[n]) {
 
@@ -399,7 +396,6 @@ PetscErrorCode SwarmViewGeneric_PVTUXML(const int nfields,const MaterialPointFie
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   if ((vtk_fp = fopen ( name, "w")) == NULL)  {
     SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
   }
@@ -466,7 +462,6 @@ PetscErrorCode SwarmViewGeneric_ParaView(DataBucket db,const int nfields,const M
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = pTatinGenerateParallelVTKName(prefix,"vtu",&vtkfilename);CHKERRQ(ierr);
   if (path) {
     if (asprintf(&filename,"%s/%s",path,vtkfilename) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
@@ -616,7 +611,8 @@ PetscErrorCode QPntSurfCoefStokes_ProjectQ1_Surface(SurfaceQuadrature surfQ,Mesh
   PetscInt nel,nen,ngp;
   const PetscInt *elnidx;
   PetscErrorCode ierr;
-  
+
+  PetscFunctionBegin;  
   ierr = DMDAGetElements_pTatinQ2P1(clone,&nel,&nen,&elnidx);CHKERRQ(ierr);
   ierr = SurfaceQuadratureGetAllCellData_Stokes(surfQ,&all_surf_gausspoints);CHKERRQ(ierr);
   
@@ -684,7 +680,6 @@ PetscErrorCode _SwarmUpdateGaussPropertiesLocalL2ProjectionQ1_MPntPStokes(
 
 
   PetscFunctionBegin;
-
   ierr = DMGetLocalVector(clone,&Lproperties_A1);CHKERRQ(ierr);   ierr = VecZeroEntries(Lproperties_A1);CHKERRQ(ierr);
   ierr = DMGetLocalVector(clone,&Lproperties_A2);CHKERRQ(ierr);   ierr = VecZeroEntries(Lproperties_A2);CHKERRQ(ierr);
   ierr = DMGetLocalVector(clone,&Lproperties_B);CHKERRQ(ierr);    ierr = VecZeroEntries(Lproperties_B);CHKERRQ(ierr);
@@ -873,7 +868,6 @@ PetscErrorCode SwarmUpdateGaussPropertiesOne2OneMap_MPntPStokes(const int npoint
 
 
   PetscFunctionBegin;
-
   ierr = VolumeQuadratureGetAllCellData_Stokes(Q,&all_gausspoints);CHKERRQ(ierr);
     nel = Q->n_elements;
     nqp = Q->npoints;
@@ -911,7 +905,6 @@ PetscErrorCode SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes(const 
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   /* setup */
   dof = 1;
   ierr = DMDADuplicateLayout(da,dof,2,DMDA_STENCIL_BOX,&clone);CHKERRQ(ierr); /* Q2 - but we'll fake it as a Q1 with cells the same size as the Q2 guys */
@@ -976,7 +969,6 @@ PetscErrorCode _SwarmUpdateGaussPropertiesLocalL2ProjectionQ1_MPntPStokes_Interp
 
 
   PetscFunctionBegin;
-
   ierr = DMDAGetElements_pTatinQ2P1(clone,&nel,&nen,&elnidx);CHKERRQ(ierr);
 
   ierr = VolumeQuadratureGetAllCellData_Stokes(Q,&all_gausspoints);CHKERRQ(ierr);
@@ -1103,7 +1095,6 @@ PetscErrorCode _SwarmUpdateGaussPropertiesLocalL2ProjectionQ1_MPntPStokes_FineGr
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = DMGetLocalVector(clone,&Lproperties_A1);CHKERRQ(ierr);   ierr = VecZeroEntries(Lproperties_A1);CHKERRQ(ierr);
   ierr = DMGetLocalVector(clone,&Lproperties_A2);CHKERRQ(ierr);   ierr = VecZeroEntries(Lproperties_A2);CHKERRQ(ierr);
   ierr = DMGetLocalVector(clone,&Lproperties_B);CHKERRQ(ierr);    ierr = VecZeroEntries(Lproperties_B);CHKERRQ(ierr);
@@ -1211,7 +1202,6 @@ PetscErrorCode _BuildQ1CoefficientProjection_QuadraturePoints_MPntPStokes_FineGr
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = DMDAGetElements_pTatinQ2P1(clone,&nel,&nen,&elnidx);CHKERRQ(ierr);
   ierr = VolumeQuadratureGetAllCellData_Stokes(Q,&all_quadraturepoints);CHKERRQ(ierr);
 
@@ -1331,7 +1321,6 @@ PetscErrorCode SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierar
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   /* setup */
   dof = 1;
   for (k=0; k<nlevels; k++) {
@@ -1552,7 +1541,6 @@ PetscErrorCode MPntPStokesComputeMemberOffsets(size_t property_offsets[])
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   N = MPntPStokes_nmembers;
   PetscMemzero(property_offsets,sizeof(size_t)*N);
 
@@ -1580,7 +1568,6 @@ PetscErrorCode MPntPStokesPlComputeMemberOffsets(size_t property_offsets[])
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   N = MPntPStokesPl_nmembers;
   PetscMemzero(property_offsets,sizeof(size_t)*N);
 
@@ -1608,7 +1595,6 @@ PetscErrorCode MPntPEnergyComputeMemberOffsets(size_t property_offsets[])
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   N = MPntPEnergy_nmembers;
   PetscMemzero(property_offsets,sizeof(size_t)*N);
 
@@ -1636,7 +1622,6 @@ PetscErrorCode QPntVolCoefStokesComputeMemberOffsets(size_t property_offsets[])
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
-
   N = QPntVolCoefStokes_nmembers;
   PetscMemzero(property_offsets,sizeof(size_t)*N);
 
@@ -1668,7 +1653,6 @@ PetscErrorCode QPntVolCoefEnergyComputeMemberOffsets(size_t property_offsets[])
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
-
   N = QPntVolCoefEnergy_nmembers;
   PetscMemzero(property_offsets,sizeof(size_t)*N);
 
@@ -1704,7 +1688,6 @@ PetscErrorCode MaterialPointQuadraturePointProjectionC0_Q2Stokes(DM da,DataBucke
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   if (field == MPField_StokesPl) {
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"MPField_StokesPl cannot be mapped quadrature points");
   }
@@ -1856,7 +1839,6 @@ PetscErrorCode _MaterialPointProjection_MapOntoQ2Mesh(
 
 
   PetscFunctionBegin;
-
   ierr = DMGetLocalVector(clone,&Lproperties_A);CHKERRQ(ierr);    ierr = VecZeroEntries(Lproperties_A);CHKERRQ(ierr);
   ierr = DMGetLocalVector(clone,&Lproperties_B);CHKERRQ(ierr);    ierr = VecZeroEntries(Lproperties_B);CHKERRQ(ierr);
 
@@ -1966,7 +1948,6 @@ PetscErrorCode DMDAEQ1_MaterialPointProjection_MapOntoQ2Mesh(
 
 
   PetscFunctionBegin;
-
   ierr = DMGetLocalVector(clone,&Lproperties_A);CHKERRQ(ierr);    ierr = VecZeroEntries(Lproperties_A);CHKERRQ(ierr);
   ierr = DMGetLocalVector(clone,&Lproperties_B);CHKERRQ(ierr);    ierr = VecZeroEntries(Lproperties_B);CHKERRQ(ierr);
 
@@ -2058,7 +2039,6 @@ PetscErrorCode _MaterialPointProjection_MapOntoNestedQ1Mesh(
 
 
   PetscFunctionBegin;
-
   ierr = DMGetLocalVector(clone,&Lproperties_A);CHKERRQ(ierr);    ierr = VecZeroEntries(Lproperties_A);CHKERRQ(ierr);
   ierr = DMGetLocalVector(clone,&Lproperties_B);CHKERRQ(ierr);    ierr = VecZeroEntries(Lproperties_B);CHKERRQ(ierr);
 
@@ -2291,7 +2271,6 @@ PetscErrorCode DMDAEQ1_MaterialPointProjection_MapOntoQ2Mesh_InterpolateToQuadra
 
 
   PetscFunctionBegin;
-
   /* scatter result back to local array and do the interpolation onto the quadrature points */
   PetscTime(&t0);
 
@@ -2870,8 +2849,7 @@ PetscErrorCode QPntSurfCoefStokes_ProjectP0_Surface(MeshFacetInfo mfi,Quadrature
   PetscErrorCode     ierr;
   
   
-  PetscFunctionBegin;
-  
+  PetscFunctionBegin;  
   ierr = VolumeQuadratureGetAllCellData_Stokes(Q,&vol_qpoints);CHKERRQ(ierr);
   vol_nqp = Q->npoints;
   ierr = SurfaceQuadratureGetAllCellData_Stokes(surfQ,&surf_qpoints);CHKERRQ(ierr);
@@ -2930,7 +2908,6 @@ PetscErrorCode MaterialPointGetAccess(DataBucket materialpoint_db,MPAccess *help
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   ierr = PetscMalloc(sizeof(struct _p_MPAccess),&X);CHKERRQ(ierr);
   ierr = PetscMemzero(X,sizeof(struct _p_MPAccess));CHKERRQ(ierr);
 
@@ -3016,7 +2993,6 @@ PetscErrorCode MaterialPointRestoreAccess(DataBucket matpoint_db,MPAccess *helpe
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-
   X = *helper;
 
   for (i=0; i<X->nfields; i++) {
@@ -3033,6 +3009,8 @@ PetscErrorCode MaterialPointRestoreAccess(DataBucket matpoint_db,MPAccess *helpe
 PetscErrorCode _get_field_MPntStd(MPAccess X,const int p,MPntStd **point)
 {
   DataField  PField;
+
+  PetscFunctionBegin;
   if (X->mp_std_field_idx == -1) {
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Material point field MPntStd must be registered");
   }
@@ -3047,6 +3025,8 @@ PetscErrorCode _get_field_MPntStd(MPAccess X,const int p,MPntStd **point)
 PetscErrorCode _get_field_MPntPStokes(MPAccess X,const int p,MPntPStokes **point)
 {
   DataField  PField;
+
+  PetscFunctionBegin;
   if (X->mp_stokes_field_idx == -1) {
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Material point field MPntPStokes must be registered");
   }
@@ -3061,6 +3041,8 @@ PetscErrorCode _get_field_MPntPStokes(MPAccess X,const int p,MPntPStokes **point
 PetscErrorCode _get_field_MPntPStokesPl(MPAccess X,const int p,MPntPStokesPl **point)
 {
   DataField  PField;
+
+  PetscFunctionBegin;
   if (X->mp_stokespl_field_idx == -1) {
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Material point field MPntPStokesPl must be registered");
   }
@@ -3075,6 +3057,8 @@ PetscErrorCode _get_field_MPntPStokesPl(MPAccess X,const int p,MPntPStokesPl **p
 PetscErrorCode _get_field_MPntPEnergy(MPAccess X,const int p,MPntPEnergy **point)
 {
   DataField  PField;
+
+  PetscFunctionBegin;
   if (X->mp_energy_field_idx == -1) {
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Material point field MPntPEnergy must be registered");
   }
@@ -3091,8 +3075,8 @@ PetscErrorCode MaterialPointGet_point_index(MPAccess X,const int p,long int *var
 {
   MPntStd    *point;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = _get_field_MPntStd(X,p,&point);CHKERRQ(ierr);
   MPntStdGetField_point_index(point,var);
 
@@ -3103,8 +3087,8 @@ PetscErrorCode MaterialPointGet_global_coord(MPAccess X,const int p,double *var[
 {
   MPntStd    *point;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = _get_field_MPntStd(X,p,&point);CHKERRQ(ierr);
   MPntStdGetField_global_coord(point,var);
 
@@ -3115,8 +3099,8 @@ PetscErrorCode MaterialPointGet_local_coord(MPAccess X,const int p,double *var[]
 {
   MPntStd    *point;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = _get_field_MPntStd(X,p,&point);CHKERRQ(ierr);
   MPntStdGetField_local_coord(point,var);
 
@@ -3127,8 +3111,8 @@ PetscErrorCode MaterialPointGet_local_element_index(MPAccess X,const int p,int *
 {
   MPntStd    *point;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = _get_field_MPntStd(X,p,&point);CHKERRQ(ierr);
   MPntStdGetField_local_element_index(point,var);
 
@@ -3139,8 +3123,8 @@ PetscErrorCode MaterialPointGet_phase_index(MPAccess X,const int p,int *var)
 {
   MPntStd    *point;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = _get_field_MPntStd(X,p,&point);CHKERRQ(ierr);
   MPntStdGetField_phase_index(point,var);
 
@@ -3151,8 +3135,8 @@ PetscErrorCode MaterialPointSet_phase_index(MPAccess X,const int p,int var)
 {
   MPntStd    *point;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = _get_field_MPntStd(X,p,&point);CHKERRQ(ierr);
   MPntStdSetField_phase_index(point,var);
 
@@ -3164,8 +3148,8 @@ PetscErrorCode MaterialPointGet_viscosity(MPAccess X,const int p,double *var)
 {
   MPntPStokes    *point;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = _get_field_MPntPStokes(X,p,&point);CHKERRQ(ierr);
   MPntPStokesGetField_eta_effective(point,var);
 
@@ -3176,8 +3160,8 @@ PetscErrorCode MaterialPointSet_viscosity(MPAccess X,const int p,double var)
 {
   MPntPStokes    *point;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = _get_field_MPntPStokes(X,p,&point);CHKERRQ(ierr);
   MPntPStokesSetField_eta_effective(point,var);
 
@@ -3188,8 +3172,8 @@ PetscErrorCode MaterialPointGet_density(MPAccess X,const int p,double *var)
 {
   MPntPStokes    *point;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = _get_field_MPntPStokes(X,p,&point);CHKERRQ(ierr);
   MPntPStokesGetField_density(point,var);
 
@@ -3200,8 +3184,8 @@ PetscErrorCode MaterialPointSet_density(MPAccess X,const int p,double var)
 {
   MPntPStokes    *point;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = _get_field_MPntPStokes(X,p,&point);CHKERRQ(ierr);
   MPntPStokesSetField_density(point,var);
 
@@ -3213,8 +3197,8 @@ PetscErrorCode MaterialPointGet_plastic_strain(MPAccess X,const int p,float *var
 {
   MPntPStokesPl  *point;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = _get_field_MPntPStokesPl(X,p,&point);CHKERRQ(ierr);
   MPntPStokesPlGetField_plastic_strain(point,var);
 
@@ -3225,8 +3209,8 @@ PetscErrorCode MaterialPointSet_plastic_strain(MPAccess X,const int p,float var)
 {
   MPntPStokesPl  *point;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = _get_field_MPntPStokesPl(X,p,&point);CHKERRQ(ierr);
   MPntPStokesPlSetField_plastic_strain(point,var);
 
@@ -3237,8 +3221,8 @@ PetscErrorCode MaterialPointGet_yield_indicator(MPAccess X,const int p,short *va
 {
   MPntPStokesPl  *point;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = _get_field_MPntPStokesPl(X,p,&point);CHKERRQ(ierr);
   MPntPStokesPlGetField_yield_indicator(point,var);
 
@@ -3249,8 +3233,8 @@ PetscErrorCode MaterialPointSet_yield_indicator(MPAccess X,const int p,short var
 {
   MPntPStokesPl  *point;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = _get_field_MPntPStokesPl(X,p,&point);CHKERRQ(ierr);
   MPntPStokesPlSetField_yield_indicator(point,var);
 
@@ -3261,8 +3245,8 @@ PetscErrorCode MaterialPointGet_damage(MPAccess X,const int p,float *var)
 {
   MPntPStokesPl  *point;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = _get_field_MPntPStokesPl(X,p,&point);CHKERRQ(ierr);
   MPntPStokesPlGetField_damage(point,var);
 
@@ -3273,8 +3257,8 @@ PetscErrorCode MaterialPointSet_damage(MPAccess X,const int p,float var)
 {
   MPntPStokesPl  *point;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = _get_field_MPntPStokesPl(X,p,&point);CHKERRQ(ierr);
   MPntPStokesPlSetField_damage(point,var);
 
@@ -3286,8 +3270,8 @@ PetscErrorCode MaterialPointGet_diffusivity(MPAccess X,const int p,double *var)
 {
   MPntPEnergy    *point;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = _get_field_MPntPEnergy(X,p,&point);CHKERRQ(ierr);
   MPntPEnergyGetField_diffusivity(point,var);
 
@@ -3298,8 +3282,8 @@ PetscErrorCode MaterialPointGet_heat_source(MPAccess X,const int p,double *var)
 {
   MPntPEnergy    *point;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = _get_field_MPntPEnergy(X,p,&point);CHKERRQ(ierr);
   MPntPEnergyGetField_heat_source(point,var);
 
@@ -3310,8 +3294,8 @@ PetscErrorCode MaterialPointGet_heat_source_init(MPAccess X,const int p,double *
 {
   MPntPEnergy    *point;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = _get_field_MPntPEnergy(X,p,&point);CHKERRQ(ierr);
   MPntPEnergyGetField_heat_source_init(point,var);
 
@@ -3322,8 +3306,8 @@ PetscErrorCode MaterialPointSet_diffusivity(MPAccess X,const int p,double var)
 {
   MPntPEnergy    *point;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = _get_field_MPntPEnergy(X,p,&point);CHKERRQ(ierr);
   MPntPEnergySetField_diffusivity(point,var);
 
@@ -3334,8 +3318,8 @@ PetscErrorCode MaterialPointSet_heat_source(MPAccess X,const int p,double var)
 {
   MPntPEnergy    *point;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = _get_field_MPntPEnergy(X,p,&point);CHKERRQ(ierr);
   MPntPEnergySetField_heat_source(point,var);
 
@@ -3346,8 +3330,8 @@ PetscErrorCode MaterialPointSet_heat_source_init(MPAccess X,const int p,double v
 {
   MPntPEnergy    *point;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = _get_field_MPntPEnergy(X,p,&point);CHKERRQ(ierr);
   MPntPEnergySetField_heat_source_init(point,var);
 
@@ -3359,8 +3343,8 @@ PetscErrorCode MaterialPointSet_point_index(MPAccess X,const int p,long int var)
 {
   MPntStd    *point;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = _get_field_MPntStd(X,p,&point);CHKERRQ(ierr);
   MPntStdSetField_point_index(point,var);
 
@@ -3371,8 +3355,8 @@ PetscErrorCode MaterialPointSet_global_coord(MPAccess X,const int p,double var[]
 {
   MPntStd    *point;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = _get_field_MPntStd(X,p,&point);CHKERRQ(ierr);
   MPntStdSetField_global_coord(point,var);
 
@@ -3383,8 +3367,8 @@ PetscErrorCode MaterialPointSet_local_coord(MPAccess X,const int p,double var[])
 {
   MPntStd    *point;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = _get_field_MPntStd(X,p,&point);CHKERRQ(ierr);
   MPntStdSetField_local_coord(point,var);
 
@@ -3395,8 +3379,8 @@ PetscErrorCode MaterialPointSet_local_element_index(MPAccess X,const int p,int v
 {
   MPntStd    *point;
   PetscErrorCode ierr;
-  PetscFunctionBegin;
 
+  PetscFunctionBegin;
   ierr = _get_field_MPntStd(X,p,&point);CHKERRQ(ierr);
   MPntStdSetField_local_element_index(point,var);
 
@@ -3408,6 +3392,7 @@ PetscErrorCode MaterialPointScale_global_coord(MPAccess X,double var)
   int np,p;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   DataBucketGetSizes(X->db,&np,NULL,NULL);
   for (p=0; p<np; p++) {
     double *field;
@@ -3428,6 +3413,7 @@ PetscErrorCode MaterialPointScale_viscosity(MPAccess X,double var)
   int np,p;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   DataBucketGetSizes(X->db,&np,NULL,NULL);
   for (p=0; p<np; p++) {
     double field;
@@ -3446,6 +3432,7 @@ PetscErrorCode MaterialPointScale_density(MPAccess X,double var)
   int np,p;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   DataBucketGetSizes(X->db,&np,NULL,NULL);
   for (p=0; p<np; p++) {
     double field;
@@ -3464,6 +3451,7 @@ PetscErrorCode MaterialPointScale_plastic_strain(MPAccess X,double var)
   int np,p;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   DataBucketGetSizes(X->db,&np,NULL,NULL);
   for (p=0; p<np; p++) {
     float field;
@@ -3482,6 +3470,7 @@ PetscErrorCode MaterialPointScale_diffusivity(MPAccess X,double var)
   int np,p;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   DataBucketGetSizes(X->db,&np,NULL,NULL);
   for (p=0; p<np; p++) {
     double field;
@@ -3500,6 +3489,7 @@ PetscErrorCode MaterialPointScale_heat_source(MPAccess X,double var)
   int np,p;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   DataBucketGetSizes(X->db,&np,NULL,NULL);
   for (p=0; p<np; p++) {
     double field;
