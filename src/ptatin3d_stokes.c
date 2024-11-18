@@ -135,6 +135,8 @@ PetscErrorCode PhysCompCreateMesh_Stokes3d(const PetscInt mx,const PetscInt my,c
   /* velocity */
   vbasis_dofs = 3;
   ierr = DMDACreate3d( PETSC_COMM_WORLD, DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,DM_BOUNDARY_NONE, DMDA_STENCIL_BOX, 2*MX+1,2*MY+1,2*MZ+1, PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE, vbasis_dofs,2, NULL,NULL,NULL, &dav );CHKERRQ(ierr);
+  ierr = PetscObjectSetOptionsPrefix((PetscObject)dav,"stk_velocity_");CHKERRQ(ierr);
+  ierr = DMSetFromOptions(dav);CHKERRQ(ierr);
   ierr = DMSetUp(dav);CHKERRQ(ierr);
   ierr = DMDASetElementType_Q2(dav);CHKERRQ(ierr);
   ierr = DMSetMatType(dav,MATSBAIJ);CHKERRQ(ierr);
@@ -144,6 +146,8 @@ PetscErrorCode PhysCompCreateMesh_Stokes3d(const PetscInt mx,const PetscInt my,c
   /* pressure */
   pbasis_dofs = P_BASIS_FUNCTIONS;
   ierr = DMDACreate3d( PETSC_COMM_WORLD, DM_BOUNDARY_NONE,DM_BOUNDARY_NONE,DM_BOUNDARY_NONE, DMDA_STENCIL_BOX, MX,MY,MZ, Mp,Np,Pp, pbasis_dofs,0, lxv,lyv,lzv, &dap );CHKERRQ(ierr);
+  ierr = PetscObjectSetOptionsPrefix((PetscObject)dap,"stk_pressure_");CHKERRQ(ierr);
+  ierr = DMSetFromOptions(dap);CHKERRQ(ierr);
   ierr = DMSetUp(dap);CHKERRQ(ierr);
   ierr = DMDASetElementType_P1(dap);CHKERRQ(ierr);
   ierr = DMSetMatType(dap,MATSBAIJ);CHKERRQ(ierr);
@@ -154,6 +158,7 @@ PetscErrorCode PhysCompCreateMesh_Stokes3d(const PetscInt mx,const PetscInt my,c
 
   /* stokes */
   ierr = DMCompositeCreate(PETSC_COMM_WORLD,&multipys_pack);CHKERRQ(ierr);
+  ierr = PetscObjectSetOptionsPrefix((PetscObject)multipys_pack,"stk_pack_");CHKERRQ(ierr);
   ierr = DMCompositeAddDM(multipys_pack,dav);CHKERRQ(ierr);
   ierr = DMCompositeAddDM(multipys_pack,dap);CHKERRQ(ierr);
 
@@ -174,12 +179,7 @@ PetscErrorCode PhysCompCreateMesh_Stokes3d(const PetscInt mx,const PetscInt my,c
       SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Pressure space may ONLY contain 1 or 4 basis functions");
       break;
   }
-  ierr = PetscObjectSetOptionsPrefix((PetscObject)dav,"stk_velocity_");CHKERRQ(ierr);
-  ierr = PetscObjectSetOptionsPrefix((PetscObject)dap,"stk_pressure_");CHKERRQ(ierr);
-  ierr = PetscObjectSetOptionsPrefix((PetscObject)multipys_pack,"stk_pack_");CHKERRQ(ierr);
-
-  ierr = DMSetFromOptions(dav);CHKERRQ(ierr);
-  ierr = DMSetFromOptions(dap);CHKERRQ(ierr);
+  
   ctx->dav  = dav;
   ctx->dap  = dap;
   ctx->stokes_pack = multipys_pack;
