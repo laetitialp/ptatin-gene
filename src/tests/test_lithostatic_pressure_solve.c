@@ -47,10 +47,30 @@
 #include "ptatin3d_energy.h"
 #include "litho_pressure_PDESolve.h"
 
+static PetscErrorCode ApplyLithostaticPressureStokesNeumann(pTatinCtx ptatin, PhysCompStokes stokes)
+{
+  HexElementFace    face[] = {HEX_FACE_Neta};
+  SurfaceConstraint sc;
+  MeshEntity        mesh_entity;
+  MeshFacetInfo     facet_info;
+  PetscErrorCode    ierr;
+  PetscFunctionBegin;
+
+  ierr = SurfBCListAddConstraint(stokes->surf_bclist,"HEX_FACE_Neta",&sc);CHKERRQ(ierr);
+  ierr = SurfaceConstraintSetType(sc,SC_TRACTION);CHKERRQ(ierr);
+
+  ierr = SurfaceConstraintGetFacets(sc,&mesh_entity);CHKERRQ(ierr);
+  ierr = SurfaceConstraintGetMeshFacetInfo(sc,&facet_info);CHKERRQ(ierr);
+
+  ierr = MeshFacetMarkDomainFaces(mesh_entity,facet_info,1,face);CHKERRQ(ierr);
+
+  ierr = ApplyPoissonPressureNeumannConstraint(ptatin,sc);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode test_lithostatic_pressure_solve(void)
 {
   PetscBool      LP_found = PETSC_FALSE;
-  PetscInt       face_n;
   pTatinCtx      pctx = NULL;
   PDESolveLithoP LP = NULL;
   Vec            X = NULL, F = NULL;
@@ -124,10 +144,7 @@ PetscErrorCode test_lithostatic_pressure_solve(void)
   ierr = SNESSolve_LithoPressure(LP,J,X,F,pctx);CHKERRQ(ierr);
   
   /* Apply the computed lithostatic pressure to the stokes surface quadrature points on the face HEX_FACE_Neta (bottom) */
-  HexElementFace face_location[] = {HEX_FACE_Neta};
-  face_n = 1;
-  ierr = ApplyLithostaticPressure_SurfQuadratureStokes_FullFace(pctx->stokes_ctx,LP->da,X,face_location,face_n);CHKERRQ(ierr);
-  
+  ierr = ApplyLithostaticPressureStokesNeumann(pctx,pctx->stokes_ctx);CHKERRQ(ierr);
   {
     PetscViewer viewer;
     char        fname[256];
