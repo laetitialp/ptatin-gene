@@ -975,6 +975,9 @@ static PetscErrorCode ModelApplyInitialVariables_FromExpr(pTatinCtx ptatin, Mode
   ierr = PetscSNPrintf(prefix_wz,PETSC_MAX_PATH_LEN-1,"wz_");CHKERRQ(ierr);
   ierr = PetscSNPrintf(prefix_hs,PETSC_MAX_PATH_LEN-1,"heat_source_");CHKERRQ(ierr);
 
+  /* Set seed for random number generator */
+  ptatin_RandomNumberSetSeedRank(PETSC_COMM_WORLD);
+
   /* Get the number of weak zones expressions to evaluate */
   n_wz = 0;
   ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%snwz",prefix_wz);CHKERRQ(ierr);
