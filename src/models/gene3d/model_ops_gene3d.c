@@ -2562,7 +2562,10 @@ static PetscErrorCode MaterialPointResolutionMask_BoundaryFaces(pTatinCtx ptatin
     popctrl_mask[el] = PETSC_TRUE;
   }
   /* If no faces are provided apply pop control everywhere */
-  if (n_face_list == 0) { PetscFunctionReturn(0); }
+  if (n_face_list == 0) { 
+    PetscPrintf(PETSC_COMM_WORLD,"[[ WARNING ]] Applying marker cleaning on ALL faces.\n");
+    PetscFunctionReturn(0); 
+  }
 
   esi = esi/2;
   esj = esj/2;
@@ -2570,6 +2573,7 @@ static PetscErrorCode MaterialPointResolutionMask_BoundaryFaces(pTatinCtx ptatin
 
   for (f=0; f<n_face_list; f++) {
     PetscInt face = face_list[f];
+    PetscPrintf(PETSC_COMM_WORLD,"Marker cleaning on face %d will be ignored.\n",face);
     switch (face) {
       case 0: // east = xmax = imax = Pxi
         if (esi + lmx == mx) { 
@@ -2819,22 +2823,13 @@ static PetscErrorCode AdaptMaterialPointResolution_Mask(pTatinCtx ptatin, PetscI
 PetscErrorCode ModelAdaptMaterialPointResolution_Gene3D(pTatinCtx ptatin,void *ctx)
 {
   ModelGENE3DCtx *data = (ModelGENE3DCtx*)ctx;
-  PetscInt       n_face_list,nn;
-  PetscInt       *face_list;
+  PetscInt       nf_injection,nf_popctrl,nn;
+  PetscInt       *face_injection,*face_popctrl;
   PetscBool      found;
   char           prefix[PETSC_MAX_PATH_LEN],option_name[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD, "[[%s]]\n", PETSC_FUNCTION_NAME);
-
-  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"bc_marker_");CHKERRQ(ierr);
-
-  /* TODO: think about what to do by default */
-  n_face_list = 0;
-  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%snfaces",prefix);CHKERRQ(ierr);
-  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,option_name,&n_face_list,&found);
-  /* Allocate memory for the face_list */
-  ierr = PetscCalloc1(n_face_list,&face_list);CHKERRQ(ierr);
   /* 
   Faces numbering:
     0: east  = xmax = imax = Pxi
@@ -2844,18 +2839,42 @@ PetscErrorCode ModelAdaptMaterialPointResolution_Gene3D(pTatinCtx ptatin,void *c
     4: front = zmax = kmax = Pzeta
     5: back  = zmin = kmin = Nzeta
   */
-  nn = n_face_list;
-  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sfaces_list",prefix);CHKERRQ(ierr);
-  ierr = PetscOptionsGetIntArray(NULL,MODEL_NAME,option_name,face_list,&nn,&found);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"bc_marker_");CHKERRQ(ierr);
+
+  /* Injection of markers on faces */
+  nf_injection = 0;
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sinjection_nfaces",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,option_name,&nf_injection,&found);CHKERRQ(ierr);
+  /* Allocate memory for the face_injection list */
+  ierr = PetscCalloc1(nf_injection,&face_injection);CHKERRQ(ierr);
+
+  nn = nf_injection;
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sinjection_faces_list",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetIntArray(NULL,MODEL_NAME,option_name,face_injection,&nn,&found);CHKERRQ(ierr);
   if (found) {
-    if (nn != n_face_list) { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Found %d entries to -bc_marker_faces_list, while expected %d from -bc_marker_nfaces",nn,n_face_list); }
+    if (nn != nf_injection) { SETERRQ3(PETSC_COMM_SELF,PETSC_ERR_USER,"Found %d entries to %s, while expected %d from -bc_marker_injection_nfaces",nn,option_name,nf_injection); }
   }
   /* Particles injection on faces */
-  ierr = ModelApplyMaterialBoundaryCondition_Gene3D(ptatin,n_face_list,face_list,data);CHKERRQ(ierr);
-  /* Population control */
-  ierr = AdaptMaterialPointResolution_Mask(ptatin,n_face_list,face_list);CHKERRQ(ierr);
+  ierr = ModelApplyMaterialBoundaryCondition_Gene3D(ptatin,nf_injection,face_injection,data);CHKERRQ(ierr);
+  ierr = PetscFree(face_injection);CHKERRQ(ierr);
 
-  ierr = PetscFree(face_list);CHKERRQ(ierr);
+  /* Population control */
+  nf_popctrl = 0;
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%spopctrl_nfaces",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,option_name,&nf_popctrl,&found);CHKERRQ(ierr);
+  /* Allocate memory for the face_popctrl list */
+  ierr = PetscCalloc1(nf_popctrl,&face_popctrl);CHKERRQ(ierr);
+
+  nn = nf_popctrl;
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%spopctrl_faces_list",prefix);CHKERRQ(ierr);
+  ierr = PetscOptionsGetIntArray(NULL,MODEL_NAME,option_name,face_popctrl,&nn,&found);CHKERRQ(ierr);
+  if (found) {
+    if (nn != nf_popctrl) { SETERRQ3(PETSC_COMM_SELF,PETSC_ERR_USER,"Found %d entries to %s, while expected %d from -bc_marker_popctrl_nfaces",nn,option_name,nf_popctrl); }
+  }
+  /* Population control */
+  ierr = AdaptMaterialPointResolution_Mask(ptatin,nf_popctrl,face_popctrl);CHKERRQ(ierr);
+  ierr = PetscFree(face_popctrl);CHKERRQ(ierr);
+
   PetscFunctionReturn (0);
 }
 
