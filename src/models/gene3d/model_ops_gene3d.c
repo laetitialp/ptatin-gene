@@ -785,7 +785,6 @@ PetscErrorCode ModelApplyInitialMeshGeometry_Gene3D(pTatinCtx ptatin,void *ctx)
 {
   ModelGENE3DCtx *data = (ModelGENE3DCtx*)ctx;
   PetscReal      gvec[] = { 0.0, -9.8, 0.0 };
-  PetscReal      angle;
   PetscInt       nn;
   PetscBool      refine,found,deformed_mesh;
   PetscErrorCode ierr;
@@ -1458,7 +1457,7 @@ static PetscErrorCode SurfaceConstraintCreateFromOptions_Gene3D(
   /* force insertion if not a type of constraint that requires changing A11 */
   if (sc_type != SC_NITSCHE_GENERAL_SLIP ||
       sc_type != SC_NITSCHE_DIRICHLET    ||
-      sc_type != SC_NITSCHE_NAVIER_SLIP ) {
+      sc_type != SC_NITSCHE_NAVIER_SLIP) {
     insert_if_not_found = PETSC_TRUE;
   }
 
@@ -1979,6 +1978,93 @@ static PetscErrorCode ModelSetNeumann_VelocityBC(pTatinCtx ptatin, SurfaceConstr
 }
 
   /////////////////////////
+ //  DEVIATORIC NEUMANN //
+/////////////////////////
+/*
+Apply 
+int (w.n)n.tau*n + (w.t1)t1.tau*n + (w.t2)t2.tau*n 
+to the boundary facets and let the pressure in the unknowns.
+We enable 2 possibilities:
+  - deviatoric stress ==> provide directly the deviatoric stress to be applied on the boundary
+  - strain-rate ==> provide a strain-rate, the deviatoric stress is computed from the strain-rate and the non-linear viscosity
+In ANY CASE, what is applied to the boundary is the deviatoric stress, the formulation let the users decide if
+they want to set a deviatoric stress or compute it from the viscosity and a given strain-rate.
+*/
+PetscErrorCode UserSetDeviatoricTractionFromExpression(Facet facets, const PetscReal qp_coor[], PetscReal traction[], void *ctx)
+{
+  NeumannCtx     *data = (NeumannCtx*)ctx;
+  PetscFunctionBegin;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ModelApplyDeviatoricNeumannConstraint_Constant(
+  pTatinCtx ptatin, 
+  SurfaceConstraint sc, 
+  PetscInt tag, 
+  char prefix[],
+  ModelGENE3DCtx *data
+)
+{
+  PetscInt       d,nn,traction_type;
+  PetscReal      traction[3];
+  PetscBool      found;
+  char           option_name[PETSC_MAX_PATH_LEN];
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  /* Initialize traction to 0, ensure there is no garbage if user does not provide anything */
+  ierr = PetscMemzero(traction,3*sizeof(PetscReal));CHKERRQ(ierr);
+  /* Get user's values */
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%straction_value_%d",prefix,tag);
+  nn = 3;
+  ierr = PetscOptionsGetRealArray(NULL,MODEL_NAME,option_name,traction,&nn,&found);CHKERRQ(ierr);
+  if (found) {
+    if (nn != 3) { SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_USER,"Option %s requires 3 entries, found %d.",option_name,nn); }
+  }
+  if (data->bc_debug) {
+    PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
+    PetscPrintf(PETSC_COMM_WORLD,"Boundary tag: %d\n",tag);
+    PetscPrintf(PETSC_COMM_WORLD,"Traction: [%1.4e, %1.4e, %1.4e]\n",traction[0],traction[1],traction[2]);
+  }
+  /* Set using the stress or strain-rate setter */
+  traction_type = 0;
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%straction_type_%d",prefix,tag);
+  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,option_name,&traction_type,NULL);CHKERRQ(ierr);
+  switch (traction_type) {
+    case 0: // stress
+      /* Scale values */
+      for (d=0; d<3; d++) { traction[d] /= data->scale->pressure_bar; }
+      ierr = SurfaceConstraintSetValues_Stress_DEVIATORIC_TRACTION(sc,user_traction_set_constant,traction);CHKERRQ(ierr);
+      break;
+    
+    case 1: // strain-rate
+      /* Scale values */
+      for (d=0; d<3; d++) { traction[d] *= data->scale->time_bar; }
+      ierr = SurfaceConstraintSetValues_StrainRate_DEVIATORIC_TRACTION(sc,user_traction_set_constant,traction);CHKERRQ(ierr);
+      break;
+    
+    default:
+      SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Unknown traction type, can only be 0: stress, or 1: strain-rate, found: %d",traction_type);
+      break;
+  }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ModelSetDeviatoricNeumann_VelocityBC(pTatinCtx ptatin, SurfaceConstraint sc, PetscInt tag, ModelGENE3DCtx *data)
+{
+  PetscBool      found;
+  char           option_name[PETSC_MAX_PATH_LEN],prefix[PETSC_MAX_PATH_LEN];
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"bc_deviatoric_neumann_");CHKERRQ(ierr);
+
+  ierr = ModelApplyDeviatoricNeumannConstraint_Constant(ptatin,sc,tag,prefix,data);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+  /////////////////////////
  // GENERAL NAVIER-SLIP //
 /////////////////////////
 static PetscErrorCode GeneralNavierSlipBC_Constant(
@@ -2325,6 +2411,10 @@ static PetscErrorCode ModelSetBoundaryValues_VelocityBC(
 
     case SC_DIRICHLET:
       ierr = ModelSetDirichlet_VelocityBC(ptatin,dav,bclist,sc,tag,data);CHKERRQ(ierr);
+      break;
+    
+    case SC_DEVIATORIC_TRACTION:
+      ierr = ModelSetDeviatoricNeumann_VelocityBC(ptatin,sc,tag,data);CHKERRQ(ierr);
       break;
 
     default:

@@ -95,6 +95,7 @@ typedef struct {
   const PetscInt *elnidx;
   const PetscInt *elnidx_q2;
   PetscReal      *pressure;
+  PetscReal      traction[3];
   PetscScalar    *coor;
   ExpressionCtx  *expr_ctx;
 } NeumannCtx;
