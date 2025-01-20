@@ -17,7 +17,8 @@ typedef enum {
   SC_NITSCHE_DIRICHLET,
   SC_NITSCHE_NAVIER_SLIP,
   SC_NITSCHE_GENERAL_SLIP,
-  SC_DIRICHLET
+  SC_DIRICHLET,
+  SC_DEVIATORIC_TRACTION
 } SurfaceConstraintType;
 
 
@@ -118,11 +119,13 @@ typedef PetscErrorCode (*SurfCSetValuesNitscheGeneralSlip)(Facet,const PetscReal
 #define SURFC_CHKSETVALS(type, setter) SURFC_CHKSETVALS_##type((setter))
 
 
-PetscErrorCode SurfaceConstraintSetValues_TRACTION           (SurfaceConstraint sc,SurfCSetValuesTraction set,         void *data);
-PetscErrorCode SurfaceConstraintSetValues_NITSCHE_DIRICHLET  (SurfaceConstraint sc,SurfCSetValuesNitscheDirichlet set, void *data);
-PetscErrorCode SurfaceConstraintSetValues_NITSCHE_NAVIER_SLIP(SurfaceConstraint sc,SurfCSetValuesNitscheNavierSlip set,void *data);
-PetscErrorCode SurfaceConstraintSetValues_NITSCHE_GENERAL_SLIP(SurfaceConstraint sc,SurfCSetValuesNitscheGeneralSlip set,void *data);
+PetscErrorCode SurfaceConstraintSetValues_TRACTION                      (SurfaceConstraint sc,SurfCSetValuesTraction           set,void *data);
+PetscErrorCode SurfaceConstraintSetValues_NITSCHE_DIRICHLET             (SurfaceConstraint sc,SurfCSetValuesNitscheDirichlet   set,void *data);
+PetscErrorCode SurfaceConstraintSetValues_NITSCHE_NAVIER_SLIP           (SurfaceConstraint sc,SurfCSetValuesNitscheNavierSlip  set,void *data);
+PetscErrorCode SurfaceConstraintSetValues_NITSCHE_GENERAL_SLIP          (SurfaceConstraint sc,SurfCSetValuesNitscheGeneralSlip set,void *data);
 PetscErrorCode SurfaceConstraintSetValuesStrainRate_NITSCHE_GENERAL_SLIP(SurfaceConstraint sc,SurfCSetValuesNitscheGeneralSlip set,void *data);
+PetscErrorCode SurfaceConstraintSetValues_Stress_DEVIATORIC_TRACTION    (SurfaceConstraint sc,SurfCSetValuesTraction           set,void *data);
+PetscErrorCode SurfaceConstraintSetValues_StrainRate_DEVIATORIC_TRACTION(SurfaceConstraint sc,SurfCSetValuesTraction           set,void *data);
 
 PetscErrorCode SurfaceConstraintSetValues(SurfaceConstraint sc,
                                           SurfCSetValuesGeneric set,

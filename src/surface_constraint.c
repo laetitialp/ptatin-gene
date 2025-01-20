@@ -51,6 +51,9 @@ PetscErrorCode SurfaceConstraintSetValues_NITSCHE_GENERAL_SLIP(SurfaceConstraint
                                                               SurfCSetValuesNitscheGeneralSlip set,
                                                               void *data);
 
+PetscErrorCode _SetType_DEVIATORIC_TRACTION(SurfaceConstraint sc);
+
+
 PetscErrorCode SurfaceConstraintCreate(SurfaceConstraint *_sc)
 {
   SurfaceConstraint sc;
@@ -257,6 +260,10 @@ PetscErrorCode SurfaceConstraintSetType(SurfaceConstraint sc, SurfaceConstraintT
       ierr = _SetType_NONE(sc);CHKERRQ(ierr);
       sc->type = SC_DIRICHLET;
       DataBucketFinalize(sc->properties_db);
+      break;
+
+    case SC_DEVIATORIC_TRACTION:
+      ierr = _SetType_DEVIATORIC_TRACTION(sc);CHKERRQ(ierr);
       break;
 
     default:
@@ -945,6 +952,10 @@ PetscErrorCode SurfaceConstraintSetValues(SurfaceConstraint sc,SurfCSetValuesGen
 
     case SC_DIRICHLET:
       PetscPrintf(PETSC_COMM_SELF,"[Warning] SurfaceConstraintSetValues: type DIRICHLET does not have a setter");
+      break;
+
+    case SC_DEVIATORIC_TRACTION:
+      ierr = SurfaceConstraintSetValues_Stress_DEVIATORIC_TRACTION(sc, (SurfCSetValuesTraction)set, data);CHKERRQ(ierr);
       break;
 
     default:
