@@ -2732,6 +2732,7 @@ PetscErrorCode Run_NonLinearFV(pTatinCtx user,Vec v1,Vec v2)
       
       ierr = DMCreateGlobalVector(cdm,&q2_coor_k);CHKERRQ(ierr);
       ierr = pTatinModel_UpdateMeshGeometry(model,user,X);CHKERRQ(ierr);
+      ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(user->stokes_ctx);CHKERRQ(ierr);
       
       ierr = DMGetCoordinates(dav,&q2_coor);CHKERRQ(ierr);
       ierr = VecCopy(q2_coor,q2_coor_k);CHKERRQ(ierr);
