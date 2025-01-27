@@ -1992,8 +1992,36 @@ they want to set a deviatoric stress or compute it from the viscosity and a give
 */
 PetscErrorCode UserSetDeviatoricTractionFromExpression(Facet facets, const PetscReal qp_coor[], PetscReal traction[], void *ctx)
 {
-  NeumannCtx     *data = (NeumannCtx*)ctx;
+  NeumannDeviatoricCtx *data = (NeumannDeviatoricCtx*)ctx;
+  ExpressionCtx        *expr_ctx = data->expr_ctx;
+  PetscInt             d;
   PetscFunctionBegin;
+
+  /* set variables values for expression and scale to SI */
+  *expr_ctx->x = qp_coor[0]  * expr_ctx->scale->length_bar;
+  *expr_ctx->y = qp_coor[1]  * expr_ctx->scale->length_bar;
+  *expr_ctx->z = qp_coor[2]  * expr_ctx->scale->length_bar;
+  for (d=0; d<3; d++) {
+    te_expr *expression;
+
+    expression = data->traction_expr[d];
+    traction[d] = te_eval(expression);
+
+    switch (data->type) {
+      case 0: // stress
+        traction[d] /= expr_ctx->scale->pressure_bar;
+        break;
+      
+      case 1: // strain-rate
+        traction[d] *= expr_ctx->scale->time_bar;
+        break;
+
+      default:
+        SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Unknown traction type, can only be 0: stress, or 1: strain-rate, found: %d",data->type);
+        break;
+    }
+  }
+
   PetscFunctionReturn(0);
 }
 
@@ -2034,13 +2062,13 @@ PetscErrorCode ModelApplyDeviatoricNeumannConstraint_Constant(
     case 0: // stress
       /* Scale values */
       for (d=0; d<3; d++) { traction[d] /= data->scale->pressure_bar; }
-      ierr = SurfaceConstraintSetValues_Stress_DEVIATORIC_TRACTION(sc,user_traction_set_constant,traction);CHKERRQ(ierr);
+      ierr = SurfaceConstraintSetValues_Stress_DEVIATORIC_TRACTION(sc,user_traction_set_constant,(void*)traction);CHKERRQ(ierr);
       break;
     
     case 1: // strain-rate
       /* Scale values */
       for (d=0; d<3; d++) { traction[d] *= data->scale->time_bar; }
-      ierr = SurfaceConstraintSetValues_StrainRate_DEVIATORIC_TRACTION(sc,user_traction_set_constant,traction);CHKERRQ(ierr);
+      ierr = SurfaceConstraintSetValues_StrainRate_DEVIATORIC_TRACTION(sc,user_traction_set_constant,(void*)traction);CHKERRQ(ierr);
       break;
     
     default:
@@ -2050,16 +2078,122 @@ PetscErrorCode ModelApplyDeviatoricNeumannConstraint_Constant(
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode ModelApplyDeviatoricNeumannConstraint_Expression(
+  pTatinCtx ptatin, 
+  SurfaceConstraint sc, 
+  PetscInt tag, 
+  char prefix[],
+  ModelGENE3DCtx *data
+)
+{
+  NeumannDeviatoricCtx data_neumann;
+  ExpressionCtx        expression_ctx;
+  te_expr              *expression[3];
+  te_variable          *vars;
+  PetscReal            x,y,z,time,O[3],L[3];
+  PetscInt             d,n_vars,traction_type;
+  int                  err;
+  char                 option_name[PETSC_MAX_PATH_LEN];
+  PetscErrorCode       ierr;
+
+  PetscFunctionBegin;
+
+  /* Initialize Neumann data structure */
+  ierr = PetscMemzero(&data_neumann,sizeof(NeumannDeviatoricCtx));CHKERRQ(ierr);
+
+  /* Get time for expression */
+  ierr = pTatinGetTime(ptatin,&time);CHKERRQ(ierr);
+  time *= data->scale->time_bar;
+  /* Get model domain for expression */
+  for (d=0; d<3; d++) {
+    O[d] = data->O[d] * data->scale->length_bar;
+    L[d] = data->L[d] * data->scale->length_bar;
+  }
+  /* Create variables data structure */
+  n_vars = 10; // 10 variables x,y,z,t,Ox,Oy,Oz,Lx,Ly,Lz
+  ierr = PetscCalloc1(n_vars,&vars);CHKERRQ(ierr);
+  /* Attach variables */
+  vars[0].name = "x";  vars[0].address = &x;
+  vars[1].name = "y";  vars[1].address = &y;
+  vars[2].name = "z";  vars[2].address = &z;
+  vars[3].name = "t";  vars[3].address = &time;
+  vars[4].name = "Ox"; vars[4].address = &O[0];
+  vars[5].name = "Oy"; vars[5].address = &O[1];
+  vars[6].name = "Oz"; vars[6].address = &O[2];
+  vars[7].name = "Lx"; vars[7].address = &L[0];
+  vars[8].name = "Ly"; vars[8].address = &L[1];
+  vars[9].name = "Lz"; vars[9].address = &L[2];
+
+  /* Initialize Expression data structure */
+  ierr = PetscMemzero(&expression_ctx,sizeof(ExpressionCtx));CHKERRQ(ierr);
+  ierr = PetscMemzero(expression,3*sizeof(te_expr*));CHKERRQ(ierr);
+  for (d=0; d<3; d++) {
+    PetscBool found;
+    char      expr_traction[PETSC_MAX_PATH_LEN];
+    
+    /* Get user expression */
+    ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sexpression_traction%d_%d",prefix,d,tag);CHKERRQ(ierr);
+    ierr = PetscOptionsGetString(NULL,MODEL_NAME,option_name,expr_traction,PETSC_MAX_PATH_LEN-1,&found);CHKERRQ(ierr);
+    if (!found) { SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Expression not found! Use %s to set it.",option_name); }
+    /* Compile expression */
+    expression[d] = te_compile(expr_traction, vars, n_vars, &err);
+    if (!expression[d]) {
+      PetscPrintf(PETSC_COMM_WORLD,"\t%*s^\nError near here", err-1, "");
+      SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Expression %s did not compile.",expr_traction);
+    }
+    if (data->bc_debug) { PetscPrintf(PETSC_COMM_WORLD,"Boundary %s: Evaluating expression for traction%d\n\t%s\n",sc->name,d,expr_traction); }
+  }
+
+  /* Attach variables to struct for the evaluating function */
+  expression_ctx.x          = &x;
+  expression_ctx.y          = &y;
+  expression_ctx.z          = &z;
+  expression_ctx.t          = &time;
+  expression_ctx.scale      = data->scale;
+  //expression_ctx.expression = expression;
+  /* Attach expression ctx to neumann ctx */
+  data_neumann.traction_expr = expression;
+  data_neumann.expr_ctx = &expression_ctx;
+
+  traction_type = 0;
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%straction_type_%d",prefix,tag);
+  ierr = PetscOptionsGetInt(NULL,MODEL_NAME,option_name,&traction_type,NULL);CHKERRQ(ierr);
+  data_neumann.type = traction_type;
+
+  /* Set using the stress or strain-rate setter */
+  switch (traction_type) {
+    case 0: // stress
+      ierr = SurfaceConstraintSetValues_Stress_DEVIATORIC_TRACTION(sc,UserSetDeviatoricTractionFromExpression,(void*)&data_neumann);CHKERRQ(ierr);
+      break;
+
+    case 1: // strain-rate
+      ierr = SurfaceConstraintSetValues_StrainRate_DEVIATORIC_TRACTION(sc,UserSetDeviatoricTractionFromExpression,(void*)&data_neumann);CHKERRQ(ierr);
+      break;
+    
+    default:
+      SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Unknown traction type, can only be 0: stress, or 1: strain-rate, found: %d",traction_type);
+      break;
+  }
+
+  /* clean up */
+  for (d=0; d<3; d++) { te_free(expression[d]); }
+  ierr = PetscFree(vars);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode ModelSetDeviatoricNeumann_VelocityBC(pTatinCtx ptatin, SurfaceConstraint sc, PetscInt tag, ModelGENE3DCtx *data)
 {
-  PetscBool      found;
+  PetscBool      from_expr = PETSC_FALSE;
   char           option_name[PETSC_MAX_PATH_LEN],prefix[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
   PetscFunctionBegin;
 
-  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"bc_deviatoric_neumann_");CHKERRQ(ierr);
-
-  ierr = ModelApplyDeviatoricNeumannConstraint_Constant(ptatin,sc,tag,prefix,data);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(prefix,PETSC_MAX_PATH_LEN-1,"bc_neumann_deviatoric_");CHKERRQ(ierr);
+  ierr = PetscSNPrintf(option_name,PETSC_MAX_PATH_LEN-1,"-%sfrom_expression_%d",prefix,tag);
+  ierr = PetscOptionsGetBool(NULL,MODEL_NAME,option_name,&from_expr,NULL);CHKERRQ(ierr);
+  if (from_expr) { ierr = ModelApplyDeviatoricNeumannConstraint_Expression(ptatin,sc,tag,prefix,data);CHKERRQ(ierr); }
+  else           { ierr = ModelApplyDeviatoricNeumannConstraint_Constant(ptatin,sc,tag,prefix,data);CHKERRQ(ierr); }
 
   PetscFunctionReturn(0);
 }

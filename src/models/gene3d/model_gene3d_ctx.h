@@ -95,10 +95,15 @@ typedef struct {
   const PetscInt *elnidx;
   const PetscInt *elnidx_q2;
   PetscReal      *pressure;
-  PetscReal      traction[3];
   PetscScalar    *coor;
   ExpressionCtx  *expr_ctx;
 } NeumannCtx;
+
+typedef struct {
+  PetscInt      type;
+  te_expr       **traction_expr;
+  ExpressionCtx *expr_ctx;
+} NeumannDeviatoricCtx;
 
 typedef struct {
   PetscReal epsilon_s[6];
