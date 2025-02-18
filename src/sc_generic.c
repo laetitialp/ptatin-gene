@@ -10,7 +10,7 @@
 #include <surface_constraint.h>
 #include <sc_generic.h>
 
-//#define SC_DEBUG
+#define SC_DEBUG
 
 PetscErrorCode FunctionSpaceSet_VelocityQ1(FunctionSpace *s)
 {
@@ -355,10 +355,13 @@ PetscErrorCode generic_facet_action(StokesForm *form,
     
     /* initialise element stiffness matrix */
     ierr = PetscMemzero(Fe,sizeof(PetscScalar)*size);CHKERRQ(ierr);
+
+    /* DEBUG */ 
+    //PetscPrintf(PETSC_COMM_WORLD,"Element [%d]:\n",cell_index);
     
     for (q=0; q<nqp; q++) {
       PetscScalar fac,J_q,surfJ_q;
-      PetscScalar xip[] = { qp3[q].xi, qp3[q].eta, qp3[q].zeta };
+      PetscScalar xip[] = { qp3[q].xi, qp3[q].eta, qp3[q].zeta };     
       
       element->compute_surface_geometry_3D(element,
                                            elcoords,    // should contain 27 points with dimension 3 (x,y,z) //
@@ -379,7 +382,22 @@ PetscErrorCode generic_facet_action(StokesForm *form,
         /* evaluate the basis for p */
         ConstructNi_pressure(xip,elcoords,M);
       }
+      /* DEBUG
+      PetscPrintf(PETSC_COMM_WORLD,"  Quadrature point [%d]:\nlocal coords = [%f, %f, %f], fac = %f\n",q, xip[0],xip[1],xip[2],fac);
+      PetscPrintf(PETSC_COMM_WORLD,"weight = %f, surfJ = %f\n",qp2[q].w,surfJ_q);
       
+      {
+        PetscScalar qp_coor[] = { 0.0, 0.0, 0.0 };
+        PetscInt    kk;
+        for (kk=0; kk<Q2_NODES_PER_EL_3D; kk++) {
+          PetscInt d;
+          for (d=0; d<3; d++) {
+            qp_coor[d] += N[kk] * elcoords[3*kk+d];
+          }
+        }
+        PetscPrintf(PETSC_COMM_WORLD,"global coords = [%1.6e, %1.6e, %1.6e]\n",qp_coor[0],qp_coor[1],qp_coor[2]);
+      } 
+      */
       /* form->apply() */
       /* pack form */
       form->cell_i     = cell_index;
