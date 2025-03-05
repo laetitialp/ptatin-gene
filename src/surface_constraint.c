@@ -1029,7 +1029,6 @@ PetscErrorCode _SurfaceConstraintViewParaviewVTU(SurfaceConstraint sc,const char
 
     ierr =  SurfaceQuadratureGetCellData_Stokes(surfQ,all_qpoint,facet_index,&cell_qpoint);CHKERRQ(ierr);
     ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx[nen*e],LA_gcoords);CHKERRQ(ierr);
-    ierr = SurfaceQuadratureGetCellData_Stokes(surfQ,all_qpoint,fe,&cell_qpoint);CHKERRQ(ierr);
     
     for (n=0; n<ngp; n++) {
       qpoint = &cell_qpoint[n];
@@ -1057,7 +1056,9 @@ PetscErrorCode _SurfaceConstraintViewParaviewVTU(SurfaceConstraint sc,const char
   /* eta/rho */
   fprintf(fp,"      <DataArray type=\"Float32\" Name=\"eta\" NumberOfComponents=\"1\" format=\"ascii\">\n");
   for (fe=0; fe<nfaces; fe++) {
-    ierr =  SurfaceQuadratureGetCellData_Stokes(surfQ,all_qpoint,fe,&cell_qpoint);CHKERRQ(ierr);
+    PetscInt facet_index;
+    facet_index = sc->facets->local_index[fe];
+    ierr =  SurfaceQuadratureGetCellData_Stokes(surfQ,all_qpoint,facet_index,&cell_qpoint);CHKERRQ(ierr);
     for (n=0; n<ngp; n++) {
       double field;
       qpoint = &cell_qpoint[n];
@@ -1070,7 +1071,9 @@ PetscErrorCode _SurfaceConstraintViewParaviewVTU(SurfaceConstraint sc,const char
   
   fprintf(fp,"      <DataArray type=\"Float32\" Name=\"rho\" NumberOfComponents=\"1\" format=\"ascii\">\n");
   for (fe=0; fe<nfaces; fe++) {
-    ierr =  SurfaceQuadratureGetCellData_Stokes(surfQ,all_qpoint,fe,&cell_qpoint);CHKERRQ(ierr);
+    PetscInt facet_index;
+    facet_index = sc->facets->local_index[fe];
+    ierr =  SurfaceQuadratureGetCellData_Stokes(surfQ,all_qpoint,facet_index,&cell_qpoint);CHKERRQ(ierr);
     for (n=0; n<ngp; n++) {
       double field;
       qpoint = &cell_qpoint[n];
