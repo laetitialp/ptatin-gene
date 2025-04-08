@@ -20,14 +20,14 @@
 # ----------------------------------------------------------------------------
 
 # Use default petsc compilation flags + petsc cflags
-export TATIN_CFLAGS	= -std=gnu99 -Wall -pedantic-errors -Wgnu-empty-initializer -Wempty-translation-unit
+export TATIN_CFLAGS	= -Wall
 
 # <example> Enforce debug ptatin build (independent of petsc configuration)
-#export TATIN_CFLAGS	= -std=gnu99 -O0 -Wall -g
+#export TATIN_CFLAGS	= -O0 -Wall -g
 
 # <examples> Enforce specific optimisation flags for ptatin build (independent of petsc configuration
-#export TATIN_CFLAGS	= -std=gnu99 -O2 -Wall -fstrict-aliasing -funroll-loops -mavx
-#export TATIN_CFLAGS	= -std=gnu99 -O3 -Wall -fast -ftree-vectorize -ftree-vectorizer-verbose=4 -fstrict-aliasing -funroll-loops -mavx
+#export TATIN_CFLAGS	= -O2 -Wall -fstrict-aliasing -funroll-loops -mavx
+#export TATIN_CFLAGS	= -O3 -Wall -fast -ftree-vectorize -ftree-vectorizer-verbose=4 -fstrict-aliasing -funroll-loops -mavx
 
 # ----------------------------------------------------------------------------
 # Definition of TATIN_FFLAGS (user to edit)
@@ -56,11 +56,10 @@ CONFIG_OPENCL      = n
 #export OPENCL_INC =
 #export OPENCL_LIB =
 
-# <HIP support>
-CONFIG_HIP         = n
-#export HIP_CC=hipcc --offload-arch=gfx90a
-#export HIP_INC=
-#export HIP_LIB=
+CONFIG_HIP=y
+export HIP_CC=hipcc --offload-arch=gfx90a
+export HIP_INC=
+export HIP_LIB=-L/opt/rocm/lib -lhipsparse -lhipblas -lhipsolver -lrocsparse -lrocsolver -lrocblas -lrocrand -lamdhip64
 
 # ----------------------------------------------------------------------------
 #  -- pTatin external packages (user to edit)

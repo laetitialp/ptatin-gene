@@ -618,6 +618,22 @@ PetscErrorCode apply_mf_A11(PhysCompStokes user)
   ierr = _GenerateTestVector(da,3,1,x);CHKERRQ(ierr);
   ierr = _GenerateTestVector(da,3,2,x);CHKERRQ(ierr);
 
+  {
+    PetscLogStage _WarmupStage = -1;
+
+    ierr = PetscLogStageRegister("MatMFA11 warmup",&_WarmupStage);CHKERRQ(ierr);
+    PetscTime(&t0);
+    ierr = PetscLogStagePush(_WarmupStage);CHKERRQ(ierr);
+    ierr = MatMult(Auu,x,y);CHKERRQ(ierr);
+    ierr = PetscLogStagePop();CHKERRQ(ierr);
+    PetscTime(&t1);
+    tl = (double)(t1 - t0);
+    ierr = MPI_Allreduce(&tl,&timeMIN,1,MPI_DOUBLE,MPI_MIN,PETSC_COMM_WORLD);CHKERRQ(ierr);
+    ierr = MPI_Allreduce(&tl,&timeMAX,1,MPI_DOUBLE,MPI_MAX,PETSC_COMM_WORLD);CHKERRQ(ierr);
+
+    PetscPrintf(PETSC_COMM_WORLD,"MatMultA11Warmup(MF): iterations %.6d     time %1.4e (sec): ratio %1.4e%%: min/max %1.4e %1.4e (sec)\n",1,tl,100.0*(timeMIN/timeMAX),timeMIN,timeMAX);
+  }
+
   PetscTime(&t0);
   for (ii=0; ii<iterations; ii++) {
     ierr = MatMult(Auu,x,y);CHKERRQ(ierr);
