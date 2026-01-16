@@ -62,6 +62,8 @@
 #include "point_in_tetra.h"
 
 #include "model_utils.h"
+#include "material_point_std_utils.h"
+#include "material_point_popcontrol.h"
 
 PetscErrorCode MPntGetField_global_element_nInJnKindex(DM da, MPntStd *material_point, PetscInt *nI, PetscInt *nJ, PetscInt *nK)
 {
@@ -1744,8 +1746,13 @@ PetscErrorCode MPntStdSetRegionIndexFromMesh(DataBucket material_points, Mesh me
         PointLocation_PartitionedBoundingBox(mesh,np,(const double*)point_coor,ep,xip,&found);
         break;
     }
-    /* assign marker phase */
-    marker_std->phase = region_idx[ep[0]];
+    if (found == 0) {
+      /* point not located */
+      marker_std->phase = MATERIAL_POINT_PHASE_UNASSIGNED;
+    } else {
+      /* assign marker phase */
+      marker_std->phase = region_idx[ep[0]];
+    }
   }
   DataFieldRestoreAccess(PField_std);
   
@@ -1769,7 +1776,8 @@ PetscErrorCode pTatin_MPntStdSetRegionIndexFromMesh(pTatinCtx ptatin, const char
   ierr = pTatinGetMaterialPoints(ptatin,&material_points,NULL);CHKERRQ(ierr);
   /* Assign marker phase */
   ierr = MPntStdSetRegionIndexFromMesh(material_points,mesh,region_idx,method,length_scale);CHKERRQ(ierr);
-
+  /* Clone the nearest marker to points that failed being located */
+  ierr = MaterialPointRegionAssignment_KDTree(material_points,PETSC_TRUE);CHKERRQ(ierr);
   /* Free region array and mesh from files */
   free(region_idx);
   MeshDestroy(&mesh);
