@@ -95,7 +95,7 @@ PetscErrorCode FormJacobian_Stokes(SNES snes,Vec X,Mat A,Mat B,void *ctx)
     ierr = PetscObjectTypeCompare((PetscObject)Auu,MATSHELL,&is_shell);CHKERRQ(ierr);
     if (!is_shell) {
       ierr = MatZeroEntries(Auu);CHKERRQ(ierr);
-      ierr = MatAssemble_StokesA_AUU(Auu,dau,user->stokes_ctx->u_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
+      ierr = MatAssemble_StokesA_AUU(Auu,dau,user->stokes_ctx->u_bclist,user->stokes_ctx->volQ,user->stokes_ctx->surf_bclist);CHKERRQ(ierr);
     }
 
     ierr = MatDestroy(&Auu);CHKERRQ(ierr);
@@ -120,7 +120,7 @@ PetscErrorCode FormJacobian_Stokes(SNES snes,Vec X,Mat A,Mat B,void *ctx)
     ierr = PetscObjectTypeCompare((PetscObject)Buu,MATSHELL,&is_shell);CHKERRQ(ierr);
     if (!is_shell) {
       ierr = MatZeroEntries(Buu);CHKERRQ(ierr);
-      ierr = MatAssemble_StokesA_AUU(Buu,dau,user->stokes_ctx->u_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
+      ierr = MatAssemble_StokesA_AUU(Buu,dau,user->stokes_ctx->u_bclist,user->stokes_ctx->volQ,user->stokes_ctx->surf_bclist);CHKERRQ(ierr);
     }
 
     is_shell = PETSC_FALSE;
@@ -194,10 +194,7 @@ PetscErrorCode pTatin3d_material_points(int argc,char **argv)
   ierr = pTatinModel_ApplyInitialMeshGeometry(user->model,user);CHKERRQ(ierr);
 
   /* interpolate point coordinates (needed if mesh was modified) */
-  //ierr = QuadratureStokesCoordinateSetUp(user->stokes_ctx->Q,dav);CHKERRQ(ierr);
-  //for (e=0; e<QUAD_EDGES; e++) {
-  //  ierr = SurfaceQuadratureStokesGeometrySetUp(user->stokes_ctx->surfQ[e],dav);CHKERRQ(ierr);
-  //}
+  ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(user->stokes_ctx);CHKERRQ(ierr);
   /* interpolate material point coordinates (needed if mesh was modified) */
   ierr = MaterialPointCoordinateSetUp(user,dav);CHKERRQ(ierr);
 
@@ -260,6 +257,7 @@ PetscErrorCode pTatin3d_material_points(int argc,char **argv)
 
     /* UPDATE */
     ierr = pTatinModel_UpdateMeshGeometry(user->model,user,X);CHKERRQ(ierr);
+    ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(user->stokes_ctx);CHKERRQ(ierr);
 
     /* SOLVE */
     ierr = SNESSolve(snes,NULL,X);CHKERRQ(ierr);
@@ -339,7 +337,7 @@ PetscErrorCode pTatin3d_material_points_restart(int argc,char **argv)
   ierr = pTatin3dCreateMaterialPoints(user,dav);CHKERRQ(ierr);
   /* mesh geometry */
   ierr = pTatinModel_ApplyInitialMeshGeometry(user->model,user);CHKERRQ(ierr);
-
+  ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(user->stokes_ctx);CHKERRQ(ierr);
 
   /* interpolate material point coordinates (needed if mesh was modified) */
   ierr = MaterialPointCoordinateSetUp(user,dav);CHKERRQ(ierr);

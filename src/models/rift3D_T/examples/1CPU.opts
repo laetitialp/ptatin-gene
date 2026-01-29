@@ -1,0 +1,109 @@
+
+##  Using driver     : ./ptatin3d/src/ptatin_driver_nonlinear_ts.app
+## Options file for :
+##  L. Le Pourhiet, D. May, L. Huille, L. Watremez, and S. Leroy, "A genetic link between transform and hyper-extended margins", EPSL, 2017
+## PHYSICS PARAMETER for model POLC 100 km described in the paper.
+## For models with spacing of 200 300 and 400 km
+##  change -model_rift3D_T_notchspace accordingly in meter (2.e5 3.e5 4.e5)
+## FOR model REG
+##  change -model_rift3D_Ttheta_1 0.030 to -model_rift3D_Ttheta_1 0.025
+## ===============================================================
+-nonlinear_driver_v1
+-ptatin_model rift3D_T
+-log_summary
+-options_left 1
+-output_path ./EPSL_POLC_100-FV
+########## BASIC NUMERICS ##############
+-mx 8
+-my 8
+-mz 8
+-nsteps 1
+-dt_max 1e-3
+-output_frequency 1
+-checkpoint_every_nsteps 1
+-model_rift3D_T_use_semi_eulerian
+################PHYSICS##################
+-model_rift3D_T_DoubleNotch
+-model_rift3D_T_vz -0.00e-11
+-model_rift3D_Ttheta_1 0.030
+-model_rift3D_T_notchspace 1.e5
+################ SOLVERS ################
+###### MG
+-A11_operator_type 2,2,0
+-dau_nlevels 3
+-stk_velocity_dm_mat_type aij
+-a11_op avx
+#---- 5 MG lvl ----#
+#| 512 x 128 x 256 |
+#| 256 x 64 x 128 |
+#| 128 x 32 x 64 |
+#| 64 x 16 x 32 |
+#| 32 x 8 x 16 |
+#------------------#
+-stk_velocity_da_refine_hierarchy_x 2,2
+-stk_velocity_da_refine_hierarchy_y 2,2
+-stk_velocity_da_refine_hierarchy_z 2,2
+#---- SNES ----#
+-newton_its 0
+-snes_atol 1e-6
+-snes_max_it 5
+-snes_rtol 1e-3
+-snes_monitor
+-snes_converged_reason
+-snes_linesearch_type basic
+#-snes_view
+#---- KSP ----#
+-ksp_max_it 200
+-ksp_rtol 1.0e-3
+-ksp_type fgmres
+-pc_type fieldsplit
+-pc_fieldsplit_schur_fact_type upper
+-pc_fieldsplit_type schur
+  #---- Fieldsplit p ----#
+  -fieldsplit_p_ksp_type preonly
+  -fieldsplit_p_pc_type bjacobi
+  #---- Fieldsplit u ----#
+  -fieldsplit_u_ksp_max_it 200
+  #-fieldsplit_u_ksp_monitor_true_residual
+  -fieldsplit_u_ksp_monitor
+  -fieldsplit_u_ksp_converged_reason
+  -fieldsplit_u_ksp_rtol 1.0e-2
+  -fieldsplit_u_ksp_type fgmres
+  -fieldsplit_u_pc_type mg
+  -fieldsplit_u_pc_mg_levels 3
+  -fieldsplit_u_pc_mg_cycle_type v
+  -fieldsplit_u_mg_levels_ksp_type gmres
+  -fieldsplit_u_mg_levels_pc_type jacobi
+  -fieldsplit_u_mg_levels_ksp_max_it 8
+  -fieldsplit_u_mg_levels_ksp_norm_type NONE
+    #---- Coarse Grid ----#
+    # 32 x 8 x 16 #
+    -fieldsplit_u_mg_coarse_pc_type cholesky
+    #-fieldsplit_u_mg_coarse_pc_type telescope
+    #-fieldsplit_u_mg_coarse_telescope_pc_type cholesky
+    #-fieldsplit_u_mg_coarse_telescope_pc_reduction_factor 1
+#### THERMAL SOLVER
+-T_ksp_atol 1.0e-4
+-T_ksp_monitor
+-T_ksp_rtol 1.0e-10
+-T_ksp_type fgmres
+-T_pc_type bjacobi
+-T_snes_type ksponly
+### Solver for poisson pressure
+#-LP_snes_atol 1.0e-9
+-LP_snes_rtol 1.0e-6
+#-LP_snes_max_it 10
+-LP_snes_monitor
+-LP_snes_converged_reason
+-LP_ksp_monitor
+-LP_ksp_converged_reason
+-LP_ksp_atol 1.0e-10
+-LP_ksp_rtol 1.0e-6
+-LP_ksp_type fgmres
+#-LP_snes_mf_operator
+-LP_pc_type bjacobi #gamg #lu not parallel
+#-LP_snes_type ksponly
+-LP_snes_ksp_ew
+-LP_snes_ksp_ew_rtol0 1.0e-2
+-LP_snes_ksp_ew_version 1
+-LP_snes_lag_preconditioner -2

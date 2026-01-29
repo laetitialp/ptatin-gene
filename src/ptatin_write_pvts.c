@@ -95,9 +95,9 @@ PetscErrorCode pTatinVecFieldWrite(Vec x,const char name[],PetscBool zip_file)
   PetscFunctionBegin;
 
   if (zip_file) {
-    sprintf(fieldname,"%s.gz",name);
+    PetscSNPrintf(fieldname,PETSC_MAX_PATH_LEN-1,"%s.gz",name);
   } else {
-    sprintf(fieldname,"%s",name);
+    PetscSNPrintf(fieldname,PETSC_MAX_PATH_LEN-1,"%s",name);
   }
 
   ierr = PetscViewerCreate(PetscObjectComm((PetscObject)x),&viewer);CHKERRQ(ierr);
@@ -123,9 +123,9 @@ PetscErrorCode pTatinVecFieldRead(const char name[],PetscBool zip_file,Vec x)
   PetscFunctionBegin;
 
   if (zip_file) {
-    sprintf(fieldname,"%s.gz",name);
+    PetscSNPrintf(fieldname,PETSC_MAX_PATH_LEN-1,"%s.gz",name);
   } else {
-    sprintf(fieldname,"%s",name);
+    PetscSNPrintf(fieldname,PETSC_MAX_PATH_LEN-1,"%s",name);
   }
 
   ierr = PetscViewerCreate(PETSC_COMM_WORLD,&viewer);CHKERRQ(ierr);
@@ -158,11 +158,11 @@ PetscErrorCode PhysCompOutput_StokesRawVelocityPressure(PhysCompStokes ctx,Vec X
   PetscTime(&t0);
   /* dav,dap */
   if (prefix) {
-    sprintf(f1,"%s/pt3d_stokes.dmda-velocity%s",outputpath,prefix);
-    sprintf(f3,"%s/pt3d_stokes.dmda-pressure%s",outputpath,prefix);
+    PetscSNPrintf(f1,PETSC_MAX_PATH_LEN-1,"%s/pt3d_stokes.dmda-velocity%s",outputpath,prefix);
+    PetscSNPrintf(f3,PETSC_MAX_PATH_LEN-1,"%s/pt3d_stokes.dmda-pressure%s",outputpath,prefix);
   } else {
-    sprintf(f1,"%s/pt3d_stokes.dmda-velocity",outputpath);
-    sprintf(f3,"%s/pt3d_stokes.dmda-pressure",outputpath);
+    PetscSNPrintf(f1,PETSC_MAX_PATH_LEN-1,"%s/pt3d_stokes.dmda-velocity",outputpath);
+    PetscSNPrintf(f3,PETSC_MAX_PATH_LEN-1,"%s/pt3d_stokes.dmda-pressure",outputpath);
   }
   PetscPrintf(PETSC_COMM_WORLD,"  writing %s \n", f1 );
   PetscPrintf(PETSC_COMM_WORLD,"  writing %s \n", f3 );
@@ -172,12 +172,12 @@ PetscErrorCode PhysCompOutput_StokesRawVelocityPressure(PhysCompStokes ctx,Vec X
 
   ierr = DMCompositeGetAccess(ctx->stokes_pack,X,&Xu,&Xp);CHKERRQ(ierr);
 
-  if (prefix) { sprintf(f1,"%s/pt3d_stokes.dmda-Xu%s",outputpath,prefix); }
-  else {        sprintf(f1,"%s/pt3d_stokes.dmda-Xu",outputpath);           }
+  if (prefix) { PetscSNPrintf(f1,PETSC_MAX_PATH_LEN-1,"%s/pt3d_stokes.dmda-Xu%s",outputpath,prefix); }
+  else {        PetscSNPrintf(f1,PETSC_MAX_PATH_LEN-1,"%s/pt3d_stokes.dmda-Xu",outputpath);           }
   ierr = pTatinVecFieldWrite(Xu,f1,zip_file);CHKERRQ(ierr);
 
-  if (prefix) { sprintf(f1,"%s/pt3d_stokes.dmda-Xp%s",outputpath,prefix); }
-  else {        sprintf(f1,"%s/pt3d_stokes.dmda-Xp",outputpath);           }
+  if (prefix) { PetscSNPrintf(f1,PETSC_MAX_PATH_LEN-1,"%s/pt3d_stokes.dmda-Xp%s",outputpath,prefix); }
+  else {        PetscSNPrintf(f1,PETSC_MAX_PATH_LEN-1,"%s/pt3d_stokes.dmda-Xp",outputpath);           }
   ierr = pTatinVecFieldWrite(Xp,f1,zip_file);CHKERRQ(ierr);
 
   ierr = DMCompositeRestoreAccess(ctx->stokes_pack,X,&Xu,&Xp);CHKERRQ(ierr);
@@ -229,7 +229,7 @@ PetscErrorCode _test_load_and_writevts_from_checkpoint_file(void)
   flg = PETSC_FALSE;
   ierr = PetscOptionsGetString(NULL,NULL,"-output_path",outputpath,PETSC_MAX_PATH_LEN-1,&flg);CHKERRQ(ierr);
   if (flg == PETSC_FALSE) {
-    sprintf(outputpath,".");
+    PetscSNPrintf(outputpath,PETSC_MAX_PATH_LEN-1,".");
   }
 
   flg = PETSC_FALSE;
@@ -238,25 +238,25 @@ PetscErrorCode _test_load_and_writevts_from_checkpoint_file(void)
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Required to know the prefix of the checkpointed files. Set via -file_prefix");
   }
 
-  sprintf(vname,"%s/%s.dmda-velocity",outputpath,prefix);
-  sprintf(pname,"%s/%s.dmda-pressure",outputpath,prefix);
-  sprintf(xname,"%s/%s.dmda-X",outputpath,prefix);
+  PetscSNPrintf(vname,PETSC_MAX_PATH_LEN-1,"%s/%s.dmda-velocity",outputpath,prefix);
+  PetscSNPrintf(pname,PETSC_MAX_PATH_LEN-1,"%s/%s.dmda-pressure",outputpath,prefix);
+  PetscSNPrintf(xname,PETSC_MAX_PATH_LEN-1,"%s/%s.dmda-X",outputpath,prefix);
 
   flg = PETSC_FALSE;
   ierr = PetscOptionsGetString(NULL,NULL,"-file_suffix",suffix,PETSC_MAX_PATH_LEN-1,&flg);CHKERRQ(ierr);
   if (flg) {
-    sprintf(vname,"%s%s",vname,suffix);
-    sprintf(pname,"%s%s",pname,suffix);
-    sprintf(xname,"%s%s",xname,suffix);
+    PetscSNPrintf(vname,PETSC_MAX_PATH_LEN-1,"%s%s",vname,suffix);
+    PetscSNPrintf(pname,PETSC_MAX_PATH_LEN-1,"%s%s",pname,suffix);
+    PetscSNPrintf(xname,PETSC_MAX_PATH_LEN-1,"%s%s",xname,suffix);
   }
   PetscPrintf(PETSC_COMM_WORLD,"Reading files: (dmda-vel) %s\n\t\t(dmda-p) %s\n\t\t(vec-X) %s\n", vname,pname,xname);
 
   ierr = PhysCompStokesLoad_DM(vname,pname,&ctx);CHKERRQ(ierr);
   ierr = PhysCompStokesLoad_X(ctx,xname,PETSC_TRUE,&X);CHKERRQ(ierr);
 
-  sprintf(outfilename,"%s",prefix);
+  PetscSNPrintf(outfilename,PETSC_MAX_PATH_LEN-1,"%s",prefix);
   if (flg) {
-    sprintf(outfilename,"%s%s",outfilename,suffix);
+    PetscSNPrintf(outfilename,PETSC_MAX_PATH_LEN-1,"%s%s",outfilename,suffix);
   }
   //sprintf(outfilename,"%s_vp",outfilename);
   PetscPrintf(PETSC_COMM_WORLD,"Writing file: %s/%s \n", outputpath,outfilename);
@@ -291,6 +291,7 @@ PetscErrorCode PhysCompStokesLoad_DM(const char vname[],const char pname[],PhysC
   ierr = PhysCompCreateBoundaryList_Stokes(stokes);CHKERRQ(ierr);
   ierr = PhysCompCreateVolumeQuadrature_Stokes(stokes);CHKERRQ(ierr);
   ierr = PhysCompCreateSurfaceQuadrature_Stokes(stokes);CHKERRQ(ierr);
+  ierr = PhysCompCreateSurfaceBoundaryList_Stokes(stokes);CHKERRQ(ierr);
 
   *ctx = stokes;
 
@@ -362,7 +363,7 @@ PetscErrorCode pTatinLoadFromCheckpointWriteToVTS_Stokes(void)
   flg = PETSC_FALSE;
   ierr = PetscOptionsGetString(NULL,NULL,"-output_path",outputpath,PETSC_MAX_PATH_LEN-1,&flg);CHKERRQ(ierr);
   if (flg == PETSC_FALSE) {
-    sprintf(outputpath,".");
+    PetscSNPrintf(outputpath,PETSC_MAX_PATH_LEN-1,".");
   }
 
   flg = PETSC_FALSE;
@@ -371,10 +372,10 @@ PetscErrorCode pTatinLoadFromCheckpointWriteToVTS_Stokes(void)
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Required to know the prefix of the checkpointed files. Set via -file_prefix");
   }
 
-  sprintf(vname,"%s/%s.dmda-velocity",outputpath,prefix);
-  sprintf(pname,"%s/%s.dmda-pressure",outputpath,prefix);
-  sprintf(xuname,"%s/%s.dmda-Xu",outputpath,prefix);
-  sprintf(xpname,"%s/%s.dmda-Xp",outputpath,prefix);
+  PetscSNPrintf(vname,PETSC_MAX_PATH_LEN-1,"%s/%s.dmda-velocity",outputpath,prefix);
+  PetscSNPrintf(pname,PETSC_MAX_PATH_LEN-1,"%s/%s.dmda-pressure",outputpath,prefix);
+  PetscSNPrintf(xuname,PETSC_MAX_PATH_LEN-1,"%s/%s.dmda-Xu",outputpath,prefix);
+  PetscSNPrintf(xpname,PETSC_MAX_PATH_LEN-1,"%s/%s.dmda-Xp",outputpath,prefix);
 
   flg = PETSC_FALSE;
   ierr = PetscOptionsGetString(NULL,NULL,"-file_suffix",suffix,PETSC_MAX_PATH_LEN-1,&flg);CHKERRQ(ierr);
@@ -393,7 +394,7 @@ PetscErrorCode pTatinLoadFromCheckpointWriteToVTS_Stokes(void)
   ierr = PhysCompStokesLoad_DM(vname,pname,&ctx);CHKERRQ(ierr);
   ierr = PhysCompStokesLoad_VP(ctx,xuname,xpname,PETSC_FALSE,&X);CHKERRQ(ierr);
 
-  sprintf(outfilename,"%s",prefix);
+  PetscSNPrintf(outfilename,PETSC_MAX_PATH_LEN-1,"%s",prefix);
   if (flg) {
     //sprintf(outfilename,"%s%s",outfilename,suffix);
     ierr = PetscStrlcat(outfilename,suffix,PETSC_MAX_PATH_LEN-1);CHKERRQ(ierr);
@@ -428,7 +429,7 @@ PetscErrorCode pTatinLoadFromCheckpointWriteToVTS_Energy(void)
   flg = PETSC_FALSE;
   ierr = PetscOptionsGetString(NULL,NULL,"-output_path",outputpath,PETSC_MAX_PATH_LEN-1,&flg);CHKERRQ(ierr);
   if (flg == PETSC_FALSE) {
-    sprintf(outputpath,".");
+    PetscSNPrintf(outputpath,PETSC_MAX_PATH_LEN-1,".");
   }
 
   flg = PETSC_FALSE;
@@ -455,7 +456,7 @@ PetscErrorCode pTatinLoadFromCheckpointWriteToVTS_Energy(void)
   ierr = DMDACreateOverlappingQ1FromQ2(dmu,1,&dmT);CHKERRQ(ierr);
 
   ierr = DMCreateGlobalVector(dmT,&X);CHKERRQ(ierr);
-  sprintf(tname,"%s/%s.dmda-energy.temperature.vec",outputpath,prefix);
+  PetscSNPrintf(tname,PETSC_MAX_PATH_LEN-1,"%s/%s.dmda-energy.temperature.vec",outputpath,prefix);
   ierr = pTatinVecFieldRead(tname,PETSC_FALSE,X);CHKERRQ(ierr);
 
   PetscSNPrintf(vtkfilename,PETSC_MAX_PATH_LEN-1,"%s_energy",prefix);
@@ -485,7 +486,7 @@ PetscErrorCode pTatinLoadFromCheckpointWriteToVTS_MarkerCellFieldsP0(void)
   flg = PETSC_FALSE;
   ierr = PetscOptionsGetString(NULL,NULL,"-output_path",outputpath,PETSC_MAX_PATH_LEN-1,&flg);CHKERRQ(ierr);
   if (flg == PETSC_FALSE) {
-    sprintf(outputpath,".");
+    PetscSNPrintf(outputpath,PETSC_MAX_PATH_LEN-1,".");
   }
 
   flg = PETSC_FALSE;
@@ -531,6 +532,9 @@ PetscErrorCode pTatinLoadFromCheckpointWriteToVTS_MarkerCellFieldsP0(void)
   hasfield = PETSC_FALSE; PetscOptionsGetBool(NULL,NULL,"-markercellp0_heat_source",&hasfield,NULL);
   if (hasfield) { varlist[nvars] = MPV_heat_source; nvars++; }
 
+  hasfield = PETSC_FALSE; PetscOptionsGetBool(NULL,NULL,"-markercellp0_damage",&hasfield,NULL);
+  if (hasfield) { varlist[nvars] = MPV_damage; nvars++; }
+
   if (nvars == 0) {
     PetscPrintf(PETSC_COMM_WORLD,"No marker fields to project were specified. Use one (or several) of the following command line arguments:"
                 "  -markercellp0_region\n"
@@ -539,7 +543,8 @@ PetscErrorCode pTatinLoadFromCheckpointWriteToVTS_MarkerCellFieldsP0(void)
                 "  -markercellp0_plastic_strain\n"
                 "  -markercellp0_yield_indicator\n"
                 "  -markercellp0_diffusivity\n"
-                "  -markercellp0_heat_source\n");
+                "  -markercellp0_heat_source\n"
+                "  -markercellp0_damage\n");
 
     SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"You must specify at least one marker field to project");
   }

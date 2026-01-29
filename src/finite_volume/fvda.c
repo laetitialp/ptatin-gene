@@ -2454,44 +2454,33 @@ PetscErrorCode eval_F_upwind_local(FVDA fv,const PetscReal domain_geom_coor[],co
     
     if (v_n > 0.0) { /* outflow */
       F[c_m] += flux * dS; // cell[-]
-      
-      //printf("face %d bc <out> %+1.4e %+1.4e %+1.4e\n",f,fv->face_centroid[3*f+0],fv->face_centroid[3*f+1],fv->face_centroid[3*f+2]);
     } else { /* inflow */
+      
       switch (bctype) {
-          
-        /* Weak imposition of Dirichlet */
+        
         case FVFLUX_DIRICHLET_CONSTRAINT:
         {
-          PetscReal X_bc;
-          
-          X_bc  = bcvalue;
-          X_p   = 2.0 * X_bc - X_m;
-          flux  = v_n * X_p;
-          F[c_m] += flux * dS;
-          
-          //F[c_m] = (X_m - X_bc); /* strong */
-          
-          //printf("bc <dirichlet> %+1.4e %+1.4e %+1.4e\n",fv->face_centroid[3*f+0],fv->face_centroid[3*f+1],fv->face_centroid[3*f+2]);
-          /*
-           printf("bc <inflow-dirichlet> f %d: facetype %d : coor %+1.4e %+1.4e %+1.4e : bc_val %+1.4e\n",
-           f,(int)fv->face_type[f],
-           fv->face_centroid[3*f+0],fv->face_centroid[3*f+1],fv->face_centroid[3*f+2],X_bc);
-           */
+          PetscReal g_D = bcvalue;
+          X_p = 2.0 * g_D - X_m;
+          flux = v_n * X_p;
         }
           break;
-          
+        
         case FVFLUX_NEUMANN_CONSTRAINT:
         {
-          PetscReal iflux = bcvalue;
-          
-          F[c_m] += iflux * dS;
+          /* What to do with non-zero flux?? */
+          PetscReal g_N = bcvalue;
+          X_p = (0.0) * g_N + X_m;
+          flux = v_n * X_p;
         }
-          
           break;
           
         default:
+          PetscPrintf(PETSC_COMM_SELF,"[F][inflow] face %D bc not set. Should set one of Dirichlet or Neumann. Assuming zero flux\n",f);
+          flux = 0.0;
           break;
       }
+      F[c_m] += flux * dS;
       
     }
   }
@@ -2577,30 +2566,39 @@ PetscErrorCode eval_F_central_local(FVDA fv,const PetscReal domain_geom_coor[],c
       */
       F[c_m] += flux * dS; // cell[-]
     } else { /* inflow */
+      PetscReal X_avg;
+      
       switch (bctype) {
+          
         case FVFLUX_DIRICHLET_CONSTRAINT:
         { /* Weak imposition of Dirichlet */
-          PetscReal X_bc,X_avg;
+          PetscReal g_D = bcvalue;
           
-          X_bc  = bcvalue;
-          X_p   = 2.0 * X_bc - X_m;
+          X_p = 2.0 * g_D - X_m;
+          
           X_avg = 0.5 * (X_p + X_m);
           flux  = v_n * X_avg;
-          F[c_m] += flux * dS;
         }
           break;
           
         case FVFLUX_NEUMANN_CONSTRAINT:
         { /* Weak imposition of Neumann */
-          PetscReal iflux = bcvalue;
+          /* What to do with non-zero flux?? */
+          PetscReal g_N = bcvalue;
+          X_p = (0.0) * g_N + X_m;
           
-          F[c_m] += iflux * dS;
+          X_avg = 0.5 * (X_p + X_m);
+          flux  = v_n * X_avg;
         }
           break;
           
         default:
+          PetscPrintf(PETSC_COMM_SELF,"[F][inflow] face %D bc not set. Should set one of Dirichlet or Neumann. Assuming zero flux\n",f);
+          flux = 0.0;
           break;
       }
+      F[c_m] += flux * dS;
+      
     }
   }
   PetscFunctionReturn(0);
@@ -2696,30 +2694,31 @@ PetscErrorCode eval_F_diffusion_7point_local(FVDA fv,const PetscReal domain_geom
     dsn = PetscSqrtReal(dsn);
     
     switch (bctype) {
-        
-      /* Weak imposition of Dirichlet */
       case FVFLUX_DIRICHLET_CONSTRAINT:
-      {
-        PetscReal X_bc;
+      { /* Weak imposition of Dirichlet */
+        PetscReal g_D = bcvalue;
         
-        X_bc  = bcvalue;
-        X_p   = 2.0 * X_bc - X_m;
+        X_p = 2.0 * g_D - X_m;
+        
         flux = k_face * (X_p - X_m) / dsn;
-        F[c_m] += flux * dS;
       }
         break;
         
       case FVFLUX_NEUMANN_CONSTRAINT:
-      {
-        PetscReal iflux = bcvalue;
+      { /* Weak imposition of Neumann */
+        PetscReal g_N = bcvalue;
+        X_p = (dsn/k_face) * g_N + X_m;
         
-        F[c_m] += iflux * dS;
+        flux = k_face * (X_p - X_m) / dsn;
       }
         break;
-        
+
       default:
+        PetscPrintf(PETSC_COMM_SELF,"[F][Diffusive flux] face %D bc not set. Should set one of Dirichlet or Neumann. Assuming zero flux\n",f);
+        flux = 0.0;
         break;
     }
+    F[c_m] += flux * dS;
   }
   
   
@@ -2929,17 +2928,18 @@ PetscErrorCode eval_J_upwind_local(FVDA fv,const PetscReal domain_geom_coor[],co
     switch (bctype) {
       /* Weak imposition of Dirichlet */
       case FVFLUX_DIRICHLET_CONSTRAINT:
-        //X_bc  = bcvalue;
-        //X_p   = 2.0 * X_bc - X_m;
-        //flux  = v_n * X_p;
-        //F[c_m] += flux * dS;
+        //X_p   = 2.0 * g_D - X_m;
+        //flux  = v_n * X_p = v_n ( 2 g_D - X_m );
         ierr = MatSetValueLocal(J, c_m, c_m, -1.0 * v_n * dS * scalefactor, ADD_VALUES);CHKERRQ(ierr);
         break;
       case FVFLUX_NEUMANN_CONSTRAINT:
-        //F[c_m] += bcvalue * dS;
-        //ierr = MatSetValue(J, c_m, c_m, bcvalue * dS * scalefactor, ADD_VALUES);CHKERRQ(ierr);
+        //X_p   = (dL/kface) * g_N + X_m;
+        //flux  = v_n * X_p = v_n ( (dL/kface) * g_N + X_m );
+        ierr = MatSetValueLocal(J, c_m, c_m, 1.0 * v_n * dS * scalefactor, ADD_VALUES);CHKERRQ(ierr);
         break;
       default:
+        PetscPrintf(PETSC_COMM_SELF,"[J][inflow] face %D bc not set. Should set one of Dirichlet or Neumann. Assuming zero flux\n",f);
+        ierr = MatSetValueLocal(J, c_m, c_m, 1.0 * v_n * dS * scalefactor, ADD_VALUES);CHKERRQ(ierr);
         break;
     }
   }
@@ -3044,16 +3044,16 @@ PetscErrorCode eval_J_diffusion_7point_local(FVDA fv,const PetscReal domain_geom
     switch (bctype) {
       /* Weak imposition of Dirichlet */
       case FVFLUX_DIRICHLET_CONSTRAINT:
-        //X_bc  = bcvalue;
-        //X_p   = 2.0 * X_bc - X_m;
-        //flux = k_face * (X_p - X_m) / dsn;
-        //F[c_m] += flux * dA;
+        //X_p   = 2.0 * g_D - X_m;
+        //flux = k_face * (X_p - X_m) / dsn = (k_face/dsn) * (2 g_D - X_m - X_m)
         ierr = MatSetValueLocal(J, c_m, c_m, -2.0 * k_face * dS/dsn, ADD_VALUES);CHKERRQ(ierr);
         break;
       case FVFLUX_NEUMANN_CONSTRAINT:
-        //F[c_m] += bcvalue * dS;
+        //X_p   = (dsn/k_face) * g_N + X_m;
+        //flux = (k_face/dsn) * (X_p - X_m) = (k_face/dsn) * ((dsn/k_face) * g_N + X_m - X_m) = 0
         break;
       default:
+        PetscPrintf(PETSC_COMM_SELF,"[J][Diffusive flux] face %D bc not set. Should set one of Dirichlet or Neumann. Assuming zero flux\n",f);
         break;
     }
   }
@@ -3329,28 +3329,34 @@ PetscErrorCode eval_F_upwind_hr_local_2reconstructions(FVDA fv,const PetscReal d
 
       F[c_m] += flux_hr * dS; // cell[-]
     } else { /* inflow */
+      
       switch (bctype) {
-        /* Weak imposition of Dirichlet */
+          
         case FVFLUX_DIRICHLET_CONSTRAINT:
         {
-          PetscReal X_bc;
+          PetscReal g_D = bcvalue;
+          X_p = 2.0 * g_D - X_m;
           
-          X_bc  = bcvalue;
-          X_p   = 2.0 * X_bc - X_m;
-          flux  = v_n * X_p;
-          F[c_m] += flux * dS;
+          flux = v_n * X_p;
         }
           break;
+          
         case FVFLUX_NEUMANN_CONSTRAINT:
         {
-          PetscReal iflux = bcvalue;
+          /* What to do with non-zero flux?? */
+          PetscReal g_N = bcvalue;
+          X_p = (0.0) * g_N + X_m;
           
-          F[c_m] += iflux * dS;
+          flux = v_n * X_p;
         }
           break;
+          
         default:
+          PetscPrintf(PETSC_COMM_SELF,"[F][inflow] face %D bc not set. Should set one of Dirichlet or Neumann. Assuming zero flux\n",f);
+          flux = 0.0;
           break;
       }
+      F[c_m] += flux * dS;
     }
   }
   
@@ -3448,27 +3454,31 @@ PetscErrorCode eval_F_upwind_hr_local_SEQ(FVDA fv,const PetscReal domain_geom_co
       F[c_m] += flux_hr * dS; // cell[-]
     } else { /* inflow */
       switch (bctype) {
-          /* Weak imposition of Dirichlet */
         case FVFLUX_DIRICHLET_CONSTRAINT:
         {
-          PetscReal X_bc;
+          PetscReal g_D = bcvalue;
+          X_p = 2.0 * g_D - X_m;
           
-          X_bc  = bcvalue;
-          X_p   = 2.0 * X_bc - X_m;
-          flux  = v_n * X_p;
-          F[c_m] += flux * dS;
+          flux = v_n * X_p;
         }
           break;
+          
         case FVFLUX_NEUMANN_CONSTRAINT:
         {
-          PetscReal iflux = bcvalue;
+          /* What to do with non-zero flux?? */
+          PetscReal g_N = bcvalue;
+          X_p = (0.0) * g_N + X_m;
           
-          F[c_m] += iflux * dS;
+          flux = v_n * X_p;
         }
           break;
+          
         default:
+          PetscPrintf(PETSC_COMM_SELF,"[F][inflow] face %D bc not set. Should set one of Dirichlet or Neumann. Assuming zero flux\n",f);
+          flux = 0.0;
           break;
       }
+      F[c_m] += flux * dS;
     }
   }
   PetscFunctionReturn(0);
@@ -3607,27 +3617,32 @@ PetscErrorCode eval_F_upwind_hr_local_MPI(FVDA fv,const PetscReal domain_geom_co
       F[c_m] += flux_hr * dS; // cell[-]
     } else { /* inflow */
       switch (bctype) {
-          /* Weak imposition of Dirichlet */
+          
         case FVFLUX_DIRICHLET_CONSTRAINT:
         {
-          PetscReal X_bc;
+          PetscReal g_D = bcvalue;
+          X_p = 2.0 * g_D - X_m;
           
-          X_bc  = bcvalue;
-          X_p   = 2.0 * X_bc - X_m;
-          flux  = v_n * X_p;
-          F[c_m] += flux * dS;
+          flux = v_n * X_p;
         }
           break;
+          
         case FVFLUX_NEUMANN_CONSTRAINT:
         {
-          PetscReal iflux = bcvalue;
+          /* What to do with non-zero flux?? */
+          PetscReal g_N = bcvalue;
+          X_p = (0.0) * g_N + X_m;
           
-          F[c_m] += iflux * dS;
+          flux = v_n * X_p;
         }
           break;
+          
         default:
+          PetscPrintf(PETSC_COMM_SELF,"[F][inflow] face %D bc not set. Should set one of Dirichlet or Neumann. Assuming zero flux\n",f);
+          flux = 0.0;
           break;
       }
+      F[c_m] += flux * dS;
     }
   }
   PetscFunctionReturn(0);
@@ -3841,27 +3856,31 @@ PetscErrorCode eval_F_upwind_hr_bound_local(FVDA fv,const PetscReal range[],cons
       F[c_m] += flux_hr * dS; // cell[-]
     } else { /* inflow */
       switch (bctype) {
-          /* Weak imposition of Dirichlet */
         case FVFLUX_DIRICHLET_CONSTRAINT:
         {
-          PetscReal X_bc;
+          PetscReal g_D = bcvalue;
+          X_p = 2.0 * g_D - X_m;
           
-          X_bc  = bcvalue;
-          X_p   = 2.0 * X_bc - X_m;
-          flux  = v_n * X_p;
-          F[c_m] += flux * dS;
+          flux = v_n * X_p;
         }
           break;
+          
         case FVFLUX_NEUMANN_CONSTRAINT:
         {
-          PetscReal iflux = bcvalue;
+          /* What to do with non-zero flux?? */
+          PetscReal g_N = bcvalue;
+          X_p = (0.0) * g_N + X_m;
           
-          F[c_m] += iflux * dS;
+          flux = v_n * X_p;
         }
           break;
+          
         default:
+          PetscPrintf(PETSC_COMM_SELF,"[F][inflow] face %D bc not set. Should set one of Dirichlet or Neumann. Assuming zero flux\n",f);
+          flux = 0.0;
           break;
       }
+      F[c_m] += flux * dS;
     }
   }
   PetscFunctionReturn(0);
@@ -4006,32 +4025,34 @@ PetscErrorCode eval_F_diffusion_7point_hr_local(FVDA fv,const PetscReal domain_g
       dsn += dl[d]*dl[d];
     }
     dsn = PetscSqrtReal(dsn);
-    
+
     switch (bctype) {
-        
-        /* Weak imposition of Dirichlet */
       case FVFLUX_DIRICHLET_CONSTRAINT:
-      {
-        PetscReal X_bc;
+      { /* Weak imposition of Dirichlet */
+        PetscReal g_D = bcvalue;
         
-        X_bc  = bcvalue;
-        X_p   = 2.0 * X_bc - X_m;
+        X_p = 2.0 * g_D - X_m;
+        
         flux = k_face * (X_p - X_m) / dsn;
-        F[c_m] += flux * dS;
       }
         break;
         
       case FVFLUX_NEUMANN_CONSTRAINT:
-      {
-        PetscReal iflux = bcvalue;
+      { /* Weak imposition of Neumann */
+        PetscReal g_N = bcvalue;
+        X_p = (dsn/k_face) * g_N + X_m;
         
-        F[c_m] += iflux * dS;
+        flux = k_face * (X_p - X_m) / dsn;
       }
         break;
         
       default:
+        PetscPrintf(PETSC_COMM_SELF,"[F][Diffusive flux] face %D bc not set. Should set one of Dirichlet or Neumann. Assuming zero flux\n",f);
+        flux = 0.0;
         break;
     }
+    F[c_m] += flux * dS;
+
   }
   PetscFunctionReturn(0);
 }
@@ -4153,30 +4174,32 @@ PetscErrorCode eval_F_diffusion_7point_hr_local_store(FVDA fv,const PetscReal do
     dsn = PetscSqrtReal(dsn);
     
     switch (bctype) {
-        
-        /* Weak imposition of Dirichlet */
       case FVFLUX_DIRICHLET_CONSTRAINT:
-      {
-        PetscReal X_bc;
+      { /* Weak imposition of Dirichlet */
+        PetscReal g_D = bcvalue;
         
-        X_bc  = bcvalue;
-        X_p   = 2.0 * X_bc - X_m;
+        X_p = 2.0 * g_D - X_m;
+        
         flux = k_face * (X_p - X_m) / dsn;
-        F[c_m] += flux * dS;
       }
         break;
         
       case FVFLUX_NEUMANN_CONSTRAINT:
-      {
-        PetscReal iflux = bcvalue;
+      { /* Weak imposition of Neumann */
+        PetscReal g_N = bcvalue;
+        X_p = (dsn/k_face) * g_N + X_m;
         
-        F[c_m] += iflux * dS;
+        flux = k_face * (X_p - X_m) / dsn;
       }
         break;
         
       default:
+        PetscPrintf(PETSC_COMM_SELF,"[F][Diffusive flux] face %D bc not set. Should set one of Dirichlet or Neumann. Assuming zero flux\n",f);
+        flux = 0.0;
         break;
     }
+    F[c_m] += flux * dS;
+    
   }
   ierr = PetscFree(coeff);CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -4375,30 +4398,32 @@ PetscErrorCode eval_F_diffusion_7point_hr_local_store_MPI(FVDA fv,const PetscRea
     dsn = PetscSqrtReal(dsn);
     
     switch (bctype) {
-        
-        /* Weak imposition of Dirichlet */
       case FVFLUX_DIRICHLET_CONSTRAINT:
-      {
-        PetscReal X_bc;
+      { /* Weak imposition of Dirichlet */
+        PetscReal g_D = bcvalue;
         
-        X_bc  = bcvalue;
-        X_p   = 2.0 * X_bc - X_m;
+        X_p = 2.0 * g_D - X_m;
+        
         flux = k_face * (X_p - X_m) / dsn;
-        F[c_m] += flux * dS;
       }
         break;
         
       case FVFLUX_NEUMANN_CONSTRAINT:
-      {
-        PetscReal iflux = bcvalue;
+      { /* Weak imposition of Neumann */
+        PetscReal g_N = bcvalue;
+        X_p = (dsn/k_face) * g_N + X_m;
         
-        F[c_m] += iflux * dS;
+        flux = k_face * (X_p - X_m) / dsn;
       }
         break;
         
       default:
+        PetscPrintf(PETSC_COMM_SELF,"[F][Diffusive flux] face %D bc not set. Should set one of Dirichlet or Neumann. Assuming zero flux\n",f);
+        flux = 0.0;
         break;
     }
+    F[c_m] += flux * dS;
+    
   }
   ierr = PetscFree(coeff);CHKERRQ(ierr);
   PetscFunctionReturn(0);

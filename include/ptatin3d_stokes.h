@@ -35,6 +35,8 @@
 #include "QPntVolCoefStokes_def.h"
 #include "QPntSurfCoefStokes_def.h"
 #include "dmda_bcs.h"
+#include "mesh_entity.h"
+#include "surfbclist.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,6 +53,7 @@ PetscErrorCode PhysCompCreateMesh_Stokes3d(const PetscInt mx,const PetscInt my,c
 PetscErrorCode PhysCompCreateBoundaryList_Stokes(PhysCompStokes ctx);
 PetscErrorCode PhysCompCreateVolumeQuadrature_Stokes(PhysCompStokes ctx);
 PetscErrorCode PhysCompCreateSurfaceQuadrature_Stokes(PhysCompStokes ctx);
+PetscErrorCode PhysCompCreateSurfaceBoundaryList_Stokes(PhysCompStokes ctx);
 
 PetscErrorCode PhysCompStokesSetGravityUnitVector(PhysCompStokes ctx,PetscReal grav[]);
 PetscErrorCode PhysCompStokesScaleGravityVector(PhysCompStokes ctx,PetscReal fac);
@@ -67,13 +70,10 @@ PetscErrorCode VolumeQuadratureCreate_GaussLegendreStokes(PetscInt nsd,PetscInt 
 PetscErrorCode VolumeQuadratureGetAllCellData_Stokes(Quadrature Q,QPntVolCoefStokes *coeffs[]);
 PetscErrorCode VolumeQuadratureGetCellData_Stokes(Quadrature Q,QPntVolCoefStokes coeffs[],PetscInt cidx,QPntVolCoefStokes *cell[]);
 
-PetscErrorCode SurfaceQuadratureCreate_GaussLegendreStokes(DM da,HexElementFace index,SurfaceQuadrature *quadrature);
-PetscErrorCode SurfaceQuadratureGeometrySetUpStokes(SurfaceQuadrature Q,DM da);
-PetscErrorCode SurfaceQuadratureOrientationSetUpStokes(SurfaceQuadrature Q,DM da);
+PetscErrorCode SurfaceQuadratureCreate_GaussLegendreStokes(DM da,SurfaceQuadrature *quadrature);
+PetscErrorCode SurfaceQuadratureGeometryUpdate_Stokes(SurfaceQuadrature Q,MeshFacetInfo mfi);
 PetscErrorCode SurfaceQuadratureGetAllCellData_Stokes(SurfaceQuadrature Q,QPntSurfCoefStokes *coeffs[]);
 PetscErrorCode SurfaceQuadratureGetCellData_Stokes(SurfaceQuadrature Q,QPntSurfCoefStokes coeffs[],PetscInt cidx,QPntSurfCoefStokes *cell[]);
-
-PetscErrorCode SurfaceQuadratureOrientationViewGnuplotStokes(SurfaceQuadrature Q,DM da,const char name[]);
 
 PetscErrorCode SNESStokes_ConvergenceTest_UPstol(SNES snes,PetscInt it,PetscReal xnorm,PetscReal snorm,PetscReal fnorm,SNESConvergedReason *reason,void *dummy);
 PetscErrorCode SNESStokes_SetConvergenceTest_UPstol(SNES snes,pTatinCtx user);
@@ -91,9 +91,13 @@ PetscErrorCode PhysCompStokesGetDMs(PhysCompStokes stokes,DM *dmv,DM *dmp);
 PetscErrorCode PhysCompStokesGetBCList(PhysCompStokes stokes,BCList *ulist,BCList *plist);
 PetscErrorCode PhysCompStokesGetVolumeQuadrature(PhysCompStokes stokes,Quadrature *q);
 PetscErrorCode PhysCompStokesGetVolumeQuadratureAllCellData(PhysCompStokes stokes,QPntVolCoefStokes *coeffs[]);
-PetscErrorCode PhysCompStokesGetSurfaceQuadrature(PhysCompStokes stokes,HexElementFace fid,SurfaceQuadrature *sq);
-PetscErrorCode PhysCompStokesGetSurfaceQuadratureAllCellData(PhysCompStokes stokes,HexElementFace fid,QPntSurfCoefStokes *coeffs[]);
-  PetscErrorCode PhysCompSetup_Stokes(PhysCompStokes ctx,DM dav);
+
+PetscErrorCode PhysCompStokesGetSurfaceQuadrature(PhysCompStokes stokes,SurfaceQuadrature *sq);
+PetscErrorCode PhysCompStokesGetSurfaceQuadratureAllCellData(PhysCompStokes stokes,QPntSurfCoefStokes *coeffs[]);
+PetscErrorCode PhysCompStokesUpdateSurfaceQuadratureGeometry(PhysCompStokes ctx);
+PetscErrorCode PhysCompSetup_Stokes(PhysCompStokes ctx,DM dav);
+PetscErrorCode pTatinPhysCompAttachData_Stokes(pTatinCtx user,Vec X);
+PetscErrorCode pTatinPhysCompGetData_Stokes(pTatinCtx user,Vec *X);
 
 #ifdef __cplusplus
 }

@@ -388,7 +388,7 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
         }
         /* should move assembly into jacobian */
         ierr = MatZeroEntries(Auu);CHKERRQ(ierr);
-        ierr = MatAssemble_StokesA_AUU(Auu,dav_hierarchy[k],u_bclist[k],volQ[k]);CHKERRQ(ierr);
+        ierr = MatAssemble_StokesA_AUU(Auu,dav_hierarchy[k],u_bclist[k],volQ[k],NULL);CHKERRQ(ierr);
 
         operatorA11[k] = Auu;
         operatorB11[k] = Auu;
@@ -408,7 +408,7 @@ PetscErrorCode pTatin3dCreateStokesOperators(PhysCompStokes stokes_ctx,IS is_sto
 
         if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: Re-discretisation :: matrix free operator \n", k);
         ierr = MatA11MFCreate(&A11Ctx);CHKERRQ(ierr);
-        ierr = MatA11MFSetup(A11Ctx,dav_hierarchy[k],volQ[k],u_bclist[k]);CHKERRQ(ierr);
+        ierr = MatA11MFSetup(A11Ctx,dav_hierarchy[k],volQ[k],u_bclist[k],NULL);CHKERRQ(ierr);
 
         ierr = StokesQ2P1CreateMatrix_MFOperator_A11(A11Ctx,&Auu);CHKERRQ(ierr);
         /* memory saving - only need daU IF you want to split A11 into A11uu,A11vv,A11ww */
@@ -637,7 +637,7 @@ PetscErrorCode pTatin3dCreateStokesOperatorsAnestBnest(PhysCompStokes stokes_ctx
         }
         /* should move assembly into jacobian */
         ierr = MatZeroEntries(Auu);CHKERRQ(ierr);
-        ierr = MatAssemble_StokesA_AUU(Auu,dav_hierarchy[k],u_bclist[k],volQ[k]);CHKERRQ(ierr);
+        ierr = MatAssemble_StokesA_AUU(Auu,dav_hierarchy[k],u_bclist[k],volQ[k],NULL);CHKERRQ(ierr);
 
         operatorA11[k] = Auu;
         operatorB11[k] = Auu;
@@ -653,7 +653,7 @@ PetscErrorCode pTatin3dCreateStokesOperatorsAnestBnest(PhysCompStokes stokes_ctx
 
         if (!been_here) PetscPrintf(PETSC_COMM_WORLD,"Level [%D]: Coarse grid type :: Re-discretisation :: matrix free operator \n", k);
         ierr = MatA11MFCreate(&A11Ctx);CHKERRQ(ierr);
-        ierr = MatA11MFSetup(A11Ctx,dav_hierarchy[k],volQ[k],u_bclist[k]);CHKERRQ(ierr);
+        ierr = MatA11MFSetup(A11Ctx,dav_hierarchy[k],volQ[k],u_bclist[k],NULL);CHKERRQ(ierr);
 
         ierr = StokesQ2P1CreateMatrix_MFOperator_A11(A11Ctx,&Auu);CHKERRQ(ierr);
         ierr = MatShellGetMatA11MF(Auu,&mf);CHKERRQ(ierr);
@@ -774,7 +774,7 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
     mp_std    = PField_std->data; /* should write a function to do this */
     mp_stokes = PField_stokes->data; /* should write a function to do this */
 
-    ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,mlctx->nlevels,mlctx->interpolation_eta,mlctx->dav_hierarchy,mlctx->volQ);CHKERRQ(ierr);
+    ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,mlctx->nlevels,mlctx->interpolation_eta,mlctx->dav_hierarchy,mlctx->volQ,NULL,NULL);CHKERRQ(ierr);
   }
 
   /* operator */
@@ -791,7 +791,7 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
     ierr = PetscObjectTypeCompare((PetscObject)Auu,MATSHELL,&is_shell);CHKERRQ(ierr);
     if (!is_shell) {
       ierr = MatZeroEntries(Auu);CHKERRQ(ierr);
-      ierr = MatAssemble_StokesA_AUU(Auu,dau,user->stokes_ctx->u_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
+      ierr = MatAssemble_StokesA_AUU(Auu,dau,user->stokes_ctx->u_bclist,user->stokes_ctx->volQ,user->stokes_ctx->surf_bclist);CHKERRQ(ierr);
     }
 
     ierr = MatDestroy(&Auu);CHKERRQ(ierr);
@@ -813,7 +813,7 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
     ierr = PetscObjectTypeCompare((PetscObject)Buu,MATSHELL,&is_shell);CHKERRQ(ierr);
     if (!is_shell) {
       ierr = MatZeroEntries(Buu);CHKERRQ(ierr);
-      ierr = MatAssemble_StokesA_AUU(Buu,dau,user->stokes_ctx->u_bclist,user->stokes_ctx->volQ);CHKERRQ(ierr);
+      ierr = MatAssemble_StokesA_AUU(Buu,dau,user->stokes_ctx->u_bclist,user->stokes_ctx->volQ,user->stokes_ctx->surf_bclist);CHKERRQ(ierr);
     }
 
     is_shell = PETSC_FALSE;
@@ -858,7 +858,7 @@ PetscErrorCode FormJacobian_StokesMGAuu(SNES snes,Vec X,Mat A,Mat B,void *ctx)
         case OP_TYPE_REDISC_ASM:
         {
           ierr = MatZeroEntries(mlctx->operatorB11[k]);CHKERRQ(ierr);
-          ierr = MatAssemble_StokesA_AUU(mlctx->operatorB11[k],mlctx->dav_hierarchy[k],mlctx->u_bclist[k],mlctx->volQ[k]);CHKERRQ(ierr);
+          ierr = MatAssemble_StokesA_AUU(mlctx->operatorB11[k],mlctx->dav_hierarchy[k],mlctx->u_bclist[k],mlctx->volQ[k],NULL);CHKERRQ(ierr);
 
           ierr = KSPSetOperators(ksp_smoother,mlctx->operatorB11[k],mlctx->operatorB11[k]);CHKERRQ(ierr);
           /* hack for nested coarse solver */
@@ -1096,6 +1096,11 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver(int argc,char **a
   }
   ierr = DMCompositeGetGlobalISs(multipys_pack,&is_stokes_field);CHKERRQ(ierr);
 
+  /* work vector for solution and residual */
+  ierr = DMCreateGlobalVector(multipys_pack,&X);CHKERRQ(ierr);
+  ierr = VecDuplicate(X,&F);CHKERRQ(ierr);
+  ierr = pTatinPhysCompAttachData_Stokes(user,X);CHKERRQ(ierr);
+
   ierr = pTatin3dCreateMaterialPoints(user,dav);CHKERRQ(ierr);
   ierr = pTatinGetMaterialPoints(user,&materialpoint_db,NULL);CHKERRQ(ierr);
   PetscPrintf(PETSC_COMM_WORLD,"Generated material points --> ");
@@ -1106,6 +1111,8 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver(int argc,char **a
 
   ierr = pTatinLogBasicDMDA(user,"Velocity",dav);CHKERRQ(ierr);
   ierr = pTatinLogBasicDMDA(user,"Pressure",dap);CHKERRQ(ierr);
+
+  ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(user->stokes_ctx);CHKERRQ(ierr);
 
   /* generate energy solver */
   /* NOTE - Generating the thermal solver here will ensure that the initial geometry on the mechanical model is copied */
@@ -1194,7 +1201,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver(int argc,char **a
   u_bclist[nlevels-1] = stokes->u_bclist;
 
   /* Coarse grid setup: Configure boundary conditions */
-  ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,dav_hierarchy,model,user);CHKERRQ(ierr);
+  ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,NULL,dav_hierarchy,model,user);CHKERRQ(ierr);
 
   /* set all pointers into mg context */
   mlctx.is_stokes_field     = is_stokes_field;
@@ -1221,19 +1228,11 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver(int argc,char **a
   PetscPrintf(PETSC_COMM_WORLD,"Generated stokes operators --> ");
   pTatinGetRangeCurrentMemoryUsage(NULL);
 
-  /* work vector for solution and residual */
-  ierr = DMCreateGlobalVector(multipys_pack,&X);CHKERRQ(ierr);
-  ierr = VecDuplicate(X,&F);CHKERRQ(ierr);
-
   /* initial condition */
   ierr = pTatinModel_ApplyInitialSolution(model,user,X);CHKERRQ(ierr);
 
     /* initial viscosity  */
   ierr = pTatinModel_ApplyInitialStokesVariableMarkers(model,user,X);CHKERRQ(ierr);
-
-
-  /* [TMP] 3a - Add material */
-  //ierr = pTatinModel_ApplyMaterialBoundaryCondition(model,user);CHKERRQ(ierr);
 
   /* insert boundary conditions into solution vector */
   {
@@ -1484,6 +1483,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver(int argc,char **a
 
     /* update mesh */
     ierr = pTatinModel_UpdateMeshGeometry(model,user,X);CHKERRQ(ierr);
+    ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(user->stokes_ctx);CHKERRQ(ierr);
 
     /* update mesh coordinate hierarchy */
     ierr = DMDARestrictCoordinatesHierarchy(dav_hierarchy,nlevels);CHKERRQ(ierr);
@@ -1492,14 +1492,11 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver(int argc,char **a
     ierr = MaterialPointStd_UpdateCoordinates(user->materialpoint_db,dav_hierarchy[nlevels-1],user->materialpoint_ex);CHKERRQ(ierr);
 
     /* 3a - Add material */
-    ierr = pTatinModel_ApplyMaterialBoundaryCondition(model,user);CHKERRQ(ierr);
     //if ( (step%5 == 0) || (step == 1) ) {
-    //ierr = pTatinModel_ApplyMaterialBoundaryCondition(model,user);CHKERRQ(ierr);
-    //}
-
     /* add / remove points if cells are over populated or depleted of points */
-    ierr = MaterialPointPopulationControl_v1(user);CHKERRQ(ierr);
-
+     ierr = pTatinModel_AdaptMaterialPointResolution(model,user);
+    //}
+	
     /* update markers = >> gauss points */
     {
       int               npoints;
@@ -1515,7 +1512,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver(int argc,char **a
       mp_std    = PField_std->data; /* should write a function to do this */
       mp_stokes = PField_stokes->data; /* should write a function to do this */
 
-      ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,nlevels,interpolation_eta,dav_hierarchy,volQ);CHKERRQ(ierr);
+      ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,nlevels,interpolation_eta,dav_hierarchy,volQ,NULL,NULL);CHKERRQ(ierr);
     }
     if (active_energy) {
       /* copy current (undeformed) energy mesh coords, update energy mesh geometry */
@@ -1532,7 +1529,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver(int argc,char **a
     /* Fine level setup */
     ierr = pTatinModel_ApplyBoundaryCondition(model,user);CHKERRQ(ierr);
     /* Coarse grid setup: Configure boundary conditions */
-    ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,dav_hierarchy,model,user);CHKERRQ(ierr);
+    ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,NULL,dav_hierarchy,model,user);CHKERRQ(ierr);
 
     /* solve energy equation */
     //
@@ -1782,6 +1779,11 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
   }
   ierr = DMCompositeGetGlobalISs(multipys_pack,&is_stokes_field);CHKERRQ(ierr);
 
+  /* work vector for solution and residual */
+  ierr = DMCreateGlobalVector(multipys_pack,&X);CHKERRQ(ierr);
+  ierr = VecDuplicate(X,&F);CHKERRQ(ierr);
+  ierr = pTatinPhysCompAttachData_Stokes(user,X);CHKERRQ(ierr);
+
   ierr = pTatin3dCreateMaterialPoints(user,dav);CHKERRQ(ierr);
   ierr = pTatinGetMaterialPoints(user,&materialpoint_db,NULL);CHKERRQ(ierr);
   PetscPrintf(PETSC_COMM_WORLD,"Generated material points --> ");
@@ -1792,6 +1794,8 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
 
   ierr = pTatinLogBasicDMDA(user,"Velocity",dav);CHKERRQ(ierr);
   ierr = pTatinLogBasicDMDA(user,"Pressure",dap);CHKERRQ(ierr);
+
+  ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(user->stokes_ctx);CHKERRQ(ierr);
 
   /* generate energy solver */
   /* NOTE - Generating the thermal solver here will ensure that the initial geometry on the mechanical model is copied */
@@ -1880,7 +1884,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
   u_bclist[nlevels-1] = stokes->u_bclist;
 
   /* Coarse grid setup: Configure boundary conditions */
-  ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,dav_hierarchy,model,user);CHKERRQ(ierr);
+  ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,NULL,dav_hierarchy,model,user);CHKERRQ(ierr);
 
   /* set all pointers into mg context */
   mlctx.is_stokes_field     = is_stokes_field;
@@ -1902,10 +1906,6 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
   /* ============================================== */
   PetscPrintf(PETSC_COMM_WORLD,"Generated stokes operators --> ");
   pTatinGetRangeCurrentMemoryUsage(NULL);
-
-  /* work vector for solution and residual */
-  ierr = DMCreateGlobalVector(multipys_pack,&X);CHKERRQ(ierr);
-  ierr = VecDuplicate(X,&F);CHKERRQ(ierr);
 
   /* initial condition */
   ierr = pTatinModel_ApplyInitialSolution(model,user,X);CHKERRQ(ierr);
@@ -2269,6 +2269,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
 
     /* update mesh */
     ierr = pTatinModel_UpdateMeshGeometry(model,user,X);CHKERRQ(ierr);
+    ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(user->stokes_ctx);CHKERRQ(ierr);
 
     /* update mesh coordinate hierarchy */
     ierr = DMDARestrictCoordinatesHierarchy(dav_hierarchy,nlevels);CHKERRQ(ierr);
@@ -2277,14 +2278,11 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
     ierr = MaterialPointStd_UpdateCoordinates(user->materialpoint_db,dav_hierarchy[nlevels-1],user->materialpoint_ex);CHKERRQ(ierr);
 
     /* 3a - Add material */
-    ierr = pTatinModel_ApplyMaterialBoundaryCondition(model,user);CHKERRQ(ierr);
     //if ( (step%5 == 0) || (step == 1) ) {
-    //ierr = pTatinModel_ApplyMaterialBoundaryCondition(model,user);CHKERRQ(ierr);
-    //}
-
     /* add / remove points if cells are over populated or depleted of points */
-    ierr = MaterialPointPopulationControl_v1(user);CHKERRQ(ierr);
-
+    ierr = pTatinModel_AdaptMaterialPointResolution(model,user);CHKERRQ(ierr);
+    //}
+	
     /* update markers = >> gauss points */
     {
       int               npoints;
@@ -2300,7 +2298,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
       mp_std    = PField_std->data; /* should write a function to do this */
       mp_stokes = PField_stokes->data; /* should write a function to do this */
 
-      ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,nlevels,interpolation_eta,dav_hierarchy,volQ);CHKERRQ(ierr);
+      ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,nlevels,interpolation_eta,dav_hierarchy,volQ,NULL,NULL);CHKERRQ(ierr);
     }
     if (active_energy) {
       /* copy current (undeformed) energy mesh coords, update energy mesh geometry */
@@ -2317,7 +2315,7 @@ PetscErrorCode pTatin3d_nonlinear_viscous_forward_model_driver_v1(int argc,char 
     /* Fine level setup */
     ierr = pTatinModel_ApplyBoundaryCondition(model,user);CHKERRQ(ierr);
     /* Coarse grid setup: Configure boundary conditions */
-    ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,dav_hierarchy,model,user);CHKERRQ(ierr);
+    ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,NULL,dav_hierarchy,model,user);CHKERRQ(ierr);
 
     /* solve energy equation */
     //
@@ -2559,6 +2557,11 @@ PetscErrorCode experimental_pTatin3d_nonlinear_viscous_forward_model_driver(int 
   }
   ierr = DMCompositeGetGlobalISs(multipys_pack,&is_stokes_field);CHKERRQ(ierr);
 
+  /* work vector for solution and residual */
+  ierr = DMCreateGlobalVector(multipys_pack,&X);CHKERRQ(ierr);
+  ierr = VecDuplicate(X,&F);CHKERRQ(ierr);
+  ierr = pTatinPhysCompAttachData_Stokes(user,X);CHKERRQ(ierr);
+
   ierr = pTatin3dCreateMaterialPoints(user,dav);CHKERRQ(ierr);
   ierr = pTatinGetMaterialPoints(user,&materialpoint_db,NULL);CHKERRQ(ierr);
   PetscPrintf(PETSC_COMM_WORLD,"Generated material points --> ");
@@ -2569,6 +2572,8 @@ PetscErrorCode experimental_pTatin3d_nonlinear_viscous_forward_model_driver(int 
 
   ierr = pTatinLogBasicDMDA(user,"Velocity",dav);CHKERRQ(ierr);
   ierr = pTatinLogBasicDMDA(user,"Pressure",dap);CHKERRQ(ierr);
+
+  ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(user->stokes_ctx);CHKERRQ(ierr);
 
   /* generate energy solver */
   /* NOTE - Generating the thermal solver here will ensure that the initial geometry on the mechanical model is copied */
@@ -2657,7 +2662,7 @@ PetscErrorCode experimental_pTatin3d_nonlinear_viscous_forward_model_driver(int 
   u_bclist[nlevels-1] = stokes->u_bclist;
 
   /* Coarse grid setup: Configure boundary conditions */
-  ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,dav_hierarchy,model,user);CHKERRQ(ierr);
+  ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,NULL,dav_hierarchy,model,user);CHKERRQ(ierr);
 
   /* set all pointers into mg context */
   mlctx.is_stokes_field     = is_stokes_field;
@@ -2684,18 +2689,11 @@ PetscErrorCode experimental_pTatin3d_nonlinear_viscous_forward_model_driver(int 
   PetscPrintf(PETSC_COMM_WORLD,"Generated stokes operators --> ");
   pTatinGetRangeCurrentMemoryUsage(NULL);
 
-  /* work vector for solution and residual */
-  ierr = DMCreateGlobalVector(multipys_pack,&X);CHKERRQ(ierr);
-  ierr = VecDuplicate(X,&F);CHKERRQ(ierr);
-
   /* initial condition */
   ierr = pTatinModel_ApplyInitialSolution(model,user,X);CHKERRQ(ierr);
 
   /* initial viscosity  */
   ierr = pTatinModel_ApplyInitialStokesVariableMarkers(model,user,X);CHKERRQ(ierr);
-
-  /* [TMP] 3a - Add material */
-  //ierr = pTatinModel_ApplyMaterialBoundaryCondition(model,user);CHKERRQ(ierr);
 
   /* insert boundary conditions into solution vector */
   {
@@ -2917,6 +2915,7 @@ PetscErrorCode experimental_pTatin3d_nonlinear_viscous_forward_model_driver(int 
 
     /* update mesh */
     ierr = pTatinModel_UpdateMeshGeometry(model,user,X);CHKERRQ(ierr);
+    ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(user->stokes_ctx);CHKERRQ(ierr);
 
     /* update mesh coordinate hierarchy */
     ierr = DMDARestrictCoordinatesHierarchy(dav_hierarchy,nlevels);CHKERRQ(ierr);
@@ -2925,14 +2924,11 @@ PetscErrorCode experimental_pTatin3d_nonlinear_viscous_forward_model_driver(int 
     ierr = MaterialPointStd_UpdateCoordinates(user->materialpoint_db,dav_hierarchy[nlevels-1],user->materialpoint_ex);CHKERRQ(ierr);
 
     /* 3a - Add material */
-    ierr = pTatinModel_ApplyMaterialBoundaryCondition(model,user);CHKERRQ(ierr);
     //if ( (step%5 == 0) || (step == 1) ) {
-    //ierr = pTatinModel_ApplyMaterialBoundaryCondition(model,user);CHKERRQ(ierr);
-    //}
-
     /* add / remove points if cells are over populated or depleted of points */
-    ierr = MaterialPointPopulationControl_v1(user);CHKERRQ(ierr);
-
+    ierr = pTatinModel_AdaptMaterialPointResolution(model,user);CHKERRQ(ierr);
+    //}
+	
     /* update markers = >> gauss points */
     {
       int               npoints;
@@ -2948,7 +2944,7 @@ PetscErrorCode experimental_pTatin3d_nonlinear_viscous_forward_model_driver(int 
       mp_std    = PField_std->data; /* should write a function to do this */
       mp_stokes = PField_stokes->data; /* should write a function to do this */
 
-      ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,nlevels,interpolation_eta,dav_hierarchy,volQ);CHKERRQ(ierr);
+      ierr = SwarmUpdateGaussPropertiesLocalL2Projection_Q1_MPntPStokes_Hierarchy(user->coefficient_projection_type,npoints,mp_std,mp_stokes,nlevels,interpolation_eta,dav_hierarchy,volQ,NULL,NULL);CHKERRQ(ierr);
     }
     if (active_energy) {
       /* copy current (undeformed) energy mesh coords, update energy mesh geometry */
@@ -2965,7 +2961,7 @@ PetscErrorCode experimental_pTatin3d_nonlinear_viscous_forward_model_driver(int 
     /* Fine level setup */
     ierr = pTatinModel_ApplyBoundaryCondition(model,user);CHKERRQ(ierr);
     /* Coarse grid setup: Configure boundary conditions */
-    ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,dav_hierarchy,model,user);CHKERRQ(ierr);
+    ierr = pTatinModel_ApplyBoundaryConditionMG(nlevels,u_bclist,NULL,dav_hierarchy,model,user);CHKERRQ(ierr);
 
     /* solve energy equation */
     //

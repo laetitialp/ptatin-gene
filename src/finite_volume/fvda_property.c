@@ -240,6 +240,36 @@ PetscErrorCode FVDAGetFacePropertyByNameArray(FVDA fv,const char name[],PetscRea
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode FVDACellPropertyQuery(FVDA fv,const char name[],PetscBool *found)
+{
+  PetscErrorCode ierr;
+  PetscInt       c;
+  PetscFunctionBegin;
+  *found = PETSC_FALSE;
+  if (!fv->setup) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Must call FVDASetUp() first");
+  for (c=0; c<fv->ncoeff_cell; c++) {
+    PetscBool match = PETSC_FALSE;
+    ierr = PetscStrcmp(name,fv->cell_coeff_name[c],&match);CHKERRQ(ierr);
+    if (match) { *found = PETSC_TRUE; break; }
+  }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode FVDAFacePropertyQuery(FVDA fv,const char name[],PetscBool *found)
+{
+  PetscErrorCode ierr;
+  PetscInt       c;
+  PetscFunctionBegin;
+  *found = PETSC_FALSE;
+  if (!fv->setup) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Must call FVDASetUp() first");
+  for (c=0; c<fv->ncoeff_face; c++) {
+    PetscBool match = PETSC_FALSE;
+    ierr = PetscStrcmp(name,fv->face_coeff_name[c],&match);CHKERRQ(ierr);
+    if (match) { *found = PETSC_TRUE; break; }
+  }
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode FVArrayCreate(FVArray *a)
 {
   FVArray        ar;

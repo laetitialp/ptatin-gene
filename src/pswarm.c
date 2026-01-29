@@ -42,6 +42,11 @@
 #include <model_utils.h>
 #include <element_utils_q2.h>
 #include <output_paraview.h>
+#include "ptatin3d_energyfv.h"
+#include "ptatin3d_energyfv_impl.h"
+#include "fvda_impl.h"
+#include "cJSON.h"
+#include "cjson_utils.h"
 
 PetscClassId PSWARM_CLASSID;
 
@@ -90,6 +95,7 @@ PetscErrorCode PSwarmInitializePackage(void)
 
 PetscErrorCode PSwarmSetOptionsPrefix(PSwarm ps,const char prefix[])
 {
+  PetscFunctionBegin;
   PetscObjectSetOptionsPrefix((PetscObject)ps,prefix);
   PetscFunctionReturn(0);
 }
@@ -109,6 +115,7 @@ PetscErrorCode PSwarmCreate(MPI_Comm comm,PSwarm *ps)
   ierr = PetscMemzero(p->ops, sizeof(struct _PSwarmOps));CHKERRQ(ierr);
 
   p->state = PSW_TS_UNINIT;
+  p->restart = PETSC_FALSE;
 
   DataBucketCreate(&p->db);
   DataBucketRegisterField(p->db,MPntStd_classname,sizeof(MPntStd),NULL);
@@ -143,12 +150,15 @@ PetscErrorCode PSwarmCreateFromPtatinCtx(pTatinCtx pctx,PSwarm *ps)
 
 PetscErrorCode PSwarmSetPtatinCtx(PSwarm ps,pTatinCtx pctx)
 {
+  PetscFunctionBegin;
   ps->pctx = pctx;
+  pctx->pswarm = ps;
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode PSwarmSetDataBucket(PSwarm ps,DataBucket db)
 {
+  PetscFunctionBegin;
   if (ps->db && !ps->db_set_by_user) {
     DataBucketDestroy(&ps->db);
   }
@@ -159,6 +169,7 @@ PetscErrorCode PSwarmSetDataBucket(PSwarm ps,DataBucket db)
 
 PetscErrorCode PSwarmGetDataBucket(PSwarm ps,DataBucket *db)
 {
+  PetscFunctionBegin;
   if (db) { *db = ps->db; }
   PetscFunctionReturn(0);
 }
@@ -166,6 +177,7 @@ PetscErrorCode PSwarmGetDataBucket(PSwarm ps,DataBucket *db)
 PetscErrorCode PSwarmSetDataExchanger(PSwarm ps,DataEx de)
 {
   PetscErrorCode ierr;
+  PetscFunctionBegin;
   if (ps->de && !ps->de_set_by_user) {
     ierr = DataExDestroy(ps->de);CHKERRQ(ierr);
   }
@@ -218,6 +230,7 @@ PetscErrorCode PSwarmViewInfo(PSwarm ps)
   int n_points;
   MPI_Comm comm;
   PetscErrorCode ierr;
+  PetscFunctionBegin;
 
   comm = PetscObjectComm((PetscObject)ps);
   DataBucketGetSizes(ps->db,&n_points,NULL,NULL);
@@ -245,6 +258,9 @@ PetscErrorCode PSwarmViewInfo(PSwarm ps)
   }
   if (ps->ops->field_update_pressure) {
     PetscPrintf(comm,"    Pressure\n");
+  }
+  if (ps->ops->field_update_temperature) {
+    PetscPrintf(comm,"    Temperature\n");
   }
 
   PetscFunctionReturn(0);
@@ -293,19 +309,54 @@ PetscErrorCode PSwarmSetTransportModeType(PSwarm ps,PSwarmTransportModeType type
 }
 
 /* Pressure update functionality */
+PetscErrorCode UpdateTracerPressure(
+  MPntStd           *tracer, 
+  const PetscInt    *elnidx_u, 
+  PetscInt          nen_u,
+  const PetscInt    *elnidx_p,
+  PetscInt          nen_p,
+  const PetscScalar *LA_gcoords,
+  const PetscScalar *LA_pfield,
+  double            *tracer_pressure)
+{
+  double         *xi_p;
+  PetscReal      NIp[P_BASIS_FUNCTIONS],pressure_p;
+  PetscReal      elcoords[3*Q2_NODES_PER_EL_3D],elp[P_BASIS_FUNCTIONS];
+  PetscInt       k,eidx;
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+
+  xi_p = tracer->xi;
+  eidx = (PetscInt)tracer->wil;
+
+  ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx_u[nen_u*eidx],(PetscScalar*)LA_gcoords);CHKERRQ(ierr);
+  ierr = DMDAGetScalarElementField(elp,nen_p,(PetscInt*)&elnidx_p[nen_p*eidx],(PetscScalar*)LA_pfield);CHKERRQ(ierr);
+
+  ConstructNi_pressure(xi_p,elcoords,NIp);
+
+  pressure_p = 0.0;
+  for (k=0; k<P_BASIS_FUNCTIONS; k++) {
+    pressure_p += NIp[k] * elp[k];
+  }
+  *tracer_pressure = pressure_p;
+
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode PSwarmUpdate_Pressure(PSwarm ps,DM dmv,DM dmp,Vec pressure)
 {
-  PetscErrorCode ierr;
-  DataField datafield_tracers,datafield;
-  MPntStd *tracer;
-  double *tracer_pressure;
-  int n_tracers,p;
-  PetscReal elcoords[3*Q2_NODES_PER_EL_3D],elp[P_BASIS_FUNCTIONS];
-  Vec gcoords,pressure_l;
+  DataField         datafield_tracers,datafield;
+  MPntStd           *tracer;
+  Vec               gcoords,pressure_l;
   const PetscScalar *LA_gcoords;
   const PetscScalar *LA_pfield;
-  PetscInt nel,nen_u,nen_p,k;
-  const PetscInt *elnidx_u,*elnidx_p;
+  const PetscInt    *elnidx_u,*elnidx_p;
+  PetscInt          nel,nen_u,nen_p;
+  int               n_tracers,p;
+  double            *tracer_pressure;
+  PetscErrorCode    ierr;
+
+  PetscFunctionBegin;
 
   if (ps->state == PSW_TS_STALE) {
     /* update local coordinates and perform communication */
@@ -331,23 +382,7 @@ PetscErrorCode PSwarmUpdate_Pressure(PSwarm ps,DM dmv,DM dmp,Vec pressure)
 
   DataBucketGetSizes(ps->db,&n_tracers,NULL,NULL);
   for (p=0; p<n_tracers; p++) {
-    double        *xi_p;
-    PetscReal     NIp[P_BASIS_FUNCTIONS],pressure_p;
-    PetscInt      eidx;
-
-    xi_p = tracer[p].xi;
-    eidx = (PetscInt)tracer[p].wil;
-
-    ierr = DMDAGetElementCoordinatesQ2_3D(elcoords,(PetscInt*)&elnidx_u[nen_u*eidx],(PetscScalar*)LA_gcoords);CHKERRQ(ierr);
-    ierr = DMDAGetScalarElementField(elp,nen_p,(PetscInt*)&elnidx_p[nen_p*eidx],(PetscScalar*)LA_pfield);CHKERRQ(ierr);
-
-    ConstructNi_pressure(xi_p,elcoords,NIp);
-
-    pressure_p = 0.0;
-    for (k=0; k<P_BASIS_FUNCTIONS; k++) {
-      pressure_p += NIp[k] * elp[k];
-    }
-    tracer_pressure[p] = pressure_p;
+    ierr = UpdateTracerPressure(&tracer[p],elnidx_u,nen_u,elnidx_p,nen_p,LA_gcoords,LA_pfield,&tracer_pressure[p]);CHKERRQ(ierr);
   }
   ierr = VecRestoreArrayRead(gcoords,&LA_gcoords);CHKERRQ(ierr);
   ierr = VecRestoreArrayRead(pressure_l,&LA_pfield);CHKERRQ(ierr);
@@ -359,6 +394,7 @@ PetscErrorCode PSwarmUpdate_Pressure(PSwarm ps,DM dmv,DM dmp,Vec pressure)
 PetscErrorCode PSwarmSetFieldType_Pressure(PSwarm ps)
 {
   BTruth found;
+  PetscFunctionBegin;
 
   DataBucketQueryDataFieldByName(ps->db,"pressure",&found);
   if (!found) {
@@ -370,6 +406,218 @@ PetscErrorCode PSwarmSetFieldType_Pressure(PSwarm ps)
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode UpdateTracerTemperature(
+  PhysCompEnergyFV  energy, 
+  MPntStd           *tracer, 
+  PetscInt          fv_ghost_offset[],
+  PetscInt          fv_ghost_range[],
+  const PetscReal   *_fv_coor,
+  const PetscScalar *LA_temperature_l,
+  double            *tracer_temperature)
+{
+  FVReconstructionCell rcell; 
+  PetscInt             sub_fv_cell,macro_ijk[3],macro_fv_ijk[3],ijk[3];
+  PetscInt             eidx;
+  double               *xi_p,T_mp;
+  PetscErrorCode       ierr;
+  PetscFunctionBegin;
+
+  xi_p = tracer->xi;
+  eidx = (PetscInt)tracer->wil;
+
+  /* Interpolate the temperature */
+  T_mp = 0.0;
+  /* P0 */
+  ptatin_macro_point_location_sub(eidx,energy->mi_parent,energy->nsubdivision,xi_p,&sub_fv_cell);
+  ierr = _cart_convert_index_to_ijk(eidx,energy->mi_parent,macro_ijk);CHKERRQ(ierr);
+  ierr = _cart_convert_index_to_ijk(sub_fv_cell,energy->nsubdivision,macro_fv_ijk);CHKERRQ(ierr);
+  ijk[0] = fv_ghost_offset[0] + macro_ijk[0] * energy->nsubdivision[0] + macro_fv_ijk[0];
+  ijk[1] = fv_ghost_offset[1] + macro_ijk[1] * energy->nsubdivision[1] + macro_fv_ijk[1];
+  ijk[2] = fv_ghost_offset[2] + macro_ijk[2] * energy->nsubdivision[2] + macro_fv_ijk[2];
+        
+  ierr = _cart_convert_ijk_to_index(ijk,fv_ghost_range,&sub_fv_cell);CHKERRQ(ierr);
+  T_mp = LA_temperature_l[sub_fv_cell];
+  ierr = FVReconstructionP1Create(&rcell,energy->fv,sub_fv_cell,_fv_coor,LA_temperature_l);CHKERRQ(ierr);
+  ierr = FVReconstructionP1Interpolate(&rcell,tracer->coor,&T_mp);CHKERRQ(ierr);
+  *tracer_temperature = T_mp;
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode PSwarmUpdate_TemperatureFV(PSwarm ps, PhysCompEnergyFV energy, DM dmv)
+{
+  DataField         datafield_tracers,datafield;
+  MPntStd           *tracer;
+  DM                daT;
+  Vec               temperature,temperature_l;
+  Vec               fv_coor_local;
+  const PetscScalar *LA_temperature_l;
+  const PetscReal   *_fv_coor;
+  PetscInt          p,n_tracers;
+  PetscInt          fv_start[3],fv_start_local[3],fv_ghost_offset[3],fv_ghost_range[3];
+  double            *tracer_temperature;
+  PetscErrorCode    ierr;
+
+  PetscFunctionBegin;
+
+  if (ps->state == PSW_TS_STALE) {
+    /* update local coordinates and perform communication */
+    ierr = MaterialPointStd_UpdateCoordinates(ps->db,dmv,ps->de);CHKERRQ(ierr);
+    ps->state = PSW_TS_INSYNC;
+  }
+
+  /* Get tracer */
+  DataBucketGetDataFieldByName(ps->db,MPntStd_classname,&datafield_tracers);
+  DataFieldGetEntries(datafield_tracers,(void**)&tracer);
+  /* Get temperature datafield */
+  DataBucketGetDataFieldByName(ps->db,"temperature",&datafield);
+  DataFieldGetEntries(datafield,(void**)&tracer_temperature);
+  /* Get temperature local vector */
+  daT         = energy->fv->dm_fv;
+  temperature = energy->T;
+  ierr = DMGetLocalVector(daT,&temperature_l);CHKERRQ(ierr);
+  ierr = DMGlobalToLocalBegin(daT,temperature,INSERT_VALUES,temperature_l);CHKERRQ(ierr);
+  ierr = DMGlobalToLocalEnd  (daT,temperature,INSERT_VALUES,temperature_l);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(temperature_l,&LA_temperature_l);CHKERRQ(ierr);
+  
+  /* Get fvda for reconstruction */
+  ierr = DMDAGetCorners(energy->fv->dm_fv,&fv_start[0],&fv_start[1],&fv_start[2],NULL,NULL,NULL);CHKERRQ(ierr);
+  ierr = DMDAGetGhostCorners(energy->fv->dm_fv,&fv_start_local[0],&fv_start_local[1],&fv_start_local[2],&fv_ghost_range[0],&fv_ghost_range[1],&fv_ghost_range[2]);CHKERRQ(ierr);
+  fv_ghost_offset[0] = fv_start[0] - fv_start_local[0];
+  fv_ghost_offset[1] = fv_start[1] - fv_start_local[1];
+  fv_ghost_offset[2] = fv_start[2] - fv_start_local[2];
+  
+  ierr = DMGetCoordinatesLocal(energy->fv->dm_fv,&fv_coor_local);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(fv_coor_local,&_fv_coor);CHKERRQ(ierr);
+
+  DataBucketGetSizes(ps->db,&n_tracers,NULL,NULL);
+  for (p=0; p<n_tracers; p++) {
+    ierr = UpdateTracerTemperature(energy,&tracer[p],fv_ghost_offset,fv_ghost_range,_fv_coor,LA_temperature_l,&tracer_temperature[p]);CHKERRQ(ierr);
+  }
+
+  /* Restore arrays and vectors */
+  ierr = VecRestoreArrayRead(fv_coor_local,&_fv_coor);CHKERRQ(ierr);
+  ierr = VecRestoreArrayRead(temperature_l,&LA_temperature_l);CHKERRQ(ierr);
+  ierr = DMRestoreLocalVector(daT,&temperature_l);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode PSwarmSetFieldType_TemperatureFV(PSwarm ps)
+{
+  BTruth found;
+  PetscFunctionBegin;
+
+  DataBucketQueryDataFieldByName(ps->db,"temperature",&found);
+  if (!found) {
+    DataBucketRegisterField(ps->db,"temperature",sizeof(double),NULL);
+    DataBucketFinalize(ps->db);
+  }
+  ps->ops->field_update_temperature = PSwarmUpdate_TemperatureFV;
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode PSwarmUpdate_PressureTemperature(PSwarm ps, PhysCompEnergyFV energy, DM dmv, DM dmp, Vec pressure)
+{
+  DataField         datafield_tracers,datafield;
+  MPntStd           *tracer;
+  DM                daT;
+  Vec               pressure_l;
+  Vec               temperature,temperature_l;
+  Vec               gcoords,fv_coor_local;
+  const PetscScalar *LA_gcoords,*LA_temperature_l,*LA_pfield;
+  const PetscReal   *_fv_coor;
+  const PetscInt    *elnidx_u,*elnidx_p;
+  PetscInt          nel,nen_u,nen_p;
+  PetscInt          fv_start[3],fv_start_local[3],fv_ghost_offset[3],fv_ghost_range[3];
+  double            *tracer_temperature,*tracer_pressure;
+  int               p,n_tracers;
+  PetscErrorCode    ierr;
+  PetscFunctionBegin;
+
+  if (ps->state == PSW_TS_STALE) {
+    /* update local coordinates and perform communication */
+    ierr = MaterialPointStd_UpdateCoordinates(ps->db,dmv,ps->de);CHKERRQ(ierr);
+    ps->state = PSW_TS_INSYNC;
+  }
+
+  DataBucketGetDataFieldByName(ps->db,MPntStd_classname,&datafield_tracers);
+  DataFieldGetEntries(datafield_tracers,(void**)&tracer);
+  /* Get pressure datafield */
+  DataBucketGetDataFieldByName(ps->db,"pressure",&datafield);
+  DataFieldGetEntries(datafield,(void**)&tracer_pressure);
+  /* Get temperature datafield */
+  DataBucketGetDataFieldByName(ps->db,"temperature",&datafield);
+  DataFieldGetEntries(datafield,(void**)&tracer_temperature);
+
+  /* Get pressure local vector */
+  ierr = DMDAGetElements_pTatinQ2P1(dmv,&nel,&nen_u,&elnidx_u);CHKERRQ(ierr);
+  ierr = DMGetCoordinatesLocal(dmv,&gcoords);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(gcoords,&LA_gcoords);CHKERRQ(ierr);
+
+  ierr = DMDAGetElements_pTatinQ2P1(dmp,&nel,&nen_p,&elnidx_p);CHKERRQ(ierr);
+  ierr = DMGetLocalVector(dmp,&pressure_l);CHKERRQ(ierr);
+  ierr = DMGlobalToLocalBegin(dmp,pressure,INSERT_VALUES,pressure_l);CHKERRQ(ierr);
+  ierr = DMGlobalToLocalEnd(dmp,pressure,INSERT_VALUES,pressure_l);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(pressure_l,&LA_pfield);CHKERRQ(ierr);
+
+  /* Get temperature local vector */
+  daT         = energy->fv->dm_fv;
+  temperature = energy->T;
+  ierr = DMGetLocalVector(daT,&temperature_l);CHKERRQ(ierr);
+  ierr = DMGlobalToLocalBegin(daT,temperature,INSERT_VALUES,temperature_l);CHKERRQ(ierr);
+  ierr = DMGlobalToLocalEnd  (daT,temperature,INSERT_VALUES,temperature_l);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(temperature_l,&LA_temperature_l);CHKERRQ(ierr);
+  
+  /* Get fvda for reconstruction */
+  ierr = DMDAGetCorners(energy->fv->dm_fv,&fv_start[0],&fv_start[1],&fv_start[2],NULL,NULL,NULL);CHKERRQ(ierr);
+  ierr = DMDAGetGhostCorners(energy->fv->dm_fv,&fv_start_local[0],&fv_start_local[1],&fv_start_local[2],&fv_ghost_range[0],&fv_ghost_range[1],&fv_ghost_range[2]);CHKERRQ(ierr);
+  fv_ghost_offset[0] = fv_start[0] - fv_start_local[0];
+  fv_ghost_offset[1] = fv_start[1] - fv_start_local[1];
+  fv_ghost_offset[2] = fv_start[2] - fv_start_local[2];
+  
+  ierr = DMGetCoordinatesLocal(energy->fv->dm_fv,&fv_coor_local);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(fv_coor_local,&_fv_coor);CHKERRQ(ierr);
+
+  DataBucketGetSizes(ps->db,&n_tracers,NULL,NULL);
+  for (p=0; p<n_tracers; p++) {
+    ierr = UpdateTracerPressure(&tracer[p],elnidx_u,nen_u,elnidx_p,nen_p,LA_gcoords,LA_pfield,&tracer_pressure[p]);CHKERRQ(ierr);
+    ierr = UpdateTracerTemperature(energy,&tracer[p],fv_ghost_offset,fv_ghost_range,_fv_coor,LA_temperature_l,&tracer_temperature[p]);CHKERRQ(ierr);
+  }
+
+  /* Restore arrays and vectors */
+  ierr = VecRestoreArrayRead(fv_coor_local,&_fv_coor);CHKERRQ(ierr);
+  ierr = VecRestoreArrayRead(temperature_l,&LA_temperature_l);CHKERRQ(ierr);
+  ierr = DMRestoreLocalVector(daT,&temperature_l);CHKERRQ(ierr);
+  ierr = VecRestoreArrayRead(gcoords,&LA_gcoords);CHKERRQ(ierr);
+  ierr = VecRestoreArrayRead(pressure_l,&LA_pfield);CHKERRQ(ierr);
+  ierr = DMRestoreLocalVector(dmp,&pressure_l);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode PSwarmSetFieldType_PressureTemperature(PSwarm ps)
+{
+  BTruth found;
+  PetscFunctionBegin;
+
+  /* Pressure */
+  DataBucketQueryDataFieldByName(ps->db,"pressure",&found);
+  if (!found) {
+    DataBucketRegisterField(ps->db,"pressure",sizeof(double),NULL);
+    DataBucketFinalize(ps->db);
+  }
+  /* Temperature */
+  DataBucketQueryDataFieldByName(ps->db,"temperature",&found);
+  if (!found) {
+    DataBucketRegisterField(ps->db,"temperature",sizeof(double),NULL);
+    DataBucketFinalize(ps->db);
+  }
+  ps->ops->field_update_ptt = PSwarmUpdate_PressureTemperature;
+
+  PetscFunctionReturn(0);
+}
 
 /*
    [1] Register data
@@ -390,10 +638,13 @@ PetscErrorCode PSwarmSetFieldUpdateType(PSwarm ps,PSwarmFieldUpdateType type)
       ps->ops->field_update_finitestrain = NULL;
       break;
     case PSWARM_FU_PTT:
-      ps->ops->field_update_ptt = NULL;
+      ierr = PSwarmSetFieldType_PressureTemperature(ps);
       break;
     case PSWARM_FU_Pressure:
       ierr = PSwarmSetFieldType_Pressure(ps);CHKERRQ(ierr);
+      break;
+    case PSWARM_FU_Temperature:
+      ierr = PSwarmSetFieldType_TemperatureFV(ps);CHKERRQ(ierr);
       break;
 
     default:
@@ -405,6 +656,7 @@ PetscErrorCode PSwarmSetFieldUpdateType(PSwarm ps,PSwarmFieldUpdateType type)
 
 PetscErrorCode _PSwarmFieldUpdate_AdvectEulerian(PSwarm ps,DM dmv,Vec v)
 {
+  PetscFunctionBegin;
   ps->state = PSW_TS_INSYNC;
   PetscFunctionReturn(0);
 }
@@ -494,55 +746,13 @@ PetscErrorCode PSwarmFieldUpdate_FiniteStrain(PSwarm ps)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PSwarmFieldUpdate_PressTempTime(PSwarm ps)
+PetscErrorCode PSwarmFieldUpdate_PressureTemperature(PSwarm ps)
 {
-  PetscErrorCode ierr;
-  PhysCompStokes stokes;
-  PhysCompEnergy energy;
-  DM             dmv,dmp,dmstokes,dmT;
-
-  PetscFunctionBegin;
-  ierr = PSwarmSetUp(ps);CHKERRQ(ierr);
-
-  ierr = pTatinGetStokesContext(ps->pctx,&stokes);CHKERRQ(ierr);
-  ierr = PhysCompStokesGetDMComposite(stokes,&dmstokes);CHKERRQ(ierr);
-  ierr = PhysCompStokesGetDMs(stokes,&dmv,&dmp);CHKERRQ(ierr);
-
-  if (ps->state == PSW_TS_STALE) {
-    /* update local coordinates and perform communication */
-    ierr = MaterialPointStd_UpdateCoordinates(ps->db,dmv,ps->de);CHKERRQ(ierr);
-    ps->state = PSW_TS_INSYNC;
-  }
-
-  if (ps->ops->field_update_ptt) {
-    Vec X,velocity,pressure,temperature;
-
-    ierr = pTatinGetContext_Energy(ps->pctx,&energy);CHKERRQ(ierr);
-    dmT = energy->daT;
-    ierr = PetscObjectQuery((PetscObject)ps,PSWARM_COMPOSED_STATE_VELPRES,(PetscObject*)&X);CHKERRQ(ierr);
-    ierr = PetscObjectQuery((PetscObject)ps,PSWARM_COMPOSED_STATE_TEMP,(PetscObject*)&temperature);CHKERRQ(ierr);
-    if (!X) SETERRQ(PetscObjectComm((PetscObject)ps),PETSC_ERR_SUP,"State vector X=(u,p) was not provided. User must call PSwarmAttachStateVecVelocityPressure()");
-    if (!temperature) SETERRQ(PetscObjectComm((PetscObject)ps),PETSC_ERR_SUP,"State vector T was not provided. User must call PSwarmAttachStateVecTemperature()");
-
-    ierr = DMCompositeGetAccess(dmstokes,X,&velocity,&pressure);CHKERRQ(ierr);
-
-    ierr = ps->ops->field_update_ptt(ps,dmp,dmT,pressure,temperature,ps->pctx->time);CHKERRQ(ierr);
-
-    ierr = DMCompositeRestoreAccess(dmstokes,X,&velocity,&pressure);CHKERRQ(ierr);
-  } else {
-    SETERRQ(PetscObjectComm((PetscObject)ps),PETSC_ERR_SUP,"FieldUpdate(PressTempTime) was not activated");
-  }
-
-  PetscFunctionReturn(0);
-}
-
-PetscErrorCode PSwarmFieldUpdateAll(PSwarm ps)
-{
-  PetscErrorCode ierr;
-  PhysCompStokes stokes;
-  PhysCompEnergy energy;
-  DM             dmstokes,dmv,dmp,dmT;
-  Vec            X,velocity,pressure,temperature;
+  PhysCompStokes   stokes;
+  PhysCompEnergyFV energy_fv;
+  DM               dmstokes,dmv,dmp;
+  Vec              X,velocity,pressure;
+  PetscErrorCode   ierr;
 
   PetscFunctionBegin;
 
@@ -553,13 +763,44 @@ PetscErrorCode PSwarmFieldUpdateAll(PSwarm ps)
   ierr = PhysCompStokesGetDMs(stokes,&dmv,&dmp);CHKERRQ(ierr);
   ierr = PetscObjectQuery((PetscObject)ps,PSWARM_COMPOSED_STATE_VELPRES,(PetscObject*)&X);CHKERRQ(ierr);
 
-  ierr = pTatinGetContext_Energy(ps->pctx,&energy);CHKERRQ(ierr);
-  temperature = NULL;
-  dmT = NULL;
-  if (energy) {
-    dmT = energy->daT;
-    ierr = PetscObjectQuery((PetscObject)ps,PSWARM_COMPOSED_STATE_TEMP,(PetscObject*)&temperature);CHKERRQ(ierr);
+  ierr = pTatinGetContext_EnergyFV(ps->pctx,&energy_fv);CHKERRQ(ierr);
+
+  if (ps->state == PSW_TS_STALE) {
+    ierr = MaterialPointStd_UpdateCoordinates(ps->db,dmv,ps->de);CHKERRQ(ierr);
+    ps->state = PSW_TS_INSYNC;
+  }  
+
+  if (ps->ops->field_update_ptt) {
+    if (!X) SETERRQ(PetscObjectComm((PetscObject)ps),PETSC_ERR_SUP,"State vector X=(u,p) was not provided. User must call PSwarmAttachStateVecVelocityPressure()");
+    if (!energy_fv) SETERRQ(PetscObjectComm((PetscObject)ps),PETSC_ERR_SUP,"EnergyFV context does not exists. It is likely that there is no temperature solve in your application.");
+    ierr = DMCompositeGetAccess(dmstokes,X,&velocity,&pressure);CHKERRQ(ierr);
+    ierr = ps->ops->field_update_ptt(ps,energy_fv,dmv,dmp,pressure);CHKERRQ(ierr);
+    ierr = DMCompositeRestoreAccess(dmstokes,X,&velocity,&pressure);CHKERRQ(ierr);
+  } else {
+    SETERRQ(PetscObjectComm((PetscObject)ps),PETSC_ERR_SUP,"FieldUpdate(PressureTemperature) was not activated");
   }
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode PSwarmFieldUpdateAll(PSwarm ps)
+{
+  PhysCompStokes    stokes;
+  PhysCompEnergyFV  energy_fv;
+  DM                dmstokes,dmv,dmp;
+  Vec               X,velocity,pressure;
+  PetscErrorCode    ierr;
+
+  PetscFunctionBegin;
+
+  ierr = PSwarmSetUp(ps);CHKERRQ(ierr);
+
+  ierr = pTatinGetStokesContext(ps->pctx,&stokes);CHKERRQ(ierr);
+  ierr = PhysCompStokesGetDMComposite(stokes,&dmstokes);CHKERRQ(ierr);
+  ierr = PhysCompStokesGetDMs(stokes,&dmv,&dmp);CHKERRQ(ierr);
+  ierr = PetscObjectQuery((PetscObject)ps,PSWARM_COMPOSED_STATE_VELPRES,(PetscObject*)&X);CHKERRQ(ierr);
+
+  ierr = pTatinGetContext_EnergyFV(ps->pctx,&energy_fv);CHKERRQ(ierr);
 
   if (ps->state == PSW_TS_STALE) {
     ierr = MaterialPointStd_UpdateCoordinates(ps->db,dmv,ps->de);CHKERRQ(ierr);
@@ -575,8 +816,9 @@ PetscErrorCode PSwarmFieldUpdateAll(PSwarm ps)
 
   if (ps->ops->field_update_ptt) {
     if (!X) SETERRQ(PetscObjectComm((PetscObject)ps),PETSC_ERR_SUP,"State vector X=(u,p) was not provided. User must call PSwarmAttachStateVecVelocityPressure()");
+    if (!energy_fv) SETERRQ(PetscObjectComm((PetscObject)ps),PETSC_ERR_SUP,"EnergyFV context does not exists. It is likely that there is no temperature solve in your application.");
     ierr = DMCompositeGetAccess(dmstokes,X,&velocity,&pressure);CHKERRQ(ierr);
-    ierr = ps->ops->field_update_ptt(ps,dmp,dmT,pressure,temperature,ps->pctx->time);CHKERRQ(ierr);
+    ierr = ps->ops->field_update_ptt(ps,energy_fv,dmv,dmp,pressure);CHKERRQ(ierr);
     ierr = DMCompositeRestoreAccess(dmstokes,X,&velocity,&pressure);CHKERRQ(ierr);
   }
 
@@ -585,6 +827,10 @@ PetscErrorCode PSwarmFieldUpdateAll(PSwarm ps)
     ierr = DMCompositeGetAccess(dmstokes,X,&velocity,&pressure);CHKERRQ(ierr);
     ierr = ps->ops->field_update_pressure(ps,dmv,dmp,pressure);CHKERRQ(ierr);
     ierr = DMCompositeRestoreAccess(dmstokes,X,&velocity,&pressure);CHKERRQ(ierr);
+  }
+
+  if (ps->ops->field_update_temperature) {
+    if (energy_fv) { ierr = ps->ops->field_update_temperature(ps,energy_fv,dmv);CHKERRQ(ierr); }
   }
 
   /* position must always be the last state variable to be updated */
@@ -893,8 +1139,10 @@ PetscErrorCode PSwarmSetUpCoords_FillBox(PSwarm ps)
   /* Traverse points, examine coordinates, set pid based on xp,yp,zp */
   {
     DataField df;
-    int p,npoints;
-    MPntStd *points;
+    MPntStd   *points;
+    int       p,npoints;
+
+    PetscFunctionBegin;
 
     DataBucketGetSizes(ps->db,&npoints,NULL,NULL);
     DataBucketGetDataFieldByName(ps->db,MPntStd_classname,&df);
@@ -987,10 +1235,10 @@ PetscErrorCode PSwarmSetUpCoords_FromUserList(PSwarm ps)
 
 PetscErrorCode PSwarmSetUpCoords(PSwarm ps)
 {
+  MPI_Comm       comm;
+  PetscInt       type;
+  const char     *prefix;
   PetscErrorCode ierr;
-  const char *prefix;
-  PetscInt type;
-  MPI_Comm comm;
   PetscFunctionBegin;
 
   ierr = PetscObjectGetOptionsPrefix((PetscObject)ps,&prefix);CHKERRQ(ierr);
@@ -1042,10 +1290,9 @@ PetscErrorCode PSwarmSetUp(PSwarm ps)
   PetscFunctionBegin;
 
   if (ps->setup) PetscFunctionReturn(0);
+  PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n",PETSC_FUNCTION_NAME);
 
-  if (!ps->pctx) {
-    SETERRQ(PetscObjectComm((PetscObject)ps),PETSC_ERR_USER,"Must provide a valid pTatinCtx");
-  }
+  if (!ps->pctx) { SETERRQ(PetscObjectComm((PetscObject)ps),PETSC_ERR_USER,"Must provide a valid pTatinCtx"); }
 
   if (!ps->de) {
     ierr = pTatinGetStokesContext(ps->pctx,&stokes);CHKERRQ(ierr);
@@ -1053,20 +1300,22 @@ PetscErrorCode PSwarmSetUp(PSwarm ps)
     ierr = PSwarmDefineCommTopologyFromDMDA(ps,dmv);CHKERRQ(ierr);
   }
 
-  ierr = PSwarmSetUpCoords(ps);CHKERRQ(ierr);
+  if (!ps->restart) {
+    ierr = PSwarmSetUpCoords(ps);CHKERRQ(ierr);
+    {
+      const char *prefix;
+      PetscInt   ridx;
+      PetscBool  isactive;
 
-  {
-    const char *prefix;
-    PetscInt   ridx;
-    PetscBool  isactive;
 
-
-    ierr = PetscObjectGetOptionsPrefix((PetscObject)ps,&prefix);CHKERRQ(ierr);
-    ridx = 0;
-    isactive = PETSC_FALSE;
-    ierr = PetscOptionsGetInt(NULL,prefix,"-pswarm_region_index",&ridx,&isactive);CHKERRQ(ierr);
-    if (isactive) { ierr = PSwarmSetRegionIndex(ps,ridx);CHKERRQ(ierr); }
+      ierr = PetscObjectGetOptionsPrefix((PetscObject)ps,&prefix);CHKERRQ(ierr);
+      ridx = 0;
+      isactive = PETSC_FALSE;
+      ierr = PetscOptionsGetInt(NULL,prefix,"-pswarm_region_index",&ridx,&isactive);CHKERRQ(ierr);
+      if (isactive) { ierr = PSwarmSetRegionIndex(ps,ridx);CHKERRQ(ierr); }
+    }
   }
+  
 
   ps->setup = PETSC_TRUE;
 
@@ -1076,8 +1325,8 @@ PetscErrorCode PSwarmSetUp(PSwarm ps)
 /* set from options */
 PetscErrorCode PSwarmSetFromOptions(PSwarm ps)
 {
-  PetscErrorCode ierr;
   PetscBool      isactive;
+  PetscErrorCode ierr;
 
   PetscFunctionBegin;
   ierr = PetscObjectOptionsBegin((PetscObject)ps);CHKERRQ(ierr);
@@ -1099,6 +1348,14 @@ PetscErrorCode PSwarmSetFromOptions(PSwarm ps)
   ierr = PetscOptionsBool("-pswarm_view","View PSwarm info","PSwarmView",isactive,&isactive,0);CHKERRQ(ierr);
   if (isactive) { ierr = PSwarmViewInfo(ps);CHKERRQ(ierr); }
 
+  isactive = PETSC_FALSE;
+  ierr = PetscOptionsBool("-pswarm_temperature","Activate the tracking of temperature","PSwarmSetFieldUpdateType",isactive,&isactive,0);CHKERRQ(ierr);
+  if (isactive) { ierr = PSwarmSetFieldUpdateType(ps,PSWARM_FU_Temperature);CHKERRQ(ierr); }
+
+  isactive = PETSC_FALSE;
+  ierr = PetscOptionsBool("-pswarm_pressure_temperature","Activate the tracking of pressure-temperature","PSwarmSetFieldUpdateType",isactive,&isactive,0);CHKERRQ(ierr);
+  if (isactive) { ierr = PSwarmSetFieldUpdateType(ps,PSWARM_FU_PTT);CHKERRQ(ierr); }
+
   ierr = PetscOptionsTail();CHKERRQ(ierr);
   ierr = PetscOptionsEnd();CHKERRQ(ierr);
 
@@ -1107,12 +1364,12 @@ PetscErrorCode PSwarmSetFromOptions(PSwarm ps)
 
 PetscErrorCode PSwarmCreateMultipleInstances(MPI_Comm comm,PSwarm **pslist)
 {
-  PetscErrorCode ierr;
   PSwarm         *plist;
   PetscInt       k,nswarms;
   PetscInt       max = 20;
   PetscBool      found;
   char           *namelist[20];
+  PetscErrorCode ierr;
 
   PetscFunctionBegin;
   ierr = PetscOptionsGetStringArray(NULL,NULL,"-pswarm_list",namelist,&max,&found);CHKERRQ(ierr);
@@ -1140,20 +1397,68 @@ PetscErrorCode PSwarmCreateMultipleInstances(MPI_Comm comm,PSwarm **pslist)
   }
 
   *pslist = plist;
-
-  for (k=0; k<nswarms; k++) {
-    PetscFree(namelist[k]);
-  }
+  for (k=0; k<nswarms; k++) { PetscFree(namelist[k]); }
 
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode PSwarmCoordinatesSetSynchronization(PSwarm ps,PetscBool val)
 {
+  PetscFunctionBegin;
   if (val) { ps->state = PSW_TS_INSYNC; }
-  else { ps->state = PSW_TS_STALE; }
+  else     { ps->state = PSW_TS_STALE; }
   PetscFunctionReturn(0);
 }
+
+PetscErrorCode PSwarmLoad_FromFile(pTatinCtx ptatin, DM dmv)
+{
+  DataBucket     db;
+  DataEx         ex;
+  PetscLogDouble t0,t1;
+  PetscBool      found;
+  PetscErrorCode ierr;
+  MPI_Comm comm;
+  PetscMPIInt commrank;
+  char jfilename[PETSC_MAX_PATH_LEN],field_string[PETSC_MAX_PATH_LEN];
+  cJSON *jfile = NULL,*jptat = NULL,*jobj;
+
+  PetscFunctionBegin;
+
+  if (!ptatin->pswarm) { SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER,"Passive Swarm data structure has not been attached to pTatinCtx"); }
+
+  ierr = PetscObjectGetComm((PetscObject)dmv,&comm);CHKERRQ(ierr);
+  ierr = MPI_Comm_rank(comm,&commrank);CHKERRQ(ierr);
+  PetscSNPrintf(jfilename,PETSC_MAX_PATH_LEN-1,"%s/ptatin3dctx.json",ptatin->restart_dir);
+  if (commrank == 0) {
+    cJSON_FileView(jfilename,&jfile);
+    if (!jfile) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Failed to open JSON file \"%s\"",jfilename);
+    jptat = cJSON_GetObjectItem(jfile,"pTatinCtx");
+  }
+
+  jobj = NULL;
+  if (commrank == 0) { jobj = cJSON_GetObjectItem(jptat,"pswarm"); if (!jobj) SETERRQ_JSONKEY(PETSC_COMM_SELF,"pswarm"); }
+  ierr = cJSONGetPetscString(comm,jobj,"fileName",field_string,&found);CHKERRQ(ierr);
+  if (!found) SETERRQ_JSONKEY(comm,"fileName");
+
+  if (commrank == 0) {
+    cJSON_Delete(jfile);
+  }
+
+  /* register marker structures here */
+  PetscTime(&t0);
+  DataBucketLoad_NATIVE(comm,field_string,&db);
+  PetscTime(&t1);
+  PetscPrintf(PETSC_COMM_WORLD,"[[Passive Swarm initialization from file: %1.4lf (sec)]]\n",t1-t0);
+
+  /* create the data exchanger need for parallel particle movement */
+  ierr = SwarmDMDA3dDataExchangerCreate(dmv,&ex);CHKERRQ(ierr);
+
+  ptatin->pswarm->db = db;
+  ptatin->pswarm->de = ex;
+  ptatin->pswarm->restart = PETSC_TRUE;
+  PetscFunctionReturn(0);
+}
+
 
 
 /* ----------------- */
@@ -1209,6 +1514,13 @@ PetscErrorCode PSwarm_VTUWriteBinaryAppendedHeaderAllFields(FILE *vtk_fp,DataBuc
     }
   }
 
+  { /* Temperature */
+    DataBucketQueryDataFieldByName(db,"temperature",&found);
+    if (found) {
+      PSWarmArray_VTUWriteBinaryAppendedHeader_double(vtk_fp,"temperature",byte_offset,(const int)npoints);
+    }
+  }
+
   PetscFunctionReturn(0);
 }
 
@@ -1216,33 +1528,33 @@ PetscErrorCode PSwarm_VTUWriteBinaryAppendedHeaderAllFields(FILE *vtk_fp,DataBuc
 /* defaults for int, float, double */
 void PSwarmArray_VTUWriteBinaryAppendedData_int(FILE *vtk_fp,const int N,int data[])
 {
-  int length;
+  int    length;
   size_t atomic_size;
 
   atomic_size = sizeof(int);
-  length = (int)( atomic_size * ((size_t)N) );
+  length      = (int)( atomic_size * ((size_t)N) );
   fwrite(&length,sizeof(int),1,vtk_fp);
   fwrite(data,atomic_size,N,vtk_fp);
 }
 
 void PSwarmArray_VTUWriteBinaryAppendedData_float(FILE *vtk_fp,const int N,double data[])
 {
-  int length;
+  int    length;
   size_t atomic_size;
 
   atomic_size = sizeof(float);
-  length = (int)( atomic_size * ((size_t)N) );
+  length      = (int)( atomic_size * ((size_t)N) );
   fwrite(&length,sizeof(int),1,vtk_fp);
   fwrite(data,atomic_size,N,vtk_fp);
 }
 
 void PSwarmArray_VTUWriteBinaryAppendedData_double(FILE *vtk_fp,const int N,double data[])
 {
-  int length;
+  int    length;
   size_t atomic_size;
 
   atomic_size = sizeof(double);
-  length = (int)( atomic_size * ((size_t)N) );
+  length      = (int)( atomic_size * ((size_t)N) );
   fwrite(&length,sizeof(int),1,vtk_fp);
   fwrite(data,atomic_size,N,vtk_fp);
 }
@@ -1250,11 +1562,11 @@ void PSwarmArray_VTUWriteBinaryAppendedData_double(FILE *vtk_fp,const int N,doub
 /* MPStd specific for phase, pid */
 void MPntStd_VTUWriteBinaryAppendedData_phase(FILE *vtk_fp,const int N,const MPntStd points[])
 {
-  int p,length;
+  int    p,length;
   size_t atomic_size;
 
   atomic_size = sizeof(int);
-  length = (int)( atomic_size * ((size_t)N) );
+  length      = (int)( atomic_size * ((size_t)N) );
   fwrite( &length,sizeof(int),1,vtk_fp);
   for(p=0;p<N;p++) {
     fwrite(&points[p].phase,atomic_size,1,vtk_fp);
@@ -1263,11 +1575,11 @@ void MPntStd_VTUWriteBinaryAppendedData_phase(FILE *vtk_fp,const int N,const MPn
 
 void MPntStd_VTUWriteBinaryAppendedData_pid(FILE *vtk_fp,const int N,const MPntStd points[])
 {
-  int p,length;
+  int    p,length;
   size_t atomic_size;
 
   atomic_size = sizeof(long int);
-  length = (int)( atomic_size * ((size_t)N) );
+  length      = (int)( atomic_size * ((size_t)N) );
   fwrite( &length,sizeof(int),1,vtk_fp);
   for(p=0;p<N;p++) {
     fwrite(&points[p].pid,atomic_size,1,vtk_fp);
@@ -1276,9 +1588,9 @@ void MPntStd_VTUWriteBinaryAppendedData_pid(FILE *vtk_fp,const int N,const MPntS
 
 PetscErrorCode PSwarm_VTUWriteBinaryAppendedDataAllFields(FILE *vtk_fp,DataBucket db)
 {
-  int npoints;
-  BTruth found;
   DataField datafield;
+  int       npoints;
+  BTruth    found;
 
   PetscFunctionBegin;
 
@@ -1306,12 +1618,25 @@ PetscErrorCode PSwarm_VTUWriteBinaryAppendedDataAllFields(FILE *vtk_fp,DataBucke
     }
   }
 
+  { /* Temperature */
+    DataBucketQueryDataFieldByName(db,"temperature",&found);
+    if (found) {
+      double *data;
+
+      DataBucketGetDataFieldByName(db,"temperature",&datafield);
+      DataFieldGetEntries(datafield,(void**)&data);
+
+      PSwarmArray_VTUWriteBinaryAppendedData_double(vtk_fp,(const int)npoints,data);
+    }
+  }
+
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode PSwarm_PVTUWriteBinaryAppendedHeaderAllFields(FILE *vtk_fp,DataBucket db)
 {
   BTruth found;
+  PetscFunctionBegin;
 
   /* MPStd */
   fprintf(vtk_fp, "\t\t\t<PDataArray type=\"Int64\" Name=\"index\" NumberOfComponents=\"1\"/>\n");
@@ -1329,13 +1654,12 @@ PetscErrorCode PSwarm_PVTUWriteBinaryAppendedHeaderAllFields(FILE *vtk_fp,DataBu
 
 PetscErrorCode PSwarmView_VTUXML_binary_appended(PSwarm ps,const char name[])
 {
-  FILE *vtk_fp;
-  PetscInt k;
-  int npoints;
+  FILE           *vtk_fp;
+  DataBucket     db;
+  DataField      PField;
+  PetscInt       k;
+  int            npoints,byte_offset,length;
   PetscLogDouble t0,t1;
-  DataField PField;
-  int byte_offset,length;
-  DataBucket db;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -1478,8 +1802,8 @@ PetscErrorCode PSwarmView_VTUXML_binary_appended(PSwarm ps,const char name[])
 
 PetscErrorCode PSwarmViewParaview_VTU(PSwarm ps,const char path[],const char stepprefix[],const char petscprefix[])
 {
-  char *vtkfilename,filename[PETSC_MAX_PATH_LEN],basename[PETSC_MAX_PATH_LEN];
-  int n_points;
+  char           *vtkfilename,filename[PETSC_MAX_PATH_LEN],basename[PETSC_MAX_PATH_LEN];
+  int            n_points;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -1502,10 +1826,10 @@ PetscErrorCode PSwarmViewParaview_VTU(PSwarm ps,const char path[],const char ste
 
 PetscErrorCode __PSwarmViewParaview_PVTU(DataBucket db,const char filename[],const char fileprefix[],PetscMPIInt nplist[])
 {
-  PetscMPIInt nproc;
-  FILE *vtk_fp;
-  PetscInt i;
-  char *sourcename;
+  PetscMPIInt    nproc;
+  FILE           *vtk_fp;
+  PetscInt       i;
+  char           *sourcename;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -1550,7 +1874,6 @@ PetscErrorCode __PSwarmViewParaview_PVTU(DataBucket db,const char filename[],con
     int i32;
 
     if (nplist[i] != 0) {
-
       PetscMPIIntCast(i,&i32);
       if (asprintf(&sourcename,"%s-subdomain%1.5d.vtu",fileprefix,i32) < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_MEM,"asprintf() failed");
       fprintf(vtk_fp,"    <Piece Source=\"%s\"/>\n",sourcename);
@@ -1572,9 +1895,9 @@ PetscErrorCode __PSwarmViewParaview_PVTU(DataBucket db,const char filename[],con
 
 PetscErrorCode PSwarmViewParaview_PVTU(DataBucket db,const char path[],const char stepprefix[],const char petscprefix[])
 {
-  char *vtufilename,fileprefix[PETSC_MAX_PATH_LEN],fileprefix2[PETSC_MAX_PATH_LEN];
-  PetscMPIInt commsize,rank;
-  int n_points,*nplist;
+  PetscMPIInt    commsize,rank;
+  int            n_points,*nplist;
+  char           *vtufilename,fileprefix[PETSC_MAX_PATH_LEN],fileprefix2[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -1613,11 +1936,10 @@ PetscErrorCode PSwarmViewParaview_PVTU(DataBucket db,const char path[],const cha
 
 PetscErrorCode PSwarmViewParaview_PVD(PSwarm ps,const char path[],const char stepprefix[],const char petscprefix[])
 {
+  pTatinCtx      ctx;
+  const char     *prefix;
+  char           vtkfilename[PETSC_MAX_PATH_LEN],pvdfilename[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
-  pTatinCtx ctx;
-  char pvdfilename[PETSC_MAX_PATH_LEN];
-  const char *prefix;
-  char vtkfilename[PETSC_MAX_PATH_LEN];
 
   PetscFunctionBegin;
 
@@ -1666,6 +1988,8 @@ PetscErrorCode PSwarmView_PerRank(PSwarm ps)
   PetscBool      found;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
+
   ierr = pTatinGetStokesContext(ps->pctx,&stokes);CHKERRQ(ierr);
   ierr = PhysCompStokesGetDMComposite(stokes,&dmstokes);CHKERRQ(ierr);
   ierr = PhysCompStokesGetDMs(stokes,&dmv,NULL);CHKERRQ(ierr);
@@ -1696,9 +2020,11 @@ PetscErrorCode PSwarmView_PerRank(PSwarm ps)
 
 PetscErrorCode PSwarmSetRegionIndex(PSwarm ps,PetscInt ridx)
 {
-  MPntStd *tracer;
+  MPntStd   *tracer;
   DataField datafield;
-  int p,np;
+  int       p,np;
+
+  PetscFunctionBegin;
 
   DataBucketGetDataFieldByName(ps->db,MPntStd_classname,&datafield);
   DataFieldGetEntries(datafield,(void**)&tracer);
@@ -1712,9 +2038,9 @@ PetscErrorCode PSwarmSetRegionIndex(PSwarm ps,PetscInt ridx)
 
 PetscErrorCode pSwarmParaViewMeshDeformationBaseVTS(PetscReal xmin[],PetscReal dx[],PetscInt nx[],const char name[])
 {
+  FILE*    vtk_fp = NULL;
   PetscInt i,j,k;
-  FILE* vtk_fp = NULL;
-  float xp,yp,zp;
+  float    xp,yp,zp;
 
   PetscFunctionBegin;
   if ((vtk_fp = fopen (name,"w")) == NULL)  {
@@ -1778,11 +2104,10 @@ PetscErrorCode pSwarmParaViewMeshDeformationBaseVTS(PetscReal xmin[],PetscReal d
 
 PetscErrorCode PSwarmViewSingletonParaview_PVD(PSwarm ps,const char path[],const char stepprefix[],const char petscprefix[])
 {
+  pTatinCtx      ctx;
+  const char     *prefix;
+  char           pvdfilename[PETSC_MAX_PATH_LEN],vtkfilename[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
-  pTatinCtx ctx;
-  char pvdfilename[PETSC_MAX_PATH_LEN];
-  const char *prefix;
-  char vtkfilename[PETSC_MAX_PATH_LEN];
 
   PetscFunctionBegin;
 
@@ -1807,11 +2132,11 @@ PetscErrorCode PSwarmViewSingletonParaview_PVD(PSwarm ps,const char path[],const
 
 PetscErrorCode PSwarmSingleton_VTUWriteBinaryAppendedDataAllFields(FILE *vtk_fp,DataBucket db,MPI_Comm comm)
 {
-  int i,npoints,npoints_g = 0;
-  BTruth found;
-  DataField datafield;
-  PetscMPIInt rank;
-  size_t atomic_size;
+  DataField      datafield;
+  PetscMPIInt    rank;
+  BTruth         found;
+  int            i,npoints,npoints_g = 0;
+  size_t         atomic_size;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -1821,7 +2146,7 @@ PetscErrorCode PSwarmSingleton_VTUWriteBinaryAppendedDataAllFields(FILE *vtk_fp,
   ierr = MPI_Reduce(&npoints,&npoints_g,1,MPI_INT,MPI_SUM,0,comm);CHKERRQ(ierr);
 
   { /* MPStd - pid */
-    MPntStd *tracer;
+    MPntStd  *tracer;
     long int *buffer;
 
     DataBucketGetDataFieldByName(db,MPntStd_classname,&datafield);
@@ -1847,7 +2172,7 @@ PetscErrorCode PSwarmSingleton_VTUWriteBinaryAppendedDataAllFields(FILE *vtk_fp,
 
   { /* MPStd - region */
     MPntStd *tracer;
-    int *buffer;
+    int     *buffer;
 
     DataBucketGetDataFieldByName(db,MPntStd_classname,&datafield);
     DataFieldGetEntries(datafield,(void**)&tracer);
@@ -1891,21 +2216,42 @@ PetscErrorCode PSwarmSingleton_VTUWriteBinaryAppendedDataAllFields(FILE *vtk_fp,
     }
   }
 
+  { /* Temperature */
+    DataBucketQueryDataFieldByName(db,"temperature",&found);
+    if (found) {
+      double *data;
+
+      DataBucketGetDataFieldByName(db,"temperature",&datafield);
+      DataFieldGetEntries(datafield,(void**)&data);
+
+      atomic_size = sizeof(double);
+      if (rank == 0) {
+        int length;
+
+        length = (int)( atomic_size * ((size_t)npoints_g) );
+        fwrite(&length,sizeof(int),1,vtk_fp);
+      }
+
+      ierr = MPIWrite_Blocking(vtk_fp,(void*)data,npoints,atomic_size,0,PETSC_TRUE,comm);CHKERRQ(ierr);
+
+    }
+  }
+
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode PSwarmViewSingleton_VTUXML_binary_appended(PSwarm ps,const char name[])
 {
-  FILE *vtk_fp;
-  PetscInt k;
-  int npoints,npoints_g;
+  FILE           *vtk_fp;
+  DataBucket     db;
+  DataField      PField;
+  PetscMPIInt    rank;
+  MPI_Comm       comm;
+  PetscInt       k;
+  double         *buffer;
+  int            npoints,npoints_g;
+  int            byte_offset,length;
   PetscLogDouble t0,t1;
-  DataField PField;
-  int byte_offset,length;
-  DataBucket db;
-  PetscMPIInt rank;
-  MPI_Comm comm;
-  double *buffer;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -2075,7 +2421,7 @@ PetscErrorCode PSwarmViewSingleton_VTUXML_binary_appended(PSwarm ps,const char n
 
 PetscErrorCode PSwarmViewSingletonParaview_VTU(PSwarm ps,const char path[],const char stepprefix[],const char petscprefix[])
 {
-  char vtkfilename[PETSC_MAX_PATH_LEN],filename[PETSC_MAX_PATH_LEN],basename[PETSC_MAX_PATH_LEN];
+  char           vtkfilename[PETSC_MAX_PATH_LEN],filename[PETSC_MAX_PATH_LEN],basename[PETSC_MAX_PATH_LEN];
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -2101,6 +2447,8 @@ PetscErrorCode PSwarmView_Singleton(PSwarm ps)
   PetscBool      found;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
+
   ierr = pTatinGetStokesContext(ps->pctx,&stokes);CHKERRQ(ierr);
   ierr = PhysCompStokesGetDMComposite(stokes,&dmstokes);CHKERRQ(ierr);
   ierr = PhysCompStokesGetDMs(stokes,&dmv,NULL);CHKERRQ(ierr);
@@ -2122,6 +2470,7 @@ PetscErrorCode PSwarmView_Singleton(PSwarm ps)
 PetscErrorCode PSwarmView(PSwarm ps,PSwarmViewType type)
 {
   PetscErrorCode ierr;
+  PetscFunctionBegin;
 
   if (type == PSW_VT_PERRANK) {
     ierr = PSwarmView_PerRank(ps);CHKERRQ(ierr);

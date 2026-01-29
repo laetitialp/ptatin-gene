@@ -657,3 +657,20 @@ PetscErrorCode DMDACoordTraverseIJK(DM da,PetscInt plane,PetscInt index,PetscInt
 
   PetscFunctionReturn(0);
 }
+
+PetscBool BCListEvaluator_SplitLinear(PetscScalar position[], PetscScalar *value, void *ctx)
+{
+  BCSplitFaceCtx *data = (BCSplitFaceCtx*)ctx;
+  PetscBool      impose = PETSC_TRUE;
+  PetscFunctionBegin;
+
+  if (position[data->dim] < data->x0) {
+    *value = data->v0;
+  } else if (position[data->dim] > data->x1) {
+    *value = data->v1;
+  } else {
+    *value = data->v1 + (position[data->dim]-data->x1)*(data->v0-data->v1)/(data->x0-data->x1);
+  }
+
+  PetscFunctionReturn(impose);
+}

@@ -97,12 +97,14 @@ PetscErrorCode pTatin3d_energy_tester(int argc,char **argv)
 
   ierr = DMCreateGlobalVector(multipys_pack,&X);CHKERRQ(ierr);
   ierr = VecDuplicate(X,&F);CHKERRQ(ierr);
+  ierr = pTatinPhysCompAttachData_Stokes(user,X);CHKERRQ(ierr);
 
   ierr = pTatin3dCreateMaterialPoints(user,dav);CHKERRQ(ierr);
   ierr = pTatinGetMaterialPoints(user,&materialpoint_db,NULL);CHKERRQ(ierr);
 
   /* mesh geometry */
   ierr = pTatinModel_ApplyInitialMeshGeometry(model,user);CHKERRQ(ierr);
+  ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(user->stokes_ctx);CHKERRQ(ierr);
 
   /* generate energy solver */
   /* NOTE - Generating the thermal solver here will ensure that the initial geometry on the mechanical model is copied */

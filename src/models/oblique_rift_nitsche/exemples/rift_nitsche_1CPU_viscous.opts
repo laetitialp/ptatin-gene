@@ -1,0 +1,187 @@
+-nonlinear_driver_v1
+########## Model ##########
+-ptatin_model rift_nitsche # Used model
+-log_summary
+-output_path rift_nitsche_atan
+-lattice_layout_Nx 24 #12
+-lattice_layout_Ny 3
+-lattice_layout_Nz 16 #8
+-mp_popctrl_np_lower 32
+-mp_popctrl_np_upper 200
+-nsteps 1 # Max number of steps
+-dt_min 1.0e-8
+-dt_max 1.0e-2
+-dt_max_surface_displacement 5.0e-3
+-output_frequency 1
+-ptatin_driver_write_icbc
+-model_rift_nitsche_output_markers
+#-view_projected_marker_fields
+-model_rift_nitsche_temperature_ic_from_file
+########## Resolution ##############
+-mx 8  # Number of elements along x
+-my 32 # Number of elements along y
+-mz 8  # Number of elements along z
+########### Box Geometry ##########
+-model_rift_nitsche_O 0.0,-250.0e3,0.0
+-model_rift_nitsche_L 1200.0e3,0.0,600.0e3
+-model_rift_nitsche_y_continent -25.0e3,-35.0e3,-120.0e3
+########### Weak zones ##########
+#-model_rift_nitsche_wz_notch
+-model_rift_nitsche_wz_gauss
+#-model_rift_nitsche_wz_centre_angle
+-model_rift_nitsche_wz_centre_opts
+#-model_rift_nitsche_wz_oblique
+#-model_rift_nitsche_wz_double
+#-model_rift_nitsche_wz_straight_gauss
+#-model_rift_nitsche_wz_oblique_gauss
+-model_rift_nitsche_wz_sigma 3e+5,3e+5
+-model_rift_nitsche_wz_n_notches 3
+-model_rift_nitsche_wz_centre0 213.630e3,196.472e3
+-model_rift_nitsche_wz_centre1 574.118e3,396.593e3
+-model_rift_nitsche_wz_centre2 1025.19e3,258.639e3
+-model_rift_nitsche_wz_origin 300.0e3 # Centre z
+-model_rift_nitsche_wz_offset -200.0e3
+-model_rift_nitsche_wz_width 100.0e3
+-model_rift_nitsche_wz_angle 22.0
+########### Boundary conditions ##########
+#-model_rift_nitsche_bc_nitsche
+#-model_rift_nitsche_bc_strike_slip
+#-model_rift_nitsche_bc_freeslip_nitsche
+#-model_rift_nitsche_bc_dirichlet
+-model_rift_nitsche_bc_strikeslip_neumann
+#-model_rift_nitsche_bc_neumann_z
+#-model_rift_nitsche_bc_mark_face
+-model_rift_nitsche_norm_u 1.0 # cm/yr
+-model_rift_nitsche_alpha_u 90.0 # Degree
+-model_rift_nitsche_alpha_r -15.0 # Degree
+-model_rift_nitsche_mathcalH 0,1,0,1,1,1 # default
+-model_rift_nitsche_Ttop 0.0
+-model_rift_nitsche_Tbottom 1450.0
+########### SPM ##########
+-model_rift_nitsche_diffusivity_spm 1.0e-6
+############ Phases Parameters #############
+#### phase 0 ####
+-model_rift_nitsche_visc_type_0 0
+-model_rift_nitsche_eta0_0 1.0e+22
+-model_rift_nitsche_plastic_type_0 0
+-model_rift_nitsche_softening_type_0 0
+-model_rift_nitsche_density_type_0 0
+-model_rift_nitsche_density_0 3000.0
+#### phase 1 ####
+-model_rift_nitsche_visc_type_1 0
+-model_rift_nitsche_eta0_1 1.0e+22
+-model_rift_nitsche_plastic_type_1 0
+-model_rift_nitsche_softening_type_1 0
+-model_rift_nitsche_density_type_1 0
+-model_rift_nitsche_density_1 3000.0
+#### phase 2 ####
+-model_rift_nitsche_visc_type_2 0
+-model_rift_nitsche_eta0_2 1.0e+22
+-model_rift_nitsche_plastic_type_2 0
+-model_rift_nitsche_softening_type_2 0
+-model_rift_nitsche_density_type_2 0
+-model_rift_nitsche_density_2 3000.0
+#### phase 3 ####
+-model_rift_nitsche_visc_type_3 0
+-model_rift_nitsche_eta0_3 1.0e+22
+-model_rift_nitsche_plastic_type_3 0
+-model_rift_nitsche_softening_type_3 0
+-model_rift_nitsche_density_type_3 0
+-model_rift_nitsche_density_3 3000.0
+################ SOLVERS ################
+###### MG
+-A11_operator_type 2,2,0
+-dau_nlevels 3
+-stk_velocity_dm_mat_type aij
+#-a11_op avx
+#---- 2 MG lvl ----#
+#| 8 x 8 x 8 |
+#| 4 x 4 x 4 |
+#------------------#
+-stk_velocity_da_refine_hierarchy_x 2,2 
+-stk_velocity_da_refine_hierarchy_y 2,2 
+-stk_velocity_da_refine_hierarchy_z 2,2 
+#---- SNES ----#
+-newton_its 0
+#-snes_type ksponly
+-snes_monitor
+-snes_converged_reason
+#-snes_view
+#---- KSP ----#
+-ksp_max_it 200
+-ksp_rtol 1.0e-4
+-ksp_type fgmres
+-pc_type fieldsplit
+-pc_fieldsplit_schur_fact_type upper
+-pc_fieldsplit_type schur
+  #---- Fieldsplit p ----#
+  -fieldsplit_p_ksp_type preonly
+  -fieldsplit_p_pc_type bjacobi
+  #---- Fieldsplit u ----#
+  -fieldsplit_u_ksp_max_it 100
+  #-fieldsplit_u_ksp_monitor_true_residual
+  -fieldsplit_u_ksp_monitor
+  -fieldsplit_u_ksp_converged_reason
+  -fieldsplit_u_ksp_rtol 1.0e-2
+  -fieldsplit_u_ksp_type fgmres
+  -fieldsplit_u_pc_type mg
+  -fieldsplit_u_pc_mg_levels 3
+  -fieldsplit_u_pc_mg_cycle_type v
+  -fieldsplit_u_mg_levels_ksp_type gmres
+  -fieldsplit_u_mg_levels_pc_type jacobi
+  -fieldsplit_u_mg_levels_ksp_max_it 8
+  -fieldsplit_u_mg_levels_ksp_norm_type NONE
+    #---- Coarse Grid ----#
+    -fieldsplit_u_mg_coarse_pc_type cholesky #bjacobi
+#### THERMAL SOLVER
+-ptatin_energyfv_nsub 3,3,3
+#-energyfv_ksp_monitor
+-energyfv_snes_converged_reason
+-energyfv_ksp_type fgmres
+-energyfv_snes_ksp_ew
+-energyfv_snes_ksp_ew_rtol0 1.0e-2
+-energyfv_snes_ksp_ew_version 1
+-energyfv_snes_lag_preconditioner -2
+-energyfv_snes_monitor
+-energyfv_snes_rtol 1.0e-6
+-energyfv_mg_levels_esteig_ksp_norm_type none
+-energyfv_mg_levels_esteig_ksp_type cg
+-energyfv_mg_levels_ksp_chebyshev_esteig 0,0.01,0,1.1
+-energyfv_mg_levels_ksp_max_it 8
+#-energyfv_mg_levels_ksp_norm_type none
+-energyfv_mg_levels_ksp_type gmres #chebyshev
+-energyfv_mg_levels_pc_type bjacobi
+-energyfv_pc_type gamg
+-fvpp_ksp_monitor
+-fvpp_ksp_rtol 1.0e-10
+-fvpp_ksp_type cg
+-fvpp_mg_coarse_pc_type redundant
+-fvpp_mg_coarse_redundant_pc_factor_mat_solver_type gamg #mkl_pardiso 
+-fvpp_mg_coarse_redundant_pc_type gamg
+-fvpp_mg_levels_esteig_ksp_norm_type none
+-fvpp_mg_levels_esteig_ksp_type cg
+-fvpp_mg_levels_ksp_chebyshev_esteig 0,0.01,0,1.1
+-fvpp_mg_levels_ksp_max_it 4
+-fvpp_mg_levels_ksp_norm_type none
+-fvpp_mg_levels_ksp_type chebyshev
+-fvpp_mg_levels_pc_type jacobi
+-fvpp_operator_fvspace false
+-fvpp_pc_type gamg
+### Solver for poisson pressure
+#-LP_snes_atol 1.0e-9
+-LP_snes_rtol 1.0e-6
+#-LP_snes_max_it 10
+-LP_snes_monitor
+-LP_snes_converged_reason
+-LP_ksp_monitor
+-LP_ksp_converged_reason
+-LP_ksp_atol 1.0e-10
+-LP_ksp_rtol 1.0e-6
+-LP_ksp_type fgmres
+#-LP_snes_mf_operator
+-LP_pc_type bjacobi #gamg #lu not parallel
+#-LP_snes_type ksponly
+-LP_snes_ksp_ew
+-LP_snes_ksp_ew_rtol0 1.0e-2
+-LP_snes_ksp_ew_version 1
+-LP_snes_lag_preconditioner -2

@@ -46,7 +46,7 @@
 #include <models/analytics_vv/SolKxSolution.h>
 #include <models/analytics_vv/SolCxSolution.h>
 
-PSwarm pswarm;
+static PSwarm pswarm;
 
 PetscErrorCode ModelInitialize_AnlVV(pTatinCtx c,void *ctx)
 {
@@ -83,7 +83,7 @@ PetscErrorCode ModelApplyBoundaryCondition_AnlVV(pTatinCtx c,void *ctx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ModelApplyBoundaryConditionMG_AnlVV(PetscInt nl,BCList bclist[],DM dav[],pTatinCtx c,void *ctx)
+PetscErrorCode ModelApplyBoundaryConditionMG_AnlVV(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[],pTatinCtx c,void *ctx)
 {
   PetscScalar    zero = 0.0;
   PetscInt       n;

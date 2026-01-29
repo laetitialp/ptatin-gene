@@ -33,7 +33,7 @@ PetscErrorCode ptatin_macro_get_nested_fv_rank_local(
                      PetscInt q2_cell,const PetscInt q2_m[],const PetscInt sub_m[],
                      const PetscInt fv_m[],PetscInt fv_cell[]);
 
-PetscErrorCode EnergyFVEvaluateCoefficients(pTatinCtx user,PetscReal time,PhysCompEnergyFV efv,PetscScalar LA_T[],PetscScalar LA_U[]);
+PetscErrorCode EnergyFVEvaluateCoefficients(pTatinCtx user,PetscReal time,PhysCompEnergyFV efv,PetscScalar LA_T[],Vec X);
 
 PetscErrorCode MaterialPointOrderingCreate_Cellwise(int nkeys,
                                                     int L,const MPntStd point[],
@@ -47,6 +47,9 @@ PetscErrorCode pTatinPhysCompEnergyFV_ComputeALESource(FVDA fv,Vec xk,Vec xk1,Pe
 PetscErrorCode pTatinPhysCompEnergyFV_ComputeALEVelocity(DM dmg,Vec x0,Vec x1,PetscReal dt,Vec v);
 
 PetscErrorCode pTatinPhysCompEnergyFV_ComputeAdvectiveTimestep(PhysCompEnergyFV energy,Vec X,PetscReal *_dt);
+
+PetscErrorCode fvgeometry_dmda3d_create_from_element_partition(MPI_Comm comm,PetscInt target_decomp[],const PetscInt m[],DM *dm);
+PetscErrorCode EvalRHS_HeatProd(FVDA fv,Vec F);
 
 #endif
 

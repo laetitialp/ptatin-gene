@@ -106,10 +106,7 @@ PetscErrorCode test_pTatin3d_gmg_galerkin(int argc,char **argv)
   ierr = pTatinModel_ApplyInitialMeshGeometry(user->model,user);CHKERRQ(ierr);
 
   /* interpolate point coordinates (needed if mesh was modified) */
-  //ierr = QuadratureStokesCoordinateSetUp(user->stokes_ctx->Q,dav);CHKERRQ(ierr);
-  //for (e=0; e<QUAD_EDGES; e++) {
-  //  ierr = SurfaceQuadratureStokesGeometrySetUp(user->stokes_ctx->surfQ[e],dav);CHKERRQ(ierr);
-  //}
+  ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(user->stokes_ctx);CHKERRQ(ierr);
   /* interpolate material point coordinates (needed if mesh was modified) */
   ierr = MaterialPointCoordinateSetUp(user,dav);CHKERRQ(ierr);
 
@@ -336,10 +333,7 @@ PetscErrorCode test_pTatin3d_gmg_mf(int argc,char **argv)
   ierr = pTatinModel_ApplyInitialMeshGeometry(user->model,user);CHKERRQ(ierr);
 
   /* interpolate point coordinates (needed if mesh was modified) */
-  //ierr = QuadratureStokesCoordinateSetUp(user->stokes_ctx->Q,dav);CHKERRQ(ierr);
-  //for (e=0; e<QUAD_EDGES; e++) {
-  //  ierr = SurfaceQuadratureStokesGeometrySetUp(user->stokes_ctx->surfQ[e],dav);CHKERRQ(ierr);
-  //}
+  ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(user->stokes_ctx);CHKERRQ(ierr);
   /* interpolate material point coordinates (needed if mesh was modified) */
   ierr = MaterialPointCoordinateSetUp(user,dav);CHKERRQ(ierr);
 
@@ -444,7 +438,7 @@ PetscErrorCode test_pTatin3d_gmg_mf(int argc,char **argv)
     MatA11MF ctx;
 
     ierr = MatA11MFCreate(&ctx);CHKERRQ(ierr);
-    ierr = MatA11MFSetup(ctx,dav_hierarchy[k],volQ[k],u_bclist[k]);CHKERRQ(ierr);
+    ierr = MatA11MFSetup(ctx,dav_hierarchy[k],volQ[k],u_bclist[k],NULL);CHKERRQ(ierr);
 
     ierr = StokesQ2P1CreateMatrix_MFOperator_A11(ctx,&A11MF[k]);CHKERRQ(ierr);
     ierr = MatA11MFDestroy(&ctx);CHKERRQ(ierr);
@@ -605,10 +599,7 @@ PetscErrorCode test_putatin(int argc,char **argv)
   ierr = pTatinModel_ApplyInitialMeshGeometry(user->model,user);CHKERRQ(ierr);
 
   /* interpolate point coordinates (needed if mesh was modified) */
-  //ierr = QuadratureStokesCoordinateSetUp(user->stokes_ctx->Q,dav);CHKERRQ(ierr);
-  //for (e=0; e<QUAD_EDGES; e++) {
-  //  ierr = SurfaceQuadratureStokesGeometrySetUp(user->stokes_ctx->surfQ[e],dav);CHKERRQ(ierr);
-  //}
+  ierr = PhysCompStokesUpdateSurfaceQuadratureGeometry(user->stokes_ctx);CHKERRQ(ierr);
   /* interpolate material point coordinates (needed if mesh was modified) */
   ierr = MaterialPointCoordinateSetUp(user,dav);CHKERRQ(ierr);
 

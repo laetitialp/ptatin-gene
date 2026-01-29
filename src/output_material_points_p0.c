@@ -71,6 +71,7 @@ PetscErrorCode MarkerCellFieldsP0_ProjectIntegerField(DataBucket db,MaterialPoin
   if (variable == MPV_diffusivity) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"MPV_diffusivity is not an integer type and cannot be projected");
   if (variable == MPV_heat_source) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"MPV_heat_source is not an integer type and cannot be projected");
   if (variable == MPV_plastic_strain) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"MPV_plastic_strain is not an integer type and cannot be projected");
+  if (variable == MPV_damage) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"MPV_damage is not an integer type and cannot be projected");
 
   ierr = VecGetLocalSize(scalar,&ncells);CHKERRQ(ierr);
   PetscMalloc(sizeof(int)*ncells,&nearestpoint_list);
@@ -177,6 +178,13 @@ PetscErrorCode MarkerCellFieldsP0_ProjectScalarField(DataBucket db,MaterialPoint
       case MPV_plastic_strain: {
         float _var;
         ierr = MaterialPointGet_plastic_strain(X,p,&_var);CHKERRQ(ierr);
+        var = (PetscScalar)_var;
+      }
+        break;
+
+      case MPV_damage: {
+        float _var;
+        ierr = MaterialPointGet_damage(X,p,&_var);CHKERRQ(ierr);
         var = (PetscScalar)_var;
       }
         break;
@@ -338,6 +346,11 @@ PetscErrorCode MarkerCellFieldsP0Write_ParaViewVTS(DM dmscalar,DM dmp0,Vec scala
         break;
 
       case MPV_yield_indicator:
+        if (!low_precision) offset += sizeof(int) + sizeof(double)*1*(mx)*(my)*(mz);
+        else                offset += sizeof(int) + sizeof(float)*1*(mx)*(my)*(mz);
+        break;
+
+      case MPV_damage:
         if (!low_precision) offset += sizeof(int) + sizeof(double)*1*(mx)*(my)*(mz);
         else                offset += sizeof(int) + sizeof(float)*1*(mx)*(my)*(mz);
         break;

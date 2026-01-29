@@ -74,5 +74,8 @@ PetscErrorCode DMDAComputeCoordinateAverageBoundaryFace(DM dav,BoundaryFaceType 
 PetscErrorCode DMDAComputeQ2LocalBoundingBox(DM dm,PetscReal gmin[],PetscReal gmax[]);
 PetscErrorCode MPntStdCoordinateMinIdentifyPointIndex(DataBucket materialpoint_db,int region_idx,int pmin_x[],int pmin_y[],int pmin_z[]);
 PetscErrorCode MPntStdCoordinateMaxIdentifyPointIndex(DataBucket materialpoint_db,int region_idx,int pmax_x[],int pmax_y[],int pmax_z[]);
+PetscErrorCode StokesComputeVdotN(PhysCompStokes stokes,Vec u,PetscReal int_u_dot_n[]);
 
+PetscErrorCode pTatin_MPntStdSetRegionIndexFromMesh(pTatinCtx ptatin, const char mesh_file[], const char region_file[], PetscInt method, PetscReal length_scale);
+PetscErrorCode pTatin_ModelLoadTemperatureInitialSolution_FromFile(pTatinCtx ptatin, const char model_name[]);
 #endif

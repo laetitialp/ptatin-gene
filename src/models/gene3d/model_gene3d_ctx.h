@@ -31,20 +31,79 @@
 #ifndef __ptatinmodel_GENE3D_ctx_h__
 #define __ptatinmodel_GENE3D_ctx_h__
 
-typedef enum { GENEBC_FreeSlip=0, GENEBC_NoSlip, GENEBC_FreeSlipFreeSurface, GENEBC_NoSlipFreeSurface } GENE3DBC;
-typedef enum { GENE_LayeredCake=0, GENE_ExtrudeFromMap, GENE_ReadFromCAD} GENE3DINIGEOM;
-enum {LAYER_MAX = 100};
+#include "pswarm.h"
+
+typedef enum { MESH_EULERIAN=0, MESH_ALE } GeneMeshType;
+
+struct _p_ScalingCtx {
+  /* Scaling values */
+  PetscReal length_bar;
+  PetscReal viscosity_bar;
+  PetscReal velocity_bar;
+  PetscReal time_bar;
+  PetscReal pressure_bar;
+  PetscReal density_bar;
+  PetscReal acceleration_bar;
+  PetscReal cm_per_year2m_per_sec;
+  PetscReal Myr2sec;
+};
+typedef struct _p_ScalingCtx *ScalingCtx;
 
 typedef struct {
-  PetscInt  nmaterials;
-  PetscReal Lx,Ly,Lz;
-  PetscReal Ox,Oy,Oz;
-  GENE3DBC  boundary_conditon_type; /* [ 0 free slip | 1 no slip | 2 free surface + free slip | 3 free surface + no slip ] */
-  GENE3DINIGEOM  initial_geom;
+  /* bounding box */
+  PetscReal L[3],O[3];
+  /* regions */
+  PetscInt  n_regions;
+  PetscInt  *regions_table;
+  /* viscosity cutoff */
+  PetscReal eta_max,eta_min;
+  PetscBool eta_cutoff;
+  /* surface processes */
+  PetscBool surface_diffusion;
+  PetscReal diffusivity_spm;
+  /* passive markers */
+  PetscBool passive_markers;
+  PSwarm    pswarm;
+  /* Output */
+  PetscBool output_markers;
+  /* Scaling values */
+  ScalingCtx scale;
+  /* poisson pressure */
+  Mat       poisson_Jacobian;
+  PetscReal surface_pressure;
+  PetscBool poisson_pressure_active;
+  /* bcs */
+  PetscInt  prev_step;
+  PetscInt  bc_nfaces;
+  PetscInt  *bc_tag_table;
+  PetscBool bc_debug;
+  /* General Navier slip */
+  PetscReal epsilon_s[6],t1_hat[3],n_hat[3];
+  /* Meshes */
+  Mesh *mesh_facets;
+  GeneMeshType mesh_type;
 } ModelGENE3DCtx;
 
-PetscErrorCode ModelSetMarkerIndexLayeredCake_GENE3D(pTatinCtx c,void *ctx);
-PetscErrorCode ModelSetMarkerIndexFromMap_GENE3D(pTatinCtx c,void *ctx);
-PetscErrorCode ModelSetInitialStokesVariableOnMarker_GENE3D(pTatinCtx c,void *ctx);
+typedef struct {
+  te_expr     *expression;
+  PetscScalar *x,*y,*z,*t,*p;
+  ScalingCtx  scale;
+} ExpressionCtx;
+
+typedef struct {
+  PetscInt       nen,m[3];
+  const PetscInt *elnidx;
+  const PetscInt *elnidx_q2;
+  PetscReal      *pressure;
+  PetscScalar    *coor;
+  ExpressionCtx  *expr_ctx;
+} NeumannCtx;
+
+typedef struct {
+  PetscReal epsilon_s[6];
+  PetscReal mcal_H[6];
+  PetscReal n_hat[3];
+  PetscReal t1_hat[3];
+} GenNavierSlipCtx;
 
 #endif

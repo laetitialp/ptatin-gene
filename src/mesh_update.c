@@ -48,6 +48,7 @@
 #include "material_point_point_location.h"
 #include "dmda_view_petscvtk.h"
 #include "dmda_element_q1.h"
+#include "dmdae.h"
 #include "model_utils.h"
 
 #include "mesh_update.h"
@@ -166,7 +167,7 @@ PetscErrorCode UpdateMeshGeometry_VerticalLagrangianSurfaceRemesh(DM dav,Vec vel
   ierr = VecCopy(velocity,velocity_ale);CHKERRQ(ierr);
 
   ierr = VecStrideSet(velocity_ale,0,0.0);CHKERRQ(ierr); /* zero x component */
-  ierr = VecStrideSet(velocity_ale,2,0.0);CHKERRQ(ierr); /* zero y component */
+  ierr = VecStrideSet(velocity_ale,2,0.0);CHKERRQ(ierr); /* zero z component */
 
   ierr = DMDAVecTraverseIJK(dav,velocity_ale,1,DMDAVecTraverseIJK_ZeroInteriorMinusNmax,(void*)&N);CHKERRQ(ierr);
 
@@ -421,8 +422,8 @@ PetscErrorCode UpdateMeshGeometry_FullLag_ResampleJMax_RemeshJMIN2JMAX_Interpola
           //PetscPrintf(PETSC_COMM_SELF,"  pos(x,z) %1.8e %1.8e\n",mp.coor[0],mp.coor[1]);
 
           index = -1;
-          sep2 = 0.0;
           for (n=0; n<ni*nk; n++) {
+            sep2 = 0.0;
             sep2 = sep2 + (msurf_coords_2d[2*n+0]-mp.coor[0])*(msurf_coords_2d[2*n+0]-mp.coor[0]);
             sep2 = sep2 + (msurf_coords_2d[2*n+1]-mp.coor[1])*(msurf_coords_2d[2*n+1]-mp.coor[1]);
             if (sep2 < min_sep2) {
@@ -998,7 +999,7 @@ PetscErrorCode UpdateMeshGeometry_ApplyDiffusionJMAX(DM dav,PetscReal diffusivit
   ierr = VecDestroy(&diagM);CHKERRQ(ierr);
   ierr = VecDestroy(&H);CHKERRQ(ierr);
   ierr = VecDestroy(&Hinit);CHKERRQ(ierr);
-
+  ierr = DMDestroyDMDAE(daH);CHKERRQ(ierr);
   ierr = DMDestroy(&daH);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);

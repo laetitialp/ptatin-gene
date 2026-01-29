@@ -51,6 +51,7 @@
 #include "geometry_object.h"
 #include "ptatin3d_energy.h"
 #include "model_subduction_initiation2d_ctx.h"
+#include "material_point_popcontrol.h"
 
 
 PetscErrorCode ModelInitialize_Subduction_Initiation2d(pTatinCtx c,void *ctx)
@@ -155,8 +156,8 @@ PetscErrorCode ModelInitialize_Subduction_Initiation2d(pTatinCtx c,void *ctx)
   MaterialConstantsSetValues_DensityBoussinesq(materialconstants,0,data->rho[0],data->alpha[0],0.0);
   MaterialConstantsSetValues_DensityConst(materialconstants,0,data->rho[0]);
 #if 1
-  MaterialConstantsSetValues_PlasticDP(materialconstants,0,data->mu[0],data->mu_inf[0],data->C0[0],data->C0_inf[0],data->C0_inf[0],3.5*data->C0[0]);
-  //       MaterialConstantsSetValues_PlasticMises(materialconstants,0,10.0*data->C0[0],10.0*data->C0[0]);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,0,data->mu[0],data->mu_inf[0],data->C0[0],data->C0_inf[0],data->C0_inf[0],3.5*data->C0[0],0.0);
+  //       MaterialConstantsSetValues_PlasticMises(materialconstants,0,10.0*data->C0[0],10.0*data->C0[0],0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,0,0.1,0.6);
 #endif
   MaterialConstantsSetValues_MaterialType(materialconstants,1,VISCOUS_FRANKK,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_BOUSSINESQ);
@@ -166,7 +167,7 @@ PetscErrorCode ModelInitialize_Subduction_Initiation2d(pTatinCtx c,void *ctx)
   MaterialConstantsSetValues_DensityConst(materialconstants,1,data->rho[0]);
 
 #if 1
-  MaterialConstantsSetValues_PlasticDP(materialconstants,1,data->mu[0],data->mu_inf[0],0.1*data->C0[0],0.1*data->C0_inf[0],0.1*data->C0_inf[0],0.1*data->C0[0]);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,1,data->mu[0],data->mu_inf[0],0.1*data->C0[0],0.1*data->C0_inf[0],0.1*data->C0_inf[0],0.1*data->C0[0],0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,1,0.0,0.2);
 #endif
 
@@ -176,7 +177,7 @@ PetscErrorCode ModelInitialize_Subduction_Initiation2d(pTatinCtx c,void *ctx)
   MaterialConstantsSetValues_DensityBoussinesq(materialconstants,2,data->rho[0],data->alpha[0],0.0);
   MaterialConstantsSetValues_DensityConst(materialconstants,2,data->rho[0]);
 #if 1
-  MaterialConstantsSetValues_PlasticDP(materialconstants,2,data->mu[0],data->mu_inf[0],0.1*data->C0[0],0.1*data->C0_inf[0],0.1*data->C0_inf[0],0.1*data->C0[0]);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,2,data->mu[0],data->mu_inf[0],0.1*data->C0[0],0.1*data->C0_inf[0],0.1*data->C0_inf[0],0.1*data->C0[0],0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,2,0.0,0.2);
 #endif
 
@@ -186,7 +187,7 @@ PetscErrorCode ModelInitialize_Subduction_Initiation2d(pTatinCtx c,void *ctx)
   MaterialConstantsSetValues_DensityBoussinesq(materialconstants,3,data->rho[0],data->alpha[0],0.0);
   MaterialConstantsSetValues_DensityConst(materialconstants,3,data->rho[0]);
 #if 1
-  MaterialConstantsSetValues_PlasticDP(materialconstants,3,data->mu[0],data->mu_inf[0],0.1*data->C0[0],0.1*data->C0_inf[0],0.1*data->C0_inf[0],0.1*data->C0[0]);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,3,data->mu[0],data->mu_inf[0],0.1*data->C0[0],0.1*data->C0_inf[0],0.1*data->C0_inf[0],0.1*data->C0[0],0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,3,0.0,0.2);
 #endif
 
@@ -385,7 +386,7 @@ PetscErrorCode ModelApplyBoundaryCondition_Subduction_Initiation2d(pTatinCtx c,v
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ModelApplyBoundaryConditionMG_Subduction_Initiation2d(PetscInt nl,BCList bclist[],DM dav[],pTatinCtx c,void *ctx)
+PetscErrorCode ModelApplyBoundaryConditionMG_Subduction_Initiation2d(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[],pTatinCtx c,void *ctx)
 {
   ModelSubduction_Initiation2dCtx *data = (ModelSubduction_Initiation2dCtx*)ctx;
   PetscInt       n;
@@ -402,11 +403,14 @@ PetscErrorCode ModelApplyBoundaryConditionMG_Subduction_Initiation2d(PetscInt nl
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ModelApplyMaterialBoundaryCondition_Subduction_Initiation2d(pTatinCtx c,void *ctx)
+PetscErrorCode ModelAdaptMaterialPointResolution_Subduction_Initiation2d(pTatinCtx c,void *ctx)
 {
+  PetscErrorCode ierr;
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
 
+  /* Perform injection and cleanup of markers */
+  ierr = MaterialPointPopulationControl_v1(c);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -992,7 +996,7 @@ PetscErrorCode pTatinModelRegister_Subduction_Initiation2d(void)
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_INIT,                  (void (*)(void))ModelInitialize_Subduction_Initiation2d);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_BC,              (void (*)(void))ModelApplyBoundaryCondition_Subduction_Initiation2d);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_BCMG,            (void (*)(void))ModelApplyBoundaryConditionMG_Subduction_Initiation2d);CHKERRQ(ierr);
-  ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_MAT_BC,          (void (*)(void))ModelApplyMaterialBoundaryCondition_Subduction_Initiation2d);CHKERRQ(ierr);
+  ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_ADAPT_MP_RESOLUTION,   (void (*)(void))ModelAdaptMaterialPointResolution_Subduction_Initiation2d);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_INIT_MESH_GEOM,  (void (*)(void))ModelApplyInitialMeshGeometry_Subduction_Initiation2d);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_INIT_MAT_GEOM,   (void (*)(void))ModelApplyInitialMaterialGeometry_Subduction_Initiation2d);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_INIT_SOLUTION,   (void (*)(void))ModelApplyInitialSolution_Subduction_Initiation2d);CHKERRQ(ierr);

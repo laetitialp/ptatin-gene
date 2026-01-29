@@ -37,6 +37,7 @@
 #include "material_point_utils.h"
 #include "dmda_update_coords.h"
 #include "material_point_std_utils.h"
+#include "material_point_popcontrol.h"
 #include "mesh_update.h"
 
 typedef struct _p_ModelCtxGeoMod2008 *ModelCtxGeoMod2008;
@@ -140,38 +141,38 @@ PetscErrorCode ModelInitialize_GeoMod2008(pTatinCtx c,void *ctx)
   MaterialConstantsSetValues_MaterialType(materialconstants,  RegionQuartz, VISCOUS_CONSTANT,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_CONSTANT);
   MaterialConstantsSetValues_ViscosityConst(materialconstants,RegionQuartz, data->quartz_eta);
   MaterialConstantsSetValues_DensityConst(materialconstants,  RegionQuartz, data->quartz_rho);
-  MaterialConstantsSetValues_PlasticDP(materialconstants,     RegionQuartz, data->quartz_mu,data->quartz_mu_inf, data->quartz_C0,data->quartz_C0_inf, one_third*data->quartz_C0,1.0e20);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,     RegionQuartz, data->quartz_mu,data->quartz_mu_inf, data->quartz_C0,data->quartz_C0_inf, one_third*data->quartz_C0,1.0e20,0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,       RegionQuartz, 0.5,1.0);
 
   MaterialConstantsSetValues_MaterialType(materialconstants,  RegionQuartzBdy, VISCOUS_CONSTANT,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_CONSTANT);
   MaterialConstantsSetValues_ViscosityConst(materialconstants,RegionQuartzBdy, data->quartz_eta);
   MaterialConstantsSetValues_DensityConst(materialconstants,  RegionQuartzBdy, data->quartz_rho);
-  MaterialConstantsSetValues_PlasticDP(materialconstants,     RegionQuartzBdy, data->quartz_bdy_mu,data->quartz_bdy_mu_inf, data->quartz_bdy_C0,data->quartz_bdy_C0_inf, one_third*data->quartz_bdy_C0,1.0e20);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,     RegionQuartzBdy, data->quartz_bdy_mu,data->quartz_bdy_mu_inf, data->quartz_bdy_C0,data->quartz_bdy_C0_inf, one_third*data->quartz_bdy_C0,1.0e20,0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,       RegionQuartzBdy, 0.5,1.0);
 
   MaterialConstantsSetValues_MaterialType(materialconstants,  RegionQuartzBdySkin, VISCOUS_CONSTANT,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_CONSTANT);
   MaterialConstantsSetValues_ViscosityConst(materialconstants,RegionQuartzBdySkin, data->quartz_eta);
   MaterialConstantsSetValues_DensityConst(materialconstants,  RegionQuartzBdySkin, data->quartz_rho);
-  MaterialConstantsSetValues_PlasticDP(materialconstants,     RegionQuartzBdySkin, data->quartz_bdy_mu,data->quartz_bdy_mu_inf, data->quartz_bdy_C0,data->quartz_bdy_C0_inf, one_third*data->quartz_bdy_C0,1.0e20);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,     RegionQuartzBdySkin, data->quartz_bdy_mu,data->quartz_bdy_mu_inf, data->quartz_bdy_C0,data->quartz_bdy_C0_inf, one_third*data->quartz_bdy_C0,1.0e20,0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,       RegionQuartzBdySkin, 0.5,1.0);
 
   /* Corundum */
   MaterialConstantsSetValues_MaterialType(materialconstants,  RegionCorundum, VISCOUS_CONSTANT,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_CONSTANT);
   MaterialConstantsSetValues_ViscosityConst(materialconstants,RegionCorundum, data->corundum_eta);
   MaterialConstantsSetValues_DensityConst(materialconstants,  RegionCorundum, data->corundum_rho);
-  MaterialConstantsSetValues_PlasticDP(materialconstants,     RegionCorundum, data->corundum_mu,data->corundum_mu_inf, data->corundum_C0,data->corundum_C0_inf, one_third*data->corundum_C0,1.0e20);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,     RegionCorundum, data->corundum_mu,data->corundum_mu_inf, data->corundum_C0,data->corundum_C0_inf, one_third*data->corundum_C0,1.0e20,0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,       RegionCorundum, 0.5,1.0);
 
   MaterialConstantsSetValues_MaterialType(materialconstants,  RegionCorundumBdy, VISCOUS_CONSTANT,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_CONSTANT);
   MaterialConstantsSetValues_ViscosityConst(materialconstants,RegionCorundumBdy, data->corundum_eta);
   MaterialConstantsSetValues_DensityConst(materialconstants,  RegionCorundumBdy, data->corundum_rho);
-  MaterialConstantsSetValues_PlasticDP(materialconstants,     RegionCorundumBdy, data->corundum_bdy_mu,data->corundum_bdy_mu_inf, data->corundum_bdy_C0,data->corundum_bdy_C0_inf, one_third*data->corundum_bdy_C0,1.0e20);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,     RegionCorundumBdy, data->corundum_bdy_mu,data->corundum_bdy_mu_inf, data->corundum_bdy_C0,data->corundum_bdy_C0_inf, one_third*data->corundum_bdy_C0,1.0e20,0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,       RegionCorundumBdy, 0.5,1.0);
 
   MaterialConstantsSetValues_MaterialType(materialconstants,  RegionCorundumBdySkin, VISCOUS_CONSTANT,PLASTIC_DP,SOFTENING_LINEAR,DENSITY_CONSTANT);
   MaterialConstantsSetValues_ViscosityConst(materialconstants,RegionCorundumBdySkin, data->corundum_eta);
   MaterialConstantsSetValues_DensityConst(materialconstants,  RegionCorundumBdySkin, data->corundum_rho);
-  MaterialConstantsSetValues_PlasticDP(materialconstants,     RegionCorundumBdySkin, data->corundum_bdy_mu,data->corundum_bdy_mu_inf, data->corundum_bdy_C0,data->corundum_bdy_C0_inf, one_third*data->corundum_bdy_C0,1.0e20);
+  MaterialConstantsSetValues_PlasticDP(materialconstants,     RegionCorundumBdySkin, data->corundum_bdy_mu,data->corundum_bdy_mu_inf, data->corundum_bdy_C0,data->corundum_bdy_C0_inf, one_third*data->corundum_bdy_C0,1.0e20,0.0);
   MaterialConstantsSetValues_SoftLin(materialconstants,       RegionCorundumBdySkin, 0.5,1.0);
 
   rheology                = &c->rheology_constants;
@@ -367,7 +368,7 @@ PetscErrorCode ModelApplyBoundaryCondition_GeoMod2008(pTatinCtx c,void *ctx)
 }
 
 /* wrapper function for applying boundary condition on all multi-grid levels */
-PetscErrorCode ModelApplyStokesVelocityBoundaryConditionMG_GeoMod2008(PetscInt nl,BCList bclist[],DM dav[],pTatinCtx user,void *ctx)
+PetscErrorCode ModelApplyStokesVelocityBoundaryConditionMG_GeoMod2008(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[],pTatinCtx user,void *ctx)
 {
   PetscInt       n;
   PetscErrorCode ierr;
@@ -467,7 +468,7 @@ PetscErrorCode GeomMod2008ApplyFrictionalBoundarySkin(ModelCtxGeoMod2008 data,DM
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ModelApplyMaterialBoundaryCondition_GeoMod2008(pTatinCtx c,void *ctx)
+PetscErrorCode ModelAdaptMaterialPointResolution_GeoMod2008(pTatinCtx c,void *ctx)
 {
   ModelCtxGeoMod2008 data = (ModelCtxGeoMod2008)ctx;
   DataBucket         material_points;
@@ -482,6 +483,8 @@ PetscErrorCode ModelApplyMaterialBoundaryCondition_GeoMod2008(pTatinCtx c,void *
   ierr = pTatinGetStokesContext(c,&stokes);CHKERRQ(ierr);
 
   ierr = GeomMod2008ApplyFrictionalBoundarySkin(data,stokes->dav,material_points);CHKERRQ(ierr);
+  /* Perform injection and cleanup of markers */
+  ierr = MaterialPointPopulationControl_v1(c);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -929,7 +932,7 @@ PetscErrorCode pTatinModelRegister_GeoMod2008(void)
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_INIT,                  (void (*)(void))ModelInitialize_GeoMod2008);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_BC,              (void (*)(void))ModelApplyBoundaryCondition_GeoMod2008);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_BCMG,            (void (*)(void))ModelApplyStokesVelocityBoundaryConditionMG_GeoMod2008);CHKERRQ(ierr);
-  ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_MAT_BC,          (void (*)(void))ModelApplyMaterialBoundaryCondition_GeoMod2008);CHKERRQ(ierr);
+  ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_ADAPT_MP_RESOLUTION,   (void (*)(void))ModelAdaptMaterialPointResolution_GeoMod2008);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_INIT_MESH_GEOM,  (void (*)(void))ModelApplyInitialMeshGeometry_GeoMod2008);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_INIT_MAT_GEOM,   (void (*)(void))ModelApplyInitialMaterialGeometry_GeoMod2008);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_INIT_SOLUTION,   (void (*)(void))ModelApplyInitialSolution_GeoMod2008);CHKERRQ(ierr);

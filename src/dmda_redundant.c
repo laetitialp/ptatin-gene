@@ -305,3 +305,32 @@ PetscErrorCode DMDACreate3dSemiRedundant(DM da,PetscInt nred,PetscMPISubComm *su
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode VecCreateRedundant(Vec source, PetscInt size, PetscInt *idx_from, PetscInt *idx_to, Vec *_target)
+{
+  Vec            target;
+  VecScatter     scatter; /* scatter context */
+  IS             from,to; /* index sets that define the scatter */
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  /* Create a sequential Vec that will be hold by all ranks */
+  ierr = VecCreateSeq(PETSC_COMM_SELF,size,&target);CHKERRQ(ierr);
+  /* Create the list of indices to extract from the source Vec */
+  ierr = ISCreateGeneral(PETSC_COMM_SELF,size,idx_from,PETSC_COPY_VALUES,&from);CHKERRQ(ierr);
+  /* Create the list of indices for the target Vec */
+  ierr = ISCreateGeneral(PETSC_COMM_SELF,size,idx_to,PETSC_COPY_VALUES,&to);CHKERRQ(ierr);
+  /* Create the scatter struct */
+  ierr = VecScatterCreate(source,from,target,to,&scatter);CHKERRQ(ierr);
+  /* Insert values from the source Vec at indices indicated by (from) into the target Vec indicated by (to) */
+  ierr = VecScatterBegin(scatter,source,target,INSERT_VALUES,SCATTER_FORWARD);CHKERRQ(ierr);
+  ierr = VecScatterEnd(scatter,source,target,INSERT_VALUES,SCATTER_FORWARD);CHKERRQ(ierr);
+
+  /* Clean up the structs */
+  ierr = ISDestroy(&from);CHKERRQ(ierr);
+  ierr = ISDestroy(&to);CHKERRQ(ierr);
+  ierr = VecScatterDestroy(&scatter);CHKERRQ(ierr);
+
+  *_target = target;
+
+  PetscFunctionReturn(0);
+}

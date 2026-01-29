@@ -47,9 +47,12 @@
 #include "output_material_points.h"
 #include "xdmf_writer.h"
 #include "output_material_points_p0.h"
+#include "stokes_output.h"
 #include "private/quadrature_impl.h"
 #include "quadrature.h"
 #include "QPntSurfCoefStokes_def.h"
+
+#include "surface_constraint.h"
 
 #include "viscous_sinker_ctx.h"
 
@@ -355,10 +358,11 @@ PetscErrorCode ModelApplyBoundaryCondition_ViscousSinker(pTatinCtx user,void *ct
         // passed
         //ierr = DirichletBC_ApplyConstantAreaSection_ExtensionX_ShorteningZ(bclist,dav,3.5);CHKERRQ(ierr);
         //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
-
+#if 0
         /* free slip, free surface, normal stress on IMAX */
-        ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+        //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
         //
+#if 0 // TODO DAM
         {
           SurfaceQuadrature surfQ_east;
           QPntSurfCoefStokes *surfQ_coeff,*surfQ_cell_coeff;
@@ -438,13 +442,21 @@ PetscErrorCode ModelApplyBoundaryCondition_ViscousSinker(pTatinCtx user,void *ct
 
           ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
         }
+#endif
         //
         //ierr = DMDABCListTraverse3d(user->stokes_ctx->u_bclist,user->stokes_ctx->dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
-
+#endif
+        
+        ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMAX_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+        ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_IMIN_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+        
         ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
-
-        ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
-        ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+        ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+        ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+        //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_JMAX_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+        
+        //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+        //ierr = DMDABCListTraverse3d(bclist,dav,DMDABCList_KMAX_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
 
       }
 
@@ -464,7 +476,7 @@ PetscErrorCode ModelApplyBoundaryCondition_ViscousSinker(pTatinCtx user,void *ct
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ModelApplyBoundaryConditionMG_ViscousSinker(PetscInt nl,BCList bclist[],DM dav[],pTatinCtx user,void *ctx)
+PetscErrorCode ModelApplyBoundaryConditionMG_ViscousSinker(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[],pTatinCtx user,void *ctx)
 {
   ModelViscousSinkerCtx *data = (ModelViscousSinkerCtx*)ctx;
   PetscScalar zero = 0.0;
@@ -640,14 +652,17 @@ PetscErrorCode ModelApplyBoundaryConditionMG_ViscousSinker(PetscInt nl,BCList bc
         // passed
         //ierr = DirichletBC_ApplyConstantAreaSection_ExtensionX_ShorteningZ(bclist[n],dav[n],3.5);CHKERRQ(ierr);
         //ierr = DMDABCListTraverse3d(bclist[n],dav[n],DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
-
+        
+        ierr = DMDABCListTraverse3d(bclist[n],dav[n],DMDABCList_IMAX_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
         ierr = DMDABCListTraverse3d(bclist[n],dav[n],DMDABCList_IMIN_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
-        //ierr = DMDABCListTraverse3d(bclist[n],dav[n],DMDABCList_IMAX_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
-
+        
         ierr = DMDABCListTraverse3d(bclist[n],dav[n],DMDABCList_JMIN_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
-
-        ierr = DMDABCListTraverse3d(bclist[n],dav[n],DMDABCList_KMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
-        ierr = DMDABCListTraverse3d(bclist[n],dav[n],DMDABCList_KMAX_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+        ierr = DMDABCListTraverse3d(bclist[n],dav[n],DMDABCList_JMIN_LOC,0,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+        ierr = DMDABCListTraverse3d(bclist[n],dav[n],DMDABCList_JMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+        //ierr = DMDABCListTraverse3d(bclist[n],dav[n],DMDABCList_JMAX_LOC,1,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+        
+        //ierr = DMDABCListTraverse3d(bclist[n],dav[n],DMDABCList_KMIN_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
+        //ierr = DMDABCListTraverse3d(bclist[n],dav[n],DMDABCList_KMAX_LOC,2,BCListEvaluator_constant,(void*)&zero);CHKERRQ(ierr);
 
         break;
     }
@@ -656,13 +671,37 @@ PetscErrorCode ModelApplyBoundaryConditionMG_ViscousSinker(PetscInt nl,BCList bc
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ModelApplyMaterialBoundaryCondition_ViscousSinker(pTatinCtx c,void *ctx)
+PetscErrorCode ModelAdaptMaterialPointResolution_ViscousSinker(pTatinCtx c,void *ctx)
 {
+  PetscErrorCode ierr;
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
-  PetscPrintf(PETSC_COMM_WORLD,"  NOT IMPLEMENTED \n", PETSC_FUNCTION_NAME);
+  PetscPrintf(PETSC_COMM_WORLD,"  NO MARKER INJECTION ON FACES \n", PETSC_FUNCTION_NAME);
+  /* Perform injection and cleanup of markers */
+  ierr = MaterialPointPopulationControl_v1(c);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
+}
+
+PetscBool facet_mark(Facet f,void *data)
+{
+  printf("fid %d side %d cell %d\n",f->index,f->label,f->cell_index);
+  printf("centroid %+1.4e %+1.4e %+1.4e\n",f->centroid[0],f->centroid[1],f->centroid[2]);
+  printf("normal %+1.4e %+1.4e %+1.4e\n",f->centroid_normal[0],f->centroid_normal[1],f->centroid_normal[2]);
+  return PETSC_TRUE;
+}
+
+PetscErrorCode set(Facet f,const PetscReal coor[],PetscReal traction[],void *ctx)
+{
+  printf("fid %d side %d cell %d\n",f->index,f->label,f->cell_index);
+  printf("  %+1.4e %+1.4e %+1.4e\n",coor[0],coor[1],coor[2]);
+  PetscFunctionReturn(0);
+}
+
+PetscBool facet_mark_y(Facet f,void *data)
+{
+  if (f->centroid[1] > 0.5) { return PETSC_TRUE; }
+  return PETSC_FALSE;
 }
 
 PetscErrorCode ModelApplyInitialMeshGeometry_ViscousSinker(pTatinCtx c,void *ctx)
@@ -676,8 +715,8 @@ PetscErrorCode ModelApplyInitialMeshGeometry_ViscousSinker(pTatinCtx c,void *ctx
   ierr = DMDASetUniformCoordinates(c->stokes_ctx->dav,0.0,data->Lx, 0.0,data->Ly, 0.0,data->Lz);CHKERRQ(ierr);
 
   //
-  PetscPrintf(PETSC_COMM_WORLD,"RUNNING DEFORMED MESH EXAMPLE \n");
-  ierr = MeshDeformation_GaussianBump_YMAX(c->stokes_ctx->dav,-0.3,-5.6);CHKERRQ(ierr);
+  //PetscPrintf(PETSC_COMM_WORLD,"RUNNING DEFORMED MESH EXAMPLE \n");
+  //ierr = MeshDeformation_GaussianBump_YMAX(c->stokes_ctx->dav,-0.3,-5.6);CHKERRQ(ierr);
   //ierr = DMDASetGraduatedCoordinates1D(c->stokes_ctx->dav,2,1,2.0);CHKERRQ(ierr);
   // [test c] remesh interp
   //ierr = DMDASetCoordinatesCentralSqueeze1D(c->stokes_ctx->dav,0,4.0,0.0,0.4,0.8,1.0);CHKERRQ(ierr);
@@ -714,7 +753,7 @@ PetscErrorCode ModelApplyInitialMeshGeometry_ViscousSinker(pTatinCtx c,void *ctx
      ierr = DMDABilinearizeQ2Elements(c->stokes_ctx->dav);CHKERRQ(ierr);
      }
   */
-
+  
   PetscFunctionReturn(0);
 }
 
@@ -1157,6 +1196,8 @@ PetscErrorCode ModelOutput_ViscousSinker(pTatinCtx c,Vec X,const char prefix[],v
   PetscFunctionBegin;
   PetscPrintf(PETSC_COMM_WORLD,"[[%s]]\n", PETSC_FUNCTION_NAME);
 
+  SurfaceQuadratureViewParaview_Stokes(c->stokes_ctx,"./","surfq");
+
   ierr = pTatin3d_ModelOutput_VelocityPressure_Stokes(c,X,prefix);CHKERRQ(ierr);
   // testing
   //ierr = pTatin3d_ModelOutputLite_Velocity_Stokes(c,X,prefix);CHKERRQ(ierr);
@@ -1263,7 +1304,7 @@ PetscErrorCode pTatinModelRegister_ViscousSinker(void)
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_INIT_SOLUTION,   (void (*)(void))ModelInitialCondition_ViscousSinker);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_BC,              (void (*)(void))ModelApplyBoundaryCondition_ViscousSinker);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_BCMG,            (void (*)(void))ModelApplyBoundaryConditionMG_ViscousSinker);CHKERRQ(ierr);
-  ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_MAT_BC,          (void (*)(void))ModelApplyMaterialBoundaryCondition_ViscousSinker);CHKERRQ(ierr);
+  ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_ADAPT_MP_RESOLUTION,   (void (*)(void))ModelAdaptMaterialPointResolution_ViscousSinker);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_INIT_MESH_GEOM,  (void (*)(void))ModelApplyInitialMeshGeometry_ViscousSinker);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_INIT_MAT_GEOM,   (void (*)(void))ModelApplyInitialMaterialGeometry_ViscousSinker);CHKERRQ(ierr);
   ierr = pTatinModelSetFunctionPointer(m,PTATIN_MODEL_APPLY_UPDATE_MESH_GEOM,(void (*)(void))ModelApplyUpdateMeshGeometry_ViscousSinker);CHKERRQ(ierr);

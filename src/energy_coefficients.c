@@ -210,7 +210,7 @@ PetscErrorCode EnergyEvaluateCoefficients_MaterialPoints(pTatinCtx user,PetscRea
           break;
 
         case ENERGYSOURCE_USE_MATERIALPOINT_VALUE:
-          H_mp += mpp_energy->heat_source;
+          H_mp += mpp_energy->heat_source_init;
           break;
 
         case ENERGYSOURCE_CONSTANT:

@@ -414,6 +414,16 @@ PetscErrorCode MaterialConstantsPrintValues_EnergyMaterialConstants(const char m
 
   /* options for SourceMethod ==>> source_type */
   sprintf(opt_name,"-%s_SourceMethod_%d", model_name,region_id);
+  { int *value;
+    EnergyMaterialConstantsGetField_SourceMethod(data,(int**)&value);
+    PetscPrintf(PETSC_COMM_WORLD,"    SourceMethod[0] = %d (%s) \n", value[0],opt_name);
+    PetscPrintf(PETSC_COMM_WORLD,"    SourceMethod[1] = %d (%s) \n", value[1],opt_name);
+    PetscPrintf(PETSC_COMM_WORLD,"    SourceMethod[2] = %d (%s) \n", value[2],opt_name);
+    PetscPrintf(PETSC_COMM_WORLD,"    SourceMethod[3] = %d (%s) \n", value[3],opt_name);
+    PetscPrintf(PETSC_COMM_WORLD,"    SourceMethod[4] = %d (%s) \n", value[4],opt_name);
+    PetscPrintf(PETSC_COMM_WORLD,"    SourceMethod[5] = %d (%s) \n", value[5],opt_name);
+    PetscPrintf(PETSC_COMM_WORLD,"    SourceMethod[6] = %d (%s) \n", value[6],opt_name);
+  }
   PetscFunctionReturn(0);
 }
 

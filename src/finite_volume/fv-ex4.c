@@ -62,6 +62,27 @@ PetscErrorCode bcset_default(FVDA fv,
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode bcset_default_neumann(FVDA fv,
+                             DACellFace face,
+                             PetscInt nfaces,
+                             const PetscReal coor[],
+                             const PetscReal normal[],
+                             const PetscInt cell[],
+                             PetscReal time,
+                             FVFluxType flux[],
+                             PetscReal bcvalue[],
+                             void *ctx)
+{
+  PetscInt f;
+  
+  for (f=0; f<nfaces; f++) {
+    flux[f] = FVFLUX_NEUMANN_CONSTRAINT;
+    bcvalue[f] = 0.0;
+  }
+  PetscFunctionReturn(0);
+}
+
+
 PetscErrorCode t4(void)
 {
   PetscErrorCode ierr;
@@ -126,8 +147,8 @@ PetscErrorCode t4(void)
   //
   ierr = FVDAFaceIterator(fv,DACELL_FACE_W,PETSC_FALSE,0.0,bcset_west,NULL);CHKERRQ(ierr);
   
-  //ierr = FVDAFaceIterator(fv,DACELL_FACE_N,PETSC_FALSE,0.0,bcset_default,NULL);CHKERRQ(ierr);
-  //ierr = FVDAFaceIterator(fv,DACELL_FACE_E,PETSC_FALSE,0.0,bcset_default,NULL);CHKERRQ(ierr);
+  ierr = FVDAFaceIterator(fv,DACELL_FACE_N,PETSC_FALSE,0.0,bcset_default_neumann,NULL);CHKERRQ(ierr);
+  ierr = FVDAFaceIterator(fv,DACELL_FACE_E,PETSC_FALSE,0.0,bcset_default,NULL);CHKERRQ(ierr);
   
   ierr = FVDAFaceIterator(fv,DACELL_FACE_S,PETSC_FALSE,0.0,bcset_default,NULL);CHKERRQ(ierr);
   

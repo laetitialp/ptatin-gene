@@ -1,0 +1,163 @@
+-nonlinear_driver_v1
+########## Model ##########
+-ptatin_model rift_nitsche # Used model
+-log_summary
+-output_path rift_nitsche
+-lattice_layout_Nx 12
+-lattice_layout_Ny 3
+-lattice_layout_Nz 8
+-mp_popctrl_np_lower 32
+-mp_popctrl_np_upper 200
+-nsteps 2 # Max number of steps
+-dt_min 1.0e-6
+-dt_max 0.5
+-dt_max_surface_displacement 5.0e-4
+-output_frequency 1
+-ptatin_driver_write_icbc
+-model_rift_nitsche_output_markers
+-model_rift_nitsche_temperature_ic_from_file
+########## Resolution ##############
+-mx 8 # Number of elements along x
+-my 8 # Number of elements along y
+-mz 8 # Number of elements along z
+########### Box Geometry ##########
+-model_rift_nitsche_Ox 0.0
+-model_rift_nitsche_Oy -250.0e3
+-model_rift_nitsche_Oz 0.0
+-model_rift_nitsche_Lx 1200.0e3
+-model_rift_nitsche_Ly 0.0
+-model_rift_nitsche_Lz 600.0e3
+-model_rift_nitsche_y_continent -25.0e3,-35.0e3,-120.0e3
+########### Weak zones ##########
+#-model_rift_nitsche_wz_notch
+#-model_rift_nitsche_wz_gauss
+#-model_rift_nitsche_wz_oblique
+#-model_rift_nitsche_wz_double
+-model_rift_nitsche_wz_straight_gauss
+#-model_rift_nitsche_wz_oblique_gauss
+-model_rift_nitsche_wz_sigma 3e+5,3e+5
+-model_rift_nitsche_wz_n_notches 3
+-model_rift_nitsche_wz_origin 300.0e3 # Centre z
+-model_rift_nitsche_wz_offset -200.0e3
+-model_rift_nitsche_wz_width 100.0e3
+-model_rift_nitsche_wz_angle -30.0
+########### Boundary conditions ##########
+-model_rift_nitsche_bc_nitsche
+#-model_rift_nitsche_bc_strike_slip
+#-model_rift_nitsche_bc_freeslip_nitsche
+#-model_rift_nitsche_bc_dirichlet
+-model_rift_nitsche_bc_u_func_atan
+-model_rift_nitsche_bc_atan_sharpness 8.0e-5
+-model_rift_nitsche_bc_atan_offset 300.0e3
+-model_rift_nitsche_norm_u 1.0 # cm/yr
+-model_rift_nitsche_alpha_u 45.0 #90.0 # Degree
+-model_rift_nitsche_alpha_r #-15.0 # Degree
+-model_rift_nitsche_mathcalH 0,1,0,1,1,1 # default
+-model_rift_nitsche_Ttop 0.0
+-model_rift_nitsche_Tbottom 1450.0
+########### SPM ##########
+-model_rift_nitsche_diffusivity_spm 1.0e-6
+############ Phases Parameters #############
+#### Continental upper crust phase number 0 ####
+#### Quartzite Ranalli 1997 ####
+-model_rift_nitsche_preexpA_0 6.7e-6
+-model_rift_nitsche_Ascale_0 1.0e+6
+-model_rift_nitsche_entalpy_0 156.0e3
+-model_rift_nitsche_Vmol_0 0.0
+-model_rift_nitsche_nexp_0 2.4
+-model_rift_nitsche_Tref_0 273.15
+-model_rift_nitsche_phi_0 0.0
+-model_rift_nitsche_phi_inf_0 0.0
+-model_rift_nitsche_Co_0 3.0e+8
+-model_rift_nitsche_Co_inf_0 2.0e+7
+-model_rift_nitsche_Tens_cutoff_0 1.0e+7
+-model_rift_nitsche_Hst_cutoff_0 4.0e+8
+-model_rift_nitsche_eps_min_0 0.0
+-model_rift_nitsche_eps_max_0 1.0
+-model_rift_nitsche_alpha_0 3.0e-5
+-model_rift_nitsche_beta_0 0.0
+-model_rift_nitsche_rho_0 2700.0
+-model_rift_nitsche_heat_source_0 1.5e-6
+-model_rift_nitsche_conductivity_0 2.7
+#### Continental lower crust phase number 1 ####
+#### Anorthite Rybacki & Dresen 2000 ####
+-model_rift_nitsche_preexpA_1 13.4637
+-model_rift_nitsche_Ascale_1 1.0e+6
+-model_rift_nitsche_entalpy_1 345.e+3
+-model_rift_nitsche_Vmol_1 38.0e-6
+-model_rift_nitsche_nexp_1 3.0
+-model_rift_nitsche_Tref_1 273.15
+-model_rift_nitsche_phi_1 0.0
+-model_rift_nitsche_phi_inf_1 0.0
+-model_rift_nitsche_Co_1 3.0e+8
+-model_rift_nitsche_Co_inf_1 2.0e+7
+-model_rift_nitsche_Tens_cutoff_1 1.0e+7
+-model_rift_nitsche_Hst_cutoff_1 4.0e+8
+-model_rift_nitsche_eps_min_1 0.0
+-model_rift_nitsche_eps_max_1 1.0
+-model_rift_nitsche_alpha_1 3.0e-5
+-model_rift_nitsche_beta_1 1.0e-11
+-model_rift_nitsche_rho_1 2850.0
+-model_rift_nitsche_heat_source_1 0.3e-6
+-model_rift_nitsche_conductivity_1 2.85
+#### Continental lithosphere mante phase number 2 ####
+#### Dry peridotite Ranalli 1997 ####
+-model_rift_nitsche_preexpA_2 2.5e4
+-model_rift_nitsche_Ascale_2 1.0e+6
+-model_rift_nitsche_entalpy_2 532.0e3
+-model_rift_nitsche_Vmol_2 8.0e-6
+-model_rift_nitsche_nexp_2 3.5
+-model_rift_nitsche_Tref_2 273.15
+-model_rift_nitsche_phi_2 0.0
+-model_rift_nitsche_phi_inf_2 0.0
+-model_rift_nitsche_Co_2 3.0e+8
+-model_rift_nitsche_Co_inf_2 2.0e+7
+-model_rift_nitsche_Tens_cutoff_2 1.0e+7
+-model_rift_nitsche_Hst_cutoff_2 4.0e+8
+-model_rift_nitsche_eps_min_2 0.0
+-model_rift_nitsche_eps_max_2 1.0
+-model_rift_nitsche_alpha_2 3.0e-5
+-model_rift_nitsche_beta_2 1.0e-11
+-model_rift_nitsche_rho_2 3300.0
+-model_rift_nitsche_heat_source_2 0.0
+-model_rift_nitsche_conductivity_2 3.3
+#### Asthenosphere phase number 3 ####
+#### Dry peridotite Ranalli 1997 ####
+-model_rift_nitsche_preexpA_3 2.5e4
+-model_rift_nitsche_Ascale_3 0.5e+6
+-model_rift_nitsche_entalpy_3 532.0e3
+-model_rift_nitsche_Vmol_3 0.0
+-model_rift_nitsche_nexp_3 3.5
+-model_rift_nitsche_Tref_3 273.15
+-model_rift_nitsche_phi_3 0.0
+-model_rift_nitsche_phi_inf_3 0.0
+-model_rift_nitsche_Co_3 3.0e+8
+-model_rift_nitsche_Co_inf_3 2.0e+7
+-model_rift_nitsche_Tens_cutoff_3 1.0e+7
+-model_rift_nitsche_Hst_cutoff_3 4.0e+8
+-model_rift_nitsche_eps_min_3 0.0
+-model_rift_nitsche_eps_max_3 1.0
+-model_rift_nitsche_alpha_3 3.0e-5
+-model_rift_nitsche_beta_3 1.0e-11
+-model_rift_nitsche_rho_3 3300.0
+-model_rift_nitsche_heat_source_3 0.0
+-model_rift_nitsche_conductivity_3 3.3
+################ SOLVERS ################
+### Solver for poisson pressure
+#-LP_snes_atol 1.0e-9
+-LP_snes_rtol 1.0e-6
+#-LP_snes_max_it 10
+-LP_snes_monitor
+-LP_snes_converged_reason
+-LP_ksp_monitor
+-LP_ksp_converged_reason
+-LP_ksp_atol 1.0e-10
+-LP_ksp_rtol 1.0e-6
+-LP_ksp_type fgmres
+#-LP_snes_mf_operator
+-LP_pc_type bjacobi #gamg #lu not parallel
+#-LP_snes_type ksponly
+-LP_snes_ksp_ew
+-LP_snes_ksp_ew_rtol0 1.0e-2
+-LP_snes_ksp_ew_version 1
+-LP_snes_lag_preconditioner -2

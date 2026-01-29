@@ -43,7 +43,7 @@
 #include <pswarm.h>
 
 
-PSwarm pswarm;
+static PSwarm pswarm;
 
 PetscErrorCode ModelInitialize_StaticBox(pTatinCtx c,void *ctx)
 {
@@ -79,7 +79,7 @@ PetscErrorCode ModelApplyBoundaryCondition_StaticBox(pTatinCtx c,void *ctx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ModelApplyBoundaryConditionMG_StaticBox(PetscInt nl,BCList bclist[],DM dav[],pTatinCtx c,void *ctx)
+PetscErrorCode ModelApplyBoundaryConditionMG_StaticBox(PetscInt nl,BCList bclist[],SurfBCList surf_bclist[],DM dav[],pTatinCtx c,void *ctx)
 {
   PetscScalar    zero = 0.0;
   PetscInt       n;
