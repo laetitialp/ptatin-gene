@@ -33,6 +33,8 @@
 
 #include <cjson_utils.h>
 
+#include "surface_elevation.h"
+
 #define MAX_MG_LEVELS 20
 static const char help[] = "Prototype pTatin3D driver using finite volume transport discretisation and checkpointing\n\n";
 
@@ -2651,6 +2653,8 @@ PetscErrorCode Run_NonLinearFV(pTatinCtx user,Vec v1,Vec v2)
   AuuMultiLevelCtx   mgctx;
   PetscReal          timestep,dt_factor = 10.0;
   PetscMPIInt        rank;
+  SurfaceElevation   surface;
+  PetscReal          dhmin, dhmax;
   
   PetscFunctionBegin;
   ierr = pTatinLogNote(user,"  [ptatin_driver.Execute]");CHKERRQ(ierr);
@@ -2664,7 +2668,10 @@ PetscErrorCode Run_NonLinearFV(pTatinCtx user,Vec v1,Vec v2)
   ierr = pTatinGetStokesContext(user,&stokes);CHKERRQ(ierr);
   ierr = PhysCompStokesGetDMComposite(stokes,&dmstokes);CHKERRQ(ierr);
   ierr = PhysCompStokesGetDMs(stokes,&dav,&dap);CHKERRQ(ierr);
-  
+  //////////////////////////////////////////////////////////
+  ierr = SurfaceElevationCreate(dav,&surface);CHKERRQ(ierr);
+  //////////////////////////////////////////////////////////
+
   /* Pack all physics together */
   /* Here it's simple, we don't need a DM for this, just assign the pack DM to be equal to the stokes DM */
   ierr = PetscObjectReference((PetscObject)stokes->stokes_pack);CHKERRQ(ierr);
@@ -2731,7 +2738,21 @@ PetscErrorCode Run_NonLinearFV(pTatinCtx user,Vec v1,Vec v2)
       ierr = VecCopy(q2_coor,tmp);CHKERRQ(ierr);
       
       ierr = DMCreateGlobalVector(cdm,&q2_coor_k);CHKERRQ(ierr);
+      /////////////////////////////////////////////////////////////////////
+      ierr = SurfaceElevationRecord(dav,&surface,PETSC_TRUE);CHKERRQ(ierr);
       ierr = pTatinModel_UpdateMeshGeometry(model,user,X);CHKERRQ(ierr);
+      ierr = SurfaceElevationRecord(dav,&surface,PETSC_FALSE);CHKERRQ(ierr);
+      ierr = SurfaceElevationDifference(&surface,
+                                        &dhmin,
+                                        &dhmax);CHKERRQ(ierr);
+      ierr = SurfaceElevationAddDepositionMarkers(
+                                                  dav,
+                                                  user->materialpoint_db,
+                                                  &surface);CHKERRQ(ierr);
+      ierr = memcpy(surface.old,
+                  surface.current,
+                  surface.mx*surface.mz*sizeof(PetscReal));
+      /////////////////////////////////////////////////////////////////////
       
       ierr = DMGetCoordinates(dav,&q2_coor);CHKERRQ(ierr);
       ierr = VecCopy(q2_coor,q2_coor_k);CHKERRQ(ierr);
@@ -2740,6 +2761,7 @@ PetscErrorCode Run_NonLinearFV(pTatinCtx user,Vec v1,Vec v2)
       
       ierr = VecDestroy(&tmp);CHKERRQ(ierr);
     }
+
     
     /* solve energy equation with FV + ALE */
     // [FV EXTENSION] (1) Evaluate thermal properties on material points, project onto FV cell / cell faces
@@ -3043,6 +3065,7 @@ PetscErrorCode Run_NonLinearFV(pTatinCtx user,Vec v1,Vec v2)
   
   ierr = VecDestroy(&F_s);CHKERRQ(ierr);
   ierr = HMG_Destroy(&mgctx);CHKERRQ(ierr);
+  ierr = SurfaceElevationDestroy(&surface);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }

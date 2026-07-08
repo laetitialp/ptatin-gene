@@ -13,6 +13,7 @@ libptatin3d-y.c += $(call thisdir, \
   mesh_deformation.c \
   mesh_quality_metrics.c \
   mesh_update.c \
+  surface_elevation.c \
   dmdae.c \
   dmda_element_q2p1.c \
   dmda_element_q1.c \

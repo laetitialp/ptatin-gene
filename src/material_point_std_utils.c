@@ -1521,6 +1521,7 @@ PetscErrorCode SwarmMPntStd_CoordAssignment_InsertWithinPlane(DataBucket db,DM d
           monitor,
           (const PetscReal*)LA_gcoords, (const PetscInt)lmx,(const PetscInt)lmy,(const PetscInt)lmz, (const PetscInt*)elnidx_u,
           1, &mp_std );
+      PetscPrintf(PETSC_COMM_WORLD, "InverseMapping: wil=%d  xi=(%g,%g,%g)\n", mp_std.wil, (double)mp_std.xi[0], (double)mp_std.xi[1], (double)mp_std.xi[2]);
 
       point_on_edge = PETSC_FALSE;
       if (mp_std.wil != -1) {
@@ -1603,6 +1604,13 @@ PetscErrorCode SwarmMPntStd_CoordAssignment_InsertFromList(DataBucket db,DM dav,
       point_found = PETSC_FALSE;
     }
 
+
+    if (!point_found) {
+    PetscPrintf(PETSC_COMM_WORLD,
+        "Marker rejected because point is outside mesh.\n");
+    }
+
+
     if (point_found) {
       int pidx;
 
@@ -1629,6 +1637,119 @@ PetscErrorCode SwarmMPntStd_CoordAssignment_InsertFromList(DataBucket db,DM dav,
   if (!use_natural_index) {
     ierr = SwarmMPntStd_AssignUniquePointIdentifiers(PetscObjectComm((PetscObject)dav),db,n_points_orig,np_local);CHKERRQ(ierr);
   }
+
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode SwarmMPntStd_InsertSedimentMarker(
+        DataBucket db,
+        DM dav,
+        PetscReal x,
+        PetscReal y,
+        PetscReal z,
+        PetscInt phase)
+{
+  MPAccess       mpX;
+  MPntStd        mp_std;
+
+  DM             cda;
+  Vec            gcoords;
+  PetscScalar    *LA_gcoords;
+  const PetscInt *elnidx_u;
+
+  PetscInt       lmx,lmy,lmz;
+  PetscInt       n_points_curr;
+  PetscReal      tolerance;
+  PetscBool      use_nonzero_guess,monitor;
+  PetscInt       max_its;
+
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  tolerance         = 1.0e-10;
+  max_its           = 10;
+  use_nonzero_guess = PETSC_FALSE;
+  monitor           = PETSC_FALSE;
+
+  ierr = DMGetCoordinateDM(dav,&cda);CHKERRQ(ierr);
+  ierr = DMGetCoordinatesLocal(dav,&gcoords);CHKERRQ(ierr);
+  ierr = VecGetArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
+
+  ierr = DMDAGetElements_pTatinQ2P1(
+            dav,
+            NULL,
+            NULL,
+            &elnidx_u);CHKERRQ(ierr);
+
+  ierr = DMDAGetLocalSizeElementQ2(
+            dav,
+            &lmx,
+            &lmy,
+            &lmz);CHKERRQ(ierr);
+
+  mp_std.coor[0] = x;
+  mp_std.coor[1] = y;
+  mp_std.coor[2] = z;
+
+  InverseMappingDomain_3dQ2(
+        tolerance,max_its,
+        use_nonzero_guess,
+        monitor,
+        (const double*)LA_gcoords,
+        lmx,lmy,lmz,
+        elnidx_u,
+        1,
+        &mp_std);
+
+  PetscPrintf(PETSC_COMM_WORLD,"wil = %d\n",mp_std.wil);
+
+  PetscPrintf(PETSC_COMM_WORLD,
+             "xi = %g %g %g\n",
+             (double)mp_std.xi[0],
+             (double)mp_std.xi[1],
+             (double)mp_std.xi[2]);
+
+  ierr = VecRestoreArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
+
+  /* outside domain */
+  if (mp_std.wil == -1) {
+      PetscPrintf(PETSC_COMM_WORLD,"Point rejected.\n");
+      PetscFunctionReturn(0);
+  }
+
+  DataBucketGetSizes(db,&n_points_curr,NULL,NULL);
+
+  DataBucketSetSizes(db,n_points_curr+1,-1);
+
+  ierr = MaterialPointGetAccess(db,&mpX);CHKERRQ(ierr);
+
+  ierr = MaterialPointSet_global_coord(
+            mpX,
+            n_points_curr,
+            mp_std.coor);CHKERRQ(ierr);
+
+  ierr = MaterialPointSet_local_coord(
+            mpX,
+            n_points_curr,
+            mp_std.xi);CHKERRQ(ierr);
+
+  ierr = MaterialPointSet_local_element_index(
+            mpX,
+            n_points_curr,
+            mp_std.wil);CHKERRQ(ierr);
+
+  ierr = MaterialPointSet_phase_index(
+            mpX,
+            n_points_curr,
+            phase);CHKERRQ(ierr);
+
+  ierr = MaterialPointSet_point_index(
+            mpX,
+            n_points_curr,
+            (long int)n_points_curr);CHKERRQ(ierr);
+
+  ierr = MaterialPointRestoreAccess(db,&mpX);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
