@@ -39,6 +39,7 @@
 #include "MPntStd_def.h"
 #include "MPntPStokes_def.h"
 #include "MPntPStokesPl_def.h"
+#include "MPntPDepositionTime_def.h"
 #include "material_point_std_utils.h"
 #include "ptatin_utils.h"
 #include "ptatin3d_stokes.h"
@@ -411,6 +412,7 @@ PetscErrorCode pTatin3dCreateMaterialPoints(pTatinCtx ctx,DM dav)
   DataBucketCreate(&db);
   DataBucketRegisterField(db,MPntStd_classname,    sizeof(MPntStd),NULL);
   DataBucketRegisterField(db,MPntPStokes_classname,sizeof(MPntPStokes),NULL);
+  DataBucketRegisterField(db,MPntPDepositionTime_classname,sizeof(MPntPDepositionTime),NULL);
   DataBucketFinalize(db);
     DataBucketRegisterField(db,MPntPStokesPl_classname,sizeof(MPntPStokesPl),NULL);
   DataBucketFinalize(db);

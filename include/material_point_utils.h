@@ -55,6 +55,7 @@ struct _p_MPAccess {
   int mp_stokes_field_idx;
   int mp_stokespl_field_idx;
   int mp_energy_field_idx;
+  int mp_deposition_time_field_idx;
 };
 
 
@@ -127,6 +128,7 @@ PetscErrorCode MaterialPointGet_yield_indicator(MPAccess X,const int p,short *va
 PetscErrorCode MaterialPointGet_damage(MPAccess X,const int p,float *var);
 PetscErrorCode MaterialPointGet_diffusivity(MPAccess X,const int p,double *var);
 PetscErrorCode MaterialPointGet_heat_source(MPAccess X,const int p,double *var);
+PetscErrorCode MaterialPointGet_deposition_time(MPAccess X,const int p,double *var);
 
 PetscErrorCode MaterialPointSet_point_index(MPAccess X,const int p,long int var);
 PetscErrorCode MaterialPointSet_global_coord(MPAccess X,const int p,double var[]);
@@ -140,6 +142,7 @@ PetscErrorCode MaterialPointSet_yield_indicator(MPAccess X,const int p,short var
 PetscErrorCode MaterialPointSet_damage(MPAccess X,const int p,float var);
 PetscErrorCode MaterialPointSet_diffusivity(MPAccess X,const int p,double var);
 PetscErrorCode MaterialPointSet_heat_source(MPAccess X,const int p,double var);
+PetscErrorCode MaterialPointSet_deposition_time(MPAccess X,const int p,double var);
 
 PetscErrorCode MaterialPointScale_global_coord(MPAccess X,double var);
 PetscErrorCode MaterialPointScale_viscosity(MPAccess X,double var);

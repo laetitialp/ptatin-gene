@@ -37,6 +37,7 @@
 #include "MPntPStokes_def.h"
 #include "MPntPEnergy_def.h"
 #include "MPntPStokesPl_def.h"
+#include "MPntPDepositionTime_def.h"
 
 #include "QPntVolCoefStokes_def.h"
 #include "QPntVolCoefEnergy_def.h"
@@ -2954,6 +2955,7 @@ PetscErrorCode MaterialPointGetAccess(DataBucket materialpoint_db,MPAccess *help
   X->mp_stokes_field_idx   = -1;
   X->mp_stokespl_field_idx = -1;
   X->mp_energy_field_idx   = -1;
+  X->mp_deposition_time_field_idx = -1;
 
   /* MPntStd */
   DataBucketQueryDataFieldByName(materialpoint_db,MPntStd_classname,&found);
@@ -3003,6 +3005,19 @@ PetscErrorCode MaterialPointGetAccess(DataBucket materialpoint_db,MPAccess *help
 
     X->PField[cnt] = PField;
     X->mp_energy_field_idx = cnt;
+
+    cnt++;
+  }
+
+  /* MPntPDepositionTime */
+  DataBucketQueryDataFieldByName(materialpoint_db,MPntPDepositionTime_classname,&found);
+  if (found) {
+    DataBucketGetDataFieldByName(materialpoint_db,MPntPDepositionTime_classname,&PField);
+    DataFieldGetAccess(PField);
+    DataFieldVerifyAccess(PField,sizeof(MPntPDepositionTime));
+
+    X->PField[cnt] = PField;
+    X->mp_deposition_time_field_idx = cnt;
 
     cnt++;
   }
@@ -3091,6 +3106,20 @@ PetscErrorCode _get_field_MPntPEnergy(MPAccess X,const int p,MPntPEnergy **point
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode _get_field_MPntPDepositionTime(MPAccess X,const int p,MPntPDepositionTime **point)
+{
+  DataField  PField;
+  if (X->mp_deposition_time_field_idx == -1) {
+    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Material point field MPntPEnergy must be registered");
+  }
+  if (X == NULL) { SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Must call MaterialPointGetAccess() first"); }
+  if (p < 0 || p >= X->db->L) SETERRQ2(PETSC_COMM_WORLD,PETSC_ERR_USER,"MPntPDepositionTime.AccessPoint() index %d is invalid. Must be in range [0,%d)",p,X->db->L);
+  PField = X->PField[ X->mp_deposition_time_field_idx ];
+  DataFieldAccessPoint(PField,p,(void**)point);
+
+  PetscFunctionReturn(0);
+}
+
 /* std */
 PetscErrorCode MaterialPointGet_point_index(MPAccess X,const int p,long int *var)
 {
@@ -3150,6 +3179,20 @@ PetscErrorCode MaterialPointGet_phase_index(MPAccess X,const int p,int *var)
   MPntStdGetField_phase_index(point,var);
 
   PetscFunctionReturn(0);
+}
+
+PetscErrorCode MaterialPointGet_deposition_time(MPAccess X,const int p,double *var)
+{
+    MPntPDepositionTime *point;
+    PetscErrorCode ierr;
+
+    PetscFunctionBegin;
+
+    ierr = _get_field_MPntPDepositionTime(X,p,&point);CHKERRQ(ierr);
+
+    MPntPDepositionTimeGetField_deposition_time(point,var);
+
+    PetscFunctionReturn(0);
 }
 
 PetscErrorCode MaterialPointSet_phase_index(MPAccess X,const int p,int var)
@@ -3357,6 +3400,28 @@ PetscErrorCode MaterialPointSet_heat_source_init(MPAccess X,const int p,double v
   MPntPEnergySetField_heat_source_init(point,var);
 
   PetscFunctionReturn(0);
+}
+
+PetscErrorCode MaterialPointSet_deposition_time(
+        MPAccess X,
+        const int p,
+        double var)
+{
+    MPntPDepositionTime *point;
+    PetscErrorCode ierr;
+
+    PetscFunctionBegin;
+
+    ierr = _get_field_MPntPDepositionTime(
+            X,
+            p,
+            &point);CHKERRQ(ierr);
+
+    MPntPDepositionTimeSetField_deposition_time(
+            point,
+            var);
+
+    PetscFunctionReturn(0);
 }
 
 /* std */
