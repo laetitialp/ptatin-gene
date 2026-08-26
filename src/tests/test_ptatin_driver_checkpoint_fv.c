@@ -2742,16 +2742,9 @@ PetscErrorCode Run_NonLinearFV(pTatinCtx user,Vec v1,Vec v2)
       ierr = SurfaceElevationRecord(dav,&surface,PETSC_TRUE);CHKERRQ(ierr);
       ierr = pTatinModel_UpdateMeshGeometry(model,user,X);CHKERRQ(ierr);
       ierr = SurfaceElevationRecord(dav,&surface,PETSC_FALSE);CHKERRQ(ierr);
-      ierr = SurfaceElevationDifference(&surface,
-                                        &dhmin,
-                                        &dhmax);CHKERRQ(ierr);
-      ierr = SurfaceElevationAddDepositionMarkers(
-                                                  dav,
-                                                  user->materialpoint_db,
-                                                  &surface);CHKERRQ(ierr);
-      ierr = memcpy(surface.old,
-                  surface.current,
-                  surface.mx*surface.mz*sizeof(PetscReal));
+      ierr = SurfaceElevationDifference(&surface,&dhmin,&dhmax);CHKERRQ(ierr);
+      ierr = SurfaceElevationAddDepositionMarkers(dav,user->materialpoint_db,&surface,user->time);CHKERRQ(ierr);
+      ierr = memcpy(surface.old,surface.current,surface.mx*surface.mz*sizeof(PetscReal));
       /////////////////////////////////////////////////////////////////////
       
       ierr = DMGetCoordinates(dav,&q2_coor);CHKERRQ(ierr);

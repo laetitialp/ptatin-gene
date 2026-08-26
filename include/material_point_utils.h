@@ -40,7 +40,7 @@
 #include "quadrature.h"
 
 /* add material points into the list */
-typedef enum { MPField_Std=0, MPField_Stokes, MPField_Energy, MPField_StokesPl } MaterialPointField;
+typedef enum { MPField_Std=0, MPField_Stokes, MPField_Energy, MPField_StokesPl, MPField_DepositionTime } MaterialPointField;
 
 typedef enum { CoefAvgNULL=0, CoefAvgARITHMETIC, CoefAvgHARMONIC, CoefAvgGEOMETRIC } CoefficientAveragingType;
 

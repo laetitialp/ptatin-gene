@@ -397,8 +397,11 @@ PetscErrorCode pTatinModel_Output(pTatinModel model,pTatinCtx ctx,Vec X,const ch
 
   ierr = PetscLogEventBegin(PTATIN_ModelOutput,0,0,0,0);CHKERRQ(ierr);
   if (!model->disable_output) {
+	  PetscPrintf(PETSC_COMM_WORLD,"pTatinModel_Output: disable_output = FALSE\n");
     if (model->FP_pTatinModel_Output) {
+	    PetscPrintf(PETSC_COMM_WORLD,"model->FP_pTatinModel_Output, name = %s\n", name);
       ierr = model->FP_pTatinModel_Output(ctx,X,name,model->model_data);CHKERRQ(ierr);
+      PetscPrintf(PETSC_COMM_WORLD,"=====model->FP_pTatinModel_Output ends======\n", name);
     }
   }
   ierr = PetscLogEventEnd(PTATIN_ModelOutput,0,0,0,0);CHKERRQ(ierr);

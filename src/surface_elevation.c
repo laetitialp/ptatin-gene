@@ -218,7 +218,8 @@ PetscErrorCode SurfaceElevationGenerateSedimentMarkers(
 PetscErrorCode SurfaceElevationAddDepositionMarkers(
         DM dav,
         DataBucket db,
-        SurfaceElevation *surf)
+        SurfaceElevation *surf,
+	PetscReal deposition_time)
 {
   PetscErrorCode ierr;
 
@@ -280,13 +281,7 @@ PetscErrorCode SurfaceElevationAddDepositionMarkers(
           (double)z,
           (double)dh);
 
-      ierr = SwarmMPntStd_InsertSedimentMarker(
-                  db,
-                  dav,
-                  x,
-                  y,
-                  z,
-                  20);CHKERRQ(ierr);
+      ierr = SwarmMPntStd_InsertSedimentMarker(db,dav,x,y,z,20,deposition_time);CHKERRQ(ierr);
     }
   }
 

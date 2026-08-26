@@ -40,6 +40,7 @@
 #include "data_bucket.h"
 #include "data_exchanger.h"
 #include "MPntStd_def.h"
+#include "MPntPDepositionTime_def.h"
 #include "ptatin3d_stokes.h"
 #include "output_paraview.h"
 #include "material_point_utils.h"
@@ -1209,6 +1210,7 @@ PetscErrorCode SwarmView_MPntStd_VTKappended_binary(DataBucket db,const char nam
   int npoints;
   PetscLogDouble t0,t1;
   DataField PField;
+  DataField PField_deposition_time;
   int byte_offset,length;
   PetscErrorCode ierr;
 
@@ -1220,6 +1222,7 @@ PetscErrorCode SwarmView_MPntStd_VTKappended_binary(DataBucket db,const char nam
   }
 
   DataBucketGetDataFieldByName(db, MPntStd_classname ,&PField);
+  DataBucketGetDataFieldByName(db, MPntPDepositionTime_classname ,&PField_deposition_time);
 
   fprintf( vtk_fp, "<?xml version=\"1.0\"?>\n");
 
@@ -1274,6 +1277,11 @@ PetscErrorCode SwarmView_MPntStd_VTKappended_binary(DataBucket db,const char nam
     MPntStd *marker = PField->data; /* should write a function to do this */
 
     MPntStdVTKWriteBinaryAppendedHeaderAllFields(vtk_fp,&byte_offset,npoints,marker);
+  }
+  {
+    MPntPDepositionTime *marker_deposition_time = PField_deposition_time->data; /* should write a function to do this */
+
+    MPntPDepositionTimeVTKWriteBinaryAppendedHeaderAllFields(vtk_fp,&byte_offset,npoints,marker_deposition_time);
   }
   fprintf( vtk_fp, "\t\t\t</PointData>\n");
   fprintf( vtk_fp, "\n");
@@ -1338,6 +1346,10 @@ PetscErrorCode SwarmView_MPntStd_VTKappended_binary(DataBucket db,const char nam
     MPntStd *marker = PField->data;
     MPntStdVTKWriteBinaryAppendedDataAllFields(vtk_fp,npoints,marker);
   }
+  {
+    MPntPDepositionTime *marker_deposition_time = PField_deposition_time->data;
+    MPntPDepositionTimeVTKWriteBinaryAppendedDataAllFields(vtk_fp,npoints,marker_deposition_time);
+  }
 
   fprintf( vtk_fp,"\n\t</AppendedData>\n");
 
@@ -1364,6 +1376,9 @@ PetscErrorCode __SwarmView_MPntStd_PVTU(const char prefix[],const char name[])
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
+
+  PetscPrintf(PETSC_COMM_WORLD,
+            "DEBUG: Entering __SwarmView_MPntStd_PVTU\n");
 
   if ((vtk_fp = fopen ( name, "w")) == NULL)  {
     SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_USER,"Cannot open file %s",name );
@@ -1394,7 +1409,10 @@ PetscErrorCode __SwarmView_MPntStd_PVTU(const char prefix[],const char name[])
   ///////////////
   fprintf(vtk_fp, "    <PPointData>\n");
   MPntStdPVTUWriteAllPPointDataFields(vtk_fp);
+  MPntPDepositionTimePVTUWriteAllPPointDataFields(vtk_fp);
   fprintf(vtk_fp, "    </PPointData>\n");
+  PetscPrintf(PETSC_COMM_WORLD,
+            "MPntPDepositionTimePVTUWriteAllPPointDataFields\n");
   ///////////////
 
   /* write out the parallel information */
@@ -1427,6 +1445,7 @@ PetscErrorCode SwarmOutputParaView_MPntStd(DataBucket db,const char path[],const
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
+  PetscPrintf(PETSC_COMM_WORLD,"SwarmOutputParaView_MPntStd\n");
 
   ierr = pTatinGenerateParallelVTKName(prefix,"vtu",&vtkfilename);CHKERRQ(ierr);
   if (path) {
@@ -1641,13 +1660,7 @@ PetscErrorCode SwarmMPntStd_CoordAssignment_InsertFromList(DataBucket db,DM dav,
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode SwarmMPntStd_InsertSedimentMarker(
-        DataBucket db,
-        DM dav,
-        PetscReal x,
-        PetscReal y,
-        PetscReal z,
-        PetscInt phase)
+PetscErrorCode SwarmMPntStd_InsertSedimentMarker(DataBucket db,DM dav,PetscReal x,PetscReal y,PetscReal z,PetscInt phase,PetscReal deposition_time)
 {
   MPAccess       mpX;
   MPntStd        mp_std;
@@ -1676,31 +1689,15 @@ PetscErrorCode SwarmMPntStd_InsertSedimentMarker(
   ierr = DMGetCoordinatesLocal(dav,&gcoords);CHKERRQ(ierr);
   ierr = VecGetArray(gcoords,&LA_gcoords);CHKERRQ(ierr);
 
-  ierr = DMDAGetElements_pTatinQ2P1(
-            dav,
-            NULL,
-            NULL,
-            &elnidx_u);CHKERRQ(ierr);
+  ierr = DMDAGetElements_pTatinQ2P1(dav,NULL,NULL,&elnidx_u);CHKERRQ(ierr);
 
-  ierr = DMDAGetLocalSizeElementQ2(
-            dav,
-            &lmx,
-            &lmy,
-            &lmz);CHKERRQ(ierr);
+  ierr = DMDAGetLocalSizeElementQ2(dav,&lmx,&lmy,&lmz);CHKERRQ(ierr);
 
   mp_std.coor[0] = x;
   mp_std.coor[1] = y;
   mp_std.coor[2] = z;
 
-  InverseMappingDomain_3dQ2(
-        tolerance,max_its,
-        use_nonzero_guess,
-        monitor,
-        (const double*)LA_gcoords,
-        lmx,lmy,lmz,
-        elnidx_u,
-        1,
-        &mp_std);
+  InverseMappingDomain_3dQ2(tolerance,max_its,use_nonzero_guess,monitor,(const double*)LA_gcoords,lmx,lmy,lmz,elnidx_u,1,&mp_std);
 
   PetscPrintf(PETSC_COMM_WORLD,"wil = %d\n",mp_std.wil);
 
@@ -1724,30 +1721,17 @@ PetscErrorCode SwarmMPntStd_InsertSedimentMarker(
 
   ierr = MaterialPointGetAccess(db,&mpX);CHKERRQ(ierr);
 
-  ierr = MaterialPointSet_global_coord(
-            mpX,
-            n_points_curr,
-            mp_std.coor);CHKERRQ(ierr);
+  ierr = MaterialPointSet_global_coord(mpX,n_points_curr,mp_std.coor);CHKERRQ(ierr);
 
-  ierr = MaterialPointSet_local_coord(
-            mpX,
-            n_points_curr,
-            mp_std.xi);CHKERRQ(ierr);
+  ierr = MaterialPointSet_local_coord(mpX,n_points_curr,mp_std.xi);CHKERRQ(ierr);
 
-  ierr = MaterialPointSet_local_element_index(
-            mpX,
-            n_points_curr,
-            mp_std.wil);CHKERRQ(ierr);
+  ierr = MaterialPointSet_local_element_index(mpX,n_points_curr,mp_std.wil);CHKERRQ(ierr);
 
-  ierr = MaterialPointSet_phase_index(
-            mpX,
-            n_points_curr,
-            phase);CHKERRQ(ierr);
+  ierr = MaterialPointSet_phase_index(mpX,n_points_curr,phase);CHKERRQ(ierr);
 
-  ierr = MaterialPointSet_point_index(
-            mpX,
-            n_points_curr,
-            (long int)n_points_curr);CHKERRQ(ierr);
+  ierr = MaterialPointSet_deposition_time(mpX,n_points_curr,deposition_time);CHKERRQ(ierr);
+
+  ierr = MaterialPointSet_point_index(mpX,n_points_curr,(long int)n_points_curr);CHKERRQ(ierr);
 
   ierr = MaterialPointRestoreAccess(db,&mpX);CHKERRQ(ierr);
 

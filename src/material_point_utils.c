@@ -121,6 +121,30 @@ PetscErrorCode MaterialPointGeneric_VTKWriteBinaryAppendedHeaderAllFields(FILE *
       }
         break;
 
+      case MPField_DepositionTime:
+      {
+        DataField              PField_deposition_time;
+        MPntPDepositionTime    *marker_deposition_time;
+
+        DataBucketGetDataFieldByName(
+            db,
+            MPntPDepositionTime_classname,
+            &PField_deposition_time);
+
+        DataFieldGetAccess(PField_deposition_time);
+
+        marker_deposition_time = PField_deposition_time->data;
+
+        MPntPDepositionTimeVTKWriteBinaryAppendedHeaderAllFields(
+            vtk_fp,
+            byte_offset,
+            (const int)npoints,
+            (const MPntPDepositionTime*)marker_deposition_time);
+
+        DataFieldRestoreAccess(PField_deposition_time);
+      }
+        break;
+
       default:
         SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Unknown material point field");
         break;
@@ -197,6 +221,29 @@ PetscErrorCode MaterialPointGeneric_VTKWriteBinaryAppendedDataAllFields(FILE *vt
       }
         break;
 
+      case MPField_DepositionTime:
+      {
+        DataField              PField_deposition_time;
+        MPntPDepositionTime    *marker_deposition_time;
+
+        DataBucketGetDataFieldByName(
+            db,
+            MPntPDepositionTime_classname,
+            &PField_deposition_time);
+
+        DataFieldGetAccess(PField_deposition_time);
+
+        marker_deposition_time = PField_deposition_time->data;
+
+        MPntPDepositionTimeVTKWriteBinaryAppendedDataAllFields(
+            vtk_fp,
+            (const int)npoints,
+            (const MPntPDepositionTime*)marker_deposition_time);
+
+        DataFieldRestoreAccess(PField_deposition_time);
+      }
+        break;
+
       default:
         SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Unknown material point field");
         break;
@@ -231,6 +278,11 @@ PetscErrorCode MaterialPointGeneric_PVTUWriteAllPPointDataFields(FILE *vtk_fp,co
       case MPField_StokesPl:
         MPntPStokesPlPVTUWriteAllPPointDataFields(vtk_fp);
         break;
+
+      case MPField_DepositionTime:
+	MPntPDepositionTimePVTUWriteAllPPointDataFields(vtk_fp);
+	PetscPrintf(PETSC_COMM_WORLD,"MPntPDepositionTimePVTUWriteAllPPointDataFields CALLED\n");
+	break;
 
       default:
         SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Unknown material point field");
@@ -3110,7 +3162,7 @@ PetscErrorCode _get_field_MPntPDepositionTime(MPAccess X,const int p,MPntPDeposi
 {
   DataField  PField;
   if (X->mp_deposition_time_field_idx == -1) {
-    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Material point field MPntPEnergy must be registered");
+    SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Material point field MPntPDepositionTime must be registered");
   }
   if (X == NULL) { SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Must call MaterialPointGetAccess() first"); }
   if (p < 0 || p >= X->db->L) SETERRQ2(PETSC_COMM_WORLD,PETSC_ERR_USER,"MPntPDepositionTime.AccessPoint() index %d is invalid. Must be in range [0,%d)",p,X->db->L);
@@ -3402,10 +3454,7 @@ PetscErrorCode MaterialPointSet_heat_source_init(MPAccess X,const int p,double v
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MaterialPointSet_deposition_time(
-        MPAccess X,
-        const int p,
-        double var)
+PetscErrorCode MaterialPointSet_deposition_time(MPAccess X,const int p,double var)
 {
     MPntPDepositionTime *point;
     PetscErrorCode ierr;

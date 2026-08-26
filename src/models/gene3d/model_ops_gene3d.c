@@ -2845,13 +2845,14 @@ static PetscErrorCode ModelOutputMarkerFields_Gene3D(pTatinCtx ptatin,const char
   PetscFunctionBegin;
 
   ierr = pTatinContextValid_EnergyFV(ptatin,&energy_active);CHKERRQ(ierr);
-  if (energy_active) { nf = 4; }
-  else               { nf = 3; }
+  if (energy_active) { nf = 5; }
+  else               { nf = 4; }
   ierr = PetscCalloc1(nf,&mp_prop_list);CHKERRQ(ierr);
   mp_prop_list[0] = MPField_Std;
   mp_prop_list[1] = MPField_Stokes;
   mp_prop_list[2] = MPField_StokesPl;
-  if (energy_active) { mp_prop_list[3] = MPField_Energy; }
+  if (energy_active) { mp_prop_list[3] = MPField_Energy; mp_prop_list[4] = MPField_DepositionTime;}
+  else {mp_prop_list[3] = MPField_DepositionTime;}
 
   ierr = pTatinGetMaterialPoints(ptatin,&materialpoint_db,NULL);CHKERRQ(ierr);
   ierr = PetscSNPrintf(mp_file_prefix,PETSC_MAX_PATH_LEN-1,"%s_mpoints",prefix);CHKERRQ(ierr);
