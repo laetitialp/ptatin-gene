@@ -1737,3 +1737,591 @@ PetscErrorCode SwarmMPntStd_InsertSedimentMarker(DataBucket db,DM dav,PetscReal 
 
   PetscFunctionReturn(0);
 }
+
+
+PetscErrorCode SwarmMPntStd_InsertSedimentMarkersParallel(
+        DataBucket db,
+        DM dav,
+        PetscInt nlocal_candidates,
+        const PetscReal local_coords[],
+        PetscInt phase,
+        PetscReal deposition_time)
+{
+  PetscErrorCode ierr;
+
+  MPI_Comm       comm;
+  PetscMPIInt    rank;
+  PetscMPIInt    size;
+
+  PetscMPIInt    nlocal_mpi;
+
+  PetscMPIInt    *candidate_counts = NULL;
+  PetscMPIInt    *candidate_displs = NULL;
+
+  PetscMPIInt    *coord_counts = NULL;
+  PetscMPIInt    *coord_displs = NULL;
+
+  PetscInt       nglobal_candidates;
+  PetscInt       n;
+
+  PetscReal      *global_coords = NULL;
+
+  PetscMPIInt    *owner_local  = NULL;
+  PetscMPIInt    *owner_global = NULL;
+
+  MPntStd        *mapped_points = NULL;
+
+  /*
+   * Variables required by InverseMappingDomain_3dQ2().
+   */
+  double         tolerance;
+  int            max_its;
+  PetscBool      use_nonzero_guess;
+  PetscBool      monitor;
+
+  DM             cda;
+  Vec            gcoords;
+  PetscScalar    *LA_gcoords;
+
+  const PetscInt *elnidx_u;
+
+  PetscInt       lmx,lmy,lmz;
+
+  /*
+   * DataBucket / material-point variables.
+   */
+  MPAccess       mpX;
+
+  int            n_points_orig;
+  int            n_points_new;
+
+  PetscInt       nowned;
+  PetscInt       pnew;
+
+  PetscMPIInt    _phase;
+
+  PetscInt       n_not_found;
+
+  PetscFunctionBegin;
+
+  /*
+   * ------------------------------------------------------------
+   * MPI communicator.
+   * ------------------------------------------------------------
+   */
+
+  comm = PetscObjectComm((PetscObject)dav);
+
+  ierr = MPI_Comm_rank(comm,&rank);CHKERRQ(ierr);
+  ierr = MPI_Comm_size(comm,&size);CHKERRQ(ierr);
+
+  /*
+   * ------------------------------------------------------------
+   * Parameters copied directly from
+   * SwarmMPntStd_CoordAssignment_InsertFromList().
+   * ------------------------------------------------------------
+   */
+
+  tolerance         = 1.0e-10;
+  max_its           = 10;
+  use_nonzero_guess = PETSC_FALSE;
+  monitor           = PETSC_FALSE;
+
+  /*
+   * ------------------------------------------------------------
+   * 1. Gather the number of sediment candidates from every rank.
+   * ------------------------------------------------------------
+   */
+
+  ierr = PetscMalloc1(
+      size,
+      &candidate_counts);CHKERRQ(ierr);
+
+  ierr = PetscMalloc1(
+      size,
+      &candidate_displs);CHKERRQ(ierr);
+
+  ierr = PetscMPIIntCast(
+      nlocal_candidates,
+      &nlocal_mpi);CHKERRQ(ierr);
+
+  ierr = MPI_Allgather(
+      &nlocal_mpi,
+      1,
+      MPI_INT,
+      candidate_counts,
+      1,
+      MPI_INT,
+      comm);CHKERRQ(ierr);
+
+  candidate_displs[0] = 0;
+
+  for (n=1; n<size; n++) {
+
+    candidate_displs[n] =
+        candidate_displs[n-1]
+      + candidate_counts[n-1];
+  }
+
+  nglobal_candidates =
+      (PetscInt)candidate_displs[size-1]
+    + (PetscInt)candidate_counts[size-1];
+
+  /*
+   * No deposition anywhere in the domain.
+   *
+   * All ranks reach this point because MPI_Allgather has already
+   * completed.
+   */
+  if (nglobal_candidates == 0) {
+
+    ierr = PetscFree(candidate_counts);CHKERRQ(ierr);
+    ierr = PetscFree(candidate_displs);CHKERRQ(ierr);
+
+    PetscFunctionReturn(0);
+  }
+
+  /*
+   * ------------------------------------------------------------
+   * 2. Build counts/displacements for xyz coordinate arrays.
+   *
+   * One marker = 3 PetscReal values.
+   * ------------------------------------------------------------
+   */
+
+  ierr = PetscMalloc1(
+      size,
+      &coord_counts);CHKERRQ(ierr);
+
+  ierr = PetscMalloc1(
+      size,
+      &coord_displs);CHKERRQ(ierr);
+
+  for (n=0; n<size; n++) {
+
+    coord_counts[n] =
+        3 * candidate_counts[n];
+
+    coord_displs[n] =
+        3 * candidate_displs[n];
+  }
+
+  /*
+   * ------------------------------------------------------------
+   * 3. Gather all marker coordinates onto all MPI ranks.
+   * ------------------------------------------------------------
+   */
+
+  ierr = PetscMalloc1(
+      3 * nglobal_candidates,
+      &global_coords);CHKERRQ(ierr);
+
+  ierr = MPI_Allgatherv(
+      (void*)local_coords,
+      3 * nlocal_mpi,
+      MPIU_REAL,
+      global_coords,
+      coord_counts,
+      coord_displs,
+      MPIU_REAL,
+      comm);CHKERRQ(ierr);
+
+  /*
+   * ------------------------------------------------------------
+   * 4. Allocate storage for point-location results.
+   *
+   * mapped_points[n] stores:
+   *
+   *   coor
+   *   xi
+   *   wil
+   *
+   * for candidate n on THIS rank.
+   * ------------------------------------------------------------
+   */
+
+  ierr = PetscMalloc1(
+      nglobal_candidates,
+      &mapped_points);CHKERRQ(ierr);
+
+  ierr = PetscMalloc1(
+      nglobal_candidates,
+      &owner_local);CHKERRQ(ierr);
+
+  ierr = PetscMalloc1(
+      nglobal_candidates,
+      &owner_global);CHKERRQ(ierr);
+
+  /*
+   * ------------------------------------------------------------
+   * 5. Prepare local Q2 mesh information for inverse mapping.
+   *
+   * This is copied from
+   * SwarmMPntStd_CoordAssignment_InsertFromList().
+   * ------------------------------------------------------------
+   */
+
+  ierr = DMGetCoordinateDM(
+      dav,
+      &cda);CHKERRQ(ierr);
+
+  ierr = DMGetCoordinatesLocal(
+      dav,
+      &gcoords);CHKERRQ(ierr);
+
+  ierr = VecGetArray(
+      gcoords,
+      &LA_gcoords);CHKERRQ(ierr);
+
+  ierr = DMDAGetElements_pTatinQ2P1(
+      dav,
+      0,
+      0,
+      &elnidx_u);CHKERRQ(ierr);
+
+  ierr = DMDAGetLocalSizeElementQ2(
+      dav,
+      &lmx,
+      &lmy,
+      &lmz);CHKERRQ(ierr);
+
+  /*
+   * ------------------------------------------------------------
+   * 6. Every rank attempts to locate EVERY global candidate.
+   *
+   * If this rank can locate candidate n:
+   *
+   *     owner_local[n] = rank
+   *
+   * otherwise:
+   *
+   *     owner_local[n] = size
+   *
+   * Using 'size' as the invalid owner is useful because every
+   * valid rank number is smaller than size.
+   * ------------------------------------------------------------
+   */
+
+  for (n=0; n<nglobal_candidates; n++) {
+
+    MPntStd *mp_std;
+
+    mp_std = &mapped_points[n];
+
+    mp_std->coor[0] =
+        (double)global_coords[3*n + 0];
+
+    mp_std->coor[1] =
+        (double)global_coords[3*n + 1];
+
+    mp_std->coor[2] =
+        (double)global_coords[3*n + 2];
+
+    /*
+     * InverseMappingDomain_3dQ2() returns void.
+     *
+     * The result is stored inside mp_std:
+     *
+     *   mp_std->wil
+     *   mp_std->xi
+     */
+    InverseMappingDomain_3dQ2(
+        tolerance,
+        max_its,
+        use_nonzero_guess,
+        monitor,
+        (const double*)LA_gcoords,
+        (const int)lmx,
+        (const int)lmy,
+        (const int)lmz,
+        (const int*)elnidx_u,
+        1,
+        mp_std);
+
+    /*
+     * wil == -1 means that this rank cannot locate this point
+     * inside one of its local elements.
+     */
+    if (mp_std->wil == -1) {
+
+      owner_local[n] = size;
+
+    } else {
+
+      owner_local[n] = rank;
+    }
+  }
+
+  /*
+   * We no longer need direct access to mesh coordinates.
+   */
+  ierr = VecRestoreArray(
+      gcoords,
+      &LA_gcoords);CHKERRQ(ierr);
+
+  /*
+   * ------------------------------------------------------------
+   * 7. Select exactly ONE owner rank for every marker.
+   *
+   * Example:
+   *
+   * candidate lies on boundary between ranks 6 and 7:
+   *
+   * rank 6: owner_local[n] = 6
+   * rank 7: owner_local[n] = 7
+   * others: owner_local[n] = size
+   *
+   * MPI_MIN gives:
+   *
+   * owner_global[n] = 6
+   *
+   * Therefore the marker will only be inserted by rank 6.
+   * ------------------------------------------------------------
+   */
+
+  ierr = MPI_Allreduce(
+      owner_local,
+      owner_global,
+      nglobal_candidates,
+      MPI_INT,
+      MPI_MIN,
+      comm);CHKERRQ(ierr);
+
+  /*
+   * ------------------------------------------------------------
+   * 8. Count how many markers this rank actually owns.
+   * ------------------------------------------------------------
+   */
+
+  nowned     = 0;
+  n_not_found = 0;
+
+  for (n=0; n<nglobal_candidates; n++) {
+
+    if (owner_global[n] == rank) {
+      nowned++;
+    }
+
+    /*
+     * owner == size means NO MPI rank could locate this marker.
+     */
+    if (owner_global[n] == size) {
+      n_not_found++;
+    }
+  }
+
+  /*
+   * n_not_found is identical on every rank because owner_global
+   * is identical on every rank.
+   *
+   * PetscPrintf will print it only once.
+   */
+  ierr = PetscPrintf(
+      comm,
+      "Parallel sediment marker location:\n"
+      "  Global candidates : %D\n"
+      "  Not found         : %D\n",
+      nglobal_candidates,
+      n_not_found);CHKERRQ(ierr);
+
+  ierr = PetscSynchronizedPrintf(
+      comm,
+      "[rank %d] sediment markers owned = %D\n",
+      (int)rank,
+      nowned);CHKERRQ(ierr);
+
+  ierr = PetscSynchronizedFlush(
+      comm,
+      PETSC_STDOUT);CHKERRQ(ierr);
+
+  /*
+   * ------------------------------------------------------------
+   * 9. Resize the local DataBucket ONCE.
+   * ------------------------------------------------------------
+   */
+
+  DataBucketGetSizes(
+      db,
+      &n_points_orig,
+      0,
+      0);
+
+  n_points_new =
+      n_points_orig + (int)nowned;
+
+  if (nowned > 0) {
+
+    DataBucketSetSizes(
+        db,
+        n_points_new,
+        -1);
+  }
+
+  /*
+   * Convert sediment phase index to the integer type used by
+   * MaterialPointSet_phase_index().
+   */
+  ierr = PetscMPIIntCast(
+      phase,
+      &_phase);CHKERRQ(ierr);
+
+  /*
+   * ------------------------------------------------------------
+   * 10. Insert only markers owned by this MPI rank.
+   *
+   * No further DataBucket resize happens inside this loop.
+   * ------------------------------------------------------------
+   */
+  pnew = 0;
+
+  if (nowned > 0) {
+
+    ierr = MaterialPointGetAccess(
+        db,
+        &mpX);CHKERRQ(ierr);
+
+    for (n=0; n<nglobal_candidates; n++) {
+
+      PetscInt pidx;
+
+      /*
+       * This candidate belongs to another MPI rank.
+       */
+      if (owner_global[n] != rank) {
+        continue;
+      }
+
+      pidx =
+          (PetscInt)n_points_orig
+        + pnew;
+
+      /*
+       * Coordinates and local element information produced by
+       * InverseMappingDomain_3dQ2() on THIS owner rank.
+       */
+      ierr = MaterialPointSet_global_coord(
+          mpX,
+          pidx,
+          mapped_points[n].coor);CHKERRQ(ierr);
+
+      ierr = MaterialPointSet_local_coord(
+          mpX,
+          pidx,
+          mapped_points[n].xi);CHKERRQ(ierr);
+
+      ierr = MaterialPointSet_local_element_index(
+          mpX,
+          pidx,
+          mapped_points[n].wil);CHKERRQ(ierr);
+
+      /*
+       * Sediment phase.
+       */
+      ierr = MaterialPointSet_phase_index(
+          mpX,
+          pidx,
+          _phase);CHKERRQ(ierr);
+
+      /*
+       * Store deposition time in the independent
+       * MPntPDepositionTime field.
+       */
+      ierr = MaterialPointSet_deposition_time(
+          mpX,
+          pidx,
+          deposition_time);CHKERRQ(ierr);
+
+      /*
+       * Temporary point index.
+       *
+       * This will be overwritten below by
+       * SwarmMPntStd_AssignUniquePointIdentifiers().
+       */
+      ierr = MaterialPointSet_point_index(
+          mpX,
+          pidx,
+          (long int)n);CHKERRQ(ierr);
+
+      pnew++;
+    }
+
+    ierr = MaterialPointRestoreAccess(
+        db,
+        &mpX);CHKERRQ(ierr);
+  }
+
+  /*
+   * Internal consistency check.
+   */
+  if (pnew != nowned) {
+
+    SETERRQ(
+        comm,
+        PETSC_ERR_PLIB,
+        "Sediment marker insertion count does not match owner count");
+  }
+
+  /*
+   * ------------------------------------------------------------
+   * 11. Assign globally unique point identifiers.
+   *
+   * IMPORTANT:
+   *
+   * Every MPI rank must call this routine, including ranks with
+   * nowned == 0, because it performs parallel communication.
+   *
+   * This is the same utility already used by
+   * SwarmMPntStd_CoordAssignment_InsertFromList().
+   * ------------------------------------------------------------
+   */
+
+  ierr = SwarmMPntStd_AssignUniquePointIdentifiers(
+      comm,
+      db,
+      n_points_orig,
+      nowned);CHKERRQ(ierr);
+
+  /*
+   * ------------------------------------------------------------
+   * 12. Diagnostic: total number actually inserted.
+   * ------------------------------------------------------------
+   */
+
+  {
+    PetscInt global_inserted;
+
+    ierr = MPI_Allreduce(
+        &nowned,
+        &global_inserted,
+        1,
+        MPIU_INT,
+        MPI_SUM,
+        comm);CHKERRQ(ierr);
+
+    ierr = PetscPrintf(
+        comm,
+        "  Markers inserted  : %D\n",
+        global_inserted);CHKERRQ(ierr);
+  }
+
+  /*
+   * ------------------------------------------------------------
+   * 13. Free temporary arrays.
+   * ------------------------------------------------------------
+   */
+
+  ierr = PetscFree(mapped_points);CHKERRQ(ierr);
+
+  ierr = PetscFree(owner_local);CHKERRQ(ierr);
+  ierr = PetscFree(owner_global);CHKERRQ(ierr);
+
+  ierr = PetscFree(global_coords);CHKERRQ(ierr);
+
+  ierr = PetscFree(coord_counts);CHKERRQ(ierr);
+  ierr = PetscFree(coord_displs);CHKERRQ(ierr);
+
+  ierr = PetscFree(candidate_counts);CHKERRQ(ierr);
+  ierr = PetscFree(candidate_displs);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}

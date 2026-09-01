@@ -47,5 +47,5 @@ PetscErrorCode SwarmMPntStd_CoordAssignmentFromElementList_FaceLatticeLayout3d(D
 PetscErrorCode SwarmMPntStd_CoordAssignment_InsertWithinPlane(DataBucket db,DM dav,PetscInt Nxp2[],PetscInt region_idx,PetscReal vert_coord[]);
 PetscErrorCode SwarmMPntStd_CoordAssignment_InsertFromList(DataBucket db,DM dav,PetscInt nlist,PetscReal coor[],PetscInt region_idx,PetscBool use_natural_index);
 PetscErrorCode SwarmMPntStd_InsertSedimentMarker(DataBucket db,DM dav,PetscReal x,PetscReal y,PetscReal z,PetscInt phase,PetscReal deposition_time);
-
+PetscErrorCode SwarmMPntStd_InsertSedimentMarkersParallel(DataBucket db,DM dav,PetscInt nlocal_candidates,const PetscReal local_coords[],PetscInt phase,PetscReal deposition_time);
 #endif
